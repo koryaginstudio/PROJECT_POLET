@@ -6,7 +6,6 @@ import { teamName } from '../data/dictionary.ts';
 import { WhyMark } from './WhyMark.tsx';
 import { PersonName } from './PersonName.tsx';
 import {
-  crewStatusName,
   skillIcon,
   skillName,
   transportShort
@@ -255,12 +254,6 @@ export function EngineerCard({
             <div className="engfacts__row">
               <dt>Телефон</dt>
               <dd>{row.phone}</dd>
-            </div>
-          )}
-          {row.status && (
-            <div className="engfacts__row">
-              <dt>Статус</dt>
-              <dd>{crewStatusName(row.status)}</dd>
             </div>
           )}
         </dl>

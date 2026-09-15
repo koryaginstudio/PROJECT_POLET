@@ -4,7 +4,6 @@ import { SegmentedControl } from '../../ds/components/forms/SegmentedControl.jsx
 import type { EngineerRecord, Registry } from '../../data/registry.ts';
 import { dec, hhmm, hoursText } from '../../data/derive.ts';
 import {
-  crewStatusName,
   skillIcon,
   skillName,
   teamName,
@@ -682,7 +681,6 @@ export function DbEngineersScreen({ registry, mode, onChanged }: Props) {
                   <th>Транспорт</th>
                   <th>Смена</th>
                   <th>Телефон</th>
-                  <th>Статус</th>
                   <th>В расчётах</th>
                   <th>Маршрутов</th>
                   <th>Визитов</th>
@@ -744,13 +742,6 @@ export function DbEngineersScreen({ registry, mode, onChanged }: Props) {
                       {hhmm(engineer.shiftStart)}–{hhmm(engineer.shiftEnd)}
                     </td>
                     <td>{engineer.phone ?? <span className="tbl__muted">—</span>}</td>
-                    <td>
-                      {engineer.status ? (
-                        crewStatusName(engineer.status)
-                      ) : (
-                        <span className="tbl__muted">—</span>
-                      )}
-                    </td>
                     <td className="tbl__num">{engineer.runs}</td>
                     <td className="tbl__num">{engineer.routes}</td>
                     <td className="tbl__num">{engineer.visits}</td>

@@ -39,14 +39,7 @@ interface Props {
    отдельной кнопкой в карточке: рядом с «открыть» она ловила бы промахи. */
 
 const TRANSPORTS = ['car', 'walk', 'bike', 'transit'];
-const STATUSES = ['on_shift', 'off_shift', 'unavailable'];
 const SKILLS = ['local', 'connect', 'emergency'];
-
-const STATUS_LABELS: Record<string, string> = {
-  on_shift: 'В смене',
-  off_shift: 'Выходной',
-  unavailable: 'Сегодня не выйдет'
-};
 
 interface PostDraft {
   /** Название участка, под которым правка ляжет на данные. Не меняется даже
@@ -61,7 +54,6 @@ export function CrewEditDialog({ crew, taken, places, onClose, onSave, onDelete 
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [transport, setTransport] = useState('car');
-  const [status, setStatus] = useState('on_shift');
   const [skills, setSkills] = useState<string[]>([]);
   const [confirming, setConfirming] = useState(false);
 
@@ -72,7 +64,6 @@ export function CrewEditDialog({ crew, taken, places, onClose, onSave, onDelete 
     setName(crew.name);
     setPhone(crew.phone ?? '');
     setTransport(crew.transport ?? 'car');
-    setStatus(crew.status ?? 'on_shift');
     setSkills([...crew.skills]);
     setId(crew.id);
     setPosts(crew.posts.map((post) => ({ source: post.zone, zone: post.zone })));
@@ -106,7 +97,6 @@ export function CrewEditDialog({ crew, taken, places, onClose, onSave, onDelete 
       name: name.trim(),
       phone: phone.trim() || null,
       transport,
-      status,
       skills,
       /* Участок задаёт и офис, и часы: выбрали другой — человек выезжает
          оттуда и работает в его рамках. Руками часы не правятся, иначе в
@@ -187,16 +177,6 @@ export function CrewEditDialog({ crew, taken, places, onClose, onSave, onDelete 
             />
           </label>
         </div>
-
-        <label className="runedit__field">
-          <span className="runedit__label">Состояние на день</span>
-          <Select
-            size="sm"
-            value={status}
-            options={STATUSES.map((key) => ({ value: key, label: STATUS_LABELS[key] }))}
-            onChange={(event) => setStatus(event.currentTarget.value)}
-          />
-        </label>
 
         {/* Участки со сменами. Смена стоит здесь, а не в общем списке полей,
             потому что она принадлежит участку: график считается по нарядам
