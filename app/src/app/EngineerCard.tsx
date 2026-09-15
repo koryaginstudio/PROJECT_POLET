@@ -159,40 +159,52 @@ export function EngineerCard({
         </div>
       )}
 
-      {/* Главное число — часы за выбранный срок. Занятость отвечала на
-          другой вопрос: она про плотность одного маршрута и не растёт от
-          того, что человек отработал больше смен. Подпись не говорит
-          «отработано»: число складывает работу на объектах и дорогу между
-          ними, а дорога — не работа в этом смысле слова, инженер в пути
-          занят, но не «отрабатывает». */}
-      {workedMinutes === undefined ? (
-        <>
-          <span className="runcard__value">
-            {dec(row.occupancyMean * 100)}
-            <span className="runcard__unit">%</span>
-          </span>
-          <span className="runcard__label">
-            {dense ? 'Занятость' : 'Средняя занятость маршрута'}
-          </span>
-        </>
+      {dense ? (
+        /* В плотном виде — одно число, как и раньше: строка и без того
+           короткая, третьему-четвёртому факту в ней не хватит места. */
+        workedMinutes === undefined ? (
+          <>
+            <span className="runcard__value">
+              {dec(row.occupancyMean * 100)}
+              <span className="runcard__unit">%</span>
+            </span>
+            <span className="runcard__label">Занятость</span>
+          </>
+        ) : (
+          <>
+            <span className="runcard__value">
+              {dec(workedMinutes / 60)}
+              <span className="runcard__unit">ч</span>
+            </span>
+            <span className="runcard__label">Часы</span>
+          </>
+        )
       ) : (
-        <>
-          <span className="runcard__value">
-            {dec(workedMinutes / 60)}
-            <span className="runcard__unit">ч</span>
-          </span>
-          <span className="runcard__label">
-            {dense ? 'Часы' : 'Рабочие часы'}
-          </span>
-        </>
-      )}
-
-      {/* Визиты и переработка — сразу под главным числом, в одну строку и
-          собственными крупными числами: это те два факта о человеке,
-          которые спрашивают чаще остальных, и мелкой подписью через запятую
-          они терялись бы рядом с настоящим заголовком карточки. */}
-      {!dense && (
+        /* Все три числа в одной строке: часы, визиты, переработка — их
+           спрашивают друг за другом, и разнесённые по разным строкам они
+           читались как заголовок и что-то после него, а не как три равно
+           важных факта о смене. Часы крупнее — это по-прежнему первый ответ,
+           а не рядовой факт в общем ряду. */
         <div className="engquick">
+          <div className="engquick__tile engquick__tile--main">
+            {workedMinutes === undefined ? (
+              <>
+                <span className="engquick__value engquick__value--lg">
+                  {dec(row.occupancyMean * 100)}
+                  <span className="engquick__unit">%</span>
+                </span>
+                <span className="engquick__label">занятость маршрута</span>
+              </>
+            ) : (
+              <>
+                <span className="engquick__value engquick__value--lg">
+                  {dec(workedMinutes / 60)}
+                  <span className="engquick__unit">ч</span>
+                </span>
+                <span className="engquick__label">рабочих часов</span>
+              </>
+            )}
+          </div>
           <div className="engquick__tile">
             <span className="engquick__value">{row.visits}</span>
             <span className="engquick__label">

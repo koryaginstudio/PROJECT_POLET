@@ -12472,14 +12472,20 @@ button.bars__btn:focus-visible {
    ему, — но заметно больше обычной подписи. */
 .engquick {
   display: flex;
+  align-items: flex-end;
   gap: var(--sp-4);
-  margin-top: 6px;
 }
 
 .engquick__tile {
   display: flex;
   flex-direction: column;
   gap: 1px;
+}
+
+/* Часы крупнее — это по-прежнему первый ответ о смене, остальные два в той
+   же строке, но не наравне с ним. */
+.engquick__tile--main {
+  margin-right: 2px;
 }
 
 .engquick__value {
@@ -12489,6 +12495,20 @@ button.bars__btn:focus-visible {
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
   color: var(--text-primary);
+}
+
+.engquick__value--lg {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  font-size: 30px;
+  letter-spacing: -0.02em;
+}
+
+.engquick__unit {
+  font-size: 14px;
+  font-weight: var(--fw-regular);
+  color: var(--text-muted);
 }
 
 .engquick__label {
