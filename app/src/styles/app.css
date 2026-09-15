@@ -12503,6 +12503,10 @@ button.bars__btn:focus-visible {
 }
 
 .engquick__tile {
+  /* Растянуты на всю ширину карточки, а не сбиты в кучу слева: три числа
+     равнозначны, и делить между ними место поровну — то же самое
+     утверждение, что и одинаковый кегль. */
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 1px;
@@ -12575,16 +12579,29 @@ button.bars__btn:focus-visible {
 .engmetrics__row {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
   gap: var(--sp-2);
 }
 
+/* Пунктир между подписью и числом — тем же приёмом, что в оглавлении:
+   тянет взгляд от слова к его значению через пустоту, а не даёт ему
+   потеряться в межстрочном пробеле. Ширина берётся из оставшегося места
+   (`flex: 1`), а не назначается заранее — подписи разной длины («Работа»,
+   «Без маршрута»), и точная ширина линии зависит от каждой. */
+.engmetrics__leader {
+  flex: 1;
+  min-width: 12px;
+  margin-bottom: 3px;
+  border-bottom: 1px dotted var(--border-subtle, var(--border-hairline));
+}
+
 .engmetrics dt {
+  flex: none;
   font-size: var(--fs-caption);
   color: var(--text-secondary);
 }
 
 .engmetrics dd {
+  flex: none;
   margin: 0;
   font-size: var(--fs-caption);
   font-weight: var(--fw-semibold);

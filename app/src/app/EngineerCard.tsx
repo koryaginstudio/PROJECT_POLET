@@ -244,22 +244,27 @@ export function EngineerCard({
         <dl className="engmetrics">
           <div className="engmetrics__row">
             <dt>Работа</dt>
+            <span className="engmetrics__leader" aria-hidden="true" />
             <dd>{hoursText(workMinutes ?? row.workMinutes)}</dd>
           </div>
           <div className="engmetrics__row">
             <dt>Дорога</dt>
+            <span className="engmetrics__leader" aria-hidden="true" />
             <dd>{hoursText(travelMinutes ?? row.travelMinutes)}</dd>
           </div>
           <div className="engmetrics__row">
             <dt>Маршрутом</dt>
+            <span className="engmetrics__leader" aria-hidden="true" />
             <dd>{row.routes} из {row.runs}</dd>
           </div>
           <div className={'engmetrics__row' + (idle ? ' engmetrics__row--bad' : '')}>
             <dt>Без маршрута</dt>
+            <span className="engmetrics__leader" aria-hidden="true" />
             <dd>{row.idleRuns}</dd>
           </div>
           <div className={'engmetrics__row' + (loose ? ' engmetrics__row--bad' : '')}>
             <dt>Занятость</dt>
+            <span className="engmetrics__leader" aria-hidden="true" />
             <dd>{dec(row.occupancyMean * 100)} %</dd>
           </div>
         </dl>
