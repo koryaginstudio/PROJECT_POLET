@@ -187,30 +187,51 @@ export function EngineerCard({
         </>
       )}
 
-      <div className="runcard__facts">
-        {dense ? (
+      {dense ? (
+        <div className="runcard__facts">
           <span className={'runcard__fact' + (idle ? ' runcard__fact--bad' : '')}>
             <b>{row.visits}</b> визитов · <b>{row.routes}</b> из {row.runs} смен
           </span>
-        ) : (
-          <>
-            <span className="runcard__fact">
-              {hoursText(workMinutes ?? row.workMinutes)} работа ·{' '}
-              {hoursText(travelMinutes ?? row.travelMinutes)} дорога
-            </span>
-            <span className="runcard__fact">
-              <b>{row.visits}</b> визитов · <b>{row.routes}</b> из {row.runs} смен с маршрутом
-            </span>
-            <span className={'runcard__fact' + (idle ? ' runcard__fact--bad' : '')}>
-              <b>{row.idleRuns}</b> смен без маршрута
-            </span>
-            <span className={'runcard__fact' + (loose ? ' runcard__fact--bad' : '')}>
-              Занятость {dec(row.occupancyMean * 100)} %
-              {row.overtimeMinutes > 0 ? ` · ${hoursText(row.overtimeMinutes)} сверх смены` : ''}
-            </span>
-          </>
-        )}
-      </div>
+        </div>
+      ) : (
+        /* Строка-другая сплошным текстом («6 ч 15 мин работа · 1 ч 0 мин
+           дорога») читается медленно: числа и слова перемешаны, и глазу не
+           за что зацепиться. Список «подпись — значение», тот же приём, что
+           и у полей ниже (транспорт, участок), — подпись слева тихо, число
+           справа и жирным, и все шесть чисел читаются по одной колонке. */
+        <dl className="engmetrics">
+          <div className="engmetrics__row">
+            <dt>Работа</dt>
+            <dd>{hoursText(workMinutes ?? row.workMinutes)}</dd>
+          </div>
+          <div className="engmetrics__row">
+            <dt>Дорога</dt>
+            <dd>{hoursText(travelMinutes ?? row.travelMinutes)}</dd>
+          </div>
+          <div className="engmetrics__row">
+            <dt>Визитов</dt>
+            <dd>{row.visits}</dd>
+          </div>
+          <div className="engmetrics__row">
+            <dt>Маршрутом</dt>
+            <dd>{row.routes} из {row.runs}</dd>
+          </div>
+          <div className={'engmetrics__row' + (idle ? ' engmetrics__row--bad' : '')}>
+            <dt>Без маршрута</dt>
+            <dd>{row.idleRuns}</dd>
+          </div>
+          <div className={'engmetrics__row' + (loose ? ' engmetrics__row--bad' : '')}>
+            <dt>Занятость</dt>
+            <dd>{dec(row.occupancyMean * 100)} %</dd>
+          </div>
+          {row.overtimeMinutes > 0 && (
+            <div className="engmetrics__row engmetrics__row--bad">
+              <dt>Сверх смены</dt>
+              <dd>{hoursText(row.overtimeMinutes)}</dd>
+            </div>
+          )}
+        </dl>
+      )}
 
       {/* Что о человеке говорит сама выгрузка. Стоит отдельно от цифр
           маршрута: те считаются по расчётам и меняются от прогона к прогону,

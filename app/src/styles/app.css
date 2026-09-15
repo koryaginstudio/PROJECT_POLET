@@ -12465,6 +12465,43 @@ button.bars__btn:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
+/* Метрики карточки: работа, дорога, визиты, маршрут, занятость — список
+   «подпись слева, число справа», а не строки сплошным текстом. Числа и так
+   разного рода (минуты, штуки, проценты), и без подписи взгляд цеплялся то
+   за одно слово, то за другое; колонка чисел читается охватом сразу. */
+.engmetrics {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: var(--sp-3) 0 0;
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--border-hairline);
+}
+
+.engmetrics__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+
+.engmetrics dt {
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+
+.engmetrics dd {
+  margin: 0;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+.engmetrics__row--bad dd {
+  color: var(--danger-600);
+}
+
 /* Значок «откуда это взялось» и его объяснение.
 
    Стоит у полей, которых в выгрузке не было и которые достроены сборкой.
