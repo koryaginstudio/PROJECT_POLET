@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Icon } from '../../ds/components/core/Icon.jsx';
 import { SegmentedControl } from '../../ds/components/forms/SegmentedControl.jsx';
 import type { EngineerRecord, Registry } from '../../data/registry.ts';
@@ -19,6 +19,8 @@ import { service } from '../../data/service.ts';
 import { DbHead } from './DbHead.tsx';
 import { CrewEditDialog } from '../../app/CrewEditDialog.tsx';
 import { editCrew, removeCrew } from '../../data/crew.ts';
+import { loadPlaces } from '../../data/load.ts';
+import type { Place } from '../../data/load.ts';
 import { transportWhy } from '../../data/rationale.ts';
 import { WhyMark } from '../../app/WhyMark.tsx';
 import { PersonName } from '../../app/PersonName.tsx';
@@ -89,6 +91,19 @@ export function DbEngineersScreen({ registry, mode, onChanged }: Props) {
   /* Кого сейчас правят. Окно одно на весь штат: двух карточек сразу не
      правят, а второе окно поверх первого пришлось бы закрывать дважды. */
   const [editing, setEditing] = useState<EngineerRecord | null>(null);
+  /* Участки со своими офисами и рамками дня: из них выбирают в окне правки,
+     и они же задают человеку адрес выезда и часы. */
+  const [places, setPlaces] = useState<Place[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    loadPlaces()
+      .then((list) => !cancelled && setPlaces(list))
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const all = registry.engineers;
 
@@ -797,6 +812,7 @@ export function DbEngineersScreen({ registry, mode, onChanged }: Props) {
       <CrewEditDialog
         crew={editing}
         taken={all.map((one) => one.id)}
+        places={places}
         onClose={() => setEditing(null)}
         onSave={(patch) => {
           if (!editing) return;

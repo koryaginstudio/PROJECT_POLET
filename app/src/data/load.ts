@@ -486,6 +486,42 @@ export async function loadRoster(): Promise<Engineer[]> {
   return zones.flatMap((data) => data?.engineers ?? []);
 }
 
+/** Участок так, как он есть в данных: название, офис и рамки рабочего дня.
+
+    Рамки считаются по окнам приёма самого участка — от первого открывшегося
+    до последнего закрывшегося. Это и есть его временные ограничения: за ними
+    заявок нет, и смена за них выходить не должна.
+
+    Офис берётся у первого же инженера участка: он один на всех — из него они
+    и выезжают. */
+export interface Place {
+  zone: string;
+  home: string | null;
+  from: number;
+  to: number;
+}
+
+export async function loadPlaces(): Promise<Place[]> {
+  const zones = await Promise.all(sources().map((zone) => loadZone(zone).catch(() => null)));
+  const byTitle = new Map<string, Place>();
+
+  for (const data of zones) {
+    if (!data || data.orders.length === 0) continue;
+    const title = data.engineers[0]?.zone ?? data.title;
+    const from = Math.min(...data.orders.map((order) => order.window_start));
+    const to = Math.max(...data.orders.map((order) => order.window_end));
+    const known = byTitle.get(title);
+    byTitle.set(title, {
+      zone: title,
+      home: data.engineers[0]?.home_address ?? known?.home ?? null,
+      from: known ? Math.min(known.from, from) : from,
+      to: known ? Math.max(known.to, to) : to
+    });
+  }
+
+  return [...byTitle.values()].sort((a, b) => a.zone.localeCompare(b.zone));
+}
+
 let dictionaries: Promise<Dictionaries | null> | null = null;
 
 /** Подписи ко всем кодам. Формы может не быть — тогда работаем на встроенном

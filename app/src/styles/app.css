@@ -12040,6 +12040,29 @@ button.bars__btn:focus-visible {
   border-radius: var(--r-control);
 }
 
+/* Поля, которые задаёт участок, а не человек: адрес выезда и часы работы.
+   Показаны, но не правятся — оттого и не похожи на поля ввода. */
+.runedit__derived {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 9px 11px;
+  border-radius: var(--r-sm);
+  background: var(--ink-50);
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.runedit__derived-row {
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  gap: 8px;
+}
+
+.runedit__derived-key {
+  color: var(--ink-300);
+}
+
 /* Что не так с полем. Мелким и тревожным, под самим полем: ответ должен
    стоять там же, где вопрос. */
 .runedit__wrong {

@@ -14,6 +14,10 @@ interface Props {
   /** Табельные, уже занятые другими: новый номер не должен свести двух
       человек в одного. */
   taken: string[];
+  /** Участки, какие есть в данных, с их рабочими часами и адресом офиса.
+      Из них и выбирают: участок — это не свободный текст, а место, у
+      которого свой офис и свои временные рамки. */
+  places: { zone: string; home: string | null; from: number; to: number }[];
   onSave: (patch: CrewPatch) => void;
   onDelete: () => void;
 }
@@ -44,22 +48,14 @@ const STATUS_LABELS: Record<string, string> = {
   unavailable: 'Сегодня не выйдет'
 };
 
-const toMinutes = (value: string) => {
-  const [h, m] = value.split(':').map(Number);
-  return Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : null;
-};
-
 interface PostDraft {
   /** Название участка, под которым правка ляжет на данные. Не меняется даже
-      когда участок переименовали: в данных он остался прежним. */
+      когда участок сменили: в данных он остался прежним. */
   source: string;
   zone: string;
-  home: string;
-  from: string;
-  to: string;
 }
 
-export function CrewEditDialog({ crew, taken, onClose, onSave, onDelete }: Props) {
+export function CrewEditDialog({ crew, taken, places, onClose, onSave, onDelete }: Props) {
   const [id, setId] = useState('');
   const [posts, setPosts] = useState<PostDraft[]>([]);
   const [name, setName] = useState('');
@@ -79,15 +75,7 @@ export function CrewEditDialog({ crew, taken, onClose, onSave, onDelete }: Props
     setStatus(crew.status ?? 'on_shift');
     setSkills([...crew.skills]);
     setId(crew.id);
-    setPosts(
-      crew.posts.map((post) => ({
-        source: post.zone,
-        zone: post.zone,
-        home: post.homeAddress ?? '',
-        from: hhmm(post.shiftStart),
-        to: hhmm(post.shiftEnd)
-      }))
-    );
+    setPosts(crew.posts.map((post) => ({ source: post.zone, zone: post.zone })));
     setConfirming(false);
   }, [crew]);
 
@@ -109,13 +97,7 @@ export function CrewEditDialog({ crew, taken, onClose, onSave, onDelete }: Props
      не смена. Номер, занятый другим, свёл бы двух людей в одного. */
   const trimmedId = id.trim();
   const idBusy = trimmedId !== crew.id && taken.includes(trimmedId);
-  const shiftsOk = posts.every((post) => {
-    const start = toMinutes(post.from);
-    const end = toMinutes(post.to);
-    return start !== null && end !== null && end > start;
-  });
-  const valid =
-    name.trim().length > 0 && trimmedId.length > 0 && !idBusy && skills.length > 0 && shiftsOk;
+  const valid = name.trim().length > 0 && trimmedId.length > 0 && !idBusy && skills.length > 0;
 
   const save = () => {
     if (!valid) return;
@@ -126,16 +108,22 @@ export function CrewEditDialog({ crew, taken, onClose, onSave, onDelete }: Props
       transport,
       status,
       skills,
+      /* Участок задаёт и офис, и часы: выбрали другой — человек выезжает
+         оттуда и работает в его рамках. Руками часы не правятся, иначе в
+         карточке стояла бы смена, которой участок не знает. */
       posts: Object.fromEntries(
-        posts.map((post) => [
-          post.source,
-          {
-            zone: post.zone.trim() || post.source,
-            home_address: post.home.trim() || null,
-            shift_start: toMinutes(post.from) as number,
-            shift_end: toMinutes(post.to) as number
-          }
-        ])
+        posts.map((post) => {
+          const place = places.find((one) => one.zone === post.zone);
+          return [
+            post.source,
+            {
+              zone: post.zone,
+              home_address: place?.home ?? null,
+              shift_start: place?.from ?? crew.shiftStart,
+              shift_end: place?.to ?? crew.shiftEnd
+            }
+          ];
+        })
       )
     });
   };
@@ -213,55 +201,40 @@ export function CrewEditDialog({ crew, taken, onClose, onSave, onDelete }: Props
         {/* Участки со сменами. Смена стоит здесь, а не в общем списке полей,
             потому что она принадлежит участку: график считается по нарядам
             дня, и у того, кто работает на двух участках, смены разные. */}
-        {posts.map((post, index) => (
-          <div className="runedit__post" key={post.source}>
-            <div className="runedit__pair">
+        {posts.map((post, index) => {
+          const place = places.find((one) => one.zone === post.zone);
+          return (
+            <div className="runedit__post" key={post.source}>
               <label className="runedit__field">
                 <span className="runedit__label">
                   {posts.length > 1 ? `Участок ${index + 1}` : 'Участок'}
                 </span>
-                <input
-                  className="runedit__input"
+                <Select
+                  size="sm"
                   value={post.zone}
+                  options={places.map((one) => ({ value: one.zone, label: one.zone }))}
                   onChange={(event) => patchPost(index, { zone: event.currentTarget.value })}
-                  placeholder="Восток"
                 />
               </label>
 
-              <label className="runedit__field">
-                <span className="runedit__label">Адрес выезда</span>
-                <input
-                  className="runedit__input"
-                  value={post.home}
-                  onChange={(event) => patchPost(index, { home: event.currentTarget.value })}
-                  placeholder="Москва, улица…"
-                />
-              </label>
+              {/* Офис и часы участок задаёт сам: они не свойства человека, а
+                  свойства места. Руками их здесь не правят — иначе в карточке
+                  стояла бы смена, которой участок не знает. */}
+              <div className="runedit__derived">
+                <span className="runedit__derived-row">
+                  <span className="runedit__derived-key">Выезд</span>
+                  <span>{place?.home ?? 'адрес не указан'}</span>
+                </span>
+                <span className="runedit__derived-row">
+                  <span className="runedit__derived-key">Часы работы</span>
+                  <span>
+                    {place ? `${hhmm(place.from)}–${hhmm(place.to)}` : '—'}
+                  </span>
+                </span>
+              </div>
             </div>
-
-            <div className="runedit__pair">
-              <label className="runedit__field">
-                <span className="runedit__label">Смена с</span>
-                <input
-                  className="runedit__input"
-                  type="time"
-                  value={post.from}
-                  onChange={(event) => patchPost(index, { from: event.currentTarget.value })}
-                />
-              </label>
-
-              <label className="runedit__field">
-                <span className="runedit__label">Смена до</span>
-                <input
-                  className="runedit__input"
-                  type="time"
-                  value={post.to}
-                  onChange={(event) => patchPost(index, { to: event.currentTarget.value })}
-                />
-              </label>
-            </div>
-          </div>
-        ))}
+          );
+        })}
 
         <div className="runedit__field">
           <span className="runedit__label">Навыки</span>
