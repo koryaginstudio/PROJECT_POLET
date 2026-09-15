@@ -12,9 +12,9 @@
    сети и адрес приходит пустым, база молча возвращается к прежнему поведению.
    Ничего к контракту здесь не придумывается. */
 
-import { loadRoster, loadRunData, RUNS } from './load.ts';
+import { loadAllOrders, loadRoster, loadRunData, RUNS } from './load.ts';
 import type { RunId } from './load.ts';
-import type { Engineer, Plan, Simulation } from './contract.ts';
+import type { Engineer, Order, Plan, Simulation } from './contract.ts';
 import { placeOf, roadPath } from './derive.ts';
 import { routeLabel, routeNumbers } from './routeIds.ts';
 
@@ -74,6 +74,45 @@ export interface ClientRecord {
   avgMinutes: number;
   /** Раньше всего открывающееся окно приёма по всем прогонам. */
   firstWindow: number;
+}
+
+/* ─── услуги ─────────────────────────────────────────────────────────────
+
+   Услуга — это вид работ: что именно делают на объекте. «Конвергенция
+   абонента», «Нет линка», «Замена приставки». В выгрузке их восемнадцать, и
+   к навыку они не сводятся: навыков по ТЗ ровно три, и каждый покрывает
+   несколько услуг.
+
+   Путать их нельзя, и справочник нужен именно затем, чтобы показать связь:
+   услуга → какой навык требует, сколько занимает, что везти, нужна ли машина.
+   Навык отвечает на «кто может взять», услуга — на «что он там будет
+   делать». */
+
+export interface ServiceRecord {
+  /** Код вида работ, как он пришёл в данных. */
+  key: string;
+  /** Название услуги. */
+  title: string;
+  /** Навык по ТЗ, который она требует. */
+  skill: string;
+  /** Класс заявки из учётной системы. */
+  orderClass: string | null;
+  /** Длительность работ, минуты. Если в данных она разная — крайние значения. */
+  minutes: number;
+  minutesTo: number;
+  /** Что везти с собой. */
+  equipment: string[];
+  /** Требуемый транспорт или `null`, если ограничения нет. */
+  requiredTransport: string | null;
+  /** Сколько таких заявок в данных. */
+  orders: number;
+  /** Из них срочных. */
+  urgent: number;
+  /** Из них требуют доступа в квартиру. */
+  access: number;
+  /** Сколько раз услуга попадала в расчёты и сколько из них разложено. */
+  planned: number;
+  assigned: number;
 }
 
 export interface OrderRecord {
@@ -267,6 +306,7 @@ export interface Registry {
   clients: ClientRecord[];
   routes: RouteRecord[];
   engineers: EngineerRecord[];
+  services: ServiceRecord[];
   /** Почасовой разрез каждого расчёта — для наложения в сравнении. */
   profiles: RunProfile[];
   stats: RegistryStats;
@@ -578,6 +618,63 @@ function notePost(entry: EngineerEntry, engineer: Engineer): void {
   });
 }
 
+/** Каталог услуг: из всех данных, а не только из посчитанного. Расчёты
+    добавляют к нему то, чего в данных нет, — сколько раз услугу удалось
+    разложить. */
+function buildServices(orders: Order[], plans: { plan: Plan }[]): ServiceRecord[] {
+  const map = new Map<string, ServiceRecord & { equipSet: Set<string> }>();
+
+  const touch = (order: Order) => {
+    let entry = map.get(order.work_type);
+    if (!entry) {
+      entry = {
+        key: order.work_type,
+        title: order.work_title || order.work_type,
+        skill: order.skill,
+        orderClass: order.order_class ?? null,
+        minutes: order.est_minutes,
+        minutesTo: order.est_minutes,
+        equipment: [],
+        requiredTransport: order.required_transport ?? null,
+        orders: 0,
+        urgent: 0,
+        access: 0,
+        planned: 0,
+        assigned: 0,
+        equipSet: new Set<string>()
+      };
+      map.set(order.work_type, entry);
+    }
+    entry.minutes = Math.min(entry.minutes, order.est_minutes);
+    entry.minutesTo = Math.max(entry.minutesTo, order.est_minutes);
+    for (const item of order.required_equipment ?? []) entry.equipSet.add(item);
+    /* Требование к транспорту у одной услуги одно: если в данных оно где-то
+       стоит, а где-то нет, считаем, что услуга его требует, — пропустить
+       ограничение хуже, чем показать лишнее. */
+    if (order.required_transport) entry.requiredTransport = order.required_transport;
+    return entry;
+  };
+
+  for (const order of orders) {
+    const entry = touch(order);
+    entry.orders += 1;
+    if (order.priority_class === 'urgent' || order.priority >= 2) entry.urgent += 1;
+    if (order.needs_access) entry.access += 1;
+  }
+
+  for (const { plan } of plans) {
+    for (const order of plan.orders) {
+      const entry = touch(order);
+      entry.planned += 1;
+      if (order.assigned_to) entry.assigned += 1;
+    }
+  }
+
+  return [...map.values()]
+    .map(({ equipSet, ...rest }) => ({ ...rest, equipment: [...equipSet] }))
+    .sort((a, b) => b.orders - a.orders || a.title.localeCompare(b.title));
+}
+
 function buildEngineers(
   plans: { run: RunRef; plan: Plan }[],
   roster: Engineer[]
@@ -782,7 +879,11 @@ export async function loadRegistry(): Promise<Registry> {
      интерфейс, иначе один раздел однажды окажется собран по фикстурам, а
      соседний — по архиву движка. Дата — из реестра, а не из файла: в файле
      она одна на всех, в истории у каждого расчёта своя. */
-  const [data, roster] = await Promise.all([loadRunData(), loadRoster()]);
+  const [data, roster, catalogue] = await Promise.all([
+    loadRunData(),
+    loadRoster(),
+    loadAllOrders()
+  ]);
 
   const plans = RUNS.filter((entry) => data.has(entry.id)).map((entry) => ({
     run: {
@@ -797,6 +898,7 @@ export async function loadRegistry(): Promise<Registry> {
   }));
 
   const engineers = buildEngineers(plans, roster);
+  const services = buildServices(catalogue, plans);
   const workTypeTitle: Record<string, string> = {};
   for (const { plan } of plans) {
     for (const order of plan.orders) workTypeTitle[order.work_type] = order.work_title;
@@ -810,6 +912,7 @@ export async function loadRegistry(): Promise<Registry> {
     clients: buildClients(plans),
     routes: buildRoutes(plans),
     engineers,
+    services,
     profiles: buildProfiles(plans),
     stats: buildStats(plans, engineers)
   };

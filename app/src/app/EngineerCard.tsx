@@ -9,7 +9,6 @@ import {
   crewStatusName,
   skillIcon,
   skillName,
-  transportIcon,
   transportShort
 } from '../data/dictionary.ts';
 
@@ -219,10 +218,7 @@ export function EngineerCard({
                 Транспорт
                 <WhyMark text={transportWhy(row.transport)} />
               </dt>
-              <dd className="engfacts__tight">
-                <Icon name={transportIcon(row.transport)} size={12} />
-                {transportShort(row.transport)}
-              </dd>
+              <dd className="engfacts__tight">{transportShort(row.transport)}</dd>
             </div>
           )}
           {row.team && (

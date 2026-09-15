@@ -269,10 +269,10 @@ export function CrewEditDialog({ crew, taken, places, onClose, onSave, onDelete 
 
           {confirming ? (
             <>
-              <span className="runedit__ask">Убрать из штата?</span>
+              <span className="runedit__ask">Удалить из базы?</span>
               <button type="button" className="runedit__danger" onClick={onDelete}>
                 <Icon name="trash" size={13} />
-                Убрать
+                Удалить
               </button>
               <button
                 type="button"
@@ -289,7 +289,7 @@ export function CrewEditDialog({ crew, taken, places, onClose, onSave, onDelete 
               onClick={() => setConfirming(true)}
             >
               <Icon name="trash" size={13} />
-              Убрать из штата
+              Удалить
             </button>
           )}
         </div>

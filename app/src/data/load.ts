@@ -522,6 +522,13 @@ export async function loadPlaces(): Promise<Place[]> {
   return [...byTitle.values()].sort((a, b) => a.zone.localeCompare(b.zone));
 }
 
+/** Все заявки всех источников. Нужны справочнику услуг: услуга числится в
+    каталоге независимо от того, посчитали её сегодня или нет. */
+export async function loadAllOrders(): Promise<Order[]> {
+  const zones = await Promise.all(sources().map((zone) => loadZone(zone).catch(() => null)));
+  return zones.flatMap((data) => data?.orders ?? []);
+}
+
 let dictionaries: Promise<Dictionaries | null> | null = null;
 
 /** Подписи ко всем кодам. Формы может не быть — тогда работаем на встроенном
