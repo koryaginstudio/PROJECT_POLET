@@ -8,7 +8,8 @@ import { SourcePicker } from '../app/SourcePicker.tsx';
 import type { SourceChoice } from '../app/SourcePicker.tsx';
 import type { DayView } from '../data/derive.ts';
 import type { SourceId } from '../data/load.ts';
-import { loadZone, SOURCES, zoneTitle } from '../data/load.ts';
+import { BUILT_IN, isBuiltIn, loadZone, sources, zoneTitle } from '../data/load.ts';
+import { DatasetImport } from '../app/DatasetImport.tsx';
 import { plural } from '../data/derive.ts';
 
 interface Props {
@@ -55,25 +56,35 @@ export function CreateRunScreen({
      выгрузки: свой офис, свои бригады, свой район. Общий день из всех трёх
      собрать можно, но это будет уже нагрузочный тест, а не работа
      диспетчера. */
-  const [zone, setZone] = useState<SourceId>(SOURCES[0]);
+  const [zone, setZone] = useState<SourceId>(BUILT_IN[0]);
   const [sizes, setSizes] = useState<Record<string, { orders: number; engineers: number }>>({});
+  /* Список источников меняется прямо на этом экране: загрузили набор — он
+     встал в тот же ряд. Поэтому он в состоянии, а не считается на лету. */
+  const [list, setList] = useState<SourceId[]>(() => sources());
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all(SOURCES.map((key) => loadZone(key).catch(() => null)))
-      .then((list) => {
+    Promise.all(list.map((key) => loadZone(key).catch(() => null)))
+      .then((zones) => {
         if (cancelled) return;
         const next: Record<string, { orders: number; engineers: number }> = {};
-        for (const data of list) {
+        for (const data of zones) {
           if (data) next[data.zone] = { orders: data.orders.length, engineers: data.engineers.length };
         }
-        setSizes(next);
+        setSizes((was) => ({ ...was, ...next }));
       })
       .catch(() => undefined);
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [list]);
+
+  /* Загруженный набор сразу становится выбранным: человек принёс его, чтобы
+     посчитать, а не чтобы он лежал в списке. */
+  const onLoaded = (key: SourceId) => {
+    setList(sources());
+    setZone(key);
+  };
 
   return (
     <div className="dash enter">
@@ -111,16 +122,19 @@ export function CreateRunScreen({
           только потом, как его считать. */}
       <section className="panel">
         <div className="dash__section-head">
-          <h2 className="dash__section-title">Какую зону считаем</h2>
-          <span className="dash__section-note">выгрузка за 17.08.2026</span>
+          <h2 className="dash__section-title">Какой день считаем</h2>
+          <span className="dash__section-note">
+            {plural(list.length, 'источник', 'источника', 'источников')}
+          </span>
         </div>
         <p className="clients__lede">
-          Зона обслуживания — это отдельный рабочий день: свой офис, свои бригады и свой район
-          города. Расчёт идёт по одной зоне.
+          Встроенные зоны — это дни выгрузки «Билайн Бизнес»: свой офис, свои бригады и свой
+          район города у каждой. Расчёт идёт по одному дню. Свой набор можно загрузить файлом —
+          он встанет в этот же ряд.
         </p>
 
         <div className="srcgrid">
-          {SOURCES.map((key) => {
+          {list.map((key) => {
             const size = sizes[key];
             return (
               <button
@@ -137,11 +151,21 @@ export function CreateRunScreen({
                   {size
                     ? `${plural(size.orders, 'заявка', 'заявки', 'заявок')}, ` +
                       `${plural(size.engineers, 'инженер', 'инженера', 'инженеров')}`
-                    : 'Читаем выгрузку…'}
+                    : 'Читаем данные…'}
                 </span>
+                {!isBuiltIn(key) && <span className="srccard__mark">загружен</span>}
               </button>
             );
           })}
+        </div>
+
+        {/* Загрузка своего набора стоит здесь же, под рядом источников: это
+            тот же вопрос — что считать, — а не отдельная настройка. */}
+        <div className="srcblock">
+          <div className="dash__section-head">
+            <h3 className="srcblock__title">Загрузить свой набор</h3>
+          </div>
+          <DatasetImport onLoaded={onLoaded} />
         </div>
       </section>
 

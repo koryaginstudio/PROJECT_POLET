@@ -2,7 +2,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import './ds/styles.css';
 import './styles/app.css';
-import { attachEngine, createRun, RUNS, SOURCES } from './data/load.ts';
+import { attachEngine, BUILT_IN, createRun, RUNS } from './data/load.ts';
 import { engineDefaults } from './data/engine.ts';
 
 /* Движок ищем до первой отрисовки, а не после.
@@ -29,7 +29,7 @@ import { engineDefaults } from './data/engine.ts';
    перезагрузку. Второй раз сюда не заходят. */
 async function seedFirstRuns() {
   if (RUNS.length > 0) return;
-  for (const zone of SOURCES) {
+  for (const zone of BUILT_IN) {
     try {
       await createRun(engineDefaults(), zone);
     } catch {

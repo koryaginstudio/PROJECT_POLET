@@ -9,7 +9,7 @@ import {
   resetEngineDefaults,
   setEngineDefaults
 } from '../data/engine.ts';
-import { SOURCES } from '../data/load.ts';
+import { sources, zoneTitle } from '../data/load.ts';
 import { clearRunEdits, engineReady, RUNS, runEditCount } from '../data/load.ts';
 import { SCHEMA } from '../data/contract.ts';
 import { plural } from '../data/derive.ts';
@@ -120,7 +120,7 @@ export function SettingsScreen({ mode, registry, onEditsCleared }: Props) {
           </div>
           <div className="setrow">
             <span className="setrow__key">Записанные дни</span>
-            <span className="setrow__val">{SOURCES.join(' · ')}</span>
+            <span className="setrow__val">{sources().map(zoneTitle).join(' · ')}</span>
           </div>
           <div className="setrow">
             <span className="setrow__key">Записей в истории</span>

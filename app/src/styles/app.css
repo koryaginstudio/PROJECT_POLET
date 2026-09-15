@@ -11924,6 +11924,72 @@ button.bars__btn:focus-visible {
   color: var(--ink-300);
 }
 
+/* Загрузка набора данных. */
+.dsimport {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.dsimport__found {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--r-control);
+  background: var(--surface-muted, var(--ink-050));
+}
+
+.dsimport__counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.dsimport__count b {
+  font-size: 15px;
+  color: var(--text-primary);
+}
+
+.dsimport__count--muted {
+  color: var(--ink-300);
+}
+
+/* Замечания к набору. Не ошибка и не предупреждение: часть строк могла не
+   подойти, а остальное годится — поэтому список, а не красная плашка. */
+.dsimport__problems {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.dsimport__actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* Пометка «загружен» на карточке источника: встроенные зоны от принесённых
+   наборов отличать надо — первые лежат в репозитории и есть у всех, вторые
+   живут в одном браузере. */
+.srccard__mark {
+  align-self: flex-start;
+  margin-top: 6px;
+  padding: 2px 7px;
+  border-radius: var(--r-pill);
+  background: var(--surface-accent);
+  color: var(--text-accent);
+  font-size: 10px;
+  letter-spacing: 0.02em;
+}
+
 /* Имя человека. Фамилия акцентная — ею человека называют и по ней его ищут
    в списке; отчество уходит второй строкой, где не мешает читать первую.
 

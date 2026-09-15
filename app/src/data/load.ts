@@ -24,6 +24,7 @@
 import { SCHEMA, schemaAccepted } from './contract.ts';
 import type { Day, Dictionaries, Engineer, Order, Plan, Simulation } from './contract.ts';
 import type { EngineParams } from './engine.ts';
+import { datasetByKey, datasets } from './datasets.ts';
 import { planDay } from './planner.ts';
 import type { PlannedDay } from './planner.ts';
 import {
@@ -36,19 +37,36 @@ import {
   probeEngine
 } from './api.ts';
 
-/* Зоны обслуживания — то, как выгрузка поделена на рабочие дни. Названия
-   пришли вместе с данными от заказчика; ТЗ зон не называет вовсе. */
-export const SOURCES = ['east', 'southeast', 'center'] as const;
-export type SourceId = (typeof SOURCES)[number];
+/* Источник данных — это день, который раскладывают. Их два рода, и в
+   интерфейсе они неотличимы:
 
-/** Как зона называется на экране. */
-export const ZONE_TITLES: Record<SourceId, string> = {
+   - **встроенные** — три зоны выгрузки «Билайн Бизнес», лежат файлами рядом
+     с сайтом. Названия пришли вместе с данными; ТЗ зон не называет вовсе;
+   - **загруженные** — наборы, которые диспетчер принёс файлом. Живут в
+     браузере, см. `datasets.ts`.
+
+   Список источников поэтому не константа: набор, загруженный минуту назад,
+   обязан встать в тот же ряд, что и встроенные. */
+export const BUILT_IN = ['east', 'southeast', 'center'] as const;
+
+/** Источник: ключ встроенной зоны либо ключ загруженного набора. */
+export type SourceId = string;
+
+const BUILT_IN_TITLES: Record<string, string> = {
   east: 'Восток',
   southeast: 'Юго-Восток',
   center: 'Центр'
 };
 
-export const zoneTitle = (zone: SourceId) => ZONE_TITLES[zone] ?? zone;
+/** Все источники: встроенные зоны и загруженные наборы. */
+export const sources = (): SourceId[] => [...BUILT_IN, ...datasets().map((one) => one.key)];
+
+/** Как источник называется на экране. */
+export const zoneTitle = (zone: SourceId) =>
+  BUILT_IN_TITLES[zone] ?? datasetByKey(zone)?.title ?? zone;
+
+/** Встроенный ли это источник. Загруженный можно удалить, встроенный нет. */
+export const isBuiltIn = (zone: SourceId) => (BUILT_IN as readonly string[]).includes(zone);
 
 export type RunId = string;
 
@@ -114,7 +132,7 @@ function readStored(): RunEntry[] {
     /* Записи из прошлых версий могли ссылаться на источники, которых больше
        нет: синтетические дни ушли в архив вместе со своими планами. */
     return parsed.filter(
-      (run) => run && typeof run.id === 'string' && (run.source === null || SOURCES.includes(run.source))
+      (run) => run && typeof run.id === 'string' && (run.source === null || Boolean(run.source))
     );
   } catch {
     /* Испорченная запись — не повод не открыться: начинаем с чистого листа. */
@@ -204,7 +222,7 @@ export const latestRun = (): RunId => RUNS[RUNS.length - 1]?.id ?? '';
     когда понадобится, и всегда выходит тем же самым. */
 export async function createRun(
   params: EngineParams,
-  zone: SourceId = SOURCES[0],
+  zone: SourceId = BUILT_IN[0],
   day?: number
 ): Promise<RunEntry> {
   const index = RUNS.length;
@@ -411,6 +429,19 @@ export function loadZone(zone: SourceId): Promise<ZoneData> {
   if (cached) return cached;
 
   const reading = (async (): Promise<ZoneData> => {
+    /* Загруженный набор уже разобран и лежит в браузере — ходить за ним
+       некуда. */
+    const stored = datasetByKey(zone);
+    if (stored) {
+      return {
+        zone,
+        date: stored.date,
+        title: stored.title,
+        orders: stored.orders,
+        engineers: stored.engineers
+      };
+    }
+
     const [orders, engineers] = await Promise.all([
       fetchForm<OrdersForm>(zone, 'orders'),
       fetchForm<EngineersForm>(zone, 'engineers')
@@ -442,7 +473,7 @@ export function loadZone(zone: SourceId): Promise<ZoneData> {
     Сводит их справочник, и он же складывает то, что у человека одно, с тем,
     что у него своё на каждом участке. */
 export async function loadRoster(): Promise<Engineer[]> {
-  const zones = await Promise.all(SOURCES.map((zone) => loadZone(zone).catch(() => null)));
+  const zones = await Promise.all(sources().map((zone) => loadZone(zone).catch(() => null)));
   return zones.flatMap((data) => data?.engineers ?? []);
 }
 
