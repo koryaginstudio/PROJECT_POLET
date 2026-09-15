@@ -4,6 +4,7 @@ import { dec, hhmm, hoursText } from '../data/derive.ts';
 import { shiftWhy, transportWhy } from '../data/rationale.ts';
 import { teamName } from '../data/dictionary.ts';
 import { WhyMark } from './WhyMark.tsx';
+import { PersonName } from './PersonName.tsx';
 import {
   crewStatusName,
   skillIcon,
@@ -72,7 +73,7 @@ export function EngineerCard({
       <div className="runcard__head">
         <span className="runcard__ident">
           <span className="runcard__code engcard__name" title={row.name}>
-            {row.name}
+            <PersonName name={row.name} stacked={!dense} />
           </span>
           {/* Метка на месте пометки «открыт» у расчёта: там она говорит
               «этот расчёт сейчас в работе», здесь — «этот человек в

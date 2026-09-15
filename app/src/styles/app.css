@@ -11924,6 +11924,38 @@ button.bars__btn:focus-visible {
   color: var(--ink-300);
 }
 
+/* Имя человека. Фамилия акцентная — ею человека называют и по ней его ищут
+   в списке; отчество уходит второй строкой, где не мешает читать первую.
+
+   Строки прижаты друг к другу плотнее обычного: это одно имя, разбитое на
+   две строки, а не два разных поля. Обычный межстрочный интервал разводил их
+   настолько, что отчество читалось как отдельная подпись. */
+.pname {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  line-height: 1.15;
+}
+
+.pname__line {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pname__surname {
+  color: var(--text-accent);
+}
+
+.pname__patronymic {
+  /* Наследуем кегль, но не вес: отчество — та же строка имени, просто тише. */
+  font-weight: var(--fw-regular);
+  color: var(--text-secondary);
+  letter-spacing: 0;
+}
+
 /* Место в списке: «7 из 34». Стоит там же, где у расчёта стоит его пометка,
    и читается так же — сначала число, потом из скольких. */
 .engcard__seat {

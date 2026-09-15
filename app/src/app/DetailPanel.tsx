@@ -17,6 +17,7 @@ import type { CatalogNode } from './catalogue.ts';
 import { faceOf } from '../data/photos.ts';
 import { homeWhy, shiftWhy, transportWhy } from '../data/rationale.ts';
 import { WhyMark } from './WhyMark.tsx';
+import { PersonName } from './PersonName.tsx';
 
 interface Props {
   day: Day;
@@ -120,7 +121,9 @@ function SelectedCard({ day, view, selection, onSelect }: Props) {
             />
             <div>
               <div className="detail__eyebrow">Инженер · {engineer.id}</div>
-              <h2 className="detail__title">{engineer.name}</h2>
+              <h2 className="detail__title">
+                <PersonName name={engineer.name} />
+              </h2>
             </div>
           </div>
           <CloseCard onClose={close} />

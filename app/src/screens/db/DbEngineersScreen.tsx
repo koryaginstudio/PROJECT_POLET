@@ -19,6 +19,7 @@ import { service } from '../../data/service.ts';
 import { DbHead } from './DbHead.tsx';
 import { transportWhy } from '../../data/rationale.ts';
 import { WhyMark } from '../../app/WhyMark.tsx';
+import { PersonName } from '../../app/PersonName.tsx';
 
 interface Props {
   registry: Registry;
@@ -680,7 +681,9 @@ export function DbEngineersScreen({ registry, mode }: Props) {
                       <span className="tbl__face">
                         <img src={photos.get(engineer.id)} alt="" loading="lazy" />
                         <span>
-                          <span className="tbl__strong">{engineer.name}</span>
+                          <span className="tbl__strong">
+                            <PersonName name={engineer.name} stacked={false} />
+                          </span>
                           <span className="tbl__sub">{engineer.id}</span>
                         </span>
                       </span>
