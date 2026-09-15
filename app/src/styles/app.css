@@ -12155,6 +12155,30 @@ button.bars__btn:focus-visible {
   color: var(--text-secondary);
 }
 
+/* Транспорт в шапке — строкой под телефоном: часть ответа «кто приедет»,
+   а не справочное поле. Крупнее подписей в панели данных, но тише имени.
+   Подпись перед значением обязательна: без неё значок с одним словом
+   читается как ещё одна строчка про человека, а не как названный признак. */
+.crewpro__transport {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+
+.crewpro__transport-label {
+  margin-right: 2px;
+  font-size: 11px;
+  font-weight: var(--fw-regular);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--ink-300);
+}
+
 .crewpro__actions {
   display: flex;
   align-items: center;
@@ -12268,7 +12292,7 @@ button.bars__btn:focus-visible {
 
 @media (min-width: 760px) {
   .crewpro__grid {
-    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
   }
 }
 

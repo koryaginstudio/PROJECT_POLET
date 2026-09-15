@@ -132,6 +132,19 @@ export function CrewProfile({ crew, registry, onClose, onEdit, onTrack }: Props)
               </div>
             </div>
 
+            {/* Транспорт — в шапке, сразу под телефоном: это не справочное
+                поле в ряду с навыками, а часть ответа на «кто приедет» —
+                читается вместе с именем и телефоном, а не в общем списке
+                данных ниже. */}
+            {crew.transport && (
+              <span className="crewpro__transport">
+                <span className="crewpro__transport-label">Транспорт</span>
+                <Icon name={transportIcon(crew.transport)} size={15} />
+                {transportName(crew.transport)}
+                <WhyMark text={transportWhy(crew.transport)} />
+              </span>
+            )}
+
             {/* Выработка. Первым — отработанные часы: это то, чем меряют
                 человека, а не маршрут. */}
             <div className="crewpro__stats">
@@ -168,30 +181,14 @@ export function CrewProfile({ crew, registry, onClose, onEdit, onTrack }: Props)
                   </span>
                 ))}
               </div>
-              <p className="crewpro__note">
-                Навык — это допуск: заявку он получит только по тому, чем владеет.
-              </p>
             </div>
 
             <div className="crewpro__cell">
               <span className="crewpro__label">
-                Транспорт
-                <WhyMark text={transportWhy(crew.transport)} />
-              </span>
-              {crew.transport ? (
-                <span className="crewpro__big">
-                  <Icon name={transportIcon(crew.transport)} size={16} />
-                  {transportName(crew.transport)}
-                </span>
-              ) : (
-                <span className="crewpro__muted">не указан</span>
-              )}
-            </div>
-
-            <div className="crewpro__cell crewpro__cell--wide">
-              <span className="crewpro__label">
-                Участки приписки
-                <span className="crewpro__count">{crew.posts.length}</span>
+                {crew.posts.length > 1 ? 'Участки' : 'Участок'}
+                {crew.posts.length > 1 && (
+                  <span className="crewpro__count">{crew.posts.length}</span>
+                )}
               </span>
               <div className="crewpro__posts">
                 {crew.posts.map((post) => (
@@ -212,7 +209,7 @@ export function CrewProfile({ crew, registry, onClose, onEdit, onTrack }: Props)
 
             {byWork.length > 0 && (
               <div className="crewpro__cell crewpro__cell--wide">
-                <span className="crewpro__label">Чаще всего выполняет</span>
+                <span className="crewpro__label">Выполнил</span>
                 <div className="crewpro__works">
                   {byWork.slice(0, 8).map(([title, count]) => (
                     <span className="crewpro__work" key={title}>
