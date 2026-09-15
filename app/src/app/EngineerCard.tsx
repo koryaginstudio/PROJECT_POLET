@@ -10,7 +10,7 @@ import {
   skillIcon,
   skillName,
   transportIcon,
-  transportName
+  transportShort
 } from '../data/dictionary.ts';
 
 interface Props {
@@ -211,12 +211,17 @@ export function EngineerCard({
       {!dense && (
         <dl className="engfacts">
           {row.transport && (
+            /* Значок объяснения стоит у подписи, а не у значения: в колонке
+               значения он отъедал четверть ширины, и «Общ. транспорт»
+               переносился на вторую строку. */
             <div className="engfacts__row">
-              <dt>Транспорт</dt>
-              <dd>
+              <dt>
+                Транспорт
+                <WhyMark text={transportWhy(row.transport)} />
+              </dt>
+              <dd className="engfacts__tight">
                 <Icon name={transportIcon(row.transport)} size={12} />
-                {transportName(row.transport)}
-                <WhyMark text={transportWhy(row.transport)} side="right" />
+                {transportShort(row.transport)}
               </dd>
             </div>
           )}

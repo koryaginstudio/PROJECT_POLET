@@ -116,6 +116,17 @@ const TRANSPORT_ICONS: Record<string, string> = {
 export const transportName = (key: string) => label('transports', key, TRANSPORT_NAMES);
 export const transportIcon = (key: string) => TRANSPORT_ICONS[key] ?? 'navigation';
 
+/* Короткая подпись для тесных мест — карточки в ряду по четыре. Сокращено
+   ровно одно значение из четырёх: «Общественный транспорт» не влезает в
+   колонку и переносится на вторую строку, остальные влезают и трогать их
+   незачем. Полное название справочника ТЗ остаётся в таблице, в окне правки
+   и в объяснении. */
+const TRANSPORT_SHORT: Record<string, string> = {
+  transit: 'Общ. транспорт'
+};
+
+export const transportShort = (key: string) => TRANSPORT_SHORT[key] ?? transportName(key);
+
 /** Требование заявки по транспорту словами. Пусто — не пробел в данных:
     ТЗ говорит прямо, что тип указывается только при наличии ограничения. */
 export const requiredTransportName = (key: string | null | undefined) =>

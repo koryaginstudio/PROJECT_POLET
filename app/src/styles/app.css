@@ -12218,7 +12218,15 @@ button.bars__btn:focus-visible {
 }
 
 .engfacts dt {
+  display: flex;
+  align-items: center;
+  gap: 2px;
   color: var(--ink-300);
+}
+
+/* Значение, которое обязано уместиться в строку. */
+.engfacts dd.engfacts__tight {
+  white-space: nowrap;
 }
 
 /* Значок не сжимается и стоит на первой строке значения. */
