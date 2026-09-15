@@ -284,11 +284,6 @@ export function CrewEditDialog({ crew, taken, onClose, onSave, onDelete }: Props
           </div>
         </div>
 
-        <p className="runedit__note">
-          Правки хранятся в этом браузере, исходные файлы не меняются. Снять их разом можно в
-          настройках, на вкладке «Данные».
-        </p>
-
         <div className="runedit__actions">
           <Button variant="primary" size="sm" onClick={save} disabled={!valid}>
             Сохранить
