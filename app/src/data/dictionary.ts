@@ -104,13 +104,14 @@ const TRANSPORT_NAMES: Record<string, string> = {
   transit: 'Общественный транспорт'
 };
 
-/* Своей иконки нет ни у велосипеда, ни у метро: в наборе дизайн-системы их
-   просто не рисовали. Берём ближайшее по смыслу, а не похожее по виду. */
+/* Свой значок на каждый из четырёх типов: раньше у пешего стоял «человек», а
+   у общественного транспорта — «люди», и в ряду карточек оба читались как
+   один и тот же символ на двух разных инженерах. */
 const TRANSPORT_ICONS: Record<string, string> = {
-  car: 'truck',
-  walk: 'user',
-  bike: 'navigation',
-  transit: 'users'
+  car: 'car',
+  walk: 'person-walk',
+  bike: 'bicycle',
+  transit: 'bus'
 };
 
 export const transportName = (key: string) => label('transports', key, TRANSPORT_NAMES);
