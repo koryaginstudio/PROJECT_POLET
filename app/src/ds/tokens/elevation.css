@@ -1,0 +1,26 @@
+/* Radii, borders, shadows. Bento = large radii, hairline borders, almost no shadow. */
+:root{
+  --r-xs:8px;
+  --r-sm:12px;
+  --r-md:16px;
+  --r-lg:24px;
+  --r-xl:32px;    /* bento tile */
+  --r-2xl:40px;
+  --r-pill:999px;
+  --r-tile:var(--r-xl);
+  --r-card:var(--r-lg);
+  --r-control:var(--r-sm);
+
+  --bw-hairline:1px; /* @kind other */
+  --bw-strong:1.5px; /* @kind other */
+  --border-1:var(--bw-hairline) solid var(--border-hairline); /* @kind other */
+  --border-2:var(--bw-hairline) solid var(--border-subtle); /* @kind other */
+
+  --shadow-none:none;
+  --shadow-sm:0 1px 2px rgba(10,10,10,.05);
+  --shadow-md:0 4px 16px rgba(10,10,10,.06);
+  --shadow-lg:0 16px 48px rgba(10,10,10,.10);
+  --shadow-inset-hairline:inset 0 0 0 1px var(--border-hairline);
+  --ring-focus:0 0 0 3px rgba(252,166,31,.38);
+  --ring-focus-inverse:0 0 0 3px rgba(252,166,31,.55);
+}

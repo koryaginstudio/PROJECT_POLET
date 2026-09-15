@@ -1,0 +1,38 @@
+# Node
+node_modules/
+dist/
+build/
+*.tsbuildinfo
+.turbo/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Build
+.vrptw-cache/
+*.npz
+
+# Misc
+scratch/
+tmp/

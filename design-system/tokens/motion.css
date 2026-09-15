@@ -1,0 +1,13 @@
+/* Motion: short, eased-out, no bounce. */
+:root{
+  --dur-instant:80ms; /* @kind other */
+  --dur-fast:120ms; /* @kind other */
+  --dur:200ms; /* @kind other */
+  --dur-slow:320ms; /* @kind other */
+  --ease-out:cubic-bezier(.2,.8,.2,1); /* @kind other */
+  --ease-in-out:cubic-bezier(.4,0,.2,1); /* @kind other */
+  --ease-standard:cubic-bezier(.32,.72,0,1); /* @kind other */
+  --t-control:all var(--dur-fast) var(--ease-out); /* @kind other */
+  --t-surface:all var(--dur) var(--ease-out); /* @kind other */
+  --press-scale:0.985; /* @kind other */
+}

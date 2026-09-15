@@ -1,0 +1,77 @@
+/* Colour system. Mono core + single warm accent. Light theme only. */
+:root{
+  --white:#FFFFFF;
+  --black:#000000;
+
+  /* ink ramp — neutral, very slightly warm-neutral */
+  --ink-1000:#0A0A0A;
+  --ink-900:#141414;
+  --ink-800:#1F1F1F;
+  --ink-700:#2E2E2E;
+  --ink-600:#4A4A4A;
+  --ink-500:#6E6E6E;
+  --ink-400:#9A9A9A;
+  --ink-300:#C4C4C4;
+  --ink-200:#E2E2E2;
+  --ink-150:#EBEBEA;
+  --ink-100:#F4F4F3;
+  --ink-50:#FAFAF9;
+
+  /* accent — taken from the brand gradient stops */
+  --accent-700:#D07800;
+  --accent-600:#F08C00;
+  --accent-500:#FCA61F;
+  --accent-400:#FDBB55;
+  --accent-200:#FEE3B8;
+  --accent-100:#FFF3E0;
+
+  --gold-600:#D9BA00;
+  --gold-500:#F4D51D;
+  --gold-200:#FAEE9E;
+  --gold-100:#FDF9DC;
+
+  /* brand gradient — the only gradient in the system */
+  --grad-brand:linear-gradient(90deg,#FCA61F 0%,#F4D51D 100%); /* @kind other */
+  --grad-brand-diag:linear-gradient(135deg,#FCA61F 0%,#F4D51D 100%); /* @kind other */
+  --grad-brand-soft:linear-gradient(90deg,#FFF3E0 0%,#FDF9DC 100%); /* @kind other */
+
+  /* semantic status */
+  --success-600:#0F7F47;
+  --success-500:#15A05B;
+  --success-100:#E4F5EB;
+  --danger-600:#C22C24;
+  --danger-500:#E33B32;
+  --danger-100:#FCEAE8;
+
+  /* ——— semantic aliases: use these, not the ramps ——— */
+  --text-primary:var(--ink-1000);
+  --text-secondary:var(--ink-500);
+  --text-muted:var(--ink-400);
+  --text-inverse:var(--white);
+  --text-accent:var(--accent-700);
+  --text-link:var(--ink-1000);
+  --text-link-hover:var(--accent-700);
+
+  --surface-page:var(--white);
+  --surface-card:var(--white);
+  --surface-tile:var(--ink-100);
+  --surface-tile-hover:var(--ink-150);
+  --surface-inverse:var(--ink-1000);
+  --surface-accent:var(--accent-100);
+  --surface-overlay:rgba(10,10,10,.44);
+
+  --border-subtle:var(--ink-200);
+  --border-hairline:var(--ink-150);
+  --border-strong:var(--ink-1000);
+  --border-accent:var(--accent-500);
+
+  --icon-primary:var(--ink-1000);
+  --icon-secondary:var(--ink-500);
+  --icon-inverse:var(--white);
+
+  /* job / route status — product semantics */
+  --status-planned:var(--ink-400);
+  --status-active:var(--accent-500);
+  --status-done:var(--success-500);
+  --status-risk:var(--danger-500);
+}

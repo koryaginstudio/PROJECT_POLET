@@ -1,0 +1,31 @@
+/* 4px base scale + layout rails. */
+:root{
+  --sp-0:0px;
+  --sp-1:4px;
+  --sp-2:8px;
+  --sp-3:12px;
+  --sp-4:16px;
+  --sp-5:20px;
+  --sp-6:24px;
+  --sp-7:32px;
+  --sp-8:40px;
+  --sp-9:48px;
+  --sp-10:56px;
+  --sp-11:64px;
+  --sp-12:80px;
+  --sp-13:96px;
+  --sp-14:128px;
+
+  --page-max:1280px;
+  --gutter:24px;
+  --grid-gap:16px;          /* bento gap */
+  --grid-gap-tight:8px;
+  --section-y:96px;         /* marketing section rhythm */
+  --tile-pad:28px;          /* bento tile padding */
+  --card-pad:20px;
+  --control-h-sm:32px;
+  --control-h:40px;
+  --control-h-lg:48px;
+  --sidebar-w:248px;
+  --topbar-h:64px;
+}

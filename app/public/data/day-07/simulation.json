@@ -1,0 +1,69 @@
+{
+ "schema": "1.1",
+ "kind": "simulation",
+ "meta": {
+  "date": "2026-09-15",
+  "runs": 300
+ },
+ "planned": 59,
+ "orders_total": 80,
+ "done": {
+  "mean": 53.14,
+  "p10": 50,
+  "p50": 53,
+  "p90": 56,
+  "sd": 2.19
+ },
+ "coverage": 66.4,
+ "execution_rate": 90.1,
+ "reasons": {
+  "no_show": 3.59,
+  "no_access": 1.12,
+  "missed_window": 1.11,
+  "dropped": 0.03
+ },
+ "overtime_minutes": 62.6,
+ "idle_minutes": 1447.6,
+ "fragile": [
+  {
+   "order_id": "R0009",
+   "failure_rate": 30.0
+  },
+  {
+   "order_id": "R0033",
+   "failure_rate": 25.0
+  },
+  {
+   "order_id": "R0030",
+   "failure_rate": 24.7
+  },
+  {
+   "order_id": "R0018",
+   "failure_rate": 23.7
+  },
+  {
+   "order_id": "R0054",
+   "failure_rate": 18.3
+  },
+  {
+   "order_id": "R0070",
+   "failure_rate": 17.3
+  },
+  {
+   "order_id": "R0041",
+   "failure_rate": 16.0
+  },
+  {
+   "order_id": "R0022",
+   "failure_rate": 14.3
+  },
+  {
+   "order_id": "R0037",
+   "failure_rate": 13.7
+  },
+  {
+   "order_id": "R0075",
+   "failure_rate": 13.7
+  }
+ ]
+}

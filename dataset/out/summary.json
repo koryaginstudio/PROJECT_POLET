@@ -1,0 +1,110 @@
+{
+ "schema": "1.2",
+ "date": "2026-08-17",
+ "zones": [
+  {
+   "key": "east",
+   "title": "Восток",
+   "orders": 66,
+   "engineers": 12,
+   "by_skill": {
+    "connect": 37,
+    "local": 21,
+    "emergency": 8
+   },
+   "by_class": {
+    "connection": 31,
+    "addon": 6,
+    "incident": 21,
+    "outage": 8
+   },
+   "with_transport_requirement": 10,
+   "urgent": 8,
+   "window_span": [
+    600,
+    1320
+   ],
+   "engineer_transport": [
+    "bike",
+    "car",
+    "transit",
+    "walk"
+   ],
+   "skill_combos": [
+    "connect+emergency",
+    "connect+emergency+local",
+    "connect+local",
+    "emergency+local"
+   ]
+  },
+  {
+   "key": "southeast",
+   "title": "Юго-Восток",
+   "orders": 83,
+   "engineers": 12,
+   "by_skill": {
+    "connect": 40,
+    "local": 31,
+    "emergency": 12
+   },
+   "by_class": {
+    "connection": 36,
+    "addon": 4,
+    "incident": 31,
+    "outage": 12
+   },
+   "with_transport_requirement": 27,
+   "urgent": 12,
+   "window_span": [
+    420,
+    1320
+   ],
+   "engineer_transport": [
+    "bike",
+    "car",
+    "transit",
+    "walk"
+   ],
+   "skill_combos": [
+    "connect",
+    "connect+emergency+local",
+    "connect+local",
+    "local"
+   ]
+  },
+  {
+   "key": "center",
+   "title": "Центр",
+   "orders": 56,
+   "engineers": 11,
+   "by_skill": {
+    "connect": 30,
+    "local": 25,
+    "emergency": 1
+   },
+   "by_class": {
+    "connection": 28,
+    "addon": 2,
+    "incident": 25,
+    "outage": 1
+   },
+   "with_transport_requirement": 8,
+   "urgent": 1,
+   "window_span": [
+    600,
+    1320
+   ],
+   "engineer_transport": [
+    "bike",
+    "car",
+    "transit",
+    "walk"
+   ],
+   "skill_combos": [
+    "connect",
+    "connect+emergency+local",
+    "connect+local"
+   ]
+  }
+ ]
+}

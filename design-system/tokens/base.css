@@ -1,0 +1,21 @@
+/* Element defaults. Light theme only – never invert the page. */
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--surface-page);color:var(--text-primary);font-family:var(--font-sans);font-size:var(--fs-body);line-height:var(--lh-body);font-weight:var(--fw-regular);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+h1,h2,h3,h4{margin:0;font-family:var(--font-display);font-weight:var(--fw-extrabold);color:var(--text-primary);text-wrap:balance}
+h1{font-size:var(--fs-h1);line-height:var(--lh-h1);letter-spacing:var(--ls-h1)}
+h2{font-size:var(--fs-h2);line-height:var(--lh-h2);letter-spacing:var(--ls-h2)}
+h3{font-size:var(--fs-h3);line-height:var(--lh-h3);letter-spacing:var(--ls-h3)}
+h4{font-size:var(--fs-h4);line-height:var(--lh-h4);letter-spacing:var(--ls-h4)}
+p{margin:0;text-wrap:pretty}
+a{color:var(--text-link);text-decoration:none;border-bottom:1px solid var(--ink-300);transition:var(--t-control)}
+a:hover{color:var(--text-link-hover);border-bottom-color:var(--accent-500)}
+a:active{color:var(--accent-700)}
+a:focus-visible{outline:none;border-radius:2px;box-shadow:var(--ring-focus)}
+button{font-family:inherit}
+small{font-size:var(--fs-body-s)}
+code,kbd{font-family:var(--font-mono);font-size:.92em}
+::selection{background:var(--accent-200);color:var(--ink-1000)}
+:root{color-scheme:light}
+.num{font-variant-numeric:tabular-nums}
+.grad-text{background:var(--grad-brand);-webkit-background-clip:text;background-clip:text;color:transparent}

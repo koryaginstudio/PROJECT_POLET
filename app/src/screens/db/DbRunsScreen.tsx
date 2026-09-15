@@ -1,0 +1,707 @@
+import { useMemo, useState } from 'react';
+import { Icon } from '../../ds/components/core/Icon.jsx';
+import { SegmentedControl } from '../../ds/components/forms/SegmentedControl.jsx';
+import type { Registry, RunRef } from '../../data/registry.ts';
+import type { RunId } from '../../data/load.ts';
+import { stampOf } from '../../data/load.ts';
+import { dec, hoursText } from '../../data/derive.ts';
+import { skillName } from '../../data/dictionary.ts';
+import { RunCard } from '../../app/RunCard.tsx';
+import { COMPARE_MAX } from '../../app/compare.ts';
+import { useWidgetBoard, WidgetPeriod, withinPeriod } from '../../app/DbWidgets.tsx';
+import { service } from '../../data/service.ts';
+import type { PeriodKey } from '../../app/DbWidgets.tsx';
+import type { WidgetDef } from '../../app/DbWidgets.tsx';
+import { DbHead } from './DbHead.tsx';
+
+interface Props {
+  registry: Registry;
+  mode: string;
+  /** Расчёт, который сейчас открыт в диспетчерской, — его карточка помечена
+      и открывать её незачем. Пусто, когда в диспетчерской не открыт никакой:
+      выбранный в подшапке и открытый — не одно и то же, и пометка «открыт»
+      на первом была бы обещанием плана, которого на экране нет. */
+  active: string | null;
+  /** Открыть расчёт: диспетчерская переходит на его план. */
+  onOpen: (id: RunId) => void;
+  /** Открыть расчёт сразу на карте: щелчок по карте в карточке. */
+  onOpenMap: (id: RunId) => void;
+  /** Перейти к уже открытому расчёту в диспетчерскую: открывать его заново
+      нечего, а уйти к нему из базы должно быть чем. */
+  onGo: (id: RunId) => void;
+  /** Расчёты, отобранные к сравнению: карточка помечена, кнопка переключает. */
+  compare: RunId[];
+  onCompare: (id: RunId) => void;
+  /** Открыть правку записи: номер, время создания, заметка. */
+  onEdit: (run: RunRef) => void;
+}
+
+/* Плотность строки — это выбор между «разглядеть» и «охватить», а не просто
+   размер. По две и по четыре карточка живёт целиком: карта дня, цифры,
+   действия. По шесть она сжимается до строки истории — номер, когда считали
+   и что вышло; карту в такой ширине всё равно не разобрать, и её там нет.
+
+   Открывается всегда на четырёх: карта ещё читается, а история видна
+   десятком карточек сразу. */
+const DENSITY = [
+  { value: '2', label: '2' },
+  { value: '4', label: '4' },
+  { value: '6', label: '6' }
+];
+
+const percent = (share: number) => `${Math.round(share * 100)}%`;
+
+/* По чему упорядочены расчёты. Первым идёт порядок по дате — свежий расчёт
+   это то, с чем работают; остальные правила отвечают на «где вышло лучше» и
+   «где осталось больше нераспределённого».
+
+   У каждого правила своя сторона по умолчанию, и все три открываются «от
+   большего»: свежие сверху, лучшие по покрытию сверху, самые хвостатые
+   сверху. Повторный щелчок по выбранному правилу переворачивает порядок —
+   привычка из таблиц, здесь она работает так же.
+
+   Порядка по номеру в списке нет: номера в истории растут вместе с датой,
+   и это было бы то же самое правило под другим именем. */
+type Sort = 'date' | 'coverage' | 'loose';
+
+const SORTS: { value: Sort; label: string; desc: boolean }[] = [
+  { value: 'date', label: 'По дате', desc: true },
+  { value: 'coverage', label: 'По покрытию', desc: true },
+  { value: 'loose', label: 'По нераспределённым', desc: true }
+];
+
+/* Отбор по итогу расчёта: осталось ли в нём что-то, чего движок никому не
+   отдал. Это ровно тот вопрос, ради которого в историю и заглядывают. */
+type Filter = 'all' | 'loose' | 'clean';
+
+const FILTERS: { value: Filter; label: string }[] = [
+  { value: 'all', label: 'Все' },
+  { value: 'loose', label: 'Есть нераспределённые' },
+  { value: 'clean', label: 'Всё распределено' }
+];
+
+/* База расчётов. Здесь они лежат как история, а не как выбор на сегодня:
+   переключаться между прогонами удобнее в подшапке диспетчерской, а сюда
+   приходят посмотреть, что вообще считали и с каким результатом. */
+export function DbRunsScreen({
+  registry,
+  mode,
+  active,
+  onOpen,
+  onOpenMap,
+  onGo,
+  compare,
+  onCompare,
+  onEdit
+}: Props) {
+  /* С какой плотности открывается база — настройка сервиса: одному важно
+     разглядеть карту дня, другому охватить историю строками. */
+  const [perRow, setPerRow] = useState(() => service().perRow as string);
+  const [sort, setSort] = useState<Sort>('date');
+  const [desc, setDesc] = useState(true);
+  const [filter, setFilter] = useState<Filter>('all');
+  const [query, setQuery] = useState('');
+  const dense = perRow === '6';
+
+  const all = registry.stats.byRun;
+  /* Отбор и порядок считаем один раз на оба вида: карточки и таблица должны
+     показывать одну и ту же выборку, иначе переключение вида молча меняет
+     набор. */
+  const rows = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    const picked = all.filter((row) => {
+      const left = row.orders - row.assigned;
+      if (filter === 'loose' && left === 0) return false;
+      if (filter === 'clean' && left > 0) return false;
+      if (!needle) return true;
+      return (
+        row.run.code.toLowerCase().includes(needle) || row.run.created.toLowerCase().includes(needle)
+      );
+    });
+
+    const rank = (row: (typeof all)[number]) => {
+      switch (sort) {
+        case 'coverage':
+          return row.coverage;
+        case 'loose':
+          return row.orders - row.assigned;
+        default:
+          /* Место в истории: она сложена от старого к свежему, поэтому
+             индекс — это и есть дата расчёта в виде числа. */
+          return all.indexOf(row);
+      }
+    };
+    /* Сторона переворачивается целиком, вместе с разрешением ничьих: иначе
+       расчёты с одинаковым покрытием стояли бы в одном и том же порядке при
+       обеих сторонах, и переворот выглядел бы неполным. */
+    const side = desc ? -1 : 1;
+    return [...picked].sort((a, b) => {
+      const diff = rank(a) - rank(b);
+      return side * (diff !== 0 ? diff : a.run.code.localeCompare(b.run.code));
+    });
+  }, [all, desc, filter, query, sort]);
+
+  /* Повторный щелчок по выбранному правилу переворачивает порядок; щелчок по
+     другому — переключает правило и берёт его сторону по умолчанию. */
+  const pickSort = (value: Sort) => {
+    if (value === sort) {
+      setDesc((prev) => !prev);
+      return;
+    }
+    setSort(value);
+    setDesc(SORTS.find((item) => item.value === value)?.desc ?? true);
+  };
+
+  /* Стрелка стоит только у выбранного правила: у остальных она обещала бы
+     сторону, которой они сейчас не задают. */
+  const sortItems = SORTS.map((item) => ({
+    value: item.value,
+    label:
+      item.value === sort ? (
+        <>
+          {item.label}
+          <Icon name={desc ? 'chevron-down' : 'chevron-up'} size={11} />
+        </>
+      ) : (
+        item.label
+      )
+  }));
+  /* Срок, за который считает доска. Отдельно от отбора списка: список
+     отвечает на «какие расчёты показать», доска — на «за какой срок считать».
+     Общим переключателем поиск по номеру менял бы диаграммы, а смена срока —
+     прятала бы строки. */
+  const [period, setPeriod] = useState<PeriodKey>('all');
+
+  const runsIn = (key: PeriodKey) => all.filter((row) => withinPeriod(row.run.created, key));
+
+  /* Всё, что доска считает, берётся из этого среза — и расчёты, и их маршруты
+     с заявками. Считать числа за срок, а доли за всю историю значило бы
+     показать в одной плитке два разных множества. */
+  const scope = useMemo(() => {
+    const runs = runsIn(period);
+    const ids = new Set(runs.map((row) => row.run.id));
+    return {
+      runs,
+      routes: registry.routes.filter((route) => ids.has(route.run.id)),
+      orders: registry.orders.filter((order) => ids.has(order.run.id))
+    };
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [all, registry, period]);
+
+  /* Величины базы для доски виджетов. Каждая отдаёт итог, доли этого итога и
+     ряд по расчётам — какой из них показать, решает сама плитка. Ряд всегда
+     хронологический: линия отвечает на «как менялось», и сортировка списка на
+     неё не влияет. */
+  const widgets = useMemo<WidgetDef[]>(() => {
+    const runs = scope.runs;
+    const routes = scope.routes;
+    const left = (row: (typeof all)[number]) => row.orders - row.assigned;
+
+    const orders = runs.reduce((sum, row) => sum + row.orders, 0);
+    const assigned = runs.reduce((sum, row) => sum + row.assigned, 0);
+    const loose = orders - assigned;
+    const clean = runs.filter((row) => left(row) === 0).length;
+    const travel = routes.reduce((sum, route) => sum + route.travelMinutes, 0);
+    const visits = routes.reduce((sum, route) => sum + route.visits, 0);
+    const occupancy =
+      routes.reduce((sum, route) => sum + route.occupancy, 0) / Math.max(routes.length, 1);
+
+    const perRun = (value: number) => value / Math.max(runs.length, 1);
+    const top = <T,>(list: T[], size = 4) => list.slice(0, size);
+    const series = (pick: (row: (typeof all)[number]) => number) =>
+      runs.map((row) => ({ label: row.run.code, value: pick(row) }));
+
+    /* Маршруты и визиты лежат по расчётам, а не по одному числу на всё: ряд
+       для линии собираем здесь же, чтобы «сколько всего» и «как менялось»
+       считались из одного места. */
+    const routesOf = new Map<string, { routes: number; visits: number; travel: number }>();
+    for (const route of routes) {
+      const cell = routesOf.get(route.run.id) ?? { routes: 0, visits: 0, travel: 0 };
+      cell.routes += 1;
+      cell.visits += route.visits;
+      cell.travel += route.travelMinutes;
+      routesOf.set(route.run.id, cell);
+    }
+    const runSeries = (pick: (cell: { routes: number; visits: number; travel: number }) => number) =>
+      runs.map((row) => ({
+        label: row.run.code,
+        value: pick(routesOf.get(row.run.id) ?? { routes: 0, visits: 0, travel: 0 })
+      }));
+
+    const byCoverage = top([...runs].sort((a, b) => b.coverage - a.coverage));
+    const byLoose = top([...runs].sort((a, b) => left(b) - left(a)).filter((row) => left(row) > 0));
+
+    /* Виды работ считаем по заявкам среза, а не по общему своду реестра: свод
+       собран по всей истории и на срок не отзывается. */
+    const typeCount = new Map<string, number>();
+    for (const order of scope.orders) {
+      typeCount.set(order.workType, (typeCount.get(order.workType) ?? 0) + 1);
+    }
+    const types = [...typeCount.entries()].sort((a, b) => b[1] - a[1]);
+
+    const skills = top([...registry.stats.bySkill].sort((a, b) => b.count - a.count), 6);
+    const crewed = new Set(routes.map((route) => route.engineerId)).size;
+
+    /* Занятость раскладываем на три ступени: «сколько в среднем» отвечает на
+       вопрос наполовину — маршрут под завязку и маршрут вполпустого дают ту
+       же среднюю, что два ровных. */
+    const tiers = [
+      { key: 'tight', label: 'Выше 75 %', tone: 'bad' as const, has: (o: number) => o >= 0.75 },
+      { key: 'even', label: '60–75 %', tone: 'ok' as const, has: (o: number) => o >= 0.6 && o < 0.75 },
+      { key: 'loose', label: 'Ниже 60 %', tone: 'warn' as const, has: (o: number) => o < 0.6 }
+    ];
+
+    return [
+      {
+        key: 'runs-count',
+        title: 'Расчётов',
+        note: 'Сколько прогонов сделано и скольким хватило инженеров',
+        shape: 'number',
+        data: {
+          value: String(runs.length),
+          caption: 'за выбранный срок',
+          facts: [`${clean} закрыли смену целиком`, `${runs.length - clean} с хвостом`],
+          whole: true,
+          parts: [
+            { key: 'clean', label: 'Без хвоста', value: clean, tone: 'ok' },
+            { key: 'loose', label: 'С хвостом', value: runs.length - clean, tone: 'bad' }
+          ],
+          legend: 'прогонов'
+        }
+      },
+      {
+        key: 'orders',
+        title: 'Заявок обработано',
+        note: 'Сколько заявок прошло через движок и что с ними стало',
+        shape: 'number',
+        data: {
+          value: String(orders),
+          caption: 'прошло через движок',
+          facts: [`${Math.round(perRun(orders))} на расчёт`],
+          whole: true,
+          parts: [
+            { key: 'assigned', label: 'Разложено', value: assigned, tone: 'ok' },
+            { key: 'loose', label: 'Без инженера', value: loose, tone: 'bad' }
+          ],
+          series: series((row) => row.orders),
+          legend: 'заявок'
+        }
+      },
+      {
+        key: 'assigned',
+        title: 'Из них разложено',
+        note: 'Скольким заявкам движок нашёл инженера',
+        shape: 'number',
+        data: {
+          value: String(assigned),
+          caption: 'получили инженера',
+          tone: 'ok',
+          facts: [`${percent(assigned / Math.max(orders, 1))} от всех заявок`],
+          whole: true,
+          parts: [
+            { key: 'assigned', label: 'Разложено', value: assigned, tone: 'ok' },
+            { key: 'loose', label: 'Без инженера', value: loose, tone: 'bad' }
+          ],
+          series: series((row) => row.assigned),
+          legend: 'заявок'
+        }
+      },
+      {
+        key: 'routes',
+        title: 'Маршрутов',
+        note: 'Сколько маршрутов построено и сколько выходит на расчёт',
+        shape: 'number',
+        data: {
+          value: String(routes.length),
+          caption: 'построено',
+          facts: [`${dec(perRun(routes.length))} на расчёт`],
+          series: runSeries((cell) => cell.routes),
+          legend: 'маршрутов'
+        }
+      },
+      {
+        key: 'travel',
+        title: 'В дороге',
+        note: 'Сколько всего наездили и сколько приходится на маршрут',
+        shape: 'number',
+        data: {
+          value: dec(travel / 60),
+          unit: 'ч',
+          caption: 'по всем маршрутам',
+          facts: [
+            `${dec(travel / 60 / Math.max(routes.length, 1))} ч на маршрут`,
+            `${dec(perRun(travel / 60))} ч на расчёт`
+          ],
+          series: runSeries((cell) => Math.round(cell.travel / 6) / 10),
+          legend: 'часов в дороге'
+        }
+      },
+      {
+        key: 'visits',
+        title: 'Визитов',
+        note: 'Сколько визитов движок расставил и как это менялось',
+        shape: 'number',
+        data: {
+          value: String(visits),
+          caption: 'расставлено',
+          facts: [`${dec(visits / Math.max(routes.length, 1))} на маршрут`],
+          series: runSeries((cell) => cell.visits),
+          legend: 'визитов'
+        }
+      },
+      {
+        key: 'coverage-trend',
+        title: 'Покрытие по расчётам',
+        note: 'Как менялась доля закрытых заявок от прогона к прогону',
+        shape: 'line',
+        data: {
+          value: dec(runs[runs.length - 1]?.coverage * 100 || 0),
+          unit: '%',
+          caption: 'в последнем расчёте',
+          tone: (runs[runs.length - 1]?.coverage ?? 1) < 0.8 ? 'bad' : 'ok',
+          series: series((row) => Math.round(row.coverage * 1000) / 10),
+          legend: 'покрытие, %'
+        }
+      },
+      {
+        key: 'assigned-split',
+        title: 'Разложено и без инженера',
+        note: 'Что движок разобрал и что осталось лежать',
+        shape: 'donut',
+        data: {
+          value: String(orders),
+          caption: 'заявок',
+          whole: true,
+          parts: [
+            { key: 'assigned', label: 'Разложено', value: assigned, tone: 'ok' },
+            { key: 'loose', label: 'Без инженера', value: loose, tone: 'bad' }
+          ],
+          facts: [`${percent(assigned / Math.max(orders, 1))} разложено`],
+          legend: 'заявок'
+        }
+      },
+      {
+        key: 'best-runs',
+        title: 'Лучшие по покрытию',
+        note: 'Прогоны, где симуляция закрыла больше всего заявок',
+        shape: 'bars',
+        data: {
+          value: percent(byCoverage[0]?.coverage ?? 0),
+          caption: 'у лучшего расчёта',
+          tone: 'ok',
+          parts: byCoverage.map((row) => ({
+            key: row.run.id,
+            label: row.run.code,
+            value: Math.round(row.coverage * 1000) / 10,
+            text: percent(row.coverage),
+            tone: 'ok' as const
+          })),
+          legend: 'доля закрытых заявок'
+        }
+      },
+      {
+        key: 'loose-runs',
+        title: 'Больше всего без инженера',
+        note: 'Прогоны с самым длинным хвостом нераспределённого',
+        shape: 'bars',
+        data: {
+          value: String(byLoose[0] ? left(byLoose[0]) : 0),
+          caption: 'в худшем расчёте',
+          tone: 'bad',
+          parts: byLoose.map((row) => ({
+            key: row.run.id,
+            label: row.run.code,
+            value: left(row),
+            tone: 'bad' as const
+          })),
+          legend: byLoose.length > 0 ? 'заявок осталось' : 'таких прогонов нет'
+        }
+      },
+      {
+        key: 'work-types',
+        title: 'Заявки по видам работ',
+        note: 'Чем занята смена — какие работы заказывают чаще',
+        shape: 'bars',
+        data: {
+          value: String(types.length),
+          caption: 'видов работ в заявках',
+          whole: true,
+          parts: types.map(([key, count]) => ({
+            key,
+            label: registry.workTypeTitle[key] ?? key,
+            value: count
+          })),
+          legend: 'заявок'
+        }
+      },
+      {
+        key: 'skills',
+        title: 'Инженеры по навыкам',
+        note: 'Кем мы располагаем: сколько людей владеет каждым навыком. Считается по штату, срок на него не влияет. Кольца нет: инженер с тремя навыками попадает в три строки, и в целое они не складываются',
+        shape: 'bars',
+        data: {
+          value: String(registry.engineers.length),
+          caption: 'инженеров в штате',
+          parts: skills.map((item) => ({
+            key: item.key,
+            label: skillName(item.key),
+            value: item.count
+          })),
+          legend: 'человек владеет навыком'
+        }
+      },
+      {
+        key: 'crew',
+        title: 'Инженеры с маршрутом',
+        note: 'Кому движок дал работу, а кто ни разу не выехал',
+        shape: 'donut',
+        data: {
+          value: String(registry.engineers.length),
+          caption: 'инженеров',
+          whole: true,
+          parts: [
+            { key: 'crewed', label: 'Получали маршрут', value: crewed, tone: 'ok' },
+            {
+              key: 'idle',
+              label: 'Ни разу',
+              value: Math.max(0, registry.engineers.length - crewed),
+              tone: 'warn'
+            }
+          ],
+          facts: [`${crewed} выезжали за срок`],
+          legend: 'инженеров'
+        }
+      },
+      {
+        key: 'occupancy',
+        title: 'Средняя занятость',
+        note: 'Насколько плотно набиты маршруты и сколько из них под завязку',
+        shape: 'number',
+        data: {
+          value: String(Math.round(occupancy * 100)),
+          unit: '%',
+          caption: 'рабочего времени в маршруте',
+          tone: occupancy >= 0.75 ? 'bad' : 'neutral',
+          facts: [`по ${routes.length} маршрутам`],
+          whole: true,
+          parts: tiers.map((tier) => ({
+            key: tier.key,
+            label: tier.label,
+            value: routes.filter((route) => tier.has(route.occupancy)).length,
+            tone: tier.tone
+          })),
+          legend: 'маршрутов в полосе занятости'
+        }
+      }
+    ];
+  }, [scope, registry, all]);
+
+  /* Пять плиток по умолчанию — ровно те числа, что раньше стояли в шапке
+     строкой. Шестое место в ряду остаётся под плюс: доска сразу показывает,
+     что набор можно менять, и не заставляет искать, чем. */
+  const board = useWidgetBoard({
+    storeKey: 'db-runs',
+    catalogue: widgets,
+    fallback: ['runs-count', 'orders', 'assigned', 'routes', 'travel'],
+    filter: (
+      <WidgetPeriod
+        value={period}
+        onChange={setPeriod}
+        countOf={(key) => runsIn(key).length}
+      />
+    )
+  });
+
+  return (
+    <div className="dash enter">
+      {/* Заводить расчёт отсюда нечем и незачем: база — это история того, что
+          уже посчитано, а новый расчёт начинается с формы переменных в
+          диспетчерской. Кнопка здесь обещала короткую дорогу, а уводила в
+          другой раздел — и стояла ровно там, где читают итог, а не заказывают
+          новый. Вход в расчёт остался один: диспетчерская и боковое меню. */}
+      {/* Числа шапки и есть доска: отдельным блоком «что иллюстрируем» они
+          спорили бы сами с собой — два ряда об одном и том же, один выбран за
+          диспетчера, другой им самим. Кнопка набора стоит в строке заголовка,
+          плитки — там же, где прежде стояла строка чисел. */}
+      <DbHead title="База расчётов" board={board.node} />
+
+      {/* Полоса управления выборкой. Разложена по вопросам, а не по порядку,
+          в котором писалась: сверху — что попадает в выборку (поиск и отбор),
+          снизу — как она показана (порядок и плотность). Левая колонка
+          широкая, правая прижата к краю, поэтому строки читаются парами, а
+          не россыпью плашек. */}
+      <section className="panel">
+        <div className="filters filters--runs">
+          <label className="dbsearch">
+            <Icon name="search" size={14} />
+            <input
+              className="dbsearch__input"
+              value={query}
+              placeholder="Найти расчёт"
+              onChange={(event) => setQuery(event.currentTarget.value)}
+            />
+            {query && (
+              <button type="button" className="dbsearch__clear" onClick={() => setQuery('')}>
+                <Icon name="x" size={12} />
+              </button>
+            )}
+          </label>
+
+          <div className="filters__group">
+            <span className="filters__label">Отбор</span>
+            <SegmentedControl
+              size="sm"
+              items={FILTERS}
+              value={filter}
+              onChange={(value: string) => setFilter(value as Filter)}
+            />
+          </div>
+
+          <div
+            className="filters__group"
+            title="Щелчок по выбранному правилу переворачивает порядок"
+          >
+            <span className="filters__label">Сортировка</span>
+            <SegmentedControl
+              size="sm"
+              items={sortItems}
+              value={sort}
+              onChange={(value: string) => pickSort(value as Sort)}
+            />
+          </div>
+
+          {/* Плотность строки — только у карточек: в таблице строка одна и в
+              строке она одна. */}
+          {mode !== 'table' && (
+            <div className="filters__group">
+              <span className="filters__label">Карточек в строке</span>
+              <SegmentedControl
+                size="sm"
+                items={DENSITY}
+                value={perRow}
+                onChange={setPerRow}
+              />
+            </div>
+          )}
+        </div>
+      </section>
+
+      {rows.length === 0 ? (
+        <section className="panel">
+          <p className="clients__lede">
+            Под этот отбор не подошёл ни один расчёт. Снимите фильтр или очистите поиск.
+          </p>
+        </section>
+      ) : mode === 'table' ? (
+        <section className="panel">
+          <div className="tbl-wrap">
+            <table className="tbl">
+              <thead>
+                <tr>
+                  <th>Расчёт</th>
+                  <th>Покрытие</th>
+                  <th>Разложено</th>
+                  <th>Доля плана</th>
+                  <th>Без инженера</th>
+                  <th>Маршрутов</th>
+                  <th>Визитов</th>
+                  <th>Инженеров с маршрутом</th>
+                  <th>Занятость</th>
+                  <th>В дороге</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr key={row.run.id} className="tbl__row">
+                    <td>
+                      <span className="tbl__run">
+                        <span>
+                          <span className="tbl__strong">{row.run.code}</span>
+                          <span className="tbl__sub">{stampOf(row.run.created)}</span>
+                        </span>
+                        <button
+                          type="button"
+                          className="runcard__edit"
+                          onClick={() => onEdit(row.run)}
+                          title={`Изменить запись ${row.run.code}: номер, время, заметка`}
+                          aria-label={`Изменить запись ${row.run.code}`}
+                        >
+                          <Icon name="pencil" size={13} />
+                        </button>
+                      </span>
+                    </td>
+                    <td>
+                      <span className={'pill pill--' + (row.coverage < 0.8 ? 'danger' : 'success')}>
+                        {percent(row.coverage)}
+                      </span>
+                    </td>
+                    <td className="tbl__num">
+                      {row.assigned} из {row.orders}
+                    </td>
+                    <td className="tbl__num">{percent(row.assignedShare)}</td>
+                    <td className={row.orders - row.assigned > 0 ? 'tbl__num tbl__warn' : 'tbl__num'}>
+                      {row.orders - row.assigned}
+                    </td>
+                    <td className="tbl__num">{row.routes}</td>
+                    <td className="tbl__num">{row.visits}</td>
+                    <td className="tbl__num">
+                      {row.engineersOnRoute} из {row.engineersTotal}
+                    </td>
+                    <td className="tbl__num">{percent(row.occupancy)}</td>
+                    <td className="tbl__num">{hoursText(row.travelMinutes)}</td>
+                    <td>
+                      {row.run.id === active ? (
+                        <button
+                          type="button"
+                          className="runcard__go runcard__go--open"
+                          onClick={() => onGo(row.run.id)}
+                        >
+                          <Icon name="arrow-right" size={13} />
+                          Перейти
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="runcard__go"
+                          onClick={() => onOpen(row.run.id)}
+                        >
+                          <Icon name="arrow-right" size={13} />
+                          Открыть
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ) : (
+        <>
+          <div
+            className={'runs__grid' + (dense ? ' runs__grid--dense' : '')}
+            style={{ '--per-row': perRow } as React.CSSProperties}
+          >
+          {rows.map((row) => (
+            <RunCard
+              key={row.run.id}
+              row={row}
+              bounds={registry.bounds}
+              isActive={row.run.id === active}
+              picked={compare.includes(row.run.id)}
+              pickBlocked={compare.length >= COMPARE_MAX}
+              dense={dense}
+              onOpen={onOpen}
+              onOpenMap={onOpenMap}
+              onGo={onGo}
+              onCompare={onCompare}
+              onEdit={onEdit}
+            />
+          ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}

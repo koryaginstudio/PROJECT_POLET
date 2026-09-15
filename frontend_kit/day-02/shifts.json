@@ -1,0 +1,403 @@
+{
+ "schema": "1.1",
+ "kind": "shifts",
+ "meta": {
+  "date": "2026-09-15",
+  "shift_hours": 9,
+  "allowed_starts": [
+   "07:00",
+   "08:00",
+   "09:00",
+   "10:00",
+   "11:00",
+   "12:00"
+  ],
+  "demand_units": "инженеров одновременно, с учётом дороги"
+ },
+ "current": {
+  "profile": {
+   "08:00": 3,
+   "09:00": 8,
+   "10:00": 1
+  },
+  "expected_coverage": 67.1
+ },
+ "recommended": {
+  "profile": {
+   "08:00": 1,
+   "09:00": 6,
+   "10:00": 1,
+   "11:00": 1,
+   "12:00": 3
+  },
+  "expected_coverage": 77.1,
+  "starts_by_engineer": {
+   "E00": "11:00",
+   "E01": "12:00",
+   "E02": "12:00",
+   "E03": "09:00",
+   "E04": "09:00",
+   "E05": "09:00",
+   "E06": "12:00",
+   "E07": "09:00",
+   "E08": "10:00",
+   "E09": "08:00",
+   "E10": "09:00",
+   "E11": "09:00"
+  }
+ },
+ "curve": [
+  {
+   "minute": 360,
+   "demand": {
+    "install": 0.0,
+    "line": 0.0,
+    "repair": 0.0
+   },
+   "demand_total": 0.0,
+   "supply_current": 0,
+   "supply_recommended": 0
+  },
+  {
+   "minute": 390,
+   "demand": {
+    "install": 0.0,
+    "line": 0.0,
+    "repair": 0.0
+   },
+   "demand_total": 0.0,
+   "supply_current": 0,
+   "supply_recommended": 0
+  },
+  {
+   "minute": 420,
+   "demand": {
+    "install": 0.0,
+    "line": 0.0,
+    "repair": 0.0
+   },
+   "demand_total": 0.0,
+   "supply_current": 0,
+   "supply_recommended": 0
+  },
+  {
+   "minute": 450,
+   "demand": {
+    "install": 0.0,
+    "line": 0.0,
+    "repair": 0.0
+   },
+   "demand_total": 0.0,
+   "supply_current": 0,
+   "supply_recommended": 0
+  },
+  {
+   "minute": 480,
+   "demand": {
+    "install": 0.0,
+    "line": 0.0,
+    "repair": 0.0
+   },
+   "demand_total": 0.0,
+   "supply_current": 3,
+   "supply_recommended": 1
+  },
+  {
+   "minute": 510,
+   "demand": {
+    "install": 0.0,
+    "line": 0.0,
+    "repair": 0.0
+   },
+   "demand_total": 0.0,
+   "supply_current": 3,
+   "supply_recommended": 1
+  },
+  {
+   "minute": 540,
+   "demand": {
+    "install": 6.25,
+    "line": 0.93,
+    "repair": 1.83
+   },
+   "demand_total": 9.01,
+   "supply_current": 11,
+   "supply_recommended": 7
+  },
+  {
+   "minute": 570,
+   "demand": {
+    "install": 6.25,
+    "line": 0.93,
+    "repair": 1.83
+   },
+   "demand_total": 9.01,
+   "supply_current": 11,
+   "supply_recommended": 7
+  },
+  {
+   "minute": 600,
+   "demand": {
+    "install": 6.25,
+    "line": 0.93,
+    "repair": 1.83
+   },
+   "demand_total": 9.01,
+   "supply_current": 12,
+   "supply_recommended": 8
+  },
+  {
+   "minute": 630,
+   "demand": {
+    "install": 6.25,
+    "line": 0.93,
+    "repair": 1.83
+   },
+   "demand_total": 9.01,
+   "supply_current": 12,
+   "supply_recommended": 8
+  },
+  {
+   "minute": 660,
+   "demand": {
+    "install": 6.9,
+    "line": 0.93,
+    "repair": 1.45
+   },
+   "demand_total": 9.28,
+   "supply_current": 12,
+   "supply_recommended": 9
+  },
+  {
+   "minute": 690,
+   "demand": {
+    "install": 6.9,
+    "line": 0.93,
+    "repair": 1.45
+   },
+   "demand_total": 9.28,
+   "supply_current": 12,
+   "supply_recommended": 9
+  },
+  {
+   "minute": 720,
+   "demand": {
+    "install": 6.9,
+    "line": 0.93,
+    "repair": 1.45
+   },
+   "demand_total": 9.28,
+   "supply_current": 12,
+   "supply_recommended": 12
+  },
+  {
+   "minute": 750,
+   "demand": {
+    "install": 6.9,
+    "line": 0.93,
+    "repair": 1.45
+   },
+   "demand_total": 9.28,
+   "supply_current": 12,
+   "supply_recommended": 12
+  },
+  {
+   "minute": 780,
+   "demand": {
+    "install": 2.54,
+    "line": 0.3,
+    "repair": 3.79
+   },
+   "demand_total": 6.63,
+   "supply_current": 12,
+   "supply_recommended": 12
+  },
+  {
+   "minute": 810,
+   "demand": {
+    "install": 2.54,
+    "line": 0.3,
+    "repair": 3.79
+   },
+   "demand_total": 6.63,
+   "supply_current": 12,
+   "supply_recommended": 12
+  },
+  {
+   "minute": 840,
+   "demand": {
+    "install": 2.54,
+    "line": 0.3,
+    "repair": 3.79
+   },
+   "demand_total": 6.63,
+   "supply_current": 12,
+   "supply_recommended": 12
+  },
+  {
+   "minute": 870,
+   "demand": {
+    "install": 2.54,
+    "line": 0.3,
+    "repair": 3.79
+   },
+   "demand_total": 6.63,
+   "supply_current": 12,
+   "supply_recommended": 12
+  },
+  {
+   "minute": 900,
+   "demand": {
+    "install": 3.36,
+    "line": 0.3,
+    "repair": 2.59
+   },
+   "demand_total": 6.25,
+   "supply_current": 12,
+   "supply_recommended": 12
+  },
+  {
+   "minute": 930,
+   "demand": {
+    "install": 3.36,
+    "line": 0.3,
+    "repair": 2.59
+   },
+   "demand_total": 6.25,
+   "supply_current": 12,
+   "supply_recommended": 12
+  },
+  {
+   "minute": 960,
+   "demand": {
+    "install": 3.36,
+    "line": 0.3,
+    "repair": 2.59
+   },
+   "demand_total": 6.25,
+   "supply_current": 12,
+   "supply_recommended": 12
+  },
+  {
+   "minute": 990,
+   "demand": {
+    "install": 3.36,
+    "line": 0.3,
+    "repair": 2.59
+   },
+   "demand_total": 6.25,
+   "supply_current": 12,
+   "supply_recommended": 12
+  },
+  {
+   "minute": 1020,
+   "demand": {
+    "install": 6.44,
+    "line": 0.66,
+    "repair": 2.59
+   },
+   "demand_total": 9.69,
+   "supply_current": 9,
+   "supply_recommended": 11
+  },
+  {
+   "minute": 1050,
+   "demand": {
+    "install": 6.44,
+    "line": 0.66,
+    "repair": 2.59
+   },
+   "demand_total": 9.69,
+   "supply_current": 9,
+   "supply_recommended": 11
+  },
+  {
+   "minute": 1080,
+   "demand": {
+    "install": 6.44,
+    "line": 0.66,
+    "repair": 2.59
+   },
+   "demand_total": 9.69,
+   "supply_current": 1,
+   "supply_recommended": 5
+  },
+  {
+   "minute": 1110,
+   "demand": {
+    "install": 6.44,
+    "line": 0.66,
+    "repair": 2.59
+   },
+   "demand_total": 9.69,
+   "supply_current": 1,
+   "supply_recommended": 5
+  },
+  {
+   "minute": 1140,
+   "demand": {
+    "install": 3.98,
+    "line": 0.0,
+    "repair": 3.52
+   },
+   "demand_total": 7.51,
+   "supply_current": 0,
+   "supply_recommended": 4
+  },
+  {
+   "minute": 1170,
+   "demand": {
+    "install": 3.98,
+    "line": 0.0,
+    "repair": 3.52
+   },
+   "demand_total": 7.51,
+   "supply_current": 0,
+   "supply_recommended": 4
+  },
+  {
+   "minute": 1200,
+   "demand": {
+    "install": 3.98,
+    "line": 0.0,
+    "repair": 3.52
+   },
+   "demand_total": 7.51,
+   "supply_current": 0,
+   "supply_recommended": 3
+  },
+  {
+   "minute": 1230,
+   "demand": {
+    "install": 3.98,
+    "line": 0.0,
+    "repair": 3.52
+   },
+   "demand_total": 7.51,
+   "supply_current": 0,
+   "supply_recommended": 3
+  },
+  {
+   "minute": 1260,
+   "demand": {
+    "install": 0.0,
+    "line": 0.0,
+    "repair": 0.0
+   },
+   "demand_total": 0.0,
+   "supply_current": 0,
+   "supply_recommended": 0
+  },
+  {
+   "minute": 1290,
+   "demand": {
+    "install": 0.0,
+    "line": 0.0,
+    "repair": 0.0
+   },
+   "demand_total": 0.0,
+   "supply_current": 0,
+   "supply_recommended": 0
+  }
+ ]
+}

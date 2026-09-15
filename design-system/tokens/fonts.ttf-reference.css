@@ -1,0 +1,10 @@
+/* PROJECT POLET — webfonts. Onest, supplied by the brand (9 weights, TTF). */
+@font-face{font-family:"Onest";src:url("../assets/fonts/Onest-Thin.ttf") format("truetype");font-weight:100;font-style:normal;font-display:swap}
+@font-face{font-family:"Onest";src:url("../assets/fonts/Onest-ExtraLight.ttf") format("truetype");font-weight:200;font-style:normal;font-display:swap}
+@font-face{font-family:"Onest";src:url("../assets/fonts/Onest-Light.ttf") format("truetype");font-weight:300;font-style:normal;font-display:swap}
+@font-face{font-family:"Onest";src:url("../assets/fonts/Onest-Regular.ttf") format("truetype");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"Onest";src:url("../assets/fonts/Onest-Medium.ttf") format("truetype");font-weight:500;font-style:normal;font-display:swap}
+@font-face{font-family:"Onest";src:url("../assets/fonts/Onest-SemiBold.ttf") format("truetype");font-weight:600;font-style:normal;font-display:swap}
+@font-face{font-family:"Onest";src:url("../assets/fonts/Onest-Bold.ttf") format("truetype");font-weight:700;font-style:normal;font-display:swap}
+@font-face{font-family:"Onest";src:url("../assets/fonts/Onest-ExtraBold.ttf") format("truetype");font-weight:800;font-style:normal;font-display:swap}
+@font-face{font-family:"Onest";src:url("../assets/fonts/Onest-Black.ttf") format("truetype");font-weight:900;font-style:normal;font-display:swap}
