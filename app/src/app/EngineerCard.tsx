@@ -1,10 +1,23 @@
 import { Icon } from '../ds/components/core/Icon.jsx';
 import type { EngineerRecord } from '../data/registry.ts';
 import { dec, hhmm, hoursText } from '../data/derive.ts';
-import { skillIcon, skillName } from '../data/dictionary.ts';
+import {
+  crewStatusName,
+  skillIcon,
+  skillName,
+  transportIcon,
+  transportName
+} from '../data/dictionary.ts';
 
 interface Props {
   row: EngineerRecord;
+  /** Отработано за выбранный срок, минуты: работа на объектах плюс дорога.
+      Считает база — она одна знает, какой срок сейчас выбран. Без неё
+      карточка показывает занятость, как показывала раньше. */
+  workedMinutes?: number;
+  /** Из чего это время сложилось. */
+  workMinutes?: number;
+  travelMinutes?: number;
   /** Снимок инженера, путь от корня сайта. Раздаёт его база — карточка только
       показывает и не знает, откуда он взялся. */
   photo?: string;
@@ -31,7 +44,16 @@ interface Props {
    ищет в списке Семёнова, узнаёт его быстрее, чем прочитает фамилию. Любая
    диаграмма на этом месте отвечала бы на вопрос, которого он здесь не
    задаёт: цифры смены стоят рядом и сказаны словами. */
-export function EngineerCard({ row, photo, dense = false, skill = null, onSkill }: Props) {
+export function EngineerCard({
+  row,
+  photo,
+  dense = false,
+  skill = null,
+  onSkill,
+  workedMinutes,
+  workMinutes,
+  travelMinutes
+}: Props) {
   const idle = row.idleRuns > 0;
   const loose = row.occupancyMean > 0 && row.occupancyMean < 0.6;
 
@@ -94,11 +116,33 @@ export function EngineerCard({ row, photo, dense = false, skill = null, onSkill 
         </div>
       )}
 
-      <span className="runcard__value">
-        {dec(row.occupancyMean * 100)}
-        <span className="runcard__unit">%</span>
-      </span>
-      <span className="runcard__label">{dense ? 'Занятость' : 'Средняя занятость маршрута'}</span>
+      {/* Главное число — отработанные часы за выбранный срок. Занятость
+          отвечала на другой вопрос: она про плотность одного маршрута и не
+          растёт от того, что человек отработал больше смен. «Сколько
+          отработал» — это первое, что спрашивают о человеке, и складывается
+          оно из работы на объектах и дороги между ними: инженер в пути занят
+          так же, как инженер у щитка. */}
+      {workedMinutes === undefined ? (
+        <>
+          <span className="runcard__value">
+            {dec(row.occupancyMean * 100)}
+            <span className="runcard__unit">%</span>
+          </span>
+          <span className="runcard__label">
+            {dense ? 'Занятость' : 'Средняя занятость маршрута'}
+          </span>
+        </>
+      ) : (
+        <>
+          <span className="runcard__value">
+            {dec(workedMinutes / 60)}
+            <span className="runcard__unit">ч</span>
+          </span>
+          <span className="runcard__label">
+            {dense ? 'Отработано' : 'Отработано за выбранный срок'}
+          </span>
+        </>
+      )}
 
       <div className="runcard__facts">
         {dense ? (
@@ -108,21 +152,65 @@ export function EngineerCard({ row, photo, dense = false, skill = null, onSkill 
         ) : (
           <>
             <span className="runcard__fact">
-              <b>{row.routes}</b> из {row.runs} смен с маршрутом
+              {hoursText(workMinutes ?? row.workMinutes)} работа ·{' '}
+              {hoursText(travelMinutes ?? row.travelMinutes)} дорога
+            </span>
+            <span className="runcard__fact">
+              <b>{row.visits}</b> визитов · <b>{row.routes}</b> из {row.runs} смен с маршрутом
             </span>
             <span className={'runcard__fact' + (idle ? ' runcard__fact--bad' : '')}>
               <b>{row.idleRuns}</b> смен без маршрута
             </span>
-            <span className="runcard__fact">
-              <b>{row.visits}</b> визитов · {hoursText(row.workMinutes)} в работе
-            </span>
             <span className={'runcard__fact' + (loose ? ' runcard__fact--bad' : '')}>
-              {hoursText(row.travelMinutes)} в дороге
+              Занятость {dec(row.occupancyMean * 100)} %
               {row.overtimeMinutes > 0 ? ` · ${hoursText(row.overtimeMinutes)} сверх смены` : ''}
             </span>
           </>
         )}
       </div>
+
+      {/* Что о человеке говорит сама выгрузка. Стоит отдельно от цифр
+          маршрута: те считаются по расчётам и меняются от прогона к прогону,
+          а это — карточка сотрудника, и она одна и та же в любом расчёте.
+          Пустые поля не рисуются: набор, где транспорт не указан, не должен
+          показывать пустую строку «Транспорт». */}
+      {!dense && (
+        <dl className="engfacts">
+          {row.transport && (
+            <div className="engfacts__row">
+              <dt>Транспорт</dt>
+              <dd>
+                <Icon name={transportIcon(row.transport)} size={12} />
+                {transportName(row.transport)}
+              </dd>
+            </div>
+          )}
+          {row.team && (
+            <div className="engfacts__row">
+              <dt>Бригада</dt>
+              <dd>{row.team}</dd>
+            </div>
+          )}
+          {row.zone && (
+            <div className="engfacts__row">
+              <dt>Участок</dt>
+              <dd>{row.zone}</dd>
+            </div>
+          )}
+          {row.phone && (
+            <div className="engfacts__row">
+              <dt>Телефон</dt>
+              <dd>{row.phone}</dd>
+            </div>
+          )}
+          {row.status && (
+            <div className="engfacts__row">
+              <dt>Статус</dt>
+              <dd>{crewStatusName(row.status)}</dd>
+            </div>
+          )}
+        </dl>
+      )}
 
       {/* Навыки стоят там же, где у расчёта действия, и работают как действия:
           щелчок отбирает список по навыку. Открывать у инженера нечего — своей

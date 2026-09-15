@@ -10,7 +10,7 @@
  },
  "orders": [
   {
-   "id": "R0001",
+   "id": "R0067",
    "work_type": "Заказ подключения/Дозаказ оборудования",
    "work_title": "Заказ подключения/Дозаказ оборудования",
    "skill": "connect",
@@ -35,15 +35,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Сергей",
-    "phone": "+7 949 284-57-05"
+    "name": "Наталья",
+    "phone": "+7 994 016-51-00"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0002",
+   "id": "R0068",
    "work_type": "Конвергенция абонента",
    "work_title": "Конвергенция абонента",
    "skill": "connect",
@@ -68,15 +68,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Наталья",
-    "phone": "+7 989 454-03-01"
+    "name": "Алексей",
+    "phone": "+7 950 665-30-01"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0003",
+   "id": "R0069",
    "work_type": "Заказ подключения/Дозаказ оборудования",
    "work_title": "Заказ подключения/Дозаказ оборудования",
    "skill": "connect",
@@ -101,15 +101,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Михаил",
-    "phone": "+7 973 203-40-02"
+    "name": "Ольга",
+    "phone": "+7 934 414-67-02"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0004",
+   "id": "R0070",
    "work_type": "Конвергенция абонента",
    "work_title": "Конвергенция абонента",
    "skill": "connect",
@@ -134,15 +134,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Анна",
-    "phone": "+7 955 778-39-02"
+    "name": "Дмитрий",
+    "phone": "+7 953 250-75-00"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0005",
+   "id": "R0071",
    "work_type": "Конвергенция абонента",
    "work_title": "Конвергенция абонента",
    "skill": "connect",
@@ -167,15 +167,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Марина",
-    "phone": "+7 910 944-78-04"
+    "name": "Татьяна",
+    "phone": "+7 954 575-78-03"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0006",
+   "id": "R0072",
    "work_type": "Конвергенция абонента",
    "work_title": "Конвергенция абонента",
    "skill": "connect",
@@ -200,15 +200,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Сергей",
-    "phone": "+7 913 469-10-00"
+    "name": "Анна",
+    "phone": "+7 928 472-70-04"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0007",
+   "id": "R0073",
    "work_type": "Конвергенция абонента",
    "work_title": "Конвергенция абонента",
    "skill": "connect",
@@ -233,15 +233,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Елена",
-    "phone": "+7 940 411-67-00"
+    "name": "Павел",
+    "phone": "+7 954 414-27-05"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0008",
+   "id": "R0074",
    "work_type": "Конвергенция абонента",
    "work_title": "Конвергенция абонента",
    "skill": "connect",
@@ -266,15 +266,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Татьяна",
-    "phone": "+7 902 177-15-01"
+    "name": "Анна",
+    "phone": "+7 934 430-97-04"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0009",
+   "id": "R0075",
    "work_type": "Конвергенция абонента",
    "work_title": "Конвергенция абонента",
    "skill": "connect",
@@ -299,15 +299,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Павел",
-    "phone": "+7 975 130-24-05"
+    "name": "Игорь",
+    "phone": "+7 919 762-23-04"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0010",
+   "id": "R0076",
    "work_type": "Заказ подключения/Дозаказ оборудования",
    "work_title": "Заказ подключения/Дозаказ оборудования",
    "skill": "connect",
@@ -332,15 +332,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Ольга",
-    "phone": "+7 952 797-22-05"
+    "name": "Владимир",
+    "phone": "+7 995 408-09-06"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0011",
+   "id": "R0077",
    "work_type": "Конвергенция абонента",
    "work_title": "Конвергенция абонента",
    "skill": "connect",
@@ -366,14 +366,14 @@
    "gigabit": false,
    "contact": {
     "name": "Елена",
-    "phone": "+7 974 496-11-07"
+    "phone": "+7 963 421-24-00"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0012",
+   "id": "R0078",
    "work_type": "Конвергенция абонента",
    "work_title": "Конвергенция абонента",
    "skill": "connect",
@@ -398,15 +398,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Игорь",
-    "phone": "+7 995 112-28-06"
+    "name": "Михаил",
+    "phone": "+7 929 866-59-05"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0013",
+   "id": "R0079",
    "work_type": "Конвергенция абонента",
    "work_title": "Конвергенция абонента",
    "skill": "connect",
@@ -431,15 +431,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Алексей",
-    "phone": "+7 931 281-87-06"
+    "name": "Сергей",
+    "phone": "+7 965 034-19-06"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0014",
+   "id": "R0080",
    "work_type": "Конвергенция абонента",
    "work_title": "Конвергенция абонента",
    "skill": "connect",
@@ -464,15 +464,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Светлана",
-    "phone": "+7 951 992-57-02"
+    "name": "Марина",
+    "phone": "+7 979 273-79-06"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0015",
+   "id": "R0081",
    "work_type": "Конвергенция абонента",
    "work_title": "Конвергенция абонента",
    "skill": "connect",
@@ -497,15 +497,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Наталья",
-    "phone": "+7 900 081-25-05"
+    "name": "Татьяна",
+    "phone": "+7 943 798-70-02"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0016",
+   "id": "R0082",
    "work_type": "Конвергенция абонента",
    "work_title": "Конвергенция абонента",
    "skill": "connect",
@@ -530,15 +530,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Сергей",
-    "phone": "+7 934 249-84-05"
+    "name": "Дмитрий",
+    "phone": "+7 977 966-29-03"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0017",
+   "id": "R0083",
    "work_type": "Заказ подключения/Дозаказ оборудования",
    "work_title": "Заказ подключения/Дозаказ оборудования",
    "skill": "connect",
@@ -563,15 +563,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Ольга",
-    "phone": "+7 928 100-81-00"
+    "name": "Павел",
+    "phone": "+7 943 017-95-06"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0018",
+   "id": "R0084",
    "work_type": "Конвергенция абонента",
    "work_title": "Конвергенция абонента",
    "skill": "connect",
@@ -596,15 +596,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Елена",
-    "phone": "+7 937 579-88-04"
+    "name": "Сергей",
+    "phone": "+7 935 051-24-03"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0019",
+   "id": "R0085",
    "work_type": "Конвергенция абонента",
    "work_title": "Конвергенция абонента",
    "skill": "connect",
@@ -629,15 +629,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Алексей",
-    "phone": "+7 900 455-77-00"
+    "name": "Елена",
+    "phone": "+7 916 372-91-06"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0020",
+   "id": "R0086",
    "work_type": "Конвергенция абонента",
    "work_title": "Конвергенция абонента",
    "skill": "connect",
@@ -662,15 +662,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Сергей",
-    "phone": "+7 925 018-53-02"
+    "name": "Михаил",
+    "phone": "+7 921 226-36-05"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0021",
+   "id": "R0087",
    "work_type": "Заказ подключения/Дозаказ оборудования",
    "work_title": "Заказ подключения/Дозаказ оборудования",
    "skill": "connect",
@@ -695,15 +695,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Татьяна",
-    "phone": "+7 960 696-23-05"
+    "name": "Елена",
+    "phone": "+7 994 449-55-04"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0022",
+   "id": "R0088",
    "work_type": "Конвергенция абонента",
    "work_title": "Конвергенция абонента",
    "skill": "connect",
@@ -728,15 +728,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Ольга",
-    "phone": "+7 977 240-38-06"
+    "name": "Елена",
+    "phone": "+7 965 400-00-03"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0023",
+   "id": "R0089",
    "work_type": "Заказ подключения/Дозаказ оборудования",
    "work_title": "Заказ подключения/Дозаказ оборудования",
    "skill": "connect",
@@ -761,15 +761,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Игорь",
-    "phone": "+7 922 089-14-00"
+    "name": "Светлана",
+    "phone": "+7 980 734-49-03"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0024",
+   "id": "R0090",
    "work_type": "Заявка на подключение",
    "work_title": "Заявка на подключение",
    "skill": "connect",
@@ -794,15 +794,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Татьяна",
-    "phone": "+7 909 476-01-07"
+    "name": "Сергей",
+    "phone": "+7 919 422-81-02"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0025",
+   "id": "R0091",
    "work_type": "Конвергенция абонента",
    "work_title": "Конвергенция абонента",
    "skill": "connect",
@@ -827,15 +827,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Ольга",
-    "phone": "+7 968 449-23-06"
+    "name": "Дмитрий",
+    "phone": "+7 988 832-97-05"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0026",
+   "id": "R0092",
    "work_type": "Заявка на подключение",
    "work_title": "Заявка на подключение",
    "skill": "connect",
@@ -860,15 +860,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Марина",
-    "phone": "+7 901 810-95-01"
+    "name": "Светлана",
+    "phone": "+7 908 292-86-05"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0027",
+   "id": "R0093",
    "work_type": "Конвергенция абонента",
    "work_title": "Конвергенция абонента",
    "skill": "connect",
@@ -893,15 +893,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Сергей",
-    "phone": "+7 937 554-59-06"
+    "name": "Елена",
+    "phone": "+7 995 842-00-00"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0028",
+   "id": "R0094",
    "work_type": "Конвергенция абонента",
    "work_title": "Конвергенция абонента",
    "skill": "connect",
@@ -926,15 +926,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Татьяна",
-    "phone": "+7 987 706-26-00"
+    "name": "Ольга",
+    "phone": "+7 949 665-20-01"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0029",
+   "id": "R0095",
    "work_type": "Заявка на подключение",
    "work_title": "Заявка на подключение",
    "skill": "connect",
@@ -959,15 +959,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Игорь",
-    "phone": "+7 937 769-22-06"
+    "name": "Михаил",
+    "phone": "+7 981 400-22-05"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0030",
+   "id": "R0096",
    "work_type": "Конвергенция абонента",
    "work_title": "Конвергенция абонента",
    "skill": "connect",
@@ -992,15 +992,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Владимир",
-    "phone": "+7 929 715-67-06"
+    "name": "Анна",
+    "phone": "+7 962 974-65-03"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0031",
+   "id": "R0097",
    "work_type": "Заказ подключения/Дозаказ оборудования",
    "work_title": "Заказ подключения/Дозаказ оборудования",
    "skill": "connect",
@@ -1025,15 +1025,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Светлана",
-    "phone": "+7 992 908-65-06"
+    "name": "Наталья",
+    "phone": "+7 926 662-97-05"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0032",
+   "id": "R0098",
    "work_type": "Заявка на подключение",
    "work_title": "Заявка на подключение",
    "skill": "connect",
@@ -1058,15 +1058,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Дмитрий",
-    "phone": "+7 956 949-09-01"
+    "name": "Павел",
+    "phone": "+7 972 192-39-02"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0033",
+   "id": "R0099",
    "work_type": "Конвергенция абонента",
    "work_title": "Конвергенция абонента",
    "skill": "connect",
@@ -1091,15 +1091,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Татьяна",
-    "phone": "+7 999 508-77-00"
+    "name": "Игорь",
+    "phone": "+7 957 154-13-04"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0034",
+   "id": "R0100",
    "work_type": "Конвергенция абонента",
    "work_title": "Конвергенция абонента",
    "skill": "connect",
@@ -1124,15 +1124,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Алексей",
-    "phone": "+7 997 862-96-05"
+    "name": "Сергей",
+    "phone": "+7 999 752-89-02"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0035",
+   "id": "R0101",
    "work_type": "Конвергенция абонента",
    "work_title": "Конвергенция абонента",
    "skill": "connect",
@@ -1157,15 +1157,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Елена",
-    "phone": "+7 963 033-97-00"
+    "name": "Алексей",
+    "phone": "+7 916 194-11-01"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0036",
+   "id": "R0102",
    "work_type": "Конвергенция абонента",
    "work_title": "Конвергенция абонента",
    "skill": "connect",
@@ -1190,15 +1190,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Татьяна",
-    "phone": "+7 958 952-10-06"
+    "name": "Игорь",
+    "phone": "+7 946 257-76-03"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0037",
+   "id": "R0103",
    "work_type": "Дозаказ оборудования",
    "work_title": "Дозаказ оборудования",
    "skill": "connect",
@@ -1223,15 +1223,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Ольга",
-    "phone": "+7 976 232-33-03"
+    "name": "Дмитрий",
+    "phone": "+7 915 097-79-01"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0038",
+   "id": "R0104",
    "work_type": "Заказ подключения/Дозаказ оборудования",
    "work_title": "Заказ подключения/Дозаказ оборудования",
    "skill": "connect",
@@ -1256,15 +1256,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Павел",
-    "phone": "+7 997 763-65-01"
+    "name": "Елена",
+    "phone": "+7 932 870-12-06"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0039",
+   "id": "R0105",
    "work_type": "Конвергенция абонента",
    "work_title": "Конвергенция абонента",
    "skill": "connect",
@@ -1289,15 +1289,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Алексей",
-    "phone": "+7 932 027-16-04"
+    "name": "Марина",
+    "phone": "+7 920 332-81-01"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0040",
+   "id": "R0106",
    "work_type": "Дозаказ оборудования",
    "work_title": "Дозаказ оборудования",
    "skill": "connect",
@@ -1322,15 +1322,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Наталья",
-    "phone": "+7 940 610-58-05"
+    "name": "Владимир",
+    "phone": "+7 977 709-50-04"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0041",
+   "id": "R0107",
    "work_type": "Нет линка",
    "work_title": "Нет линка",
    "skill": "local",
@@ -1353,15 +1353,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Дмитрий",
-    "phone": "+7 992 095-79-06"
+    "name": "Игорь",
+    "phone": "+7 905 197-41-00"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0042",
+   "id": "R0108",
    "work_type": "Нет линка",
    "work_title": "Нет линка",
    "skill": "local",
@@ -1384,15 +1384,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Татьяна",
-    "phone": "+7 910 491-82-04"
+    "name": "Светлана",
+    "phone": "+7 999 834-43-02"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0043",
+   "id": "R0109",
    "work_type": "Работа с кабелем",
    "work_title": "Работа с кабелем",
    "skill": "local",
@@ -1417,15 +1417,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Ольга",
-    "phone": "+7 974 459-88-04"
+    "name": "Светлана",
+    "phone": "+7 989 075-65-05"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0044",
+   "id": "R0110",
    "work_type": "Работа с кабелем",
    "work_title": "Работа с кабелем",
    "skill": "local",
@@ -1450,15 +1450,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Алексей",
-    "phone": "+7 907 976-24-06"
+    "name": "Игорь",
+    "phone": "+7 989 666-49-03"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0045",
+   "id": "R0111",
    "work_type": "Низкая скорость",
    "work_title": "Низкая скорость",
    "skill": "local",
@@ -1481,15 +1481,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Владимир",
-    "phone": "+7 907 816-40-00"
+    "name": "Игорь",
+    "phone": "+7 933 410-22-06"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0046",
+   "id": "R0112",
    "work_type": "Нет линка",
    "work_title": "Нет линка",
    "skill": "local",
@@ -1512,15 +1512,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Анна",
-    "phone": "+7 981 421-14-02"
+    "name": "Наталья",
+    "phone": "+7 981 071-55-05"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0047",
+   "id": "R0113",
    "work_type": "Нет линка",
    "work_title": "Нет линка",
    "skill": "local",
@@ -1543,15 +1543,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Алексей",
-    "phone": "+7 942 595-21-03"
+    "name": "Марина",
+    "phone": "+7 930 900-86-00"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0048",
+   "id": "R0114",
    "work_type": "Низкая скорость",
    "work_title": "Низкая скорость",
    "skill": "local",
@@ -1574,15 +1574,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Татьяна",
-    "phone": "+7 935 846-77-02"
+    "name": "Игорь",
+    "phone": "+7 923 151-43-00"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0049",
+   "id": "R0115",
    "work_type": "Рост ошибок на порту",
    "work_title": "Рост ошибок на порту",
    "skill": "local",
@@ -1605,15 +1605,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Сергей",
-    "phone": "+7 935 357-26-06"
+    "name": "Михаил",
+    "phone": "+7 917 048-51-03"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0050",
+   "id": "R0116",
    "work_type": "Работа с кабелем",
    "work_title": "Работа с кабелем",
    "skill": "local",
@@ -1638,15 +1638,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Наталья",
-    "phone": "+7 980 729-71-05"
+    "name": "Сергей",
+    "phone": "+7 939 834-37-03"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0051",
+   "id": "R0117",
    "work_type": "Нет линка",
    "work_title": "Нет линка",
    "skill": "local",
@@ -1669,15 +1669,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Наталья",
-    "phone": "+7 966 914-14-05"
+    "name": "Дмитрий",
+    "phone": "+7 952 301-91-05"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0052",
+   "id": "R0118",
    "work_type": "Роутер. Замена техническим специалистом",
    "work_title": "Роутер. Замена техническим специалистом",
    "skill": "local",
@@ -1702,15 +1702,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Татьяна",
-    "phone": "+7 969 495-46-00"
+    "name": "Сергей",
+    "phone": "+7 998 119-97-05"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0053",
+   "id": "R0119",
    "work_type": "Нет линка",
    "work_title": "Нет линка",
    "skill": "local",
@@ -1733,15 +1733,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Сергей",
-    "phone": "+7 954 763-00-06"
+    "name": "Владимир",
+    "phone": "+7 946 689-79-04"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0054",
+   "id": "R0120",
    "work_type": "Переключение на Гбит/с",
    "work_title": "Переключение на Гбит/с",
    "skill": "local",
@@ -1766,15 +1766,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Наталья",
-    "phone": "+7 937 951-33-03"
+    "name": "Елена",
+    "phone": "+7 947 795-70-03"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0055",
+   "id": "R0121",
    "work_type": "TVE/ENT. Замена приставки техником",
    "work_title": "TVE/ENT. Замена приставки техником",
    "skill": "local",
@@ -1799,15 +1799,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Михаил",
-    "phone": "+7 932 911-10-05"
+    "name": "Павел",
+    "phone": "+7 941 755-47-05"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0056",
+   "id": "R0122",
    "work_type": "Рост ошибок на порту",
    "work_title": "Рост ошибок на порту",
    "skill": "local",
@@ -1830,15 +1830,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Павел",
-    "phone": "+7 951 948-94-00"
+    "name": "Анна",
+    "phone": "+7 906 925-33-05"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0057",
+   "id": "R0123",
    "work_type": "IP-адрес 169...",
    "work_title": "IP-адрес 169...",
    "skill": "local",
@@ -1861,15 +1861,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Алексей",
-    "phone": "+7 933 775-94-05"
+    "name": "Светлана",
+    "phone": "+7 986 935-08-06"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0058",
+   "id": "R0124",
    "work_type": "Низкая скорость",
    "work_title": "Низкая скорость",
    "skill": "local",
@@ -1892,15 +1892,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Сергей",
-    "phone": "+7 927 658-45-03"
+    "name": "Наталья",
+    "phone": "+7 930 937-17-05"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0059",
+   "id": "R0125",
    "work_type": "Низкая скорость",
    "work_title": "Низкая скорость",
    "skill": "local",
@@ -1923,15 +1923,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Марина",
-    "phone": "+7 920 181-98-04"
+    "name": "Игорь",
+    "phone": "+7 974 489-65-03"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0060",
+   "id": "R0126",
    "work_type": "Переключение на Гбит/с",
    "work_title": "Переключение на Гбит/с",
    "skill": "local",
@@ -1957,14 +1957,14 @@
    "gigabit": false,
    "contact": {
     "name": "Павел",
-    "phone": "+7 983 709-54-03"
+    "phone": "+7 947 932-18-02"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0061",
+   "id": "R0127",
    "work_type": "Нет линка",
    "work_title": "Нет линка",
    "skill": "local",
@@ -1987,15 +1987,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Алексей",
-    "phone": "+7 909 222-01-06"
+    "name": "Наталья",
+    "phone": "+7 975 717-27-05"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0062",
+   "id": "R0128",
    "work_type": "IP-адрес 169...",
    "work_title": "IP-адрес 169...",
    "skill": "local",
@@ -2018,15 +2018,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Владимир",
-    "phone": "+7 928 685-51-06"
+    "name": "Елена",
+    "phone": "+7 970 908-63-01"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0063",
+   "id": "R0129",
    "work_type": "TVE/ENT. Замена приставки техником",
    "work_title": "TVE/ENT. Замена приставки техником",
    "skill": "local",
@@ -2051,15 +2051,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Марина",
-    "phone": "+7 911 267-45-02"
+    "name": "Дмитрий",
+    "phone": "+7 941 399-63-00"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0064",
+   "id": "R0130",
    "work_type": "Рост ошибок на порту",
    "work_title": "Рост ошибок на порту",
    "skill": "local",
@@ -2082,15 +2082,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Дмитрий",
-    "phone": "+7 910 636-56-04"
+    "name": "Анна",
+    "phone": "+7 964 944-23-03"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0065",
+   "id": "R0131",
    "work_type": "Нет линка",
    "work_title": "Нет линка",
    "skill": "local",
@@ -2113,15 +2113,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Ольга",
-    "phone": "+7 912 190-35-06"
+    "name": "Елена",
+    "phone": "+7 965 785-48-03"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0066",
+   "id": "R0132",
    "work_type": "Разрывы",
    "work_title": "Разрывы",
    "skill": "local",
@@ -2144,15 +2144,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Татьяна",
-    "phone": "+7 970 900-86-00"
+    "name": "Владимир",
+    "phone": "+7 973 179-59-02"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0067",
+   "id": "R0133",
    "work_type": "Нет линка",
    "work_title": "Нет линка",
    "skill": "local",
@@ -2175,15 +2175,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Анна",
-    "phone": "+7 935 111-95-00"
+    "name": "Игорь",
+    "phone": "+7 908 287-02-05"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0068",
+   "id": "R0134",
    "work_type": "Нет линка",
    "work_title": "Нет линка",
    "skill": "local",
@@ -2206,15 +2206,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Елена",
-    "phone": "+7 962 817-43-05"
+    "name": "Владимир",
+    "phone": "+7 990 181-70-01"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0069",
+   "id": "R0135",
    "work_type": "Нет линка",
    "work_title": "Нет линка",
    "skill": "local",
@@ -2237,15 +2237,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Ольга",
-    "phone": "+7 950 691-22-04"
+    "name": "Игорь",
+    "phone": "+7 903 852-36-04"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0070",
+   "id": "R0136",
    "work_type": "Рост ошибок на порту",
    "work_title": "Рост ошибок на порту",
    "skill": "local",
@@ -2268,15 +2268,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Михаил",
-    "phone": "+7 989 202-41-01"
+    "name": "Павел",
+    "phone": "+7 981 128-20-00"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0071",
+   "id": "R0137",
    "work_type": "IP-адрес 169...",
    "work_title": "IP-адрес 169...",
    "skill": "local",
@@ -2299,15 +2299,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Владимир",
-    "phone": "+7 922 150-03-01"
+    "name": "Дмитрий",
+    "phone": "+7 924 568-35-06"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0072",
+   "id": "R0138",
    "work_type": "Авария",
    "work_title": "Авария",
    "skill": "emergency",
@@ -2330,15 +2330,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Татьяна",
-    "phone": "+7 982 463-73-06"
+    "name": "Алексей",
+    "phone": "+7 948 959-99-05"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0073",
+   "id": "R0139",
    "work_type": "Авария",
    "work_title": "Авария",
    "skill": "emergency",
@@ -2361,15 +2361,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Игорь",
-    "phone": "+7 913 200-14-01"
+    "name": "Светлана",
+    "phone": "+7 950 299-06-00"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0074",
+   "id": "R0140",
    "work_type": "Авария",
    "work_title": "Авария",
    "skill": "emergency",
@@ -2392,15 +2392,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Татьяна",
-    "phone": "+7 940 256-11-07"
+    "name": "Михаил",
+    "phone": "+7 994 564-78-05"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0075",
+   "id": "R0141",
    "work_type": "Авария",
    "work_title": "Авария",
    "skill": "emergency",
@@ -2423,15 +2423,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Анна",
-    "phone": "+7 974 215-29-04"
+    "name": "Павел",
+    "phone": "+7 927 524-96-02"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0076",
+   "id": "R0142",
    "work_type": "Авария",
    "work_title": "Авария",
    "skill": "emergency",
@@ -2454,15 +2454,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Татьяна",
-    "phone": "+7 949 126-47-01"
+    "name": "Михаил",
+    "phone": "+7 903 435-14-00"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0077",
+   "id": "R0143",
    "work_type": "Авария",
    "work_title": "Авария",
    "skill": "emergency",
@@ -2485,15 +2485,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Марина",
-    "phone": "+7 925 347-79-05"
+    "name": "Игорь",
+    "phone": "+7 979 655-46-04"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0078",
+   "id": "R0144",
    "work_type": "Авария",
    "work_title": "Авария",
    "skill": "emergency",
@@ -2516,15 +2516,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Дмитрий",
-    "phone": "+7 930 282-97-02"
+    "name": "Анна",
+    "phone": "+7 984 590-64-01"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0079",
+   "id": "R0145",
    "work_type": "Авария",
    "work_title": "Авария",
    "skill": "emergency",
@@ -2547,15 +2547,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Наталья",
-    "phone": "+7 987 230-18-02"
+    "name": "Игорь",
+    "phone": "+7 941 207-57-06"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0080",
+   "id": "R0146",
    "work_type": "Авария",
    "work_title": "Авария",
    "skill": "emergency",
@@ -2578,15 +2578,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Михаил",
-    "phone": "+7 926 940-12-04"
+    "name": "Анна",
+    "phone": "+7 985 044-79-01"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0081",
+   "id": "R0147",
    "work_type": "Авария",
    "work_title": "Авария",
    "skill": "emergency",
@@ -2609,15 +2609,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Павел",
-    "phone": "+7 947 058-46-02"
+    "name": "Елена",
+    "phone": "+7 985 157-38-01"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0082",
+   "id": "R0148",
    "work_type": "Авария",
    "work_title": "Авария",
    "skill": "emergency",
@@ -2640,15 +2640,15 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Сергей",
-    "phone": "+7 915 542-33-01"
+    "name": "Татьяна",
+    "phone": "+7 952 641-25-00"
    },
    "locked_to": null,
    "assigned_by": null,
    "unassigned_reason": null
   },
   {
-   "id": "R0083",
+   "id": "R0149",
    "work_type": "Авария",
    "work_title": "Авария",
    "skill": "emergency",
@@ -2671,8 +2671,8 @@
    "tech": null,
    "gigabit": false,
    "contact": {
-    "name": "Владимир",
-    "phone": "+7 977 973-21-01"
+    "name": "Алексей",
+    "phone": "+7 912 109-47-03"
    },
    "locked_to": null,
    "assigned_by": null,

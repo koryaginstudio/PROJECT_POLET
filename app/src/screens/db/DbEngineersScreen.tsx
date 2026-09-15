@@ -3,7 +3,7 @@ import { Icon } from '../../ds/components/core/Icon.jsx';
 import { SegmentedControl } from '../../ds/components/forms/SegmentedControl.jsx';
 import type { EngineerRecord, Registry } from '../../data/registry.ts';
 import { dec, hhmm, hoursText } from '../../data/derive.ts';
-import { skillIcon, skillName } from '../../data/dictionary.ts';
+import { crewStatusName, skillIcon, skillName, transportIcon, transportName } from '../../data/dictionary.ts';
 import { photosFor } from '../../data/photos.ts';
 import { EngineerCard } from '../../app/EngineerCard.tsx';
 import { useWidgetBoard, WidgetPeriod, withinPeriod } from '../../app/DbWidgets.tsx';
@@ -179,6 +179,20 @@ export function DbEngineersScreen({ registry, mode }: Props) {
     return { shifts, runs: runIds.size };
   }, [all, period]);
 
+  /* Выработка каждого за выбранный срок. Карточка показывает её главным
+     числом, и считать её приходится здесь: запись инженера хранит итоги по
+     всей истории, а срок выбирают наверху. */
+  const workedBy = useMemo(() => {
+    const map = new Map<string, { work: number; travel: number }>();
+    for (const { engineer, shift } of scope.shifts) {
+      const cell = map.get(engineer.id) ?? { work: 0, travel: 0 };
+      cell.work += shift.workMinutes;
+      cell.travel += shift.travelMinutes;
+      map.set(engineer.id, cell);
+    }
+    return map;
+  }, [scope]);
+
   /* Величины базы для доски виджетов. Каждая отдаёт итог, доли этого итога и
      ряд по расчётам — какой из них показать, решает сама плитка. Ряд всегда
      хронологический: линия отвечает на «как менялось», и сортировка списка на
@@ -281,6 +295,31 @@ export function DbEngineersScreen({ registry, mode }: Props) {
     ];
 
     return [
+      {
+        key: 'hours',
+        title: 'Отработано часов',
+        note: 'Время инженеров за выбранный срок: работа на объектах и дорога между ними',
+        shape: 'number',
+        data: {
+          /* Отработанным считается и дорога тоже: инженер в пути занят так
+             же, как инженер у щитка, и час езды через город из смены не
+             вычитается. Разложено рядом, чтобы это читалось, а не
+             предполагалось. */
+          value: hoursText(work + travel),
+          caption: 'за срок',
+          facts: [
+            `${hoursText(work)} работа на объектах`,
+            `${hoursText(travel)} дорога`,
+            `${hoursText((work + travel) / Math.max(worked.length, 1))} на смену`
+          ],
+          parts: [
+            { key: 'work', label: 'Работа', value: work, tone: 'ok' },
+            { key: 'travel', label: 'Дорога', value: travel, tone: 'warn' }
+          ],
+          series: series((cell) => cell.travel),
+          legend: 'минут в дороге'
+        }
+      },
       {
         key: 'people',
         title: 'Инженеров',
@@ -520,7 +559,7 @@ export function DbEngineersScreen({ registry, mode }: Props) {
   const board = useWidgetBoard({
     storeKey: 'db-engineers',
     catalogue: widgets,
-    fallback: ['people', 'shifts', 'visits', 'occupancy', 'idle-shifts'],
+    fallback: ['hours', 'people', 'shifts', 'visits', 'occupancy'],
     filter: (
       <WidgetPeriod value={period} onChange={setPeriod} countOf={(key) => runsIn(key).length} />
     )
@@ -624,10 +663,15 @@ export function DbEngineersScreen({ registry, mode }: Props) {
               <thead>
                 <tr>
                   <th>Инженер</th>
+                  <th>Бригада</th>
+                  <th>Участок</th>
                   <th>Выезжает из</th>
                   <th>Навыки</th>
+                  <th>Транспорт</th>
                   <th>Грейд</th>
                   <th>Смена</th>
+                  <th>Телефон</th>
+                  <th>Статус</th>
                   <th>В расчётах</th>
                   <th>Маршрутов</th>
                   <th>Визитов</th>
@@ -653,6 +697,8 @@ export function DbEngineersScreen({ registry, mode }: Props) {
                         </span>
                       </span>
                     </td>
+                    <td>{engineer.team ?? <span className="tbl__muted">—</span>}</td>
+                    <td>{engineer.zone ?? <span className="tbl__muted">—</span>}</td>
                     <td>{engineer.homeAddress ?? <span className="tbl__muted">Не указан</span>}</td>
                     <td>
                       <span className="tbl__tags">
@@ -664,9 +710,27 @@ export function DbEngineersScreen({ registry, mode }: Props) {
                         ))}
                       </span>
                     </td>
+                    <td>
+                      {engineer.transport ? (
+                        <span className="tbl__inline">
+                          <Icon name={transportIcon(engineer.transport)} size={13} />
+                          {transportName(engineer.transport)}
+                        </span>
+                      ) : (
+                        <span className="tbl__muted">Не указан</span>
+                      )}
+                    </td>
                     <td className="tbl__num">{engineer.grade}</td>
                     <td className="tbl__num">
                       {hhmm(engineer.shiftStart)}–{hhmm(engineer.shiftEnd)}
+                    </td>
+                    <td>{engineer.phone ?? <span className="tbl__muted">—</span>}</td>
+                    <td>
+                      {engineer.status ? (
+                        crewStatusName(engineer.status)
+                      ) : (
+                        <span className="tbl__muted">—</span>
+                      )}
                     </td>
                     <td className="tbl__num">{engineer.runs}</td>
                     <td className="tbl__num">{engineer.routes}</td>
@@ -705,16 +769,22 @@ export function DbEngineersScreen({ registry, mode }: Props) {
           className={'runs__grid' + (dense ? ' runs__grid--dense' : '')}
           style={{ '--per-row': perRow } as React.CSSProperties}
         >
-          {rows.map((engineer) => (
-            <EngineerCard
-              key={engineer.id}
-              row={engineer}
-              photo={photos.get(engineer.id)}
-              dense={dense}
-              skill={skill}
-              onSkill={(key) => setSkill(skill === key ? null : key)}
-            />
-          ))}
+          {rows.map((engineer) => {
+            const worked = workedBy.get(engineer.id) ?? { work: 0, travel: 0 };
+            return (
+              <EngineerCard
+                key={engineer.id}
+                row={engineer}
+                photo={photos.get(engineer.id)}
+                dense={dense}
+                skill={skill}
+                onSkill={(key) => setSkill(skill === key ? null : key)}
+                workedMinutes={worked.work + worked.travel}
+                workMinutes={worked.work}
+                travelMinutes={worked.travel}
+              />
+            );
+          })}
         </div>
       )}
     </div>

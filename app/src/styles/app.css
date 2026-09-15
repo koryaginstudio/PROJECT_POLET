@@ -11939,6 +11939,44 @@ button.bars__btn:focus-visible {
   color: var(--ink-300);
 }
 
+/* Поля сотрудника из выгрузки: транспорт, бригада, участок, телефон, статус.
+   Две колонки — подпись и значение, — потому что читают их не подряд, а
+   выборочно: ищут глазами нужную строку. Подписи узкие и серые, значения
+   прижаты к ним слева, а не растянуты по карточке: колонка значений, которая
+   начинается на разной высоте от разной длины подписи, читается как таблица
+   с плавающим краем. */
+.engfacts {
+  display: grid;
+  gap: 2px;
+  margin: 10px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-hairline);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.engfacts__row {
+  display: grid;
+  grid-template-columns: 74px 1fr;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.engfacts dt {
+  color: var(--ink-300);
+}
+
+.engfacts dd {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  color: var(--text-secondary);
+  /* Адреса и названия бригад длиннее колонки: переносим по словам, а не
+     обрезаем — телефон, обрезанный на середине, бесполезен. */
+  overflow-wrap: anywhere;
+}
+
 /* Навыки стоят на месте действий и работают как действия, поэтому и разделены
    той же чертой: щелчок отбирает список. */
 .engcard__skills {

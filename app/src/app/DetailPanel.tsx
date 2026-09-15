@@ -7,7 +7,7 @@ import { Complexity } from './Complexity.tsx';
 import type { Day } from '../data/contract.ts';
 import type { DayView } from '../data/derive.ts';
 import { dayEnd, dayStart, deadline, hhmm, homeOf, hoursText, placeOf } from '../data/derive.ts';
-import { skillIcon, skillName } from '../data/dictionary.ts';
+import { skillIcon, skillName, transportIcon, transportName } from '../data/dictionary.ts';
 import { EngineerTimeline } from './EngineerTimeline.tsx';
 import { GroupPanel } from './GroupPanel.tsx';
 import type { Selection } from './selection.ts';
@@ -152,6 +152,40 @@ function SelectedCard({ day, view, selection, onSelect }: Props) {
             <span className="shiftline__body">
               <span className="shiftline__value shiftline__value--text">{homeOf(engineer)}</span>
               <span className="shiftline__note">Отсюда начинается день</span>
+            </span>
+          </div>
+        )}
+
+        {/* Транспорт стоит рядом со сменой и адресом, а не среди цифр
+            маршрута: ТЗ называет его обязательным полем инженера наравне с
+            навыками, и на нём же строится третья группа ограничений —
+            заявка с требованием к транспорту достанется не всякому. */}
+        {engineer.transport && (
+          <div className="shiftline">
+            <span className="shiftline__icon">
+              <Icon name={transportIcon(engineer.transport)} size={16} />
+            </span>
+            <span className="shiftline__body">
+              <span className="shiftline__value shiftline__value--text">
+                {transportName(engineer.transport)}
+              </span>
+              <span className="shiftline__note">
+                Транспорт · заявки с другим требованием сюда не попадут
+              </span>
+            </span>
+          </div>
+        )}
+
+        {engineer.phone && (
+          <div className="shiftline">
+            <span className="shiftline__icon">
+              <Icon name="phone" size={16} />
+            </span>
+            <span className="shiftline__body">
+              <span className="shiftline__value shiftline__value--text">{engineer.phone}</span>
+              <span className="shiftline__note">
+                {[engineer.team, engineer.zone].filter(Boolean).join(' · ') || 'Связь с бригадой'}
+              </span>
             </span>
           </div>
         )}

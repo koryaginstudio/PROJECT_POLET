@@ -167,6 +167,20 @@ export interface EngineerRecord {
   shiftEnd: number;
   /** Откуда выезжает — адрес из последнего прогона. Пусто на стенде без адресов. */
   homeAddress: string | null;
+
+  /* Поля 1.2. Приходят из выгрузки и до сих пор в справочник не доходили,
+     хотя тип транспорта ТЗ называет обязательным полем инженера наравне со
+     сменой и навыками. Пусто — движок отдаёт 1.1 и этих полей не знает. */
+
+  /** Тип транспортного средства: `car`, `walk`, `bike`, `transit`. */
+  transport: string | null;
+  /** Бригада, как она названа в выгрузке. */
+  team: string | null;
+  /** Участок приписки: «Восток», «Юго-Восток», «Центр». */
+  zone: string | null;
+  phone: string | null;
+  /** `on_shift` | `off_shift` | `unavailable`. */
+  status: string | null;
   /** Смены по прогонам, от старого к свежему. Только те, где инженер был в
       штате: ноль визитов в прогоне, где его не выводили, — это не простой. */
   byRun: EngineerShift[];
@@ -524,6 +538,11 @@ function buildEngineers(plans: { run: RunRef; plan: Plan }[]): EngineerRecord[] 
           shiftStart: engineer.shift_start,
           shiftEnd: engineer.shift_end,
           homeAddress: engineer.home_address,
+          transport: engineer.transport ?? null,
+          team: engineer.team ?? null,
+          zone: engineer.zone ?? null,
+          phone: engineer.phone ?? null,
+          status: engineer.status ?? null,
           byRun: [],
           skillSet: new Set<string>(),
           occupancies: []
@@ -537,6 +556,11 @@ function buildEngineers(plans: { run: RunRef; plan: Plan }[]): EngineerRecord[] 
       entry.shiftStart = engineer.shift_start;
       entry.shiftEnd = engineer.shift_end;
       entry.homeAddress = engineer.home_address;
+      entry.transport = engineer.transport ?? entry.transport;
+      entry.team = engineer.team ?? entry.team;
+      entry.zone = engineer.zone ?? entry.zone;
+      entry.phone = engineer.phone ?? entry.phone;
+      entry.status = engineer.status ?? entry.status;
       for (const skill of engineer.skills) entry.skillSet.add(skill);
 
       const route = routeByEngineer.get(engineer.id);
@@ -587,6 +611,11 @@ function buildEngineers(plans: { run: RunRef; plan: Plan }[]): EngineerRecord[] 
       shiftStart: entry.shiftStart,
       shiftEnd: entry.shiftEnd,
       homeAddress: entry.homeAddress,
+      transport: entry.transport,
+      team: entry.team,
+      zone: entry.zone,
+      phone: entry.phone,
+      status: entry.status,
       byRun: entry.byRun
     }))
     .sort((a, b) => b.visits - a.visits || a.name.localeCompare(b.name));

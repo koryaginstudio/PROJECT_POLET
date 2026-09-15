@@ -459,6 +459,45 @@ def fold(text: str) -> int:
     return value
 
 
+# Имя и отчество инженера. В выгрузке их нет: колонка «Бригада» называет
+# бригаду либо одной фамилией («Бригада Соколов»), либо фамилией с именем
+# («Капитанчук Александр»). Диспетчеру же инженера надо назвать полностью —
+# он ему звонит.
+#
+# Достраивается ровно то, чего в выгрузке не оказалось, и ни буквой больше:
+# пришла одна фамилия — добавляем имя и отчество, пришли фамилия с именем —
+# только отчество, пришло ФИО целиком — не трогаем вовсе. Поэтому набор, где
+# имена уже полные, пройдёт через сборку неизменным.
+
+ENGINEER_FIRST_NAMES = [
+    "Андрей", "Сергей", "Дмитрий", "Алексей", "Максим", "Евгений", "Николай",
+    "Роман", "Виктор", "Олег", "Юрий", "Артём", "Григорий", "Константин",
+]
+
+ENGINEER_PATRONYMICS = [
+    "Андреевич", "Сергеевич", "Дмитриевич", "Алексеевич", "Иванович",
+    "Петрович", "Николаевич", "Викторович", "Олегович", "Юрьевич",
+    "Михайлович", "Павлович", "Борисович", "Игоревич",
+]
+
+
+def full_name(name: str) -> str:
+    """Дополняет имя бригады до ФИО, не трогая то, что уже пришло."""
+    parts = name.split()
+    if len(parts) >= 3:
+        return name
+
+    # Держится за фамилию, а не за место в списке: одна и та же бригада
+    # встречается в двух зонах, и это один человек, а не два однофамильца.
+    # Отчество берётся от своей свёртки — общая давала на соседних фамилиях
+    # одинаковые пары «имя отчество», и зона выглядела списком родственников.
+    if len(parts) == 1:
+        parts.append(ENGINEER_FIRST_NAMES[fold(name + "·и") % len(ENGINEER_FIRST_NAMES)])
+    patronymic = ENGINEER_PATRONYMICS[fold(" ".join(parts) + "·о") % len(ENGINEER_PATRONYMICS)]
+    parts.append(patronymic)
+    return " ".join(parts)
+
+
 def contact_of(order_id: str, address: str) -> dict[str, str]:
     seed = fold(order_id + address)
     name = CONTACT_NAMES[seed % len(CONTACT_NAMES)]
@@ -506,7 +545,7 @@ class Crew:
 
 
 def build_engineers(rows: list[Row], zone: str, office: tuple[float, float] | None,
-                    office_address: str) -> list[dict]:
+                    office_address: str, first_id: int = 0) -> list[dict]:
     """Инженеры зоны — из бригад, которые в этой зоне работали.
 
     Навыки не назначаются, а вычитываются: бригада умеет то, что она в этот день
@@ -535,7 +574,7 @@ def build_engineers(rows: list[Row], zone: str, office: tuple[float, float] | No
             crew.last = max(crew.last, row.window_end)
 
     engineers = []
-    for index, crew in enumerate(sorted(crews.values(), key=lambda c: c.name)):
+    for index, crew in enumerate(sorted(crews.values(), key=lambda c: c.name), start=first_id):
         crew.id = f"E{index:02d}"
         # Бригада, у которой в этот день были одни круглосуточные аварии, о
         # своём графике не сказала ничего — ставим её в общую смену.
@@ -555,7 +594,7 @@ def build_engineers(rows: list[Row], zone: str, office: tuple[float, float] | No
         engineers.append(
             {
                 "id": crew.id,
-                "name": crew.name,
+                "name": full_name(crew.name),
                 "skills": sorted(crew.skills),
                 # Опыт выгрузка не содержит. Ставим по числу нарядов за день:
                 # тому, кто вёз больше всех, вряд ли первый день.
@@ -580,7 +619,17 @@ def build_engineers(rows: list[Row], zone: str, office: tuple[float, float] | No
 # ─── сборка зоны ─────────────────────────────────────────────────────────────
 
 
-def build_zone(key: str, geo: Geocoder) -> dict:
+def build_zone(key: str, geo: Geocoder, first_order: int = 1, first_engineer: int = 0) -> dict:
+    """Собирает зону. Нумерация сквозная по всей базе, а не своя в каждой зоне.
+
+    Заказчик потребовал этого прямо: «01» в одном расчёте и «01» в другом —
+    разные объекты и одинаково называться не могут. Зоны здесь — это разные
+    дни, и заявка R0001 Востока с заявкой R0001 Юго-Востока не имеют между
+    собой ничего общего. Для инженеров это не придирка к оформлению, а
+    единственный способ не слепить трёх человек в одного: справочник сводит
+    людей по табельному номеру, и три разных E00 схлопывались в одну карточку
+    с суммой чужих часов.
+    """
     zone = ZONES[key]
     rows = read_rows(SOURCE / f"{key}-integral.csv")
     print(f"  {zone['title']}: нарядов {len(rows)}")
@@ -601,7 +650,7 @@ def build_zone(key: str, geo: Geocoder) -> dict:
 
     orders = []
     lost = 0
-    for index, row in enumerate(rows, start=1):
+    for index, row in enumerate(rows, start=first_order):
         order_id = f"R{index:04d}"
         clean = normalize_address(row.address)
         point = points[clean]
@@ -650,7 +699,7 @@ def build_zone(key: str, geo: Geocoder) -> dict:
             }
         )
 
-    engineers = build_engineers(rows, zone["title"], office, zone["office"])
+    engineers = build_engineers(rows, zone["title"], office, zone["office"], first_engineer)
     print(
         f"    домов {len(points)}, не нашлось {lost}, "
         f"инженеров {len(engineers)}, заявок {len(orders)}"
@@ -781,7 +830,15 @@ def write_summary(zones: list[dict]) -> None:
 def main() -> None:
     print("Сборка набора из выгрузки «Билайн Бизнес»")
     geo = Geocoder()
-    zones = [build_zone(key, geo) for key in ZONES]
+    # Нумерация сквозная по всей базе: следующая зона продолжает с того
+    # номера, на котором кончилась предыдущая.
+    zones = []
+    next_order, next_engineer = 1, 0
+    for key in ZONES:
+        zone = build_zone(key, geo, next_order, next_engineer)
+        zones.append(zone)
+        next_order += len(zone["orders"])
+        next_engineer += len(zone["engineers"])
     geo.save()
 
     for zone in zones:
