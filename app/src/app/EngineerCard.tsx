@@ -5,12 +5,7 @@ import { transportWhy } from '../data/rationale.ts';
 import { teamName } from '../data/dictionary.ts';
 import { WhyMark } from './WhyMark.tsx';
 import { PersonName } from './PersonName.tsx';
-import {
-  skillIcon,
-  skillName,
-  transportIcon,
-  transportShort
-} from '../data/dictionary.ts';
+import { skillIcon, skillName, transportShort } from '../data/dictionary.ts';
 
 interface Props {
   row: EngineerRecord;
@@ -278,18 +273,16 @@ export function EngineerCard({
       {!dense && (
         <dl className="engfacts">
           {row.transport && (
-            /* Значок объяснения стоит у подписи, а не у значения: в колонке
-               значения он отъедал четверть ширины, и «Общ. транспорт»
-               переносился на вторую строку. */
+            // Без значка в значении: у соседних строк значение — голый
+            // текст без отступа слева, а значок перед словом сдвигал бы
+            // «Автомобиль» правее их на свою ширину. Значок транспорта и
+            // так виден в трёх других местах карточки.
             <div className="engfacts__row">
               <dt>
                 Транспорт
                 <WhyMark text={transportWhy(row.transport)} />
               </dt>
-              <dd className="engfacts__tight">
-                <Icon name={transportIcon(row.transport)} size={12} />
-                {transportShort(row.transport)}
-              </dd>
+              <dd className="engfacts__tight">{transportShort(row.transport)}</dd>
             </div>
           )}
           {row.team && (
