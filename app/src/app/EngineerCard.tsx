@@ -1,6 +1,6 @@
 import { Icon } from '../ds/components/core/Icon.jsx';
 import type { EngineerRecord } from '../data/registry.ts';
-import { dec, hhmm, hoursText, pluralWord } from '../data/derive.ts';
+import { capitalize, dec, hhmm, hoursText, pluralWord } from '../data/derive.ts';
 import { shiftWhy, transportWhy } from '../data/rationale.ts';
 import { teamName } from '../data/dictionary.ts';
 import { WhyMark } from './WhyMark.tsx';
@@ -193,7 +193,7 @@ export function EngineerCard({
                   {dec(row.occupancyMean * 100)}
                   <span className="engquick__unit">%</span>
                 </span>
-                <span className="engquick__label">занятость маршрута</span>
+                <span className="engquick__label">Занятость маршрута</span>
               </>
             ) : (
               <>
@@ -201,21 +201,21 @@ export function EngineerCard({
                   {dec(workedMinutes / 60)}
                   <span className="engquick__unit">ч</span>
                 </span>
-                <span className="engquick__label">рабочих часов</span>
+                <span className="engquick__label">Рабочих часов</span>
               </>
             )}
           </div>
           <div className="engquick__tile">
             <span className="engquick__value">{row.visits}</span>
             <span className="engquick__label">
-              {pluralWord(row.visits, 'визит', 'визита', 'визитов')}
+              {capitalize(pluralWord(row.visits, 'визит', 'визита', 'визитов'))}
             </span>
           </div>
           <div className={'engquick__tile' + (row.overtimeMinutes > 0 ? ' engquick__tile--bad' : '')}>
             <span className="engquick__value">
               {row.overtimeMinutes > 0 ? hoursText(row.overtimeMinutes) : '0'}
             </span>
-            <span className="engquick__label">переработки</span>
+            <span className="engquick__label">Переработки</span>
           </div>
         </div>
       )}

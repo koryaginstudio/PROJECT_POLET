@@ -12473,19 +12473,28 @@ button.bars__btn:focus-visible {
 .engquick {
   display: flex;
   align-items: flex-end;
-  gap: var(--sp-4);
 }
 
 .engquick__tile {
   display: flex;
   flex-direction: column;
   gap: 1px;
+  padding: 0 var(--sp-3);
 }
 
-/* Часы крупнее — это по-прежнему первый ответ о смене, остальные два в той
-   же строке, но не наравне с ним. */
-.engquick__tile--main {
-  margin-right: 2px;
+.engquick__tile:first-child {
+  padding-left: 0;
+}
+
+.engquick__tile:last-child {
+  padding-right: 0;
+}
+
+/* Тонкая черта между числами: без неё три факта в одной строке читались
+   слитно, особенно когда «0» после «8» не даёт глазу зацепки, где кончилось
+   одно число и началось следующее. */
+.engquick__tile + .engquick__tile {
+  border-left: 1px solid var(--border-hairline);
 }
 
 .engquick__value {

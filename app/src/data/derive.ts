@@ -133,6 +133,12 @@ export const pct = (n: number) => `${dec(n)}`;
     `plural`, чтобы число перед ней можно было набрать жирным самим —
     склеить с уже готовым «8 визитов» второе число значило бы получить
     «8 8 визитов». */
+/** Первая буква прописной, остальное как есть: «визитов» → «Визитов». Не
+    трогает регистр остального слова — «переработки» не должно стать
+    «Переработки» с испорченным окончанием, если слово когда-нибудь придёт
+    уже смешанным по регистру. */
+export const capitalize = (text: string) => (text ? text[0].toUpperCase() + text.slice(1) : text);
+
 export function pluralWord(n: number, one: string, few: string, many: string) {
   const abs = Math.abs(n) % 100;
   const last = abs % 10;
