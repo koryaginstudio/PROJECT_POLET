@@ -253,9 +253,9 @@ export function EngineerCard({
             <dd>{hoursText(travelMinutes ?? row.travelMinutes)}</dd>
           </div>
           <div className="engmetrics__row">
-            <dt>Маршрутом</dt>
+            <dt>Маршрутов</dt>
             <span className="engmetrics__leader" aria-hidden="true" />
-            <dd>{row.routes} из {row.runs}</dd>
+            <dd>{row.routes}</dd>
           </div>
           <div className={'engmetrics__row' + (idle ? ' engmetrics__row--bad' : '')}>
             <dt>Без маршрута</dt>
