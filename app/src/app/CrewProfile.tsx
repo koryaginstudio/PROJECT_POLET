@@ -1,6 +1,7 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button } from '../ds/components/core/Button.jsx';
 import { Icon } from '../ds/components/core/Icon.jsx';
+import { SegmentedControl } from '../ds/components/forms/SegmentedControl.jsx';
 import type { EngineerRecord, Registry } from '../data/registry.ts';
 import { dec, hhmm, hoursText } from '../data/derive.ts';
 import { skillIcon, skillName, teamName, transportIcon, transportName } from '../data/dictionary.ts';
@@ -31,7 +32,19 @@ interface Props {
    что принадлежит человеку и не меняется от расчёта к расчёту: навыки,
    транспорт, участки. Ниже — то, что посчитано: смены, маршруты, заявки.
    Первое правят в карточке, второе не правят вовсе. */
+type Tab = 'shifts' | 'routes' | 'orders';
+
 export function CrewProfile({ crew, registry, onClose, onEdit, onTrack }: Props) {
+  /* Какая из трёх историй открыта. Сбрасывается на сменах, когда открывают
+     другого человека: вкладка, оставшаяся от предыдущего профиля, показала
+     бы чужой по смыслу разрез — пришли посмотреть на человека, а открылись
+     его заявки. */
+  const [tab, setTab] = useState<Tab>('shifts');
+
+  useEffect(() => {
+    if (crew) setTab('shifts');
+  }, [crew?.id]);
+
   useEffect(() => {
     if (!crew) return;
     const onKey = (event: KeyboardEvent) => event.key === 'Escape' && onClose();
@@ -136,81 +149,105 @@ export function CrewProfile({ crew, registry, onClose, onEdit, onTrack }: Props)
           </div>
         </div>
 
-        <div className="crewpro__cols">
-          <section className="crewpro__block">
-            <h3 className="crewpro__title">Навыки</h3>
-            <div className="skillrow">
-              {crew.skills.map((key) => (
-                <span key={key} className="skillchip">
-                  <Icon name={skillIcon(key)} size={13} />
-                  {skillName(key)}
-                </span>
-              ))}
-            </div>
-            <p className="crewpro__note">
-              Навык — это допуск: заявку он получит только по тому, чем владеет. Навыки
-              вычитаны из нарядов, которые он вёл.
-            </p>
-          </section>
-
-          <section className="crewpro__block">
-            <h3 className="crewpro__title">
-              Транспорт
-              <WhyMark text={transportWhy(crew.transport)} />
-            </h3>
-            {crew.transport ? (
-              <span className="crewpro__big">
-                <Icon name={transportIcon(crew.transport)} size={16} />
-                {transportName(crew.transport)}
-              </span>
-            ) : (
-              <span className="crewpro__muted">не указан</span>
-            )}
-          </section>
-        </div>
-
+        {/* Постоянные данные — одной панелью, а не четырьмя блоками подряд.
+            Навыки, транспорт, участки и привычные работы отвечают на один
+            вопрос — «кто он и что может», — и читают их вместе, одним
+            взглядом. Раздельными секциями с чертой между ними они читались
+            как четыре разные темы. */}
         <section className="crewpro__block">
-          <h3 className="crewpro__title">
-            Участки приписки
-            <span className="crewpro__count">{crew.posts.length}</span>
-          </h3>
-          <div className="crewpro__posts">
-            {crew.posts.map((post) => (
-              <div className="crewpro__post" key={post.zone}>
-                <span className="crewpro__post-zone">{post.zone}</span>
-                <span className="crewpro__post-line">
-                  Смена {hhmm(post.shiftStart)}–{hhmm(post.shiftEnd)}
-                </span>
-                {post.homeAddress && (
-                  <span className="crewpro__post-line crewpro__muted">
-                    Выезд: {post.homeAddress}
+          <h3 className="crewpro__title">Данные инженера</h3>
+
+          <div className="crewpro__grid">
+            <div className="crewpro__cell">
+              <span className="crewpro__label">Навыки</span>
+              <div className="skillrow">
+                {crew.skills.map((key) => (
+                  <span key={key} className="skillchip">
+                    <Icon name={skillIcon(key)} size={13} />
+                    {skillName(key)}
                   </span>
-                )}
+                ))}
               </div>
-            ))}
+              <p className="crewpro__note">
+                Навык — это допуск: заявку он получит только по тому, чем владеет.
+              </p>
+            </div>
+
+            <div className="crewpro__cell">
+              <span className="crewpro__label">
+                Транспорт
+                <WhyMark text={transportWhy(crew.transport)} />
+              </span>
+              {crew.transport ? (
+                <span className="crewpro__big">
+                  <Icon name={transportIcon(crew.transport)} size={16} />
+                  {transportName(crew.transport)}
+                </span>
+              ) : (
+                <span className="crewpro__muted">не указан</span>
+              )}
+            </div>
+
+            <div className="crewpro__cell crewpro__cell--wide">
+              <span className="crewpro__label">
+                Участки приписки
+                <span className="crewpro__count">{crew.posts.length}</span>
+              </span>
+              <div className="crewpro__posts">
+                {crew.posts.map((post) => (
+                  <div className="crewpro__post" key={post.zone}>
+                    <span className="crewpro__post-zone">{post.zone}</span>
+                    <span className="crewpro__post-line">
+                      Смена {hhmm(post.shiftStart)}–{hhmm(post.shiftEnd)}
+                    </span>
+                    {post.homeAddress && (
+                      <span className="crewpro__post-line crewpro__muted">
+                        Выезд: {post.homeAddress}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {byWork.length > 0 && (
+              <div className="crewpro__cell crewpro__cell--wide">
+                <span className="crewpro__label">Чаще всего выполняет</span>
+                <div className="crewpro__works">
+                  {byWork.slice(0, 8).map(([title, count]) => (
+                    <span className="crewpro__work" key={title}>
+                      <span className="crewpro__work-title">{title}</span>
+                      <span className="crewpro__work-count">{count}</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </section>
 
-        {byWork.length > 0 && (
-          <section className="crewpro__block">
-            <h3 className="crewpro__title">Что делал чаще всего</h3>
-            <div className="crewpro__works">
-              {byWork.slice(0, 8).map(([title, count]) => (
-                <span className="crewpro__work" key={title}>
-                  <span className="crewpro__work-title">{title}</span>
-                  <span className="crewpro__work-count">{count}</span>
-                </span>
-              ))}
-            </div>
-          </section>
-        )}
-
+        {/* История — тремя вкладками, а не тремя таблицами подряд. Данные
+            те же, но подряд они складывались в простыню на три экрана, где
+            заголовок очередной таблицы терялся между строками предыдущей.
+            Смотрят их по одной: вопрос «как он отработал смены» и вопрос
+            «какие заявки вёз» задают в разное время. */}
         <section className="crewpro__block">
-          <h3 className="crewpro__title">
-            Смены по расчётам
-            <span className="crewpro__count">{shifts.length}</span>
-          </h3>
-          {shifts.length === 0 ? (
+          <div className="crewpro__tabs">
+            <SegmentedControl
+              size="sm"
+              value={tab}
+              onChange={(value: string) => setTab(value as Tab)}
+              items={[
+                { value: 'shifts', label: `Смены · ${shifts.length}` },
+                { value: 'routes', label: `Маршруты · ${routes.length}` },
+                { value: 'orders', label: `Заявки · ${orders.length}` }
+              ]}
+            />
+          </div>
+
+          {tab === 'shifts' && (
+            <>
+{shifts.length === 0 ? (
             <p className="crewpro__muted">Ни в одном расчёте он ещё не участвовал.</p>
           ) : (
             <div className="tbl-wrap">
@@ -250,14 +287,12 @@ export function CrewProfile({ crew, registry, onClose, onEdit, onTrack }: Props)
               </table>
             </div>
           )}
-        </section>
+            </>
+          )}
 
-        <section className="crewpro__block">
-          <h3 className="crewpro__title">
-            Маршруты
-            <span className="crewpro__count">{routes.length}</span>
-          </h3>
-          {routes.length === 0 ? (
+          {tab === 'routes' && (
+            <>
+{routes.length === 0 ? (
             <p className="crewpro__muted">Маршрутов пока нет.</p>
           ) : (
             <div className="tbl-wrap">
@@ -297,14 +332,12 @@ export function CrewProfile({ crew, registry, onClose, onEdit, onTrack }: Props)
               </table>
             </div>
           )}
-        </section>
+            </>
+          )}
 
-        <section className="crewpro__block">
-          <h3 className="crewpro__title">
-            Заявки
-            <span className="crewpro__count">{orders.length}</span>
-          </h3>
-          {orders.length === 0 ? (
+          {tab === 'orders' && (
+            <>
+{orders.length === 0 ? (
             <p className="crewpro__muted">Заявок за ним пока не числится.</p>
           ) : (
             <div className="tbl-wrap">
@@ -337,6 +370,8 @@ export function CrewProfile({ crew, registry, onClose, onEdit, onTrack }: Props)
                 </tbody>
               </table>
             </div>
+          )}
+            </>
           )}
         </section>
       </div>

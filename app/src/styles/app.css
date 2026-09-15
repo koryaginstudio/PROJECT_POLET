@@ -12238,6 +12238,48 @@ button.bars__btn:focus-visible {
   border-top: 1px solid var(--border-hairline);
 }
 
+/* Постоянные данные — сеткой внутри одной панели. Двухколоночная: навыки и
+   транспорт узкие и встают рядом, участки с привычными работами занимают
+   строку целиком. */
+.crewpro__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px 20px;
+}
+
+.crewpro__cell {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* Занимает всю ширину сетки: у участков и видов работ содержимое само
+   раскладывается в несколько колонок, и делить его пополам незачем. */
+.crewpro__cell--wide {
+  grid-column: 1 / -1;
+}
+
+/* Подпись внутри панели — не заголовок раздела: раздел здесь один, а это
+   его части, и голосом заголовка они спорили бы с ним за внимание. */
+.crewpro__label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--ink-300);
+}
+
+/* Переключатель историй стоит на месте заголовка раздела: он и есть
+   заголовок — говорит, что сейчас показано. */
+.crewpro__tabs {
+  display: flex;
+  margin-bottom: 4px;
+}
+
 /* Число рядом с заголовком: сколько строк в таблице под ним. */
 .crewpro__count {
   padding: 1px 7px;
