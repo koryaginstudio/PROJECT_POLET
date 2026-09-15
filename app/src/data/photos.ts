@@ -102,11 +102,16 @@ export interface Faced {
     любом разделе и при любом отборе.
 
     Снимок достаётся тем, чей номер попал в длину списка снимков: номера идут
-    подряд с нуля, поэтому раздача выходит взаимно однозначной — двое одного
-    лица не получат. Остальным — свой знак. */
+    подряд, поэтому раздача выходит взаимно однозначной — двое одного лица не
+    получат. Остальным — свой знак.
+
+    Нумерация табельных начинается с единицы (`E001`), поэтому первый снимок
+    достаётся первому номеру, а не второму. */
 export function faceOf(engineer: Faced): string {
   const seat = seatOf(engineer.id);
-  if (seat !== null && seat < PHOTOS.length) return `/photos/${PHOTOS[seat]}`;
+  if (seat === null) return markFor(engineer.id, engineer.name);
+  const index = seat - 1;
+  if (index >= 0 && index < PHOTOS.length) return `/photos/${PHOTOS[index]}`;
   return markFor(engineer.id, engineer.name);
 }
 

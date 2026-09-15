@@ -228,3 +228,10 @@ const CREW_STATUS_NAMES: Record<string, string> = {
 
 export const crewStatusName = (key: string | null | undefined) =>
   key ? CREW_STATUS_NAMES[key] ?? key : '—';
+
+/** Название бригады без слова «Бригада»: оно стоит подписью поля.
+
+    Выгрузка заполнена по-разному — «Бригада Попов» на Востоке и просто
+    «Бахарев Андрей» в Центре. Снимаем приставку там, где она есть, и не
+    трогаем то, где её нет: подпись поля скажет слово один раз за обоих. */
+export const teamName = (team: string) => team.replace(/^Бригада\s+/i, '').trim() || team;

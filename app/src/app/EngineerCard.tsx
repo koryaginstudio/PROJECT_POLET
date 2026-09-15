@@ -2,6 +2,7 @@ import { Icon } from '../ds/components/core/Icon.jsx';
 import type { EngineerRecord } from '../data/registry.ts';
 import { dec, hhmm, hoursText } from '../data/derive.ts';
 import { shiftWhy, transportWhy } from '../data/rationale.ts';
+import { teamName } from '../data/dictionary.ts';
 import { WhyMark } from './WhyMark.tsx';
 import {
   crewStatusName,
@@ -13,6 +14,11 @@ import {
 
 interface Props {
   row: EngineerRecord;
+  /** Какой по счёту в списке и сколько всего. Список отбирают и
+      переупорядочивают, поэтому номер приходит снаружи, а не считается
+      внутри: карточка своего места в ряду не знает. */
+  seat?: number;
+  total?: number;
   /** Отработано за выбранный срок, минуты: работа на объектах плюс дорога.
       Считает база — она одна знает, какой срок сейчас выбран. Без неё
       карточка показывает занятость, как показывала раньше. */
@@ -48,6 +54,8 @@ interface Props {
    задаёт: цифры смены стоят рядом и сказаны словами. */
 export function EngineerCard({
   row,
+  seat,
+  total,
   photo,
   dense = false,
   skill = null,
@@ -81,6 +89,14 @@ export function EngineerCard({
             </span>
           )}
         </span>
+        {/* Место в списке: «7 из 34». Без него непонятно ни сколько людей в
+            базе, ни докуда доскроллили — а список длинный. */}
+        {seat !== undefined && total !== undefined && (
+          <span className="engcard__seat">
+            {seat}
+            <span className="engcard__seat-of">из {total}</span>
+          </span>
+        )}
       </div>
 
       {/* Под именем — смена и табельный номер: то же место, где у расчёта
@@ -89,14 +105,21 @@ export function EngineerCard({
         <Icon name="clock" size={12} />
         {hhmm(row.shiftStart)}–{hhmm(row.shiftEnd)}
         {!dense && <WhyMark text={shiftWhy} />}
-        {!dense && <span className="engcard__id">{row.id}</span>}
+        {!dense && (
+          <span className="engcard__id">
+            id: {row.id}
+          </span>
+        )}
       </span>
 
-      {/* Откуда выезжает — на месте заметки расчёта, и место под неё держится
-          всегда: иначе карточка без адреса съезжает вверх и весь ряд встаёт
-          на разной высоте. */}
-      <p className="runcard__note" title={row.homeAddress || undefined} aria-hidden={!row.homeAddress}>
-        {row.homeAddress}
+      {/* На месте заметки расчёта — участки приписки. Раньше здесь стоял
+          адрес офиса, и он повторялся во всех карточках зоны слово в слово:
+          выезжают-то все из одного места. Участок различает людей, адрес —
+          нет, поэтому адрес переехал вниз, к участку, которому принадлежит.
+          Место под строку держится всегда: иначе ряд встаёт на разной
+          высоте. */}
+      <p className="runcard__note" aria-hidden={row.posts.length === 0}>
+        {row.posts.map((post) => post.zone).join(' · ')}
       </p>
 
       {!dense && (
@@ -187,22 +210,29 @@ export function EngineerCard({
             </div>
           )}
           {row.team && (
-            /* «В выгрузке», а не «Бригада»: в двух зонах из трёх значение и
-               начинается со слова «Бригада», и подпись задваивала его —
-               «Бригада · Бригада Матвеев» читалось как иерархия, которой в
-               данных нет. Здесь показано ровно то, чем исполнитель назван в
-               учётной системе. */
+            /* Слово «Бригада» стоит подписью и снято со значения: в двух
+               зонах из трёх выгрузка пишет «Бригада Попов», и вместе с
+               подписью выходило «Бригада · Бригада Попов». */
             <div className="engfacts__row">
-              <dt>В выгрузке</dt>
-              <dd>{row.team}</dd>
+              <dt>Бригада</dt>
+              <dd>{teamName(row.team)}</dd>
             </div>
           )}
-          {row.zone && (
-            <div className="engfacts__row">
+          {row.posts.map((post) => (
+            /* Участок вместе с адресом офиса: адрес — свойство участка, а не
+               человека, и в своей строке он перестаёт выглядеть личным.
+               Строк столько, сколько участков: тот, кто работает в двух
+               зонах, выезжает из двух разных офисов. */
+            <div className="engfacts__row" key={post.zone}>
               <dt>Участок</dt>
-              <dd>{row.zone}</dd>
+              <dd className="engfacts__stack">
+                <span>{post.zone}</span>
+                {post.homeAddress && (
+                  <span className="engfacts__sub">выезд: {post.homeAddress}</span>
+                )}
+              </dd>
             </div>
-          )}
+          ))}
           {row.phone && (
             <div className="engfacts__row">
               <dt>Телефон</dt>

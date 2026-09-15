@@ -175,8 +175,11 @@ export interface EngineerRecord {
   transport: string | null;
   /** Бригада, как она названа в выгрузке. */
   team: string | null;
-  /** Участок приписки: «Восток», «Юго-Восток», «Центр». */
+  /** Участок приписки: «Восток», «Юго-Восток», «Центр». Первый из `posts`. */
   zone: string | null;
+  /** Куда человек приписан и откуда выезжает. Обычно один; у того, кто
+      работает в двух зонах, — два, и офисы в них разные. */
+  posts: { zone: string; homeAddress: string | null }[];
   phone: string | null;
   /** `on_shift` | `off_shift` | `unavailable`. */
   status: string | null;
@@ -541,12 +544,25 @@ function blank(map: Map<string, EngineerEntry>, engineer: Engineer): EngineerEnt
     zone: engineer.zone ?? null,
     phone: engineer.phone ?? null,
     status: engineer.status ?? null,
+    posts: [],
     byRun: [],
     skillSet: new Set<string>(engineer.skills),
     occupancies: []
   };
   map.set(engineer.id, entry);
   return entry;
+}
+
+/** Запоминает участок и офис. Повтор не добавляется: один и тот же человек
+    приходит из каждого расчёта своей зоны, а приписка у него от этого не
+    удваивается. */
+function notePost(entry: EngineerEntry, engineer: Engineer): void {
+  if (!engineer.zone) return;
+  const known = entry.posts.some(
+    (post) => post.zone === engineer.zone && post.homeAddress === engineer.home_address
+  );
+  if (known) return;
+  entry.posts.push({ zone: engineer.zone, homeAddress: engineer.home_address });
 }
 
 function buildEngineers(
@@ -558,12 +574,13 @@ function buildEngineers(
   /* Сначала весь штат, потом выработка. Порядок здесь смысловой: человек
      числится в компании независимо от того, попал ли он хоть в один расчёт,
      и база обязана показать его с нулями, а не спрятать. */
-  for (const engineer of roster) blank(map, engineer);
+  for (const engineer of roster) notePost(blank(map, engineer), engineer);
 
   for (const { run, plan } of plans) {
     const routeByEngineer = new Map(plan.routes.map((r) => [r.engineer_id, r]));
     for (const engineer of plan.engineers) {
       const entry = blank(map, engineer);
+      notePost(entry, engineer);
       entry.runs += 1;
       /* Смена берётся из последнего прогона: справочник показывает то,
          каким инженер числится сейчас, а не каким был в первом расчёте. */
@@ -626,7 +643,8 @@ function buildEngineers(
       homeAddress: entry.homeAddress,
       transport: entry.transport,
       team: entry.team,
-      zone: entry.zone,
+      zone: entry.posts[0]?.zone ?? entry.zone,
+      posts: entry.posts,
       phone: entry.phone,
       status: entry.status,
       byRun: entry.byRun

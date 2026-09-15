@@ -428,7 +428,7 @@ export function loadZone(zone: SourceId): Promise<ZoneData> {
   return reading;
 }
 
-/** Весь штат компании — инженеры всех зон, каждый по одному разу.
+/** Весь штат компании — записи инженеров из всех зон, как они есть в файлах.
 
     Нужен базам данных. База — это справочник хозяйства, а не отчёт по
     расчётам: человек числится в штате независимо от того, посчитали сегодня
@@ -436,24 +436,14 @@ export function loadZone(zone: SourceId): Promise<ZoneData> {
     человек там, где их тридцать четыре, — и молча меняла размер штата от
     того, что диспетчер завёл ещё один расчёт.
 
-    Сводятся по табельному номеру: инженер, который работает в двух зонах, —
-    один человек. Навыки при этом складываются: в одной зоне он за день
-    делал одно, в другой другое, а умеет и то и другое. */
+    Записи не сводятся здесь, и это намеренно: инженер, который работает в
+    двух зонах, — один человек, но приписан он к двум участкам и выезжает из
+    двух разных офисов. Сведи его тут — и одна из точек выезда потеряется.
+    Сводит их справочник, и он же складывает то, что у человека одно, с тем,
+    что у него своё на каждом участке. */
 export async function loadRoster(): Promise<Engineer[]> {
   const zones = await Promise.all(SOURCES.map((zone) => loadZone(zone).catch(() => null)));
-  const byId = new Map<string, Engineer>();
-  for (const data of zones) {
-    if (!data) continue;
-    for (const engineer of data.engineers) {
-      const known = byId.get(engineer.id);
-      if (!known) {
-        byId.set(engineer.id, engineer);
-        continue;
-      }
-      known.skills = [...new Set([...known.skills, ...engineer.skills])];
-    }
-  }
-  return [...byId.values()];
+  return zones.flatMap((data) => data?.engineers ?? []);
 }
 
 let dictionaries: Promise<Dictionaries | null> | null = null;

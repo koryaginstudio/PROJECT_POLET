@@ -3,7 +3,14 @@ import { Icon } from '../../ds/components/core/Icon.jsx';
 import { SegmentedControl } from '../../ds/components/forms/SegmentedControl.jsx';
 import type { EngineerRecord, Registry } from '../../data/registry.ts';
 import { dec, hhmm, hoursText } from '../../data/derive.ts';
-import { crewStatusName, skillIcon, skillName, transportIcon, transportName } from '../../data/dictionary.ts';
+import {
+  crewStatusName,
+  skillIcon,
+  skillName,
+  teamName,
+  transportIcon,
+  transportName
+} from '../../data/dictionary.ts';
 import { photosFor } from '../../data/photos.ts';
 import { EngineerCard } from '../../app/EngineerCard.tsx';
 import { useWidgetBoard, WidgetPeriod, withinPeriod } from '../../app/DbWidgets.tsx';
@@ -645,7 +652,7 @@ export function DbEngineersScreen({ registry, mode }: Props) {
               <thead>
                 <tr>
                   <th>Инженер</th>
-                  <th>В выгрузке</th>
+                  <th>Бригада</th>
                   <th>Участок</th>
                   <th>Выезжает из</th>
                   <th>Навыки</th>
@@ -678,8 +685,14 @@ export function DbEngineersScreen({ registry, mode }: Props) {
                         </span>
                       </span>
                     </td>
-                    <td>{engineer.team ?? <span className="tbl__muted">—</span>}</td>
-                    <td>{engineer.zone ?? <span className="tbl__muted">—</span>}</td>
+                    <td>{engineer.team ? teamName(engineer.team) : <span className="tbl__muted">—</span>}</td>
+                    <td>
+                      {engineer.posts.length > 0 ? (
+                        engineer.posts.map((post) => post.zone).join(' · ')
+                      ) : (
+                        <span className="tbl__muted">—</span>
+                      )}
+                    </td>
                     <td>{engineer.homeAddress ?? <span className="tbl__muted">Не указан</span>}</td>
                     <td>
                       <span className="tbl__tags">
@@ -750,12 +763,14 @@ export function DbEngineersScreen({ registry, mode }: Props) {
           className={'runs__grid' + (dense ? ' runs__grid--dense' : '')}
           style={{ '--per-row': perRow } as React.CSSProperties}
         >
-          {rows.map((engineer) => {
+          {rows.map((engineer, index) => {
             const worked = workedBy.get(engineer.id) ?? { work: 0, travel: 0 };
             return (
               <EngineerCard
                 key={engineer.id}
                 row={engineer}
+                seat={index + 1}
+                total={rows.length}
                 photo={photos.get(engineer.id)}
                 dense={dense}
                 skill={skill}

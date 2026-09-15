@@ -11924,6 +11924,38 @@ button.bars__btn:focus-visible {
   color: var(--ink-300);
 }
 
+/* Место в списке: «7 из 34». Стоит там же, где у расчёта стоит его пометка,
+   и читается так же — сначала число, потом из скольких. */
+.engcard__seat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.engcard__seat-of {
+  font-size: 10px;
+  font-weight: var(--fw-regular);
+  color: var(--ink-300);
+}
+
+/* Участок с адресом офиса: название сверху, адрес под ним мельче. Адрес —
+   свойство участка, и в подчинённой строке он таким и читается. */
+.engfacts__stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+}
+
+.engfacts__sub {
+  color: var(--ink-300);
+}
+
 /* Значок «откуда это взялось» и его объяснение.
 
    Стоит у полей, которых в выгрузке не было и которые достроены сборкой.

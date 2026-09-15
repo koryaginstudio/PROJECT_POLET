@@ -583,7 +583,7 @@ def build_engineers(rows: list[Row], zone: str, office: tuple[float, float] | No
     for crew in sorted(crews.values(), key=lambda c: c.name):
         known = crew_ids.get(crew.team)
         if known is None:
-            known = f"E{len(crew_ids):02d}"
+            known = f"E{len(crew_ids) + 1:03d}"
             crew_ids[crew.team] = known
         crew.id = known
         number = int(known[1:])
