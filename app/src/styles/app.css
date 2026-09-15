@@ -12761,6 +12761,24 @@ button.bars__btn:focus-visible {
   gap: 4px;
 }
 
+/* Номера расчётов — отдельной строкой под навыками, тем же рядом чипов, но
+   с подписью впереди: без неё голые «R001 R002» читались бы как ещё одни
+   навыки, а не как ссылки на конкретные прогоны. */
+.engcard__runs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-hairline);
+}
+
+.engcard__runs-label {
+  font-size: 11px;
+  color: var(--ink-300);
+}
+
 .chip--sm {
   height: 22px;
   padding: 0 8px;

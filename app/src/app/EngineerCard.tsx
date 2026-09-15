@@ -69,6 +69,9 @@ export function EngineerCard({
       (post) => post.shiftStart === row.posts[0].shiftStart && post.shiftEnd === row.posts[0].shiftEnd
     );
   const loose = row.occupancyMean > 0 && row.occupancyMean < 0.6;
+  /* Расчёты, где у него был маршрут — от свежего к старому: тот, который
+     считали последним, интереснее того, что случился месяц назад. */
+  const routedRuns = [...row.byRun].reverse().filter((shift) => shift.routed);
 
   return (
     /* Вся карточка — вход в профиль. Кнопка правки и значки внутри неё живут
@@ -340,6 +343,24 @@ export function EngineerCard({
             <span key={key} className={'chip chip--sm' + (skill === key ? ' chip--on' : '')}>
               <Icon name={skillIcon(key)} size={12} />
               {skillName(key)}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Номера расчётов, в которых у него был маршрут — внизу, отдельной
+          строкой от навыков: те про то, чем он владеет вообще, эти — про
+          конкретные прогоны, к которым он привязан. Прогон без маршрута
+          сюда не попадает: «маршруты» — это те номера, где он реально
+          выезжал, а не весь список смен. */}
+      {!dense && routedRuns.length > 0 && (
+        <div className="engcard__runs">
+          <span className="engcard__runs-label">
+            {pluralWord(routedRuns.length, 'Расчёт', 'Расчёта', 'Расчётов')}:
+          </span>
+          {routedRuns.map((shift) => (
+            <span key={shift.runId} className="chip chip--sm">
+              {shift.code}
             </span>
           ))}
         </div>
