@@ -211,8 +211,13 @@ export function EngineerCard({
             </span>
           </div>
           <div className={'engquick__tile' + (row.overtimeMinutes > 0 ? ' engquick__tile--bad' : '')}>
+            {/* Часы всегда десятичной дробью, «1,3 ч», а не «1 ч 20 мин»:
+                это компактная строка из трёх чисел, а не таблица, и здесь
+                важнее единообразие с двумя соседними числами, чем формат
+                часов, который выбран в настройках сервиса. */}
             <span className="engquick__value">
-              {row.overtimeMinutes > 0 ? hoursText(row.overtimeMinutes) : '0'}
+              {dec(row.overtimeMinutes / 60)}
+              <span className="engquick__unit">ч</span>
             </span>
             <span className="engquick__label">Переработки</span>
           </div>
