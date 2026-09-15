@@ -14,7 +14,7 @@ import type { Selection } from './selection.ts';
 import { OVERVIEW } from './selection.ts';
 import { buildCatalogue, trailToPage } from './catalogue.ts';
 import type { CatalogNode } from './catalogue.ts';
-import { photosFor } from '../data/photos.ts';
+import { faceOf } from '../data/photos.ts';
 
 interface Props {
   day: Day;
@@ -112,7 +112,7 @@ function SelectedCard({ day, view, selection, onSelect }: Props) {
           <div className="detail__who">
             <img
               className="detail__face"
-              src={photosFor(view.loads.map((one) => one.engineer.id)).get(engineer.id)}
+              src={faceOf(engineer)}
               alt=""
               loading="lazy"
             />

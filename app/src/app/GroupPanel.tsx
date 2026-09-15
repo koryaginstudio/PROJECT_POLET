@@ -342,7 +342,7 @@ export function GroupPanel({ day, groupId, shape: ready, view, cut, onSelect, on
   const shape = ready ?? (groupId ? shapeOf(groupId, view, cut, day) : null);
   /* Снимки раздаются на весь штат смены разом: раздача считается из всего
      списка табельных, и по одному человеку её не получить. */
-  const photos = photosFor(view.loads.map((load) => load.engineer.id));
+  const photos = photosFor(view.loads.map((load) => load.engineer));
   const photoOf = (id: string) => photos.get(id);
   /* Разделы свёрнуты по умолчанию: панель открывается коротким оглавлением, а
      не простынёй из сотни строк — сначала видно, что внутри и сколько чего, и

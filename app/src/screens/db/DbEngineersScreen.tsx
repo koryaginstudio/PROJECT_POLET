@@ -77,7 +77,7 @@ export function DbEngineersScreen({ registry, mode }: Props) {
 
   /* Снимки раздаются на весь штат сразу, а не на выборку: иначе отбор по
      навыку менял бы людям лица. */
-  const photos = useMemo(() => photosFor(all.map((row) => row.id)), [all]);
+  const photos = useMemo(() => photosFor(all), [all]);
 
   const skills = useMemo(() => {
     const set = new Set<string>();
