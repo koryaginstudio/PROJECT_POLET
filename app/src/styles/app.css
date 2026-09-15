@@ -12457,6 +12457,11 @@ button.bars__btn:focus-visible {
 /* Номер карточки в списке: «#004». Стоит первым в строке под именем — им
    карточку называют вслух и по нему её находят глазами в длинном ряду. */
 .engcard__seat {
+  flex: none;
+  /* Тем же приёмом, что и у бейджа id раньше на этом месте: прижат к верху,
+     а не к середине двухстрочного имени. */
+  align-self: flex-start;
+  font-size: 11px;
   font-weight: var(--fw-semibold);
   font-variant-numeric: tabular-nums;
   color: var(--text-secondary);
