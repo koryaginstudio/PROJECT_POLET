@@ -796,6 +796,7 @@ export function DbEngineersScreen({ registry, mode, onChanged }: Props) {
 
       <CrewEditDialog
         crew={editing}
+        taken={all.map((one) => one.id)}
         onClose={() => setEditing(null)}
         onSave={(patch) => {
           if (!editing) return;

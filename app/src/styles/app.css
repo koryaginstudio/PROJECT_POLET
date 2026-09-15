@@ -9007,16 +9007,20 @@ button.bars__btn:focus-visible {
   transition: var(--t-control);
 }
 
+/* Тихое удаление: заливки нет, но обводка и подпись тревожные с самого
+   начала. Серой кнопка быть не должна — по ней узнают, что действие
+   опасное, ещё до того, как наведут. */
 .runedit__danger--quiet {
-  border-color: var(--border-subtle);
+  border-color: var(--danger-500);
   background: var(--white);
   font-weight: var(--fw-medium);
-  color: var(--text-secondary);
+  color: var(--danger-600);
 }
 
 .runedit__danger--quiet:hover {
-  border-color: var(--danger-500);
-  color: var(--danger-600);
+  border-color: var(--danger-600);
+  background: var(--danger-500);
+  color: var(--white);
 }
 
 .runedit__danger:focus-visible,
@@ -12011,8 +12015,11 @@ button.bars__btn:focus-visible {
   white-space: nowrap;
 }
 
+/* Фирменный оранжевый — первый цвет брендового градиента, тот же, которым
+   залита кнопка расчёта. Не `--text-accent`: тот затемнён под мелкий текст и
+   рядом с фирменным читается как выцветший. */
 .pname__surname {
-  color: var(--text-accent);
+  color: var(--accent-500);
 }
 
 .pname__patronymic {
@@ -12020,6 +12027,24 @@ button.bars__btn:focus-visible {
      перенесённая на вторую строку, и набрано оно так же. Выделена только
      фамилия; всё остальное в имени равно себе. */
   letter-spacing: 0;
+}
+
+/* Правка карточки: участок стоит отдельным блоком со своей чертой — полей у
+   него четыре, и без разделения они сливались с телефоном и навыками. */
+.runedit__post {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--r-control);
+}
+
+/* Что не так с полем. Мелким и тревожным, под самим полем: ответ должен
+   стоять там же, где вопрос. */
+.runedit__wrong {
+  font-size: 11px;
+  color: var(--danger-600);
 }
 
 /* Номер карточки в списке: «#004». Стоит первым в строке под именем — им
@@ -12184,7 +12209,10 @@ button.bars__btn:focus-visible {
 
 .engfacts__row {
   display: grid;
-  grid-template-columns: 74px 1fr;
+  /* Колонка подписи узкая: подписи здесь короткие, а значения — нет.
+     «Общественный транспорт» и московский адрес переносятся по словам, и
+     каждый отданный подписи пиксель добавляет им лишнюю строку. */
+  grid-template-columns: 62px 1fr;
   gap: 8px;
   align-items: baseline;
 }
@@ -12193,9 +12221,17 @@ button.bars__btn:focus-visible {
   color: var(--ink-300);
 }
 
+/* Значок не сжимается и стоит на первой строке значения. */
+.engfacts dd > svg {
+  flex: none;
+  margin-top: 1px;
+}
+
 .engfacts dd {
   display: flex;
-  align-items: center;
+  /* По верху, а не по центру: значение в две строки — обычное дело, и
+     значок при выравнивании по центру уезжал к середине абзаца. */
+  align-items: flex-start;
   gap: 4px;
   margin: 0;
   color: var(--text-secondary);

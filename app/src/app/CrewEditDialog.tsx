@@ -11,17 +11,21 @@ interface Props {
   /** Кого правят. Пусто — окна нет. */
   crew: EngineerRecord | null;
   onClose: () => void;
+  /** Табельные, уже занятые другими: новый номер не должен свести двух
+      человек в одного. */
+  taken: string[];
   onSave: (patch: CrewPatch) => void;
   onDelete: () => void;
 }
 
 /* Правка карточки инженера.
 
-   Правится то, что принадлежит человеку: имя, телефон, транспорт, навыки,
-   состояние на день и часы смены. Не правится то, что принадлежит не ему:
-   табельный номер — им человека сводят между расчётами, — участок и адрес
-   офиса: они приходят из дня, а не из карточки сотрудника. Про это в окне
-   сказано прямо, а не оставлено на догадку.
+   Правится всё: табельный номер, имя, телефон, транспорт, состояние, навыки,
+   участки с адресами выезда и сменами.
+
+   Смена стоит внутри участка, а не в общем списке полей. Это не оформление:
+   график считается по нарядам дня на конкретном участке, и у того, кто
+   работает на двух, смены разные — одно поле на человека переписало бы обе.
 
    Правка ложится на данные, а не на карточку: поправленный транспорт меняет
    и то, какие заявки человек возьмёт в следующем расчёте. Иначе в базе было
@@ -45,14 +49,24 @@ const toMinutes = (value: string) => {
   return Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : null;
 };
 
-export function CrewEditDialog({ crew, onClose, onSave, onDelete }: Props) {
+interface PostDraft {
+  /** Название участка, под которым правка ляжет на данные. Не меняется даже
+      когда участок переименовали: в данных он остался прежним. */
+  source: string;
+  zone: string;
+  home: string;
+  from: string;
+  to: string;
+}
+
+export function CrewEditDialog({ crew, taken, onClose, onSave, onDelete }: Props) {
+  const [id, setId] = useState('');
+  const [posts, setPosts] = useState<PostDraft[]>([]);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [transport, setTransport] = useState('car');
   const [status, setStatus] = useState('on_shift');
   const [skills, setSkills] = useState<string[]>([]);
-  const [from, setFrom] = useState('');
-  const [to, setTo] = useState('');
   const [confirming, setConfirming] = useState(false);
 
   /* Поля наполняются при каждом открытии: окно одно на весь штат, и
@@ -64,8 +78,16 @@ export function CrewEditDialog({ crew, onClose, onSave, onDelete }: Props) {
     setTransport(crew.transport ?? 'car');
     setStatus(crew.status ?? 'on_shift');
     setSkills([...crew.skills]);
-    setFrom(hhmm(crew.shiftStart));
-    setTo(hhmm(crew.shiftEnd));
+    setId(crew.id);
+    setPosts(
+      crew.posts.map((post) => ({
+        source: post.zone,
+        zone: post.zone,
+        home: post.homeAddress ?? '',
+        from: hhmm(post.shiftStart),
+        to: hhmm(post.shiftEnd)
+      }))
+    );
     setConfirming(false);
   }, [crew]);
 
@@ -78,24 +100,43 @@ export function CrewEditDialog({ crew, onClose, onSave, onDelete }: Props) {
 
   if (!crew) return null;
 
-  const start = toMinutes(from);
-  const end = toMinutes(to);
-  /* Человек без имени и без единого навыка — не запись, а дыра в справочнике:
-     по имени его находят, по навыку он получает работу. Смена, кончающаяся
-     раньше, чем началась, тоже не смена. */
+  const patchPost = (index: number, patch: Partial<PostDraft>) =>
+    setPosts((was) => was.map((one, at) => (at === index ? { ...one, ...patch } : one)));
+
+  /* Человек без имени, без номера и без единого навыка — не запись, а дыра в
+     справочнике: по имени его находят, по номеру сводят между расчётами, по
+     навыку он получает работу. Смена, кончающаяся раньше, чем началась, тоже
+     не смена. Номер, занятый другим, свёл бы двух людей в одного. */
+  const trimmedId = id.trim();
+  const idBusy = trimmedId !== crew.id && taken.includes(trimmedId);
+  const shiftsOk = posts.every((post) => {
+    const start = toMinutes(post.from);
+    const end = toMinutes(post.to);
+    return start !== null && end !== null && end > start;
+  });
   const valid =
-    name.trim().length > 0 && skills.length > 0 && start !== null && end !== null && end > start;
+    name.trim().length > 0 && trimmedId.length > 0 && !idBusy && skills.length > 0 && shiftsOk;
 
   const save = () => {
     if (!valid) return;
     onSave({
+      id: trimmedId,
       name: name.trim(),
       phone: phone.trim() || null,
       transport,
       status,
       skills,
-      shift_start: start as number,
-      shift_end: end as number
+      posts: Object.fromEntries(
+        posts.map((post) => [
+          post.source,
+          {
+            zone: post.zone.trim() || post.source,
+            home_address: post.home.trim() || null,
+            shift_start: toMinutes(post.from) as number,
+            shift_end: toMinutes(post.to) as number
+          }
+        ])
+      )
     });
   };
 
@@ -114,22 +155,28 @@ export function CrewEditDialog({ crew, onClose, onSave, onDelete }: Props) {
           </button>
         </div>
 
-        <p className="runedit__lede">
-          Правится то, что принадлежит человеку. Табельный номер {crew.id}, участок и адрес
-          выезда правке не подлежат: номером человека сводят между расчётами, а участок с офисом
-          приходят из дня, а не из карточки. Правка учитывается и в следующем расчёте — например,
-          сменив транспорт, вы меняете и то, какие заявки он сможет взять.
-        </p>
+        <div className="runedit__pair">
+          <label className="runedit__field">
+            <span className="runedit__label">Фамилия, имя и отчество</span>
+            <input
+              className="runedit__input"
+              value={name}
+              onChange={(event) => setName(event.currentTarget.value)}
+              placeholder="Иванов Иван Иванович"
+            />
+          </label>
 
-        <label className="runedit__field">
-          <span className="runedit__label">Фамилия, имя и отчество</span>
-          <input
-            className="runedit__input"
-            value={name}
-            onChange={(event) => setName(event.currentTarget.value)}
-            placeholder="Иванов Иван Иванович"
-          />
-        </label>
+          <label className="runedit__field">
+            <span className="runedit__label">Табельный номер</span>
+            <input
+              className="runedit__input"
+              value={id}
+              onChange={(event) => setId(event.currentTarget.value.trim())}
+              placeholder="E001"
+            />
+            {idBusy && <span className="runedit__wrong">Такой номер уже занят</span>}
+          </label>
+        </div>
 
         <div className="runedit__pair">
           <label className="runedit__field">
@@ -153,28 +200,6 @@ export function CrewEditDialog({ crew, onClose, onSave, onDelete }: Props) {
           </label>
         </div>
 
-        <div className="runedit__pair">
-          <label className="runedit__field">
-            <span className="runedit__label">Смена с</span>
-            <input
-              className="runedit__input"
-              type="time"
-              value={from}
-              onChange={(event) => setFrom(event.currentTarget.value)}
-            />
-          </label>
-
-          <label className="runedit__field">
-            <span className="runedit__label">Смена до</span>
-            <input
-              className="runedit__input"
-              type="time"
-              value={to}
-              onChange={(event) => setTo(event.currentTarget.value)}
-            />
-          </label>
-        </div>
-
         <label className="runedit__field">
           <span className="runedit__label">Состояние на день</span>
           <Select
@@ -184,6 +209,59 @@ export function CrewEditDialog({ crew, onClose, onSave, onDelete }: Props) {
             onChange={(event) => setStatus(event.currentTarget.value)}
           />
         </label>
+
+        {/* Участки со сменами. Смена стоит здесь, а не в общем списке полей,
+            потому что она принадлежит участку: график считается по нарядам
+            дня, и у того, кто работает на двух участках, смены разные. */}
+        {posts.map((post, index) => (
+          <div className="runedit__post" key={post.source}>
+            <div className="runedit__pair">
+              <label className="runedit__field">
+                <span className="runedit__label">
+                  {posts.length > 1 ? `Участок ${index + 1}` : 'Участок'}
+                </span>
+                <input
+                  className="runedit__input"
+                  value={post.zone}
+                  onChange={(event) => patchPost(index, { zone: event.currentTarget.value })}
+                  placeholder="Восток"
+                />
+              </label>
+
+              <label className="runedit__field">
+                <span className="runedit__label">Адрес выезда</span>
+                <input
+                  className="runedit__input"
+                  value={post.home}
+                  onChange={(event) => patchPost(index, { home: event.currentTarget.value })}
+                  placeholder="Москва, улица…"
+                />
+              </label>
+            </div>
+
+            <div className="runedit__pair">
+              <label className="runedit__field">
+                <span className="runedit__label">Смена с</span>
+                <input
+                  className="runedit__input"
+                  type="time"
+                  value={post.from}
+                  onChange={(event) => patchPost(index, { from: event.currentTarget.value })}
+                />
+              </label>
+
+              <label className="runedit__field">
+                <span className="runedit__label">Смена до</span>
+                <input
+                  className="runedit__input"
+                  type="time"
+                  value={post.to}
+                  onChange={(event) => patchPost(index, { to: event.currentTarget.value })}
+                />
+              </label>
+            </div>
+          </div>
+        ))}
 
         <div className="runedit__field">
           <span className="runedit__label">Навыки</span>

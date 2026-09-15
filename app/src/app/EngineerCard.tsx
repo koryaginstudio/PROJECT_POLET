@@ -239,12 +239,10 @@ export function EngineerCard({
               <dd className="engfacts__stack">
                 <span>
                   {post.zone}
-                  {!sameShift && (
-                    <span className="engfacts__shift">
-                      {' '}
-                      {hhmm(post.shiftStart)}–{hhmm(post.shiftEnd)}
-                    </span>
-                  )}
+                  <span className="engfacts__shift">
+                    {' '}
+                    ({hhmm(post.shiftStart)}–{hhmm(post.shiftEnd)})
+                  </span>
                 </span>
                 {post.homeAddress && (
                   <span className="engfacts__sub">выезд: {post.homeAddress}</span>
