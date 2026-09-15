@@ -12164,13 +12164,29 @@ button.bars__btn:focus-visible {
 
 /* Ряд чисел. Не сетка в четыре колонки: чисел шесть, и на узком окне они
    должны переноситься, а не сжиматься до нечитаемого. */
+/* Шесть чисел — ровно по три или по шесть в ряд, а не «сколько влезет».
+   Автоподбор при широком окне оставлял пять в первом ряду и шестое одиноко
+   во втором: ряд читался как сломанный, хотя числа просто не поделились
+   нацело. */
 .crewpro__stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 14px;
   padding: 14px;
   border-radius: var(--r-control);
   background: var(--ink-50);
+}
+
+@media (min-width: 600px) {
+  .crewpro__stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1000px) {
+  .crewpro__stats {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
 }
 
 .crewpro__stat {
@@ -12241,10 +12257,19 @@ button.bars__btn:focus-visible {
 /* Постоянные данные — сеткой внутри одной панели. Двухколоночная: навыки и
    транспорт узкие и встают рядом, участки с привычными работами занимают
    строку целиком. */
+/* Навыки шире транспорта вдвое: у навыков два-три чипа в строку, у
+   транспорта одно слово. Равные половины оставляли справа от «Велосипеда»
+   пустую половину строки, а навыки в это время переносились по одному. */
 .crewpro__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px 20px;
+}
+
+@media (min-width: 760px) {
+  .crewpro__grid {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  }
 }
 
 .crewpro__cell {
