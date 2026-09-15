@@ -1,7 +1,7 @@
 import { Icon } from '../ds/components/core/Icon.jsx';
 import type { EngineerRecord } from '../data/registry.ts';
 import { capitalize, dec, hhmm, hoursText, pluralWord } from '../data/derive.ts';
-import { shiftWhy, transportWhy } from '../data/rationale.ts';
+import { transportWhy } from '../data/rationale.ts';
 import { teamName } from '../data/dictionary.ts';
 import { WhyMark } from './WhyMark.tsx';
 import { PersonName } from './PersonName.tsx';
@@ -139,7 +139,6 @@ export function EngineerCard({
             расходятся, шапка говорит об этом, а сами смены стоят у своих
             участков ниже. */}
         {sameShift ? `${hhmm(row.shiftStart)}–${hhmm(row.shiftEnd)}` : 'смена по участкам'}
-        {!dense && <WhyMark text={shiftWhy} />}
       </span>
 
       {!dense && (
@@ -189,19 +188,19 @@ export function EngineerCard({
           <div className="engquick__tile engquick__tile--main">
             {workedMinutes === undefined ? (
               <>
-                <span className="engquick__value engquick__value--lg">
+                <span className="engquick__value">
                   {dec(row.occupancyMean * 100)}
                   <span className="engquick__unit">%</span>
                 </span>
-                <span className="engquick__label">Занятость маршрута</span>
+                <span className="engquick__label">Занятость</span>
               </>
             ) : (
               <>
-                <span className="engquick__value engquick__value--lg">
+                <span className="engquick__value">
                   {dec(workedMinutes / 60)}
                   <span className="engquick__unit">ч</span>
                 </span>
-                <span className="engquick__label">Рабочих часов</span>
+                <span className="engquick__label">Часы</span>
               </>
             )}
           </div>

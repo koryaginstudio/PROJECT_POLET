@@ -11936,12 +11936,17 @@ button.bars__btn:focus-visible {
 /* Фамилия набрана тем же, чем номер расчёта, но без разрядки: номер — код из
    пяти знаков, фамилия — слово, и разрядка его растягивает. Длинная фамилия
    обрезается многоточием, целиком она есть в подсказке. */
+/* Обрезание текста здесь не нужно и раньше было лишним: `PersonName`
+   управляет своим переполнением сам — у него `.pname__line` уже режет
+   первую строку многоточием, если она не влезает. Второй слой обрезания
+   поверх двухстрочного блока (фамилия с именем сверху, отчество снизу)
+   ломал раскладку: `nowrap` пытался удержать оба ряда в одну строку и резал
+   текст без многоточия — «Константин» становился «Констант». Остаётся
+   только `min-width: 0`, чтобы дочернему `.pname__line` было от чего
+   сжиматься. */
 .engcard__name {
   letter-spacing: 0;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 /* Метка простоя стоит на месте пометки «открыт» у расчёта и красится тревожно:
@@ -12497,21 +12502,20 @@ button.bars__btn:focus-visible {
   border-left: 1px solid var(--border-hairline);
 }
 
+/* Одного размера для всех трёх — часов, визитов, переработки. Раньше часы
+   стояли крупнее остальных (30px против 20px), и число «скакало» между
+   разными кеглями в одной строке; теперь все три равнозначны, ни одно не
+   важнее соседних на вид. */
 .engquick__value {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
   font-family: var(--font-display);
   font-size: 20px;
   font-weight: var(--fw-extrabold);
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
   color: var(--text-primary);
-}
-
-.engquick__value--lg {
-  display: flex;
-  align-items: baseline;
-  gap: 3px;
-  font-size: 30px;
-  letter-spacing: -0.02em;
 }
 
 .engquick__unit {
@@ -12523,6 +12527,10 @@ button.bars__btn:focus-visible {
 .engquick__label {
   font-size: var(--fs-caption);
   color: var(--text-secondary);
+  /* Однословные подписи и без переноса не растянутся на две строки — но
+     подстраховка нужна: перенос здесь ломает высоту тайла, а с ней и
+     выравнивание всех трёх чисел по нижнему краю. */
+  white-space: nowrap;
 }
 
 .engquick__tile--bad .engquick__value {
