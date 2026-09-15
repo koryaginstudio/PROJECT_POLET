@@ -66,6 +66,11 @@ export function EngineerCard({
   travelMinutes
 }: Props) {
   const idle = row.idleRuns > 0;
+  const sameShift =
+    row.posts.length <= 1 ||
+    row.posts.every(
+      (post) => post.shiftStart === row.posts[0].shiftStart && post.shiftEnd === row.posts[0].shiftEnd
+    );
   const loose = row.occupancyMean > 0 && row.occupancyMean < 0.6;
 
   return (
@@ -104,7 +109,12 @@ export function EngineerCard({
           стоит время, когда его завели. Это метка записи, а не её итог. */}
       <span className="runcard__stamp">
         <Icon name="clock" size={12} />
-        {hhmm(row.shiftStart)}–{hhmm(row.shiftEnd)}
+        {/* График не свойство человека: он считается по нарядам дня, и у
+            того, кто работает на двух участках, смены расходятся. Одну из
+            них в шапке показывать нельзя — вторая пропадёт молча. Когда они
+            расходятся, шапка говорит об этом, а сами смены стоят у своих
+            участков ниже. */}
+        {sameShift ? `${hhmm(row.shiftStart)}–${hhmm(row.shiftEnd)}` : 'смена по участкам'}
         {!dense && <WhyMark text={shiftWhy} />}
         {!dense && (
           <span className="engcard__id">
@@ -227,7 +237,15 @@ export function EngineerCard({
             <div className="engfacts__row" key={post.zone}>
               <dt>Участок</dt>
               <dd className="engfacts__stack">
-                <span>{post.zone}</span>
+                <span>
+                  {post.zone}
+                  {!sameShift && (
+                    <span className="engfacts__shift">
+                      {' '}
+                      {hhmm(post.shiftStart)}–{hhmm(post.shiftEnd)}
+                    </span>
+                  )}
+                </span>
                 {post.homeAddress && (
                   <span className="engfacts__sub">выезд: {post.homeAddress}</span>
                 )}

@@ -177,9 +177,14 @@ export interface EngineerRecord {
   team: string | null;
   /** Участок приписки: «Восток», «Юго-Восток», «Центр». Первый из `posts`. */
   zone: string | null;
-  /** Куда человек приписан и откуда выезжает. Обычно один; у того, кто
-      работает в двух зонах, — два, и офисы в них разные. */
-  posts: { zone: string; homeAddress: string | null }[];
+  /** Куда человек приписан, откуда выезжает и в какую смену. Обычно один; у
+      того, кто работает в двух зонах, — два, и офис со сменой в них свои.
+
+      Смена живёт здесь, а не только в `shiftStart`/`shiftEnd`: график не
+      свойство человека, он считается по нарядам того дня. Сводная пара
+      наверху — из последнего расчёта, и когда смены расходятся, показывать
+      надо их, а не её. */
+  posts: { zone: string; homeAddress: string | null; shiftStart: number; shiftEnd: number }[];
   phone: string | null;
   /** `on_shift` | `off_shift` | `unavailable`. */
   status: string | null;
@@ -553,16 +558,24 @@ function blank(map: Map<string, EngineerEntry>, engineer: Engineer): EngineerEnt
   return entry;
 }
 
-/** Запоминает участок и офис. Повтор не добавляется: один и тот же человек
-    приходит из каждого расчёта своей зоны, а приписка у него от этого не
-    удваивается. */
+/** Запоминает участок, офис и смену. Участок не удваивается: один и тот же
+    человек приходит из каждого расчёта своей зоны. График при этом
+    обновляется — последний расчёт зоны и есть её нынешний график. */
 function notePost(entry: EngineerEntry, engineer: Engineer): void {
   if (!engineer.zone) return;
-  const known = entry.posts.some(
-    (post) => post.zone === engineer.zone && post.homeAddress === engineer.home_address
-  );
-  if (known) return;
-  entry.posts.push({ zone: engineer.zone, homeAddress: engineer.home_address });
+  const known = entry.posts.find((post) => post.zone === engineer.zone);
+  if (known) {
+    known.homeAddress = engineer.home_address;
+    known.shiftStart = engineer.shift_start;
+    known.shiftEnd = engineer.shift_end;
+    return;
+  }
+  entry.posts.push({
+    zone: engineer.zone,
+    homeAddress: engineer.home_address,
+    shiftStart: engineer.shift_start,
+    shiftEnd: engineer.shift_end
+  });
 }
 
 function buildEngineers(
