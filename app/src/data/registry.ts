@@ -149,7 +149,6 @@ export interface EngineerRecord {
   id: string;
   name: string;
   skills: string[];
-  grade: number;
   /** В скольких прогонах инженер числится в штате. */
   runs: number;
   /** В скольких из них получил маршрут. */
@@ -526,7 +525,6 @@ function blank(map: Map<string, EngineerEntry>, engineer: Engineer): EngineerEnt
     id: engineer.id,
     name: engineer.name,
     skills: [],
-    grade: engineer.grade,
     runs: 0,
     routes: 0,
     visits: 0,
@@ -567,9 +565,8 @@ function buildEngineers(
     for (const engineer of plan.engineers) {
       const entry = blank(map, engineer);
       entry.runs += 1;
-      /* Грейд и смена берутся из последнего прогона: справочник показывает
-         то, каким инженер числится сейчас, а не каким был в первом расчёте. */
-      entry.grade = engineer.grade;
+      /* Смена берётся из последнего прогона: справочник показывает то,
+         каким инженер числится сейчас, а не каким был в первом расчёте. */
       entry.shiftStart = engineer.shift_start;
       entry.shiftEnd = engineer.shift_end;
       entry.homeAddress = engineer.home_address;
@@ -614,7 +611,6 @@ function buildEngineers(
       id: entry.id,
       name: entry.name,
       skills: [...entry.skillSet],
-      grade: entry.grade,
       runs: entry.runs,
       routes: entry.routes,
       visits: entry.visits,

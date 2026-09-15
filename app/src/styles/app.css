@@ -11918,25 +11918,94 @@ button.bars__btn:focus-visible {
 
 /* Грейд — в углу, где у расчёта кнопка правки: правки у инженера нет, а грейд
    это то немногое, что отличает двух одинаково загруженных людей. */
-.engcard__grade {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 22px;
-  height: 22px;
-  padding: 0 6px;
-  border-radius: var(--r-pill);
-  background: var(--ink-100);
-  font-size: 11px;
-  font-weight: var(--fw-semibold);
-  font-variant-numeric: tabular-nums;
-  color: var(--text-secondary);
-}
-
 /* Табельный номер — приглушённым хвостом к смене: он нужен для поиска и
    сверки, а не для чтения. */
 .engcard__id {
   color: var(--ink-300);
+}
+
+/* Значок «откуда это взялось» и его объяснение.
+
+   Стоит у полей, которых в выгрузке не было и которые достроены сборкой.
+   Значок бледный и мелкий: он не должен спорить со значением, рядом с которым
+   стоит, — его задача быть найденным тогда, когда о значении спросили.
+
+   Подсказка длинная: это объяснение, а не подпись. Поэтому она шире обычной,
+   переносится по словам и держится, пока на неё смотрят. */
+.why {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-300);
+  cursor: help;
+  vertical-align: middle;
+  transition: color 120ms var(--ease-out-strong);
+}
+
+.why:hover,
+.why:focus-visible {
+  color: var(--text-secondary);
+}
+
+.why:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+
+.why__tip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  z-index: 60;
+  width: max-content;
+  max-width: 280px;
+  padding: 9px 11px;
+  border-radius: var(--r-xs);
+  background: var(--ink-1000);
+  box-shadow: var(--shadow-lg);
+  color: var(--white);
+  font-size: 11px;
+  font-weight: var(--fw-regular);
+  line-height: 1.4;
+  letter-spacing: 0;
+  text-align: left;
+  white-space: normal;
+  opacity: 0;
+  transform: translateX(-50%) translateY(3px);
+  pointer-events: none;
+  transition: opacity 120ms var(--ease-out-strong), transform 120ms var(--ease-out-strong);
+}
+
+/* У правого края подсказка открывается влево: по центру она вылезает за
+   карточку и обрезается. */
+.why--right .why__tip {
+  left: auto;
+  right: 0;
+  transform: translateX(0) translateY(3px);
+}
+
+.why:hover .why__tip,
+.why:focus-visible .why__tip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.why--right:hover .why__tip,
+.why--right:focus-visible .why__tip {
+  transform: translateX(0) translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .why__tip {
+    transition: none;
+  }
 }
 
 /* Поля сотрудника из выгрузки: транспорт, бригада, участок, телефон, статус.

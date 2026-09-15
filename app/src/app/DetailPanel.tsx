@@ -15,6 +15,8 @@ import { OVERVIEW } from './selection.ts';
 import { buildCatalogue, trailToPage } from './catalogue.ts';
 import type { CatalogNode } from './catalogue.ts';
 import { faceOf } from '../data/photos.ts';
+import { homeWhy, shiftWhy, transportWhy } from '../data/rationale.ts';
+import { WhyMark } from './WhyMark.tsx';
 
 interface Props {
   day: Day;
@@ -136,7 +138,8 @@ function SelectedCard({ day, view, selection, onSelect }: Props) {
               {hhmm(engineer.shift_start)}–{hhmm(engineer.shift_end)}
             </span>
             <span className="shiftline__note">
-              Смена · {hoursText(engineer.shift_end - engineer.shift_start)} · разряд {engineer.grade}
+              Смена · {hoursText(engineer.shift_end - engineer.shift_start)}
+              <WhyMark text={shiftWhy} />
             </span>
           </span>
         </div>
@@ -151,7 +154,10 @@ function SelectedCard({ day, view, selection, onSelect }: Props) {
             </span>
             <span className="shiftline__body">
               <span className="shiftline__value shiftline__value--text">{homeOf(engineer)}</span>
-              <span className="shiftline__note">Отсюда начинается день</span>
+              <span className="shiftline__note">
+                Отсюда начинается день
+                <WhyMark text={homeWhy} />
+              </span>
             </span>
           </div>
         )}
@@ -171,6 +177,7 @@ function SelectedCard({ day, view, selection, onSelect }: Props) {
               </span>
               <span className="shiftline__note">
                 Транспорт · заявки с другим требованием сюда не попадут
+                <WhyMark text={transportWhy(engineer.transport)} />
               </span>
             </span>
           </div>

@@ -1,6 +1,8 @@
 import { Icon } from '../ds/components/core/Icon.jsx';
 import type { EngineerRecord } from '../data/registry.ts';
 import { dec, hhmm, hoursText } from '../data/derive.ts';
+import { shiftWhy, transportWhy } from '../data/rationale.ts';
+import { WhyMark } from './WhyMark.tsx';
 import {
   crewStatusName,
   skillIcon,
@@ -79,9 +81,6 @@ export function EngineerCard({
             </span>
           )}
         </span>
-        <span className="engcard__grade" title="Грейд инженера">
-          {row.grade}
-        </span>
       </div>
 
       {/* Под именем — смена и табельный номер: то же место, где у расчёта
@@ -89,6 +88,7 @@ export function EngineerCard({
       <span className="runcard__stamp">
         <Icon name="clock" size={12} />
         {hhmm(row.shiftStart)}–{hhmm(row.shiftEnd)}
+        {!dense && <WhyMark text={shiftWhy} />}
         {!dense && <span className="engcard__id">{row.id}</span>}
       </span>
 
@@ -182,12 +182,18 @@ export function EngineerCard({
               <dd>
                 <Icon name={transportIcon(row.transport)} size={12} />
                 {transportName(row.transport)}
+                <WhyMark text={transportWhy(row.transport)} side="right" />
               </dd>
             </div>
           )}
           {row.team && (
+            /* «В выгрузке», а не «Бригада»: в двух зонах из трёх значение и
+               начинается со слова «Бригада», и подпись задваивала его —
+               «Бригада · Бригада Матвеев» читалось как иерархия, которой в
+               данных нет. Здесь показано ровно то, чем исполнитель назван в
+               учётной системе. */
             <div className="engfacts__row">
-              <dt>Бригада</dt>
+              <dt>В выгрузке</dt>
               <dd>{row.team}</dd>
             </div>
           )}

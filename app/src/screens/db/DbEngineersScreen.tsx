@@ -10,6 +10,8 @@ import { useWidgetBoard, WidgetPeriod, withinPeriod } from '../../app/DbWidgets.
 import type { PeriodKey, WidgetDef } from '../../app/DbWidgets.tsx';
 import { service } from '../../data/service.ts';
 import { DbHead } from './DbHead.tsx';
+import { transportWhy } from '../../data/rationale.ts';
+import { WhyMark } from '../../app/WhyMark.tsx';
 
 interface Props {
   registry: Registry;
@@ -281,9 +283,6 @@ export function DbEngineersScreen({ registry, mode }: Props) {
       6
     );
 
-    const grades = new Map<number, number>();
-    for (const row of all) grades.set(row.grade, (grades.get(row.grade) ?? 0) + 1);
-    const gradeRows = [...grades.entries()].sort((a, b) => a[0] - b[0]);
 
     /* Занятость раскладываем на три ступени: «сколько в среднем» отвечает на
        вопрос наполовину — маршрут под завязку и маршрут вполпустого дают ту
@@ -533,23 +532,6 @@ export function DbEngineersScreen({ registry, mode }: Props) {
           legend: 'человек владеет навыком'
         }
       },
-      {
-        key: 'grades',
-        title: 'По грейдам',
-        note: 'Из кого состоит штат: сколько людей каждого грейда',
-        shape: 'donut',
-        data: {
-          value: String(all.length),
-          caption: 'инженеров',
-          whole: true,
-          parts: gradeRows.map(([grade, count]) => ({
-            key: String(grade),
-            label: `Грейд ${grade}`,
-            value: count
-          })),
-          legend: 'инженеров'
-        }
-      }
     ];
   }, [scope, registry, all]);
 
@@ -663,12 +645,11 @@ export function DbEngineersScreen({ registry, mode }: Props) {
               <thead>
                 <tr>
                   <th>Инженер</th>
-                  <th>Бригада</th>
+                  <th>В выгрузке</th>
                   <th>Участок</th>
                   <th>Выезжает из</th>
                   <th>Навыки</th>
                   <th>Транспорт</th>
-                  <th>Грейд</th>
                   <th>Смена</th>
                   <th>Телефон</th>
                   <th>Статус</th>
@@ -715,12 +696,12 @@ export function DbEngineersScreen({ registry, mode }: Props) {
                         <span className="tbl__inline">
                           <Icon name={transportIcon(engineer.transport)} size={13} />
                           {transportName(engineer.transport)}
+                          <WhyMark text={transportWhy(engineer.transport)} />
                         </span>
                       ) : (
                         <span className="tbl__muted">Не указан</span>
                       )}
                     </td>
-                    <td className="tbl__num">{engineer.grade}</td>
                     <td className="tbl__num">
                       {hhmm(engineer.shiftStart)}–{hhmm(engineer.shiftEnd)}
                     </td>

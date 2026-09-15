@@ -227,8 +227,7 @@ export function SourcePicker({ view, value, onChange }: Props) {
                       <span className="srcman__id">{engineer.id}</span>
                     </span>
                     <span className="srcman__shift">
-                      смена {hhmm(engineer.shift_start)}–{hhmm(engineer.shift_end)} · разряд{' '}
-                      {engineer.grade}
+                      смена {hhmm(engineer.shift_start)}–{hhmm(engineer.shift_end)}
                     </span>
                   </span>
                   <span className="srcman__skills">
