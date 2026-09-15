@@ -12,9 +12,9 @@
    сети и адрес приходит пустым, база молча возвращается к прежнему поведению.
    Ничего к контракту здесь не придумывается. */
 
-import { loadRunData, RUNS } from './load.ts';
+import { loadRoster, loadRunData, RUNS } from './load.ts';
 import type { RunId } from './load.ts';
-import type { Plan, Simulation } from './contract.ts';
+import type { Engineer, Plan, Simulation } from './contract.ts';
 import { placeOf, roadPath } from './derive.ts';
 import { routeLabel, routeNumbers } from './routeIds.ts';
 
@@ -514,41 +514,58 @@ function buildRoutes(plans: { run: RunRef; plan: Plan }[]): RouteRecord[] {
   );
 }
 
-function buildEngineers(plans: { run: RunRef; plan: Plan }[]): EngineerRecord[] {
-  const map = new Map<string, EngineerRecord & { skillSet: Set<string>; occupancies: number[] }>();
+type EngineerEntry = EngineerRecord & { skillSet: Set<string>; occupancies: number[] };
+
+/** Заводит запись инженера, если её ещё нет, и возвращает её. Заводится она
+    одинаково и для штата, и для расчёта: разница только в том, что у первого
+    все счётчики так и остаются нулями. */
+function blank(map: Map<string, EngineerEntry>, engineer: Engineer): EngineerEntry {
+  const known = map.get(engineer.id);
+  if (known) return known;
+  const entry: EngineerEntry = {
+    id: engineer.id,
+    name: engineer.name,
+    skills: [],
+    grade: engineer.grade,
+    runs: 0,
+    routes: 0,
+    visits: 0,
+    travelMinutes: 0,
+    workMinutes: 0,
+    overtimeMinutes: 0,
+    occupancyMean: 0,
+    idleRuns: 0,
+    shiftStart: engineer.shift_start,
+    shiftEnd: engineer.shift_end,
+    homeAddress: engineer.home_address,
+    transport: engineer.transport ?? null,
+    team: engineer.team ?? null,
+    zone: engineer.zone ?? null,
+    phone: engineer.phone ?? null,
+    status: engineer.status ?? null,
+    byRun: [],
+    skillSet: new Set<string>(engineer.skills),
+    occupancies: []
+  };
+  map.set(engineer.id, entry);
+  return entry;
+}
+
+function buildEngineers(
+  plans: { run: RunRef; plan: Plan }[],
+  roster: Engineer[]
+): EngineerRecord[] {
+  const map = new Map<string, EngineerEntry>();
+
+  /* Сначала весь штат, потом выработка. Порядок здесь смысловой: человек
+     числится в компании независимо от того, попал ли он хоть в один расчёт,
+     и база обязана показать его с нулями, а не спрятать. */
+  for (const engineer of roster) blank(map, engineer);
 
   for (const { run, plan } of plans) {
     const routeByEngineer = new Map(plan.routes.map((r) => [r.engineer_id, r]));
     for (const engineer of plan.engineers) {
-      let entry = map.get(engineer.id);
-      if (!entry) {
-        entry = {
-          id: engineer.id,
-          name: engineer.name,
-          skills: [],
-          grade: engineer.grade,
-          runs: 0,
-          routes: 0,
-          visits: 0,
-          travelMinutes: 0,
-          workMinutes: 0,
-          overtimeMinutes: 0,
-          occupancyMean: 0,
-          idleRuns: 0,
-          shiftStart: engineer.shift_start,
-          shiftEnd: engineer.shift_end,
-          homeAddress: engineer.home_address,
-          transport: engineer.transport ?? null,
-          team: engineer.team ?? null,
-          zone: engineer.zone ?? null,
-          phone: engineer.phone ?? null,
-          status: engineer.status ?? null,
-          byRun: [],
-          skillSet: new Set<string>(),
-          occupancies: []
-        };
-        map.set(engineer.id, entry);
-      }
+      const entry = blank(map, engineer);
       entry.runs += 1;
       /* Грейд и смена берутся из последнего прогона: справочник показывает
          то, каким инженер числится сейчас, а не каким был в первом расчёте. */
@@ -738,7 +755,7 @@ export async function loadRegistry(): Promise<Registry> {
      интерфейс, иначе один раздел однажды окажется собран по фикстурам, а
      соседний — по архиву движка. Дата — из реестра, а не из файла: в файле
      она одна на всех, в истории у каждого расчёта своя. */
-  const data = await loadRunData();
+  const [data, roster] = await Promise.all([loadRunData(), loadRoster()]);
 
   const plans = RUNS.filter((entry) => data.has(entry.id)).map((entry) => ({
     run: {
@@ -752,7 +769,7 @@ export async function loadRegistry(): Promise<Registry> {
     simulation: data.get(entry.id)!.simulation
   }));
 
-  const engineers = buildEngineers(plans);
+  const engineers = buildEngineers(plans, roster);
   const workTypeTitle: Record<string, string> = {};
   for (const { plan } of plans) {
     for (const order of plan.orders) workTypeTitle[order.work_type] = order.work_title;
