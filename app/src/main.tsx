@@ -2,7 +2,8 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import './ds/styles.css';
 import './styles/app.css';
-import { attachEngine } from './data/load.ts';
+import { attachEngine, createRun, RUNS, SOURCES } from './data/load.ts';
+import { engineDefaults } from './data/engine.ts';
 
 /* Движок ищем до первой отрисовки, а не после.
 
@@ -11,10 +12,35 @@ import { attachEngine } from './data/load.ts';
    расчёт. Проверка стоит секунду в худшем случае — движок либо рядом,
    либо его нет, — и это дешевле, чем экран, который моргает списком.
 
-   Не нашёлся — открываемся на фикстурах. Это обычный режим работы, а не
-   поломка: интерфейс верстают без движка, и он обязан открываться. */
+   Не нашёлся — считаем сами. Это обычный режим работы, а не поломка. */
+
+/* Первый запуск: истории нет, и считать день некому, кроме нас.
+
+   Считаются все три зоны выгрузки, по расчёту на каждую, и всё это до
+   первой отрисовки. Иначе программа встречает пустой формой, за которой
+   не видно ни карты, ни маршрутов, ни баз данных: базы собираются по всем
+   расчётам сразу, и на одном расчёте половина разделов пуста.
+
+   Это настоящие расчёты по настоящей выгрузке, а не записанные заранее
+   планы: каждый занимает доли секунды и повторяется одинаковым, сколько
+   его ни пересчитывай.
+
+   Дальше история уже своя: расчёты копятся от кнопки и переживают
+   перезагрузку. Второй раз сюда не заходят. */
+async function seedFirstRuns() {
+  if (RUNS.length > 0) return;
+  for (const zone of SOURCES) {
+    try {
+      await createRun(engineDefaults(), zone);
+    } catch {
+      /* Данные зоны не прочитались — остальные от этого не страдают. */
+    }
+  }
+}
+
 attachEngine()
   .catch(() => false)
+  .then(seedFirstRuns)
   .then(async () => {
     const { App } = await import('./app/App.tsx');
     createRoot(document.getElementById('root')!).render(
