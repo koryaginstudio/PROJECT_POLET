@@ -743,6 +743,19 @@ export function App() {
                   loadDay(runId).then(setDay).catch(() => undefined);
                   loadSummaries().then(setRuns).catch(() => undefined);
                 }}
+                /* «Отследить» из профиля: пока своего экрана слежения нет,
+                   ведём в мониторинг — он и отвечает на «где инженер сейчас
+                   и что делает». Если человек в открытом сегодня расчёте, тут
+                   же закрепляем на нём маршрут и открываем его карточку;
+                   если нет — просто открываем мониторинг, показывать там
+                   нечего, но раздел тот. */
+                onTrack={(id) => {
+                  nav({ section: 'monitor' });
+                  if (dayView?.loads.some((load) => load.engineer.id === id)) {
+                    pinRoute(id);
+                    setSelection({ kind: 'engineer', id });
+                  }
+                }}
               />
             ))}
 

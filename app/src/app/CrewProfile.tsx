@@ -15,6 +15,9 @@ interface Props {
   registry: Registry;
   onClose: () => void;
   onEdit: () => void;
+  /** «Отследить»: увести туда, где видно, где человек сейчас и что делает.
+      Своего экрана слежения пока нет — ведёт в мониторинг. */
+  onTrack: (id: string) => void;
 }
 
 /* Профиль инженера: всё, что мы о нём знаем, на одном экране.
@@ -28,7 +31,7 @@ interface Props {
    что принадлежит человеку и не меняется от расчёта к расчёту: навыки,
    транспорт, участки. Ниже — то, что посчитано: смены, маршруты, заявки.
    Первое правят в карточке, второе не правят вовсе. */
-export function CrewProfile({ crew, registry, onClose, onEdit }: Props) {
+export function CrewProfile({ crew, registry, onClose, onEdit, onTrack }: Props) {
   useEffect(() => {
     if (!crew) return;
     const onKey = (event: KeyboardEvent) => event.key === 'Escape' && onClose();
@@ -65,41 +68,72 @@ export function CrewProfile({ crew, registry, onClose, onEdit }: Props) {
       <button type="button" className="modal__veil" onClick={onClose} aria-label="Закрыть" />
 
       <div className="modal__card crewpro">
-        <div className="crewpro__top">
+        {/* Фото — портретом слева, во весь рост шапки: лицо здесь не значок
+            для узнавания в ряду, а то, ради чего открыли профиль. Имя, цифры
+            и действия стоят справа, вровень с фотографией по высоте. */}
+        <div className="crewpro__hero">
           <img className="crewpro__face" src={faceOf(crew)} alt="" />
-          <div className="crewpro__who">
-            <span className="crewpro__eyebrow">
-              Инженер · id: {crew.id}
-              {crew.team ? ` · бригада ${teamName(crew.team)}` : ''}
-            </span>
-            <h2 className="crewpro__name">
-              <PersonName name={crew.name} />
-            </h2>
-            {crew.phone && <span className="crewpro__phone">{crew.phone}</span>}
-          </div>
-          <div className="crewpro__actions">
-            <Button variant="secondary" size="sm" onClick={onEdit} iconLeft={<Icon name="pencil" size={13} />}>
-              Править
-            </Button>
-            <button type="button" className="rpanel__x" onClick={onClose} aria-label="Закрыть">
-              <Icon name="x" size={16} />
-            </button>
-          </div>
-        </div>
 
-        {/* Выработка. Первым — отработанные часы: это то, чем меряют человека,
-            а не маршрут. */}
-        <div className="crewpro__stats">
-          <Stat value={dec(worked / 60)} unit="ч" label="отработано всего" />
-          <Stat value={String(crew.visits)} label="визитов" />
-          <Stat value={`${crew.routes} из ${crew.runs}`} label="смен с маршрутом" />
-          <Stat value={`${dec(crew.occupancyMean * 100)} %`} label="средняя занятость" />
-          <Stat value={hoursText(crew.travelMinutes)} label="в дороге" />
-          <Stat
-            value={crew.overtimeMinutes > 0 ? hoursText(crew.overtimeMinutes) : '—'}
-            label="сверх смены"
-            bad={crew.overtimeMinutes > 0}
-          />
+          <div className="crewpro__hero-body">
+            <div className="crewpro__top">
+              <div className="crewpro__who">
+                {/* Табельный номер — первым и крупно: в базе им человека
+                    находят и им же его называют между собой, а не именем.
+                    Должность рядом отвечает на «кто он» тому, кто открыл
+                    профиль впервые и табельных ещё не читает. */}
+                <div className="crewpro__idrow">
+                  <span className="crewpro__id">{crew.id}</span>
+                  <span className="crewpro__role">
+                    Инженер
+                    {crew.team ? ` · бригада ${teamName(crew.team)}` : ''}
+                  </span>
+                </div>
+                <h2 className="crewpro__name">
+                  <PersonName name={crew.name} />
+                </h2>
+                {crew.phone && <span className="crewpro__phone">{crew.phone}</span>}
+              </div>
+              <div className="crewpro__actions">
+                {/* Куда он сейчас едет и что делает — свой экран слежения пока
+                    не собран, поэтому ведёт в мониторинг: он и отвечает на
+                    этот вопрос по открытому сегодня расчёту. */}
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => onTrack(crew.id)}
+                  iconLeft={<Icon name="navigation-arrow" size={13} />}
+                >
+                  Отследить
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={onEdit}
+                  iconLeft={<Icon name="pencil" size={13} />}
+                >
+                  Править
+                </Button>
+                <button type="button" className="rpanel__x" onClick={onClose} aria-label="Закрыть">
+                  <Icon name="x" size={16} />
+                </button>
+              </div>
+            </div>
+
+            {/* Выработка. Первым — отработанные часы: это то, чем меряют
+                человека, а не маршрут. */}
+            <div className="crewpro__stats">
+              <Stat value={dec(worked / 60)} unit="ч" label="отработано всего" />
+              <Stat value={String(crew.visits)} label="визитов" />
+              <Stat value={`${crew.routes} из ${crew.runs}`} label="смен с маршрутом" />
+              <Stat value={`${dec(crew.occupancyMean * 100)} %`} label="средняя занятость" />
+              <Stat value={hoursText(crew.travelMinutes)} label="в дороге" />
+              <Stat
+                value={crew.overtimeMinutes > 0 ? hoursText(crew.overtimeMinutes) : '—'}
+                label="сверх смены"
+                bad={crew.overtimeMinutes > 0}
+              />
+            </div>
+          </div>
         </div>
 
         <div className="crewpro__cols">

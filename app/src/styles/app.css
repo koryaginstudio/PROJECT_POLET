@@ -12014,37 +12014,95 @@ button.bars__btn:focus-visible {
   box-shadow: var(--shadow-lg);
 }
 
-.crewpro__top {
-  display: flex;
-  align-items: center;
-  gap: 14px;
+/* Шапка профиля: портрет слева во весь рост блока, имя и цифры справа.
+   На узком окне (телефон, сжатая панель) фотография такого размера заняла
+   бы весь экран сама — переходим в один столбец, фото ложится сверху. */
+.crewpro__hero {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 20px;
 }
 
+@media (max-width: 640px) {
+  .crewpro__hero {
+    grid-template-columns: 1fr;
+  }
+
+  .crewpro__face {
+    max-width: 240px;
+  }
+
+  /* Кнопки в один ряд с именем сжимали текстовую колонку до сорока пикселей,
+     и должность с бригадой разваливалась на четыре строки по два слова.
+     Ниже этой ширины действия уходят под шапку, во всю её ширину. */
+  .crewpro__top {
+    flex-direction: column;
+  }
+}
+
+/* Портрет, а не квадрат для узнавания в ряду: здесь на него смотрят, а не
+   ищут им глазами. 3:4 — пропорция обычного портретного кадра; кадрируем по
+   верхней трети, где у сфотографированных стоя лицо. */
 .crewpro__face {
-  width: 64px;
-  height: 64px;
-  border-radius: var(--r-control);
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  border-radius: var(--r-md);
   object-fit: cover;
-  object-position: 50% 30%;
-  flex: none;
+  object-position: 50% 18%;
+  background: var(--ink-100);
+}
+
+.crewpro__hero-body {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+}
+
+.crewpro__top {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
 }
 
 .crewpro__who {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   min-width: 0;
   flex: 1;
 }
 
-.crewpro__eyebrow {
-  font-size: 11px;
+/* Табельный номер вынесен перед именем и должностью: в базе им человека
+   находят и им же называют между собой, а не по фамилии с первого взгляда. */
+.crewpro__idrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  row-gap: 4px;
+}
+
+.crewpro__id {
+  padding: 2px 9px;
+  border-radius: var(--r-pill);
+  background: var(--ink-1000);
+  color: var(--white);
+  font-size: 13px;
+  font-weight: var(--fw-bold, 700);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+
+.crewpro__role {
+  font-size: 12px;
   color: var(--ink-300);
 }
 
 .crewpro__name {
   margin: 0;
-  font-size: 22px;
+  font-size: 24px;
   font-weight: var(--fw-bold, 700);
   line-height: 1.15;
 }
@@ -12118,10 +12176,23 @@ button.bars__btn:focus-visible {
 .crewpro__title {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   margin: 0;
-  font-size: 13px;
-  font-weight: var(--fw-semibold);
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: var(--fw-extrabold);
+}
+
+/* Разделы, что стоят на всю ширину (участки, чем занимался, смены,
+   маршруты, заявки), идут таблицей за таблицей и без черты сливались в
+   одну простыню: заголовок терялся между последней строкой предыдущей
+   таблицы и первой строкой своей. Черта сверху держит взгляд перед каждым
+   новым разделом. Селектор — по прямым детям `.crewpro`, а не по классу
+   вообще: «Навыки» и «Транспорт» лежат в двухколоночном `.crewpro__cols»
+   бок о бок, и черта над вторым из них выглядела бы отрезком в никуда. */
+.crewpro > .crewpro__block {
+  padding-top: 16px;
+  border-top: 1px solid var(--border-hairline);
 }
 
 /* Число рядом с заголовком: сколько строк в таблице под ним. */
@@ -12341,33 +12412,6 @@ button.bars__btn:focus-visible {
   font-variant-numeric: tabular-nums;
   color: var(--text-secondary);
   white-space: nowrap;
-}
-
-/* Кнопка правки на месте, где у расчёта стоит его пометка. Тихая: действие
-   есть, но карточку читают не ради него. */
-.engcard__edit {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  padding: 0;
-  border: 0;
-  border-radius: var(--r-sm);
-  background: transparent;
-  color: var(--ink-300);
-  cursor: pointer;
-  transition: background-color 120ms var(--ease-out-strong), color 120ms var(--ease-out-strong);
-}
-
-.engcard__edit:hover {
-  background: var(--ink-100);
-  color: var(--text-primary);
-}
-
-.engcard__edit:focus-visible {
-  outline: none;
-  box-shadow: var(--ring-focus);
 }
 
 /* Участок с адресом офиса: название сверху, адрес под ним мельче. Адрес —

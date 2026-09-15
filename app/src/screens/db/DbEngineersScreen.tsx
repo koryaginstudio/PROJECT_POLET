@@ -30,6 +30,8 @@ interface Props {
   mode: string;
   /** Данные штата поправили: справочник надо собрать заново. */
   onChanged: () => void;
+  /** «Отследить» из профиля: увести в мониторинг за конкретным инженером. */
+  onTrack: (id: string) => void;
 }
 
 /* Плотность строки — тот же выбор, что и в базе расчётов: «разглядеть» или
@@ -78,7 +80,7 @@ const FILTERS: { value: Filter; label: string }[] = [
    расчётов — поиск, отбор, порядок, плотность и доска виджетов сверху, — и
    это осознанное повторение: два справочника об одном хозяйстве, и переучивать
    диспетчера на втором незачем. */
-export function DbEngineersScreen({ registry, mode, onChanged }: Props) {
+export function DbEngineersScreen({ registry, mode, onChanged, onTrack }: Props) {
   /* С какой плотности открывается база — настройка сервиса, общая с базой
      расчётов: одному важно разглядеть, другому охватить. */
   const [perRow, setPerRow] = useState(() => service().perRow as string);
@@ -789,7 +791,6 @@ export function DbEngineersScreen({ registry, mode, onChanged }: Props) {
                 key={engineer.id}
                 row={engineer}
                 seat={index + 1}
-                onEdit={() => setEditing(engineer)}
                 onOpen={() => setOpened(engineer)}
                 photo={photos.get(engineer.id)}
                 dense={dense}
@@ -811,6 +812,10 @@ export function DbEngineersScreen({ registry, mode, onChanged }: Props) {
         onEdit={() => {
           setEditing(opened);
           setOpened(null);
+        }}
+        onTrack={(id) => {
+          setOpened(null);
+          onTrack(id);
         }}
       />
 
