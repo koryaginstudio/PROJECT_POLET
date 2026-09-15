@@ -17,6 +17,7 @@ import type { PeriodKey, WidgetDef } from '../../app/DbWidgets.tsx';
 import { service } from '../../data/service.ts';
 import { DbHead } from './DbHead.tsx';
 import { CrewEditDialog } from '../../app/CrewEditDialog.tsx';
+import { CrewProfile } from '../../app/CrewProfile.tsx';
 import { editCrew, removeCrew } from '../../data/crew.ts';
 import { loadPlaces } from '../../data/load.ts';
 import type { Place } from '../../data/load.ts';
@@ -90,6 +91,8 @@ export function DbEngineersScreen({ registry, mode, onChanged }: Props) {
   /* Кого сейчас правят. Окно одно на весь штат: двух карточек сразу не
      правят, а второе окно поверх первого пришлось бы закрывать дважды. */
   const [editing, setEditing] = useState<EngineerRecord | null>(null);
+  /* Чей профиль открыт. Отдельно от правки: профиль читают, карточку правят. */
+  const [opened, setOpened] = useState<EngineerRecord | null>(null);
   /* Участки со своими офисами и рамками дня: из них выбирают в окне правки,
      и они же задают человеку адрес выезда и часы. */
   const [places, setPlaces] = useState<Place[]>([]);
@@ -787,6 +790,7 @@ export function DbEngineersScreen({ registry, mode, onChanged }: Props) {
                 row={engineer}
                 seat={index + 1}
                 onEdit={() => setEditing(engineer)}
+                onOpen={() => setOpened(engineer)}
                 photo={photos.get(engineer.id)}
                 dense={dense}
                 skill={skill}
@@ -799,6 +803,16 @@ export function DbEngineersScreen({ registry, mode, onChanged }: Props) {
           })}
         </div>
       )}
+
+      <CrewProfile
+        crew={opened}
+        registry={registry}
+        onClose={() => setOpened(null)}
+        onEdit={() => {
+          setEditing(opened);
+          setOpened(null);
+        }}
+      />
 
       <CrewEditDialog
         crew={editing}

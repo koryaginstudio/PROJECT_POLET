@@ -11994,6 +11994,230 @@ button.bars__btn:focus-visible {
   letter-spacing: 0.02em;
 }
 
+/* Профиль инженера: всё о человеке на одном экране.
+
+   Окно широкое и высокое: здесь не форма из шести полей, а три таблицы и
+   ряд чисел. Прокрутка внутри окна, а не страницы — фон под ним остаётся на
+   месте, и закрыть его можно, не доскроллив до конца. */
+.crewpro {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: min(1040px, 94vw);
+  max-height: 90vh;
+  overflow-y: auto;
+  /* Фон, отступы и тень задаёт сам вид окна, а не `.modal__card`: тот
+     отвечает только за положение и прокрутку. */
+  padding: var(--sp-5);
+  border-radius: var(--r-md);
+  background: var(--white);
+  box-shadow: var(--shadow-lg);
+}
+
+.crewpro__top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.crewpro__face {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--r-control);
+  object-fit: cover;
+  object-position: 50% 30%;
+  flex: none;
+}
+
+.crewpro__who {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.crewpro__eyebrow {
+  font-size: 11px;
+  color: var(--ink-300);
+}
+
+.crewpro__name {
+  margin: 0;
+  font-size: 22px;
+  font-weight: var(--fw-bold, 700);
+  line-height: 1.15;
+}
+
+.crewpro__phone {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.crewpro__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
+/* Ряд чисел. Не сетка в четыре колонки: чисел шесть, и на узком окне они
+   должны переноситься, а не сжиматься до нечитаемого. */
+.crewpro__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  gap: 10px;
+  padding: 14px;
+  border-radius: var(--r-control);
+  background: var(--ink-50);
+}
+
+.crewpro__stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.crewpro__stat-value {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  font-size: 20px;
+  font-weight: var(--fw-bold, 700);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.crewpro__stat--bad .crewpro__stat-value {
+  color: var(--danger-600);
+}
+
+.crewpro__stat-unit {
+  font-size: 11px;
+  font-weight: var(--fw-regular);
+  color: var(--ink-300);
+}
+
+.crewpro__stat-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.crewpro__cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.crewpro__block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.crewpro__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 13px;
+  font-weight: var(--fw-semibold);
+}
+
+/* Число рядом с заголовком: сколько строк в таблице под ним. */
+.crewpro__count {
+  padding: 1px 7px;
+  border-radius: var(--r-pill);
+  background: var(--ink-100);
+  font-size: 11px;
+  font-weight: var(--fw-medium);
+  color: var(--text-secondary);
+}
+
+.crewpro__note {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--ink-300);
+}
+
+.crewpro__muted {
+  color: var(--ink-300);
+  font-size: 12px;
+}
+
+.crewpro__big {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: var(--fw-semibold);
+}
+
+.crewpro__posts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 10px;
+}
+
+.crewpro__post {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 11px 13px;
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--r-control);
+  font-size: 12px;
+}
+
+.crewpro__post-zone {
+  font-weight: var(--fw-semibold);
+}
+
+.crewpro__post-line {
+  color: var(--text-secondary);
+}
+
+/* Что делал чаще всего: вид работ и число рядом. */
+.crewpro__works {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.crewpro__work {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px;
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--r-pill);
+  font-size: 11px;
+}
+
+.crewpro__work-count {
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-accent);
+}
+
+/* Карточка, которая открывает профиль: показываем это наведением, а не
+   лишней кнопкой «открыть». */
+.runcard--open {
+  cursor: pointer;
+  transition: border-color 120ms var(--ease-out-strong), box-shadow 120ms var(--ease-out-strong);
+}
+
+.runcard--open:hover {
+  border-color: var(--border-subtle);
+  box-shadow: var(--shadow-sm);
+}
+
+.runcard--open:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+
 /* Карточки услуг. Ряд гибкий: услуг восемнадцать, и раскладывать их по
    жёсткой сетке незачем — они разной длины и читаются списком. */
 .srvgrid {

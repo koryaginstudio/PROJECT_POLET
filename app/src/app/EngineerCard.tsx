@@ -18,6 +18,8 @@ interface Props {
   seat?: number;
   /** Открыть правку карточки. Нет — кнопки правки не будет. */
   onEdit?: () => void;
+  /** Открыть профиль. Нет — карточка не нажимается. */
+  onOpen?: () => void;
   /** Отработано за выбранный срок, минуты: работа на объектах плюс дорога.
       Считает база — она одна знает, какой срок сейчас выбран. Без неё
       карточка показывает занятость, как показывала раньше. */
@@ -55,6 +57,7 @@ export function EngineerCard({
   row,
   seat,
   onEdit,
+  onOpen,
   photo,
   dense = false,
   skill = null,
@@ -72,7 +75,22 @@ export function EngineerCard({
   const loose = row.occupancyMean > 0 && row.occupancyMean < 0.6;
 
   return (
-    <article className="runcard runcard--flat">
+    /* Вся карточка — вход в профиль. Кнопка правки и значки внутри неё живут
+       своей жизнью: нажатие на них до карточки не доходит, иначе правка
+       открывала бы заодно и профиль. */
+    <article
+      className={'runcard runcard--flat' + (onOpen ? ' runcard--open' : '')}
+      onClick={onOpen}
+      role={onOpen ? 'button' : undefined}
+      tabIndex={onOpen ? 0 : undefined}
+      onKeyDown={(event) => {
+        if (!onOpen) return;
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onOpen();
+        }
+      }}
+    >
       <div className="runcard__head">
         <span className="runcard__ident">
           <span className="runcard__code engcard__name" title={row.name}>
@@ -99,7 +117,10 @@ export function EngineerCard({
           <button
             type="button"
             className="engcard__edit"
-            onClick={onEdit}
+            onClick={(event) => {
+              event.stopPropagation();
+              onEdit();
+            }}
             title={`Править карточку: ${row.name}`}
             aria-label={`Править карточку: ${row.name}`}
           >
