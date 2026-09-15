@@ -13,7 +13,7 @@ import {
   runEntry
 } from '../data/load.ts';
 import type { EngineParams } from '../data/engine.ts';
-import type { RunId, DaySummary } from '../data/load.ts';
+import type { RunId, DaySummary, SourceId } from '../data/load.ts';
 import { exportRun } from '../data/report.ts';
 import { replanDay, saveReplan } from '../data/api.ts';
 import type { IncidentSpec, ReplanResult } from '../data/api.ts';
@@ -161,6 +161,12 @@ export function App() {
   useEffect(() => {
     let cancelled = false;
     setError(null);
+    /* Расчётов ещё нет — грузить нечего. Это не ошибка, а первое утро:
+       диспетчерская встретит предложением посчитать день. */
+    if (!runId) {
+      setDay(null);
+      return;
+    }
     loadDay(runId)
       .then((loaded) => {
         if (cancelled) return;
@@ -443,7 +449,7 @@ export function App() {
     try {
       /* День берём тот же, что у открытого расчёта: смысл ручного управления
          в том, чтобы сравнить два плана на одних данных. */
-      const entry = await createRun(params, runEntry(runId).day);
+      const entry = await createRun(params, runEntry(runId)?.source ?? undefined, runEntry(runId)?.day);
       loadSummaries().then(setRuns).catch(() => undefined);
       setManual(false);
       openRun(entry.id);
@@ -461,12 +467,12 @@ export function App() {
   const [solving, setSolving] = useState(false);
   const [solveFailed, setSolveFailed] = useState<string | null>(null);
 
-  const runEngine = async (params: EngineParams) => {
+  const runEngine = async (params: EngineParams, zone?: SourceId) => {
     if (solving) return;
     setSolving(true);
     setSolveFailed(null);
     try {
-      const entry = await createRun(params);
+      const entry = await createRun(params, zone);
       loadSummaries().then(setRuns).catch(() => undefined);
       openRun(entry.id);
       setRebuilding(true);
@@ -478,6 +484,22 @@ export function App() {
       setSolving(false);
     }
   };
+
+  /* Ни одного расчёта — первое утро программы. Показываем форму расчёта и
+     ничего больше: пока день не посчитан, ни карте, ни базам данных, ни
+     сравнению показывать нечего. */
+  if (!runId) {
+    return (
+      <CreateRunScreen
+        onCancel={() => undefined}
+        onCreate={runEngine}
+        view={null}
+        solving={solving}
+        failed={solveFailed}
+        first
+      />
+    );
+  }
 
   if (error) {
     return (

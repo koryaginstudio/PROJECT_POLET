@@ -1,22 +1,31 @@
 /* Единственное место, которое знает, откуда берутся данные.
 
-   Источников два, и они уживаются рядом:
+   Источник данных один — выгрузка «Билайн Бизнес» за 17 августа 2026 года,
+   разложенная на три зоны обслуживания. В каждой зоне свои заявки, свои
+   инженеры и свой офис: это три самостоятельных рабочих дня, а не части
+   одного. Лежат они файлами в `public/data/<зона>/` и приходят в интерфейс
+   в формах контракта 1.2 «orders» и «engineers».
 
-   - **фикстуры** — три дня, записанные в файлы. На них интерфейс верстают,
-     и на них он открывается, когда движок не запущен. История в этом
-     режиме собрана по кругу: записей двадцать четыре, файлов три. Это
-     не обман, а каркас — так видно, как выглядит список, когда расчётов
-     много, и цифры внутри каждой записи настоящие;
-   - **движок** — живой сервер, который считает день по-настоящему и
-     хранит архив. Его расчёты дописываются в конец истории.
+   Готовых планов на диске нет и быть не должно: план — это результат
+   расчёта, а не данные. Считается он двумя способами:
 
-   Правка источника живёт здесь и нигде больше: формы по контракту
-   одинаковые, и всё, что выше, разницы не видит. */
+   - **движок** — живой сервер, если запущен. Считает по-настоящему и
+     хранит архив у себя;
+   - **расчёт в интерфейсе** — временная замена движку, пока тот не
+     принимает реальные данные. Раскладывает заявки базовым вариантом
+     ТЗ (пункт 2.3) прямо в браузере, см. `planner.ts`.
+
+   История расчётов начинается пустой: пока никто ничего не считал,
+   показывать нечего. Записи появляются от кнопки «Создать расчёт» и живут
+   в браузере — сервера у нас пока нет. Сам план в браузере не хранится:
+   расчёт детерминированный, и по зоне с переменными он повторяется
+   один в один, сколько ни пересчитывай. */
 
 import { SCHEMA, schemaAccepted } from './contract.ts';
-import type { Day, Explain, Plan, Shifts, Simulation } from './contract.ts';
-import { ENGINE_DEFAULTS } from './engine.ts';
+import type { Day, Dictionaries, Engineer, Order, Plan, Simulation } from './contract.ts';
 import type { EngineParams } from './engine.ts';
+import { planDay } from './planner.ts';
+import type { PlannedDay } from './planner.ts';
 import {
   createEngineRun,
   engineAlive,
@@ -27,11 +36,19 @@ import {
   probeEngine
 } from './api.ts';
 
-/* Источники данных — файлы на диске. Их три, и это отдельная сущность от
-   расчёта: расчёт живёт в истории под своим номером и датой, а данные к нему
-   приходят из источника. */
-export const SOURCES = ['day-01', 'day-02', 'day-07'] as const;
+/* Зоны обслуживания — то, как выгрузка поделена на рабочие дни. Названия
+   пришли вместе с данными от заказчика; ТЗ зон не называет вовсе. */
+export const SOURCES = ['east', 'southeast', 'center'] as const;
 export type SourceId = (typeof SOURCES)[number];
+
+/** Как зона называется на экране. */
+export const ZONE_TITLES: Record<SourceId, string> = {
+  east: 'Восток',
+  southeast: 'Юго-Восток',
+  center: 'Центр'
+};
+
+export const zoneTitle = (zone: SourceId) => ZONE_TITLES[zone] ?? zone;
 
 export type RunId = string;
 
@@ -66,11 +83,6 @@ export interface RunEntry {
     солвер, и переписывать их значило бы врать про расчёт. */
 export type RunPatch = Partial<Pick<RunEntry, 'code' | 'created' | 'note'>>;
 
-/* Сколько расчётов держим в истории. Больше, чем помещается в ленту
-   подшапки: лента показывает последние, остальные достаются из списка —
-   ради этого список и нужен. */
-const HISTORY = 24;
-
 const pad = (value: number) => String(value).padStart(2, '0');
 
 const iso = (date: Date) =>
@@ -78,93 +90,51 @@ const iso = (date: Date) =>
 
 const clock = (minutes: number) => `${pad(Math.floor(minutes / 60))}:${pad(minutes % 60)}`;
 
-/* Час расчёта: движок считает смену ночью, до выхода бригад. Минуты разведены
-   по номеру записи — иначе двадцать четыре расчёта в истории отличались бы
-   друг от друга одной только датой. */
-const runMinute = (index: number) => 5 * 60 + 20 + ((index * 37) % 95);
+/* ─── история расчётов ───────────────────────────────────────────────────
 
-/* История расчётов. Источников три, а записей пятнадцать: архив собран по
-   кругу, чтобы каркас истории было видно целиком — как выглядит строка
-   выбора, когда расчётов много, и как по ней искать нужный. Цифры внутри
-   записи настоящие, они приходят из источника; синтетические тут номер,
-   дата и время. Когда появится настоящий архив, изменится только этот список —
-   всё, что ниже, читает уже его. */
-function buildRuns(): RunEntry[] {
-  const today = new Date();
-  const runs: RunEntry[] = [];
-  for (let index = 0; index < HISTORY; index += 1) {
-    /* Первым идёт самый старый: номера растут вместе с датой, как в любом
-       журнале, и R015 — это сегодня. */
-    const daysBack = HISTORY - 1 - index;
-    const date = new Date(today);
-    date.setDate(date.getDate() - daysBack);
-    runs.push({
-      id: 'run-' + String(index + 1).padStart(2, '0'),
-      code: 'R' + String(index + 1).padStart(3, '0'),
-      date: iso(date),
-      created: `${iso(date)}T${clock(runMinute(index))}`,
-      source: SOURCES[index % SOURCES.length],
-      params: { ...ENGINE_DEFAULTS }
-    });
-  }
-  return runs;
-}
+   Пустая, пока никто ничего не посчитал. Записи заводит кнопка «Создать
+   расчёт» и хранит их браузер: сервера у нас пока нет, а терять историю при
+   обновлении страницы незачем.
 
-/* ─── правки истории ─────────────────────────────────────────────────────
+   Хранится только запись — зона, переменные, номер, дата и заметка. Самого
+   плана в хранилище нет: расчёт по одним и тем же данным с одними и теми же
+   переменными повторяется один в один, и держать в браузере то, что
+   пересчитывается за доли секунды, значит упереться в его квоту на пустом
+   месте. */
 
-   Расчёт считает движок, а номер, время создания и заметку заводит человек.
-   Терять их при обновлении страницы незачем, сервера у нас пока нет —
-   поэтому правки лежат в браузере и накладываются на историю при загрузке.
+const STORE_KEY = 'polet.runs.v2';
 
-   Хранится не сама история, а только правки к ней: список строится заново на
-   каждый заход (даты в нём считаются от сегодняшнего дня), и записанный
-   целиком он бы устарел на следующее утро. */
-
-const STORE_KEY = 'polet.run-edits.v1';
-
-interface RunEdits {
-  patch: Record<RunId, RunPatch>;
-  removed: RunId[];
-}
-
-const EMPTY_EDITS: RunEdits = { patch: {}, removed: [] };
-
-function readEdits(): RunEdits {
-  if (typeof localStorage === 'undefined') return { ...EMPTY_EDITS };
+function readStored(): RunEntry[] {
+  if (typeof localStorage === 'undefined') return [];
   try {
     const raw = localStorage.getItem(STORE_KEY);
-    if (!raw) return { ...EMPTY_EDITS };
-    const parsed = JSON.parse(raw) as Partial<RunEdits>;
-    return {
-      patch: parsed.patch ?? {},
-      removed: Array.isArray(parsed.removed) ? parsed.removed : []
-    };
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as RunEntry[];
+    if (!Array.isArray(parsed)) return [];
+    /* Записи из прошлых версий могли ссылаться на источники, которых больше
+       нет: синтетические дни ушли в архив вместе со своими планами. */
+    return parsed.filter(
+      (run) => run && typeof run.id === 'string' && (run.source === null || SOURCES.includes(run.source))
+    );
   } catch {
     /* Испорченная запись — не повод не открыться: начинаем с чистого листа. */
-    return { ...EMPTY_EDITS };
+    return [];
   }
 }
 
-let edits = readEdits();
+export const RUNS: RunEntry[] = readStored();
 
-function saveEdits() {
+function saveRuns() {
   if (typeof localStorage === 'undefined') return;
   try {
-    localStorage.setItem(STORE_KEY, JSON.stringify(edits));
+    /* Расчёты движка живут в его архиве и записываются туда им самим —
+       дублировать их в браузере незачем. */
+    localStorage.setItem(STORE_KEY, JSON.stringify(RUNS.filter((run) => run.source !== null)));
   } catch {
-    /* Хранилище может быть закрыто настройками браузера. Правка тогда живёт
+    /* Хранилище может быть закрыто настройками браузера. Запись тогда живёт
        до перезагрузки — это хуже, чем ничего не делать, но не ошибка. */
   }
 }
-
-function applyEdits(list: RunEntry[]): RunEntry[] {
-  const gone = new Set(edits.removed);
-  return list
-    .filter((run) => !gone.has(run.id))
-    .map((run) => (edits.patch[run.id] ? { ...run, ...edits.patch[run.id] } : run));
-}
-
-export const RUNS: RunEntry[] = applyEdits(buildRuns());
 
 const RUN_BY_ID = new Map(RUNS.map((run) => [run.id, run]));
 
@@ -174,16 +144,14 @@ const RUN_BY_ID = new Map(RUNS.map((run) => [run.id, run]));
    старте, до первой отрисовки: в истории уже должны стоять все записи,
    иначе адрес в строке браузера откроет не тот расчёт.
 
-   Найденный архив дописывается в конец истории, а не заменяет её.
-   Заменять нечем: настоящих расчётов поначалу два-три, и разделы баз,
-   собранные по ним, оказались бы пустыми. Прошлое остаётся фикстурным
-   каркасом, новое — настоящим, и одно от другого отличимо: у настоящего
+   Найденный архив дописывается в конец истории, а не заменяет её: свои
+   расчёты и расчёты движка стоят в одном списке и различимы — у движка
    есть номер дня и время счёта.
 
    Номера при склейке пересчитываются по месту в истории. Движок ведёт
    свою нумерацию с R001, и без этого в списке оказались бы два R001 —
-   один фикстурный, другой настоящий. Номер — это то, чем расчёты
-   различают вслух, и двух одинаковых быть не должно. */
+   один свой, другой с движка. Номер — это то, чем расчёты различают
+   вслух, и двух одинаковых быть не должно. */
 
 let engineOn = false;
 
@@ -192,71 +160,58 @@ export const engineReady = () => engineOn;
 
 const codeAt = (index: number) => 'R' + String(index + 1).padStart(3, '0');
 
-/** Ищет движок и подтягивает его архив. Вызывается один раз при старте. */
+/** Ищет движок. Вызывается один раз при старте.
+
+    Архив движка в историю сейчас не подтягивается, и это не оплошность.
+    Движок считает свои собственные синтетические дни: реальную выгрузку он
+    принимать пока не умеет, транспорта как ограничения в его модели нет, а
+    день он обрывает в 21:00, тогда как окна приёма в выгрузке доходят до
+    22:00. Показывать его расчёты рядом с расчётами по настоящим данным
+    значило бы смешать два разных дня в одном списке.
+
+    Как только движок начнёт принимать зоны выгрузки, отсюда возвращается
+    чтение архива, а `createRun` снова пойдёт считать к нему. */
 export async function attachEngine(): Promise<boolean> {
   engineOn = await probeEngine();
-  if (!engineOn) return false;
+  return engineOn;
+}
 
-  let archive;
-  try {
-    archive = await listRuns();
-  } catch {
-    /* Движок отозвался на проверку, но архив не отдал. Открываемся на
-       фикстурах: пустой экран хуже, чем экран без вчерашних расчётов. */
-    return false;
-  }
+/** Умеет ли движок считать по нашим данным. Пока нет — см. `attachEngine`. */
+const engineTakesRealData = () => false;
 
-  for (const record of archive) {
-    const entry: RunEntry = {
-      id: record.id,
-      code: codeAt(RUNS.length),
-      date: record.date,
-      created: record.created,
-      source: null,
-      day: record.day,
-      solveSeconds: record.summary.solve_seconds,
-      params: record.params,
-      note: record.note || undefined
-    };
-    RUNS.push(entry);
-    RUN_BY_ID.set(entry.id, entry);
-  }
-  /* Правки человека (номер, время, заметка) лежат в браузере и должны
-     лечь и на пришедшие записи тоже. */
-  for (const run of RUNS) {
-    const patch = edits.patch[run.id];
-    if (patch) Object.assign(run, patch);
-  }
-  return true;
+/** Архив движка. Сейчас не используется: ждёт, когда движок примет выгрузку. */
+export async function engineArchive() {
+  return listRuns();
 }
 
 /** Открытый по умолчанию расчёт — самый свежий из оставшихся.
 
+    Пустая строка, пока история пуста: считать ещё нечего, и диспетчерская
+    встречает предложением завести первый расчёт.
+
     Читается как функция, а не как константа: архив движка приезжает после
-    того, как модуль разобран, и константа навсегда запомнила бы последнюю
-    фикстуру. Ровно на этом интерфейс и открывал предпоследний расчёт
-    вместо сегодняшнего. */
-export const latestRun = (): RunId => RUNS[RUNS.length - 1].id;
+    того, как модуль разобран, и константа навсегда запомнила бы то, что
+    было до него. */
+export const latestRun = (): RunId => RUNS[RUNS.length - 1]?.id ?? '';
 
-/** Заводит расчёт.
+/** Заводит расчёт по выбранной зоне.
 
-    С живым движком это настоящий счёт: он раскладывает день по инженерам
-    с присланными переменными и кладёт результат к себе в архив. Занимает
-    около восьми секунд — это работа планировщика, и прятать её не нужно.
+    С живым движком это его счёт: он раскладывает день с присланными
+    переменными и кладёт результат к себе в архив.
 
-    Без движка считать нечем, и запись берёт данные следующего источника
-    по кругу. Врать про это не надо: переменные запоминаются и показаны
-    рядом с расчётом, а цифры плана честно те же, что у источника. */
-export async function createRun(params: EngineParams, day?: number): Promise<RunEntry> {
+    Без движка день считается здесь же, в браузере, — базовым вариантом
+    ТЗ. План не запоминается: он пересчитывается по зоне и переменным,
+    когда понадобится, и всегда выходит тем же самым. */
+export async function createRun(
+  params: EngineParams,
+  zone: SourceId = SOURCES[0],
+  day?: number
+): Promise<RunEntry> {
   const index = RUNS.length;
   const now = new Date();
 
-  if (engineOn) {
-    /* День выбирается по кругу из тех же трёх, что показаны в фикстурах:
-       так новый расчёт сопоставим с прошлыми, а не сравнивает вчерашний
-       день с позавчерашним. */
-    const DAYS = [1, 2, 7];
-    const record = await createEngineRun(day ?? DAYS[index % DAYS.length], params);
+  if (engineOn && engineTakesRealData()) {
+    const record = await createEngineRun(day ?? 1, params);
     const entry: RunEntry = {
       id: record.id,
       code: codeAt(index),
@@ -272,17 +227,21 @@ export async function createRun(params: EngineParams, day?: number): Promise<Run
     return entry;
   }
 
+  const started = performance.now();
+  const computed = await computeDay(zone, params);
   const entry: RunEntry = {
-    id: 'run-' + String(index + 1).padStart(2, '0'),
+    id: `run-${Date.now().toString(36)}`,
     code: codeAt(index),
-    date: iso(now),
+    date: computed.plan.meta.date,
     /* Время у заведённого расчёта настоящее: его завели вот сейчас. */
     created: `${iso(now)}T${clock(now.getHours() * 60 + now.getMinutes())}`,
-    source: SOURCES[index % SOURCES.length],
+    source: zone,
+    solveSeconds: Number(((performance.now() - started) / 1000).toFixed(2)),
     params
   };
   RUNS.push(entry);
   RUN_BY_ID.set(entry.id, entry);
+  saveRuns();
   return entry;
 }
 
@@ -292,45 +251,41 @@ export function updateRun(id: RunId, patch: RunPatch): void {
   const entry = RUN_BY_ID.get(id);
   if (!entry) return;
   Object.assign(entry, patch);
-  edits.patch[id] = { ...edits.patch[id], ...patch };
-  saveEdits();
+  saveRuns();
 
-  /* Заметка к настоящему расчёту переживает не только перезагрузку, но и
-     смену браузера: движок хранит её рядом с планом. Не дошла — не беда,
-     копия осталась в браузере, и следующая правка попробует снова. */
+  /* Заметка к расчёту движка переживает не только перезагрузку, но и смену
+     браузера: движок хранит её рядом с планом. */
   if (entry.source === null && engineAlive() && patch.note !== undefined) {
     noteEngineRun(id, patch.note).catch(() => undefined);
   }
 }
 
-/** Убирает запись из истории. Данные источника при этом остаются на месте:
-    удаляется запись о расчёте, а не день, по которому его считали. */
+/** Убирает запись из истории. Данные зоны при этом остаются на месте:
+    удаляется расчёт, а не день, по которому его считали. */
 export function deleteRun(id: RunId): void {
   const at = RUNS.findIndex((run) => run.id === id);
   if (at === -1) return;
   RUNS.splice(at, 1);
   RUN_BY_ID.delete(id);
-  delete edits.patch[id];
-  if (!edits.removed.includes(id)) edits.removed.push(id);
-  saveEdits();
+  saveRuns();
 }
 
-/** Сколько правок держит браузер: столько-то изменённых записей и столько-то
-    удалённых. Нужно настройкам — там их и снимают. */
-export const runEditCount = () => Object.keys(edits.patch).length + edits.removed.length;
+/** Сколько расчётов держит браузер. Нужно настройкам — там их и снимают. */
+export const runEditCount = () => RUNS.filter((run) => run.source !== null).length;
 
-/** Снимает все правки. Историю при этом не восстанавливает: список строится
-    при загрузке, поэтому удалённые записи вернутся после обновления страницы. */
+/** Стирает всю историю расчётов. Данные зон не трогает: они лежат файлами
+    и к истории отношения не имеют. */
 export function clearRunEdits(): void {
-  edits = { ...EMPTY_EDITS, patch: {}, removed: [] };
-  saveEdits();
+  RUNS.length = 0;
+  RUN_BY_ID.clear();
+  saveRuns();
 }
 
 export const runEntry = (id: RunId): RunEntry => RUN_BY_ID.get(id) ?? RUNS[RUNS.length - 1];
 
-export const runCode = (id: RunId) => runEntry(id).code;
+export const runCode = (id: RunId) => runEntry(id)?.code ?? '';
 
-export const runDate = (id: RunId) => runEntry(id).date;
+export const runDate = (id: RunId) => runEntry(id)?.date ?? '';
 
 /** Дата и время расчёта так, как их читают: «08.09.2026, 06:12». */
 export function stampOf(created: string): string {
@@ -416,20 +371,113 @@ async function fetchForm<T extends { schema: string; kind: string }>(
   return body;
 }
 
-/** План одного источника отдельно от остальных трёх форм: базам данных нужен
-    только он, и тянуть ради них симуляцию с объяснением незачем. */
-export const loadPlan = (source: SourceId) => fetchForm<Plan>(source, 'plan');
+/* ─── данные зоны и расчёт по ним ────────────────────────────────────────
 
-/** Симуляция отдельно: покрытие живёт там, и разделы поверх прогонов считают
-    его тем же числом, что и пульт расчёта. */
-export const loadSimulation = (source: SourceId) => fetchForm<Simulation>(source, 'simulation');
+   Заявки и инженеры лежат файлами и от расчёта не зависят: пересчитать день
+   десять раз с разными переменными — это десять планов по одним и тем же
+   данным. Поэтому данные читаются один раз на зону и держатся в памяти, а
+   планы считаются поверх них.
+
+   Справочник подписей общий на все зоны: состав кодов задают данные, и
+   восемнадцать типов работ из выгрузки в коде интерфейса не перечислить. */
+
+interface OrdersForm {
+  schema: string;
+  kind: 'orders';
+  meta: { date: string; zone: string };
+  orders: Order[];
+}
+
+interface EngineersForm {
+  schema: string;
+  kind: 'engineers';
+  meta: { date: string; zone: string };
+  engineers: Engineer[];
+}
+
+export interface ZoneData {
+  zone: SourceId;
+  date: string;
+  title: string;
+  orders: Order[];
+  engineers: Engineer[];
+}
+
+const zoneCache = new Map<SourceId, Promise<ZoneData>>();
+
+/** Заявки и инженеры зоны. Читается один раз за сеанс. */
+export function loadZone(zone: SourceId): Promise<ZoneData> {
+  const cached = zoneCache.get(zone);
+  if (cached) return cached;
+
+  const reading = (async (): Promise<ZoneData> => {
+    const [orders, engineers] = await Promise.all([
+      fetchForm<OrdersForm>(zone, 'orders'),
+      fetchForm<EngineersForm>(zone, 'engineers')
+    ]);
+    return {
+      zone,
+      date: orders.meta.date,
+      title: orders.meta.zone || zoneTitle(zone),
+      orders: orders.orders,
+      engineers: engineers.engineers
+    };
+  })();
+
+  zoneCache.set(zone, reading);
+  return reading;
+}
+
+let dictionaries: Promise<Dictionaries | null> | null = null;
+
+/** Подписи ко всем кодам. Формы может не быть — тогда работаем на встроенном
+    словаре, и ни один экран от этого не ломается. */
+export function loadDictionaries(): Promise<Dictionaries | null> {
+  if (!dictionaries) {
+    dictionaries = (async () => {
+      try {
+        const response = await fetch('/data/dictionaries.json');
+        if (!response.ok) return null;
+        const body = (await response.json()) as Dictionaries;
+        return body.kind === 'dictionaries' ? body : null;
+      } catch {
+        return null;
+      }
+    })();
+  }
+  return dictionaries;
+}
+
+/* Один и тот же день с одними и теми же переменными считается один раз:
+   история, базы данных и сводки спрашивают план по многу раз, а расчёт от
+   этого не меняется. */
+const planCache = new Map<string, Promise<PlannedDay>>();
+
+const planKey = (zone: SourceId, params: EngineParams) =>
+  `${zone}|${params.duration_factor}|${params.buffer_base}|${params.buffer_step}|${params.balance_weight}`;
+
+/** Считает день по данным зоны. */
+export function computeDay(zone: SourceId, params: EngineParams): Promise<PlannedDay> {
+  const key = planKey(zone, params);
+  const cached = planCache.get(key);
+  if (cached) return cached;
+
+  const computing = (async () => {
+    const data = await loadZone(zone);
+    return planDay(data.orders, data.engineers, params, data.date);
+  })();
+
+  planCache.set(key, computing);
+  return computing;
+}
 
 export async function loadDay(id: RunId): Promise<Day> {
-  const source = runEntry(id).source;
+  const entry = runEntry(id);
+  if (!entry) throw new ContractError('plan', 'расчёт не найден');
 
   /* Расчёт движка приходит одним ответом: четыре формы уже лежат у него
      рядом, и четыре запроса вместо одного ничего бы не ускорили. */
-  if (source === null) {
+  if (entry.source === null) {
     const forms = await loadEngineForms(id);
     for (const kind of ['plan', 'explain', 'simulation', 'shifts'] as const) {
       checkForm(forms[kind], kind);
@@ -439,17 +487,16 @@ export async function loadDay(id: RunId): Promise<Day> {
       plan: forms.plan,
       explain: forms.explain,
       simulation: forms.simulation,
-      shifts: forms.shifts
+      shifts: forms.shifts,
+      dictionaries: await loadDictionaries()
     };
   }
 
-  const [plan, explain, simulation, shifts] = await Promise.all([
-    fetchForm<Plan>(source, 'plan'),
-    fetchForm<Explain>(source, 'explain'),
-    fetchForm<Simulation>(source, 'simulation'),
-    fetchForm<Shifts>(source, 'shifts')
+  const [computed, dict] = await Promise.all([
+    computeDay(entry.source, entry.params),
+    loadDictionaries()
   ]);
-  return { id, plan, explain, simulation, shifts };
+  return { id, ...computed, dictionaries: dict };
 }
 
 export interface DaySummary {
@@ -468,30 +515,13 @@ export interface DaySummary {
   topReason: { key: string; value: number } | null;
 }
 
-/** Читает каждый источник один раз и раздаёт по записям истории: файлов три,
-    записей пятнадцать, и тянуть один и тот же план пятнадцать раз незачем. */
-export async function loadBySource<T>(read: (source: SourceId) => Promise<T>): Promise<Map<SourceId, T>> {
-  const pairs = await Promise.all(
-    SOURCES.map(async (source) => [source, await read(source)] as const)
-  );
-  return new Map(pairs);
-}
-
 /** План и симуляция для каждой записи истории.
 
-    Здесь сходятся оба источника, и экономия у них разная. Фикстуры
-    читаются по одному разу на файл и раздаются по записям: файлов три,
-    записей двадцать четыре, и тянуть один и тот же план двадцать четыре
-    раза незачем. Расчёт движка — сам себе источник, и читается по разу.
-
-    Всё, что строит сводки и базы данных, ходит сюда: иначе один раздел
-    однажды окажется собран по фикстурам, а соседний — по архиву. */
+    Здесь сходятся оба источника: свои расчёты считаются по данным зоны,
+    расчёты движка забираются из его архива. Всё, что строит сводки и базы
+    данных, ходит сюда — иначе один раздел однажды окажется собран по своим
+    расчётам, а соседний по чужим. */
 export async function loadRunData(): Promise<Map<RunId, { plan: Plan; simulation: Simulation }>> {
-  const needFixtures = RUNS.some((run) => run.source !== null);
-  const [plans, simulations] = needFixtures
-    ? await Promise.all([loadBySource(loadPlan), loadBySource(loadSimulation)])
-    : [new Map<SourceId, Plan>(), new Map<SourceId, Simulation>()];
-
   const remote = RUNS.filter((run) => run.source === null);
   const fetched = await Promise.all(
     remote.map(async (run) => {
@@ -506,17 +536,19 @@ export async function loadRunData(): Promise<Map<RunId, { plan: Plan; simulation
   );
   const byRun = new Map(fetched);
 
+  const own = RUNS.filter((run) => run.source !== null);
+  const computed = await Promise.all(
+    own.map(async (run) => {
+      const day = await computeDay(run.source!, run.params);
+      return [run.id, { plan: day.plan, simulation: day.simulation }] as const;
+    })
+  );
+  for (const [id, pair] of computed) byRun.set(id, pair);
+
   const out = new Map<RunId, { plan: Plan; simulation: Simulation }>();
   for (const run of RUNS) {
-    if (run.source === null) {
-      const pair = byRun.get(run.id);
-      if (pair) out.set(run.id, pair);
-      continue;
-    }
-    out.set(run.id, {
-      plan: plans.get(run.source)!,
-      simulation: simulations.get(run.source)!
-    });
+    const pair = byRun.get(run.id);
+    if (pair) out.set(run.id, pair);
   }
   return out;
 }

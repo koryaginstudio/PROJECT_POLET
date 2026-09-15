@@ -48,7 +48,11 @@ export function HomeScreen({ day, view, runs, activeRun, onGoSection, onOpenRun 
         <div className="dbstats">
           <div className="dbstat">
             <span className="dbstat__value">{percent(day.simulation.coverage)}</span>
-            <span className="dbstat__label">Покрытие по симуляции</span>
+            {/* Симуляции могло и не быть: тогда это доля назначенных, а не
+                доля тех, кто доедет, и называть её надо по-другому. */}
+            <span className="dbstat__label">
+              {day.simulation.meta.runs > 0 ? 'Покрытие по симуляции' : 'Заявок разложено, %'}
+            </span>
           </div>
           <div className="dbstat">
             <span className="dbstat__value">

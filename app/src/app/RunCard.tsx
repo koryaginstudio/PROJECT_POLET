@@ -172,9 +172,7 @@ export function RunCard({
         {dec(row.coverage * 100)}
         <span className="runcard__unit">%</span>
       </span>
-      <span className="runcard__label">
-        {dense ? "Покрытие" : "Покрытие по симуляции"}
-      </span>
+      <span className="runcard__label">Покрытие</span>
 
       {/* В плотной строке остаётся одно число сверх покрытия — то, ради
           которого в историю и заглядывают. */}
