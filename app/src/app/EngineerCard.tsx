@@ -113,8 +113,15 @@ export function EngineerCard({
         </span>
         {/* Табельный — тем же значком, что и в профиле: правый верхний угол
             карточки и правый верхний угол профиля должны называть человека
-            одинаково, иначе кажется, что это два разных номера. */}
-        {!dense && <span className="crewpro__id engcard__idbadge">{row.id}</span>}
+            одинаково, иначе кажется, что это два разных номера. Подпись
+            «id:» перед ним серая и мельче — читается как подсказка к
+            номеру, а не спорит с ним весом. */}
+        {!dense && (
+          <span className="engcard__idwrap">
+            <span className="engcard__idlabel">id:</span>
+            <span className="crewpro__id engcard__idbadge">{row.id}</span>
+          </span>
+        )}
       </div>
 
       {/* Под именем — смена: то же место, где у расчёта стоит время, когда
