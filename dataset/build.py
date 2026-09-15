@@ -545,8 +545,14 @@ class Crew:
 
 
 def build_engineers(rows: list[Row], zone: str, office: tuple[float, float] | None,
-                    office_address: str, first_id: int = 0) -> list[dict]:
+                    office_address: str, crew_ids: dict[str, str]) -> list[dict]:
     """Инженеры зоны — из бригад, которые в этой зоне работали.
+
+    Табельный номер закреплён за человеком, а не за зоной: `crew_ids` — общий
+    на всю базу справочник «бригада → номер». Бригада Каушнян работает и на
+    Востоке, и на Юго-Востоке, и это один человек с двумя сменами, а не два
+    однофамильца. Выдать ему два номера значило бы посчитать его дважды в
+    штате и разрезать его выработку пополам.
 
     Навыки не назначаются, а вычитываются: бригада умеет то, что она в этот день
     делала. Это честнее любой раздачи — и даёт ровно то, чего требует ТЗ от
@@ -574,8 +580,13 @@ def build_engineers(rows: list[Row], zone: str, office: tuple[float, float] | No
             crew.last = max(crew.last, row.window_end)
 
     engineers = []
-    for index, crew in enumerate(sorted(crews.values(), key=lambda c: c.name), start=first_id):
-        crew.id = f"E{index:02d}"
+    for crew in sorted(crews.values(), key=lambda c: c.name):
+        known = crew_ids.get(crew.team)
+        if known is None:
+            known = f"E{len(crew_ids):02d}"
+            crew_ids[crew.team] = known
+        crew.id = known
+        number = int(known[1:])
         # Бригада, у которой в этот день были одни круглосуточные аварии, о
         # своём графике не сказала ничего — ставим её в общую смену.
         if crew.last <= crew.first:
@@ -604,11 +615,14 @@ def build_engineers(rows: list[Row], zone: str, office: tuple[float, float] | No
                 "home_address": office_address,
                 "home_lat": office[0] if office else MOSCOW_ANCHOR[0],
                 "home_lon": office[1] if office else MOSCOW_ANCHOR[1],
-                "transport": TRANSPORT_MIX[index % len(TRANSPORT_MIX)],
+                # Транспорт закреплён за человеком через его табельный номер:
+                # инженер, который работает в двух зонах, не может в одной
+                # ездить на машине, а в другой ходить пешком.
+                "transport": TRANSPORT_MIX[number % len(TRANSPORT_MIX)],
                 "status": "on_shift",
                 "team": crew.team,
                 "zone": zone,
-                "phone": f"+7 495 {700 + index:03d}-{10 + index:02d}-{20 + index:02d}",
+                "phone": f"+7 495 {700 + number:03d}-{10 + number:02d}-{20 + number:02d}",
                 "photo": None,
                 "position": None,
             }
@@ -619,7 +633,7 @@ def build_engineers(rows: list[Row], zone: str, office: tuple[float, float] | No
 # ─── сборка зоны ─────────────────────────────────────────────────────────────
 
 
-def build_zone(key: str, geo: Geocoder, first_order: int = 1, first_engineer: int = 0) -> dict:
+def build_zone(key: str, geo: Geocoder, first_order: int, crew_ids: dict[str, str]) -> dict:
     """Собирает зону. Нумерация сквозная по всей базе, а не своя в каждой зоне.
 
     Заказчик потребовал этого прямо: «01» в одном расчёте и «01» в другом —
@@ -699,7 +713,7 @@ def build_zone(key: str, geo: Geocoder, first_order: int = 1, first_engineer: in
             }
         )
 
-    engineers = build_engineers(rows, zone["title"], office, zone["office"], first_engineer)
+    engineers = build_engineers(rows, zone["title"], office, zone["office"], crew_ids)
     print(
         f"    домов {len(points)}, не нашлось {lost}, "
         f"инженеров {len(engineers)}, заявок {len(orders)}"
@@ -833,12 +847,12 @@ def main() -> None:
     # Нумерация сквозная по всей базе: следующая зона продолжает с того
     # номера, на котором кончилась предыдущая.
     zones = []
-    next_order, next_engineer = 1, 0
+    next_order = 1
+    crew_ids: dict[str, str] = {}
     for key in ZONES:
-        zone = build_zone(key, geo, next_order, next_engineer)
+        zone = build_zone(key, geo, next_order, crew_ids)
         zones.append(zone)
         next_order += len(zone["orders"])
-        next_engineer += len(zone["engineers"])
     geo.save()
 
     for zone in zones:
