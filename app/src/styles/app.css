@@ -12465,6 +12465,27 @@ button.bars__btn:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
+/* Визиты и переработка — сразу под главным числом: те два факта о человеке,
+   которые спрашивают чаще остальных. Переработка тревожным цветом только
+   когда она есть; «без переработки» — не значок, а спокойная подпись. */
+.engquick {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+  margin-top: 4px;
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+
+.engquick__stat b {
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.engquick__stat--bad b {
+  color: var(--danger-600);
+}
+
 /* Метрики карточки: работа, дорога, визиты, маршрут, занятость — список
    «подпись слева, число справа», а не строки сплошным текстом. Числа и так
    разного рода (минуты, штуки, проценты), и без подписи взгляд цеплялся то

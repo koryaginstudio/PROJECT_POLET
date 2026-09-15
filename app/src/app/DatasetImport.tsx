@@ -4,7 +4,7 @@ import { Icon } from '../ds/components/core/Icon.jsx';
 import { Input } from '../ds/components/forms/Input.jsx';
 import { readDataset, saveDataset } from '../data/datasets.ts';
 import type { ReadResult } from '../data/datasets.ts';
-import { plural } from '../data/derive.ts';
+import { pluralWord } from '../data/derive.ts';
 
 interface Props {
   /** Набор загружен и сохранён: ключ нового источника. */
@@ -100,11 +100,11 @@ export function DatasetImport({ onLoaded }: Props) {
         <div className="dsimport__found">
           <div className="dsimport__counts">
             <span className="dsimport__count">
-              <b>{read.orders.length}</b> {plural(read.orders.length, 'заявка', 'заявки', 'заявок')}
+              <b>{read.orders.length}</b> {pluralWord(read.orders.length, 'заявка', 'заявки', 'заявок')}
             </span>
             <span className="dsimport__count">
               <b>{read.engineers.length}</b>{' '}
-              {plural(read.engineers.length, 'инженер', 'инженера', 'инженеров')}
+              {pluralWord(read.engineers.length, 'инженер', 'инженера', 'инженеров')}
             </span>
             <span className="dsimport__count dsimport__count--muted">на {read.date}</span>
           </div>

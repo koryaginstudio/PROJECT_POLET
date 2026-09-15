@@ -129,14 +129,22 @@ export const dec = (n: number, digits = 1) =>
 
 export const pct = (n: number) => `${dec(n)}`;
 
-/** Русская форма числительного: 1 визит, 2 визита, 5 визитов. */
-export function plural(n: number, one: string, few: string, many: string) {
+/** Русская форма слова без числа: визит, визита, визитов. Отдельно от
+    `plural`, чтобы число перед ней можно было набрать жирным самим —
+    склеить с уже готовым «8 визитов» второе число значило бы получить
+    «8 8 визитов». */
+export function pluralWord(n: number, one: string, few: string, many: string) {
   const abs = Math.abs(n) % 100;
   const last = abs % 10;
-  if (abs > 10 && abs < 20) return `${n} ${many}`;
-  if (last > 1 && last < 5) return `${n} ${few}`;
-  if (last === 1) return `${n} ${one}`;
-  return `${n} ${many}`;
+  if (abs > 10 && abs < 20) return many;
+  if (last > 1 && last < 5) return few;
+  if (last === 1) return one;
+  return many;
+}
+
+/** Русская форма числительного: 1 визит, 2 визита, 5 визитов. */
+export function plural(n: number, one: string, few: string, many: string) {
+  return `${n} ${pluralWord(n, one, few, many)}`;
 }
 
 export const visits = (n: number) => plural(n, 'визит', 'визита', 'визитов');

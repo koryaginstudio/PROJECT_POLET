@@ -1,6 +1,6 @@
 import { Icon } from '../ds/components/core/Icon.jsx';
 import type { EngineerRecord } from '../data/registry.ts';
-import { dec, hhmm, hoursText } from '../data/derive.ts';
+import { dec, hhmm, hoursText, pluralWord } from '../data/derive.ts';
 import { shiftWhy, transportWhy } from '../data/rationale.ts';
 import { teamName } from '../data/dictionary.ts';
 import { WhyMark } from './WhyMark.tsx';
@@ -182,9 +182,30 @@ export function EngineerCard({
             <span className="runcard__unit">ч</span>
           </span>
           <span className="runcard__label">
-            {dense ? 'Время' : 'Время за выбранный срок'}
+            {dense ? 'Часы' : 'Рабочие часы'}
           </span>
         </>
+      )}
+
+      {/* Визиты и переработка — сразу под главным числом, а не в общем
+          списке ниже: это те два факта о человеке, которые спрашивают чаще
+          остальных и первым делом. Переработки нет — не значок, а спокойный
+          текст: пустое место здесь читалось бы как недогруженный макет. */}
+      {!dense && (
+        <div className="engquick">
+          <span className="engquick__stat">
+            <b>{row.visits}</b> {pluralWord(row.visits, 'визит', 'визита', 'визитов')}
+          </span>
+          <span className={'engquick__stat' + (row.overtimeMinutes > 0 ? ' engquick__stat--bad' : '')}>
+            {row.overtimeMinutes > 0 ? (
+              <>
+                <b>{hoursText(row.overtimeMinutes)}</b> переработки
+              </>
+            ) : (
+              'без переработки'
+            )}
+          </span>
+        </div>
       )}
 
       {dense ? (
@@ -198,7 +219,9 @@ export function EngineerCard({
            дорога») читается медленно: числа и слова перемешаны, и глазу не
            за что зацепиться. Список «подпись — значение», тот же приём, что
            и у полей ниже (транспорт, участок), — подпись слева тихо, число
-           справа и жирным, и все шесть чисел читаются по одной колонке. */
+           справа и жирным, и колонка чисел читается охватом сразу. Визиты и
+           переработка отсюда ушли выше, к главному числу — повторять их
+           здесь незачем. */
         <dl className="engmetrics">
           <div className="engmetrics__row">
             <dt>Работа</dt>
@@ -207,10 +230,6 @@ export function EngineerCard({
           <div className="engmetrics__row">
             <dt>Дорога</dt>
             <dd>{hoursText(travelMinutes ?? row.travelMinutes)}</dd>
-          </div>
-          <div className="engmetrics__row">
-            <dt>Визитов</dt>
-            <dd>{row.visits}</dd>
           </div>
           <div className="engmetrics__row">
             <dt>Маршрутом</dt>
@@ -224,12 +243,6 @@ export function EngineerCard({
             <dt>Занятость</dt>
             <dd>{dec(row.occupancyMean * 100)} %</dd>
           </div>
-          {row.overtimeMinutes > 0 && (
-            <div className="engmetrics__row engmetrics__row--bad">
-              <dt>Сверх смены</dt>
-              <dd>{hoursText(row.overtimeMinutes)}</dd>
-            </div>
-          )}
         </dl>
       )}
 
