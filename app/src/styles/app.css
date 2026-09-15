@@ -11994,6 +11994,46 @@ button.bars__btn:focus-visible {
   letter-spacing: 0.02em;
 }
 
+/* Карточки услуг. Ряд гибкий: услуг восемнадцать, и раскладывать их по
+   жёсткой сетке незачем — они разной длины и читаются списком. */
+.srvgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.srvcard {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--r-card, 12px);
+  background: var(--white);
+}
+
+.srvcard__title {
+  font-weight: var(--fw-semibold);
+  line-height: 1.25;
+}
+
+/* Длительность — главное число услуги: именно ею она влияет на план. */
+.srvcard__value {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 20px;
+  font-weight: var(--fw-bold, 700);
+  font-variant-numeric: tabular-nums;
+}
+
+.srvcard__unit {
+  font-size: 11px;
+  font-weight: var(--fw-regular);
+  color: var(--ink-300);
+}
+
 /* Имя человека. Фамилия акцентная — ею человека называют и по ней его ищут
    в списке; отчество уходит второй строкой, где не мешает читать первую.
 

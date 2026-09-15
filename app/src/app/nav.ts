@@ -38,6 +38,7 @@ export type SectionId =
   | 'stats'
   | 'db-runs'
   | 'db-orders'
+  | 'db-services'
   | 'db-clients'
   | 'db-routes'
   | 'db-engineers'
@@ -47,8 +48,22 @@ export interface NavEntry {
   id: SectionId;
   label: string;
   icon: string;
-  /** ключ счётчика, который подставляется из данных прогона */
-  count?: 'orders' | 'unassigned' | 'routes' | 'engineers' | 'runs' | 'compare';
+  /** Ключ счётчика. Одни берутся из открытого расчёта, другие из
+      справочников: у базы цифра отвечает на «сколько в ней записей», а не
+      «сколько их в сегодняшнем дне». Справочники грузятся при первом заходе
+      в базы, поэтому до него счётчик равен нулю и не рисуется. */
+  count?:
+    | 'orders'
+    | 'unassigned'
+    | 'routes'
+    | 'engineers'
+    | 'runs'
+    | 'compare'
+    | 'dbOrders'
+    | 'dbServices'
+    | 'dbEngineers'
+    | 'dbClients'
+    | 'dbRoutes';
   /** Ноль у счётчика ничего не значит — не показывать его вовсе. Так у
       отбора к сравнению: «Сравнение 0» читалось бы как поломка, а не как
       «пока ничего не отобрали». */
@@ -95,10 +110,11 @@ export const NAV: NavGroup[] = [
     title: 'Базы данных',
     items: [
       { id: 'db-runs', label: 'Расчёты', icon: 'stack', count: 'runs' },
-      { id: 'db-orders', label: 'Заявки', icon: 'clipboard-list' },
-      { id: 'db-engineers', label: 'Инженеры', icon: 'users' },
-      { id: 'db-clients', label: 'Клиенты', icon: 'user' },
-      { id: 'db-routes', label: 'Маршруты', icon: 'path' }
+      { id: 'db-orders', label: 'Заявки', icon: 'clipboard-list', count: 'dbOrders', hideZero: true },
+      { id: 'db-services', label: 'Услуги', icon: 'wrench', count: 'dbServices', hideZero: true },
+      { id: 'db-engineers', label: 'Инженеры', icon: 'users', count: 'dbEngineers', hideZero: true },
+      { id: 'db-clients', label: 'Клиенты', icon: 'user', count: 'dbClients', hideZero: true },
+      { id: 'db-routes', label: 'Маршруты', icon: 'path', count: 'dbRoutes', hideZero: true }
     ]
   }
 ];
@@ -139,6 +155,13 @@ export const SUBHEADER: Record<SectionId, { title: string; views: { value: strin
     views: [
       { value: 'table', label: 'Таблица' },
       { value: 'types', label: 'По видам работ' }
+    ]
+  },
+  'db-services': {
+    title: 'База услуг',
+    views: [
+      { value: 'table', label: 'Таблица' },
+      { value: 'skills', label: 'По навыкам' }
     ]
   },
   'db-clients': {
@@ -192,6 +215,7 @@ export const SUBHEADER: Record<SectionId, { title: string; views: { value: strin
 export const DB_SECTIONS = new Set<SectionId>([
   'db-runs',
   'db-orders',
+  'db-services',
   'db-clients',
   'db-routes',
   'db-engineers'

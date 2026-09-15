@@ -39,6 +39,7 @@ import { DbOrdersScreen } from '../screens/db/DbOrdersScreen.tsx';
 import { DbClientsScreen } from '../screens/db/DbClientsScreen.tsx';
 import { DbRoutesScreen } from '../screens/db/DbRoutesScreen.tsx';
 import { DbEngineersScreen } from '../screens/db/DbEngineersScreen.tsx';
+import { DbServicesScreen } from '../screens/db/DbServicesScreen.tsx';
 import { DbRunsScreen } from '../screens/db/DbRunsScreen.tsx';
 import { Stub } from '../screens/Stub.tsx';
 import { CompareScreen } from '../screens/CompareScreen.tsx';
@@ -526,7 +527,16 @@ export function App() {
     /* Сколько расчётов отобрано к сравнению. Цифра у пункта меню — то же
        число, что в заголовке экрана: набор собирают в базе расчётов, а
        видеть, сколько набралось, нужно не выходя из неё. */
-    compare: compare.length
+    compare: compare.length,
+    /* Цифры баз — из справочников, а не из открытого дня: база отвечает на
+       «сколько записей в ней», и число не должно меняться от того, какой
+       расчёт сейчас открыт. Пока справочники не загружены, здесь нули, и
+       счётчики не рисуются. */
+    dbOrders: registry?.orders.length ?? 0,
+    dbServices: registry?.services.length ?? 0,
+    dbEngineers: registry?.engineers.length ?? 0,
+    dbClients: registry?.clients.length ?? 0,
+    dbRoutes: registry?.routes.length ?? 0
   };
 
   /* Правая панель всегда про объект открытого прогона. Там, где прогона нет,
@@ -714,6 +724,8 @@ export function App() {
                 onCompare={toggleCompare}
                 onEdit={setEditing}
               />
+            ) : section === 'db-services' ? (
+              <DbServicesScreen registry={registry} mode={view} />
             ) : section === 'db-orders' ? (
               <DbOrdersScreen registry={registry} mode={view} />
             ) : section === 'db-clients' ? (
