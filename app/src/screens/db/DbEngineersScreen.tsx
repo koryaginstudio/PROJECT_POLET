@@ -17,6 +17,8 @@ import { useWidgetBoard, WidgetPeriod, withinPeriod } from '../../app/DbWidgets.
 import type { PeriodKey, WidgetDef } from '../../app/DbWidgets.tsx';
 import { service } from '../../data/service.ts';
 import { DbHead } from './DbHead.tsx';
+import { CrewEditDialog } from '../../app/CrewEditDialog.tsx';
+import { editCrew, removeCrew } from '../../data/crew.ts';
 import { transportWhy } from '../../data/rationale.ts';
 import { WhyMark } from '../../app/WhyMark.tsx';
 import { PersonName } from '../../app/PersonName.tsx';
@@ -24,6 +26,8 @@ import { PersonName } from '../../app/PersonName.tsx';
 interface Props {
   registry: Registry;
   mode: string;
+  /** Данные штата поправили: справочник надо собрать заново. */
+  onChanged: () => void;
 }
 
 /* Плотность строки — тот же выбор, что и в базе расчётов: «разглядеть» или
@@ -72,7 +76,7 @@ const FILTERS: { value: Filter; label: string }[] = [
    расчётов — поиск, отбор, порядок, плотность и доска виджетов сверху, — и
    это осознанное повторение: два справочника об одном хозяйстве, и переучивать
    диспетчера на втором незачем. */
-export function DbEngineersScreen({ registry, mode }: Props) {
+export function DbEngineersScreen({ registry, mode, onChanged }: Props) {
   /* С какой плотности открывается база — настройка сервиса, общая с базой
      расчётов: одному важно разглядеть, другому охватить. */
   const [perRow, setPerRow] = useState(() => service().perRow as string);
@@ -82,6 +86,9 @@ export function DbEngineersScreen({ registry, mode }: Props) {
   const [skill, setSkill] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const dense = perRow === '6';
+  /* Кого сейчас правят. Окно одно на весь штат: двух карточек сразу не
+     правят, а второе окно поверх первого пришлось бы закрывать дважды. */
+  const [editing, setEditing] = useState<EngineerRecord | null>(null);
 
   const all = registry.engineers;
 
@@ -773,7 +780,7 @@ export function DbEngineersScreen({ registry, mode }: Props) {
                 key={engineer.id}
                 row={engineer}
                 seat={index + 1}
-                total={rows.length}
+                onEdit={() => setEditing(engineer)}
                 photo={photos.get(engineer.id)}
                 dense={dense}
                 skill={skill}
@@ -786,6 +793,23 @@ export function DbEngineersScreen({ registry, mode }: Props) {
           })}
         </div>
       )}
+
+      <CrewEditDialog
+        crew={editing}
+        onClose={() => setEditing(null)}
+        onSave={(patch) => {
+          if (!editing) return;
+          editCrew(editing.id, patch);
+          setEditing(null);
+          onChanged();
+        }}
+        onDelete={() => {
+          if (!editing) return;
+          removeCrew(editing.id);
+          setEditing(null);
+          onChanged();
+        }}
+      />
     </div>
   );
 }

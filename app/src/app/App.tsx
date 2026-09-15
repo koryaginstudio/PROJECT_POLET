@@ -721,7 +721,17 @@ export function App() {
             ) : section === 'db-routes' ? (
               <DbRoutesScreen registry={registry} mode={view} />
             ) : (
-              <DbEngineersScreen registry={registry} mode={view} />
+              <DbEngineersScreen
+                registry={registry}
+                mode={view}
+                /* Правка штата меняет данные, а не только карточку: справочник
+                   и открытый расчёт пересобираются с нуля. */
+                onChanged={() => {
+                  setRegistry(null);
+                  loadDay(runId).then(setDay).catch(() => undefined);
+                  loadSummaries().then(setRuns).catch(() => undefined);
+                }}
+              />
             ))}
 
           {section === 'engine' && (

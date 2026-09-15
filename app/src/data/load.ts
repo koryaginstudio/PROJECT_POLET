@@ -24,6 +24,7 @@
 import { SCHEMA, schemaAccepted } from './contract.ts';
 import type { Day, Dictionaries, Engineer, Order, Plan, Simulation } from './contract.ts';
 import type { EngineParams } from './engine.ts';
+import { applyCrew, crewVersion } from './crew.ts';
 import { datasetByKey, datasets } from './datasets.ts';
 import { planDay } from './planner.ts';
 import type { PlannedDay } from './planner.ts';
@@ -422,9 +423,17 @@ export interface ZoneData {
 }
 
 const zoneCache = new Map<SourceId, Promise<ZoneData>>();
+let zoneVersion = crewVersion();
 
 /** Заявки и инженеры зоны. Читается один раз за сеанс. */
 export function loadZone(zone: SourceId): Promise<ZoneData> {
+  /* Кеш зоны живёт до правки штата: поправленный транспорт обязан дойти и
+     до справочника, и до плана, не дожидаясь перезагрузки. */
+  if (zoneVersion !== crewVersion()) {
+    zoneCache.clear();
+    planCache.clear();
+    zoneVersion = crewVersion();
+  }
   const cached = zoneCache.get(zone);
   if (cached) return cached;
 
@@ -438,7 +447,7 @@ export function loadZone(zone: SourceId): Promise<ZoneData> {
         date: stored.date,
         title: stored.title,
         orders: stored.orders,
-        engineers: stored.engineers
+        engineers: applyCrew(stored.engineers)
       };
     }
 
@@ -451,7 +460,7 @@ export function loadZone(zone: SourceId): Promise<ZoneData> {
       date: orders.meta.date,
       title: orders.meta.zone || zoneTitle(zone),
       orders: orders.orders,
-      engineers: engineers.engineers
+      engineers: applyCrew(engineers.engineers)
     };
   })();
 
@@ -503,7 +512,8 @@ export function loadDictionaries(): Promise<Dictionaries | null> {
 const planCache = new Map<string, Promise<PlannedDay>>();
 
 const planKey = (zone: SourceId, params: EngineParams) =>
-  `${zone}|${params.duration_factor}|${params.buffer_base}|${params.buffer_step}|${params.balance_weight}`;
+  `${zone}|${crewVersion()}|${params.duration_factor}|${params.buffer_base}|` +
+  `${params.buffer_step}|${params.balance_weight}`;
 
 /** Считает день по данным зоны. */
 export function computeDay(zone: SourceId, params: EngineParams): Promise<PlannedDay> {

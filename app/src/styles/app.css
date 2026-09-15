@@ -12022,28 +12022,49 @@ button.bars__btn:focus-visible {
   letter-spacing: 0;
 }
 
-/* Место в списке: «7 из 34». Стоит там же, где у расчёта стоит его пометка,
-   и читается так же — сначала число, потом из скольких. */
+/* Номер карточки в списке: «#004». Стоит первым в строке под именем — им
+   карточку называют вслух и по нему её находят глазами в длинном ряду. */
 .engcard__seat {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 4px;
-  font-size: 12px;
   font-weight: var(--fw-semibold);
   font-variant-numeric: tabular-nums;
   color: var(--text-secondary);
   white-space: nowrap;
 }
 
-.engcard__seat-of {
-  font-size: 10px;
-  font-weight: var(--fw-regular);
+/* Кнопка правки на месте, где у расчёта стоит его пометка. Тихая: действие
+   есть, но карточку читают не ради него. */
+.engcard__edit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
   color: var(--ink-300);
+  cursor: pointer;
+  transition: background-color 120ms var(--ease-out-strong), color 120ms var(--ease-out-strong);
+}
+
+.engcard__edit:hover {
+  background: var(--ink-100);
+  color: var(--text-primary);
+}
+
+.engcard__edit:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
 }
 
 /* Участок с адресом офиса: название сверху, адрес под ним мельче. Адрес —
-   свойство участка, и в подчинённой строке он таким и читается. */
-.engfacts__stack {
+   свойство участка, и в подчинённой строке он таким и читается.
+
+   Селектор с `dd` намеренно: общее правило поля задано как `.engfacts dd` и
+   весом выше одного класса. Без этого его `align-items: center` перебивал
+   выравнивание, и название участка уезжало на середину колонки. */
+.engfacts dd.engfacts__stack {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
