@@ -795,7 +795,6 @@ export function DbEngineersScreen({ registry, mode, onChanged, onTrack }: Props)
                 photo={photos.get(engineer.id)}
                 dense={dense}
                 skill={skill}
-                onSkill={(key) => setSkill(skill === key ? null : key)}
                 workedMinutes={worked.work + worked.travel}
                 workMinutes={worked.work}
                 travelMinutes={worked.travel}
