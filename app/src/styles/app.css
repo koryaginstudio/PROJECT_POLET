@@ -12465,24 +12465,38 @@ button.bars__btn:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
-/* Визиты и переработка — сразу под главным числом: те два факта о человеке,
-   которые спрашивают чаще остальных. Переработка тревожным цветом только
-   когда она есть; «без переработки» — не значок, а спокойная подпись. */
+/* Визиты и переработка — сразу под главным числом, в одну строку и своими
+   крупными числами: те два факта о человеке, которые спрашивают чаще
+   остальных, и мелкой подписью они бы терялись рядом с заголовком карточки.
+   Кегль меньше главного числа — это вторые по важности цифры, а не равные
+   ему, — но заметно больше обычной подписи. */
 .engquick {
   display: flex;
-  align-items: baseline;
-  gap: var(--sp-3);
-  margin-top: 4px;
+  gap: var(--sp-4);
+  margin-top: 6px;
+}
+
+.engquick__tile {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.engquick__value {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: var(--fw-extrabold);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+.engquick__label {
   font-size: var(--fs-caption);
   color: var(--text-secondary);
 }
 
-.engquick__stat b {
-  color: var(--text-primary);
-  font-variant-numeric: tabular-nums;
-}
-
-.engquick__stat--bad b {
+.engquick__tile--bad .engquick__value {
   color: var(--danger-600);
 }
 

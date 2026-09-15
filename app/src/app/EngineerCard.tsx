@@ -187,24 +187,24 @@ export function EngineerCard({
         </>
       )}
 
-      {/* Визиты и переработка — сразу под главным числом, а не в общем
-          списке ниже: это те два факта о человеке, которые спрашивают чаще
-          остальных и первым делом. Переработки нет — не значок, а спокойный
-          текст: пустое место здесь читалось бы как недогруженный макет. */}
+      {/* Визиты и переработка — сразу под главным числом, в одну строку и
+          собственными крупными числами: это те два факта о человеке,
+          которые спрашивают чаще остальных, и мелкой подписью через запятую
+          они терялись бы рядом с настоящим заголовком карточки. */}
       {!dense && (
         <div className="engquick">
-          <span className="engquick__stat">
-            <b>{row.visits}</b> {pluralWord(row.visits, 'визит', 'визита', 'визитов')}
-          </span>
-          <span className={'engquick__stat' + (row.overtimeMinutes > 0 ? ' engquick__stat--bad' : '')}>
-            {row.overtimeMinutes > 0 ? (
-              <>
-                <b>{hoursText(row.overtimeMinutes)}</b> переработки
-              </>
-            ) : (
-              'без переработки'
-            )}
-          </span>
+          <div className="engquick__tile">
+            <span className="engquick__value">{row.visits}</span>
+            <span className="engquick__label">
+              {pluralWord(row.visits, 'визит', 'визита', 'визитов')}
+            </span>
+          </div>
+          <div className={'engquick__tile' + (row.overtimeMinutes > 0 ? ' engquick__tile--bad' : '')}>
+            <span className="engquick__value">
+              {row.overtimeMinutes > 0 ? hoursText(row.overtimeMinutes) : '0'}
+            </span>
+            <span className="engquick__label">переработки</span>
+          </div>
         </div>
       )}
 
