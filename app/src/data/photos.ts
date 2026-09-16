@@ -24,7 +24,7 @@
    спрашивает лицо по инженеру и не знает, откуда оно взялось. */
 
 const PHOTOS = [
-  'photo-02.jpg',
+  'photo-35.png',
   'photo-03.jpg',
   'photo-04.jpg',
   'photo-05.jpg',
@@ -59,7 +59,7 @@ const PHOTOS = [
   'photo-32.png',
   'photo-33.png',
   'photo-34.png',
-  'photo-35.png',
+  'photo-02.jpg',
   'photo-36.png',
   'photo-37.png',
   'photo-38.png',
