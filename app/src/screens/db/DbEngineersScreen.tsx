@@ -16,7 +16,6 @@ import { useWidgetBoard, WidgetPeriod, withinPeriod } from '../../app/DbWidgets.
 import type { PeriodKey, WidgetDef } from '../../app/DbWidgets.tsx';
 import { service } from '../../data/service.ts';
 import { DbHead } from './DbHead.tsx';
-import { CrewEditDialog } from '../../app/CrewEditDialog.tsx';
 import { CrewProfile } from '../../app/CrewProfile.tsx';
 import { editCrew, removeCrew } from '../../data/crew.ts';
 import { loadPlaces } from '../../data/load.ts';
@@ -90,12 +89,11 @@ export function DbEngineersScreen({ registry, mode, onChanged, onTrack }: Props)
   const [skill, setSkill] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const dense = perRow === '6';
-  /* Кого сейчас правят. Окно одно на весь штат: двух карточек сразу не
-     правят, а второе окно поверх первого пришлось бы закрывать дважды. */
-  const [editing, setEditing] = useState<EngineerRecord | null>(null);
-  /* Чей профиль открыт. Отдельно от правки: профиль читают, карточку правят. */
+  /* Чей профиль открыт. Правка живёт внутри того же окна — кнопка «Править»
+     переключает часть профиля в форму, а не открывает второе окно поверх
+     первого. */
   const [opened, setOpened] = useState<EngineerRecord | null>(null);
-  /* Участки со своими офисами и рамками дня: из них выбирают в окне правки,
+  /* Участки со своими офисами и рамками дня: из них выбирают в форме правки,
      и они же задают человеку адрес выезда и часы. */
   const [places, setPlaces] = useState<Place[]>([]);
 
@@ -807,32 +805,21 @@ export function DbEngineersScreen({ registry, mode, onChanged, onTrack }: Props)
       <CrewProfile
         crew={opened}
         registry={registry}
+        places={places}
         onClose={() => setOpened(null)}
-        onEdit={() => {
-          setEditing(opened);
-          setOpened(null);
-        }}
         onTrack={(id) => {
           setOpened(null);
           onTrack(id);
         }}
-      />
-
-      <CrewEditDialog
-        crew={editing}
-        taken={all.map((one) => one.id)}
-        places={places}
-        onClose={() => setEditing(null)}
         onSave={(patch) => {
-          if (!editing) return;
-          editCrew(editing.id, patch);
-          setEditing(null);
+          if (!opened) return;
+          editCrew(opened.id, patch);
           onChanged();
         }}
         onDelete={() => {
-          if (!editing) return;
-          removeCrew(editing.id);
-          setEditing(null);
+          if (!opened) return;
+          removeCrew(opened.id);
+          setOpened(null);
           onChanged();
         }}
       />

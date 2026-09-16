@@ -12117,6 +12117,23 @@ button.bars__btn:focus-visible {
   gap: 14px;
 }
 
+/* Строка формы: заголовок и крестик на месте, где в обычном виде стоят
+   действия карточки. Форма занимает то же место в вёрстке, что и шапка с
+   именем, — крестик остаётся там же, где его ищут глазами. */
+.crewpro__editbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.crewpro__editbar-title {
+  font-family: var(--font-display);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-extrabold);
+  color: var(--text-primary);
+}
+
 .crewpro__who {
   display: flex;
   flex-direction: column;
