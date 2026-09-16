@@ -727,7 +727,12 @@ export function App() {
             ) : section === 'db-services' ? (
               <DbServicesScreen registry={registry} mode={view} />
             ) : section === 'db-orders' ? (
-              <DbOrdersScreen registry={registry} mode={view} />
+              <DbOrdersScreen
+                registry={registry}
+                mode={view}
+                onOpenRun={openRunFromDb}
+                onOpenMap={openRunMap}
+              />
             ) : section === 'db-clients' ? (
               <DbClientsScreen registry={registry} mode={view} />
             ) : section === 'db-routes' ? (

@@ -138,6 +138,26 @@ export interface OrderRecord {
   engineerName: string | null;
   /** Порядковый номер визита в маршруте, если заявка в него попала. */
   seq: number | null;
+
+  /* ─── что о заявке говорит сама выгрузка ───────────────────────────────
+     Схема 1.2 приносит о заявке больше, чем нужно движку для раскладки:
+     класс из учётной системы, статус визита, технологию, оборудование и
+     контакт клиента. Движку это безразлично, справочнику — нет: база
+     заявок отвечает на «что мы об этой заявке знаем», а не на «как она
+     легла в маршрут», и молча терять половину колонок выгрузки ей нельзя.
+     Пустые поля остаются пустыми: набор без технологии не должен
+     показывать выдуманную. */
+  lat: number;
+  lon: number;
+  orderClass: string | null;
+  priorityClass: string | null;
+  status: string | null;
+  requiredTransport: string | null;
+  requiredEquipment: string[];
+  tech: string | null;
+  gigabit: boolean | null;
+  contactName: string | null;
+  contactPhone: string | null;
 }
 
 export interface RouteRecord {
@@ -404,7 +424,18 @@ function buildOrders(plans: { run: RunRef; plan: Plan }[]): OrderRecord[] {
         needsAccess: order.needs_access,
         engineerId: order.assigned_to,
         engineerName: order.assigned_to ? nameById.get(order.assigned_to) ?? order.assigned_to : null,
-        seq: seqByOrder.get(order.id) ?? null
+        seq: seqByOrder.get(order.id) ?? null,
+        lat: order.lat,
+        lon: order.lon,
+        orderClass: order.order_class ?? null,
+        priorityClass: order.priority_class ?? null,
+        status: order.status ?? null,
+        requiredTransport: order.required_transport ?? null,
+        requiredEquipment: order.required_equipment ?? [],
+        tech: order.tech ?? null,
+        gigabit: order.gigabit ?? null,
+        contactName: order.contact?.name ?? null,
+        contactPhone: order.contact?.phone ?? null
       });
     }
   }
