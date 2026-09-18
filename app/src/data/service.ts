@@ -57,6 +57,11 @@ export interface ServiceSettings {
   navCollapsed: boolean;
   /** Сколько карточек в строке по умолчанию там, где плотность выбирают. */
   perRow: '2' | '4' | '6';
+  /** С чем открывается база данных: с раскрытой доской виджетов над списком
+      или со свёрнутой. Свёрнутая — не то же самое, что убранная: доска на
+      месте, её раскрывают строкой над базой. Заводское — свёрнутая: в базу
+      приходят за записями, а сводку над ними смотрят тогда, когда спросили. */
+  dbStats: 'open' | 'hidden';
   /** Часы дробью («4,9 ч») или словами («4 ч 54 мин»). */
   hours: HoursFormat;
 }
@@ -78,6 +83,7 @@ export const SERVICE_DEFAULTS: ServiceSettings = {
   theme: 'light',
   startAt: 'home',
   navCollapsed: false,
+  dbStats: 'hidden',
   perRow: '4',
   hours: 'decimal'
 };

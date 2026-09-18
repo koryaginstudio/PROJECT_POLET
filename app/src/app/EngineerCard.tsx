@@ -28,13 +28,13 @@ interface Props {
   photo?: string;
   /** Строка истории вместо карточки: без ряда смен, навыков и половины цифр. */
   dense?: boolean;
-  /** Навык, по которому сейчас отобран список: в карточке он помечен, чтобы
-      было видно, за что инженер сюда попал. Отбирают навыком в полосе
-      фильтров сверху — здесь он только подсвечен, не нажимается: карточка
+  /** Навыки, по которым сейчас отобран список: в карточке они помечены, чтобы
+      было видно, за что инженер сюда попал. Отбирают навыками в полосе
+      фильтров сверху — здесь они только подсвечены, не нажимаются: карточка
       целиком открывает профиль, и щелчок по навыку внутри неё раньше и
       открывал профиль, и молча менял фильтр всего списка, что читалось как
       сбой, а не как две разные команды одним нажатием. */
-  skill?: string | null;
+  skills?: string[];
 }
 
 
@@ -57,7 +57,7 @@ export function EngineerCard({
   onOpen,
   photo,
   dense = false,
-  skill = null,
+  skills = [],
   workedMinutes,
   workMinutes,
   travelMinutes
@@ -340,7 +340,7 @@ export function EngineerCard({
       {!dense && (
         <div className="runcard__actions engcard__skills">
           {row.skills.map((key) => (
-            <span key={key} className={'chip chip--sm' + (skill === key ? ' chip--on' : '')}>
+            <span key={key} className={'chip chip--sm' + (skills.includes(key) ? ' chip--on' : '')}>
               <Icon name={skillIcon(key)} size={12} />
               {skillName(key)}
             </span>
@@ -363,6 +363,7 @@ export function EngineerCard({
           ))}
         </div>
       )}
+
     </article>
   );
 }

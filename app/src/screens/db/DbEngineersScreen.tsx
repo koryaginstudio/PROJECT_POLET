@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Icon } from '../../ds/components/core/Icon.jsx';
 import { SegmentedControl } from '../../ds/components/forms/SegmentedControl.jsx';
 import type { EngineerRecord, Registry } from '../../data/registry.ts';
-import { dec, hhmm, hoursText } from '../../data/derive.ts';
+import { dec, hhmm, hoursText, plural, visits as pluralVisits } from '../../data/derive.ts';
 import {
   skillIcon,
   skillName,
@@ -19,6 +19,7 @@ import { DbHead } from './DbHead.tsx';
 import { CrewProfile } from '../../app/CrewProfile.tsx';
 import { editCrew, removeCrew } from '../../data/crew.ts';
 import { loadPlaces } from '../../data/load.ts';
+import type { RunId } from '../../data/load.ts';
 import type { Place } from '../../data/load.ts';
 import { transportWhy } from '../../data/rationale.ts';
 import { WhyMark } from '../../app/WhyMark.tsx';
@@ -31,6 +32,9 @@ interface Props {
   onChanged: () => void;
   /** «Отследить» из профиля: увести в мониторинг за конкретным инженером. */
   onTrack: (id: string) => void;
+  /** Уйти в расчёт заявки, открытой из профиля, и показать её на карте. */
+  onOpenRun: (id: RunId) => void;
+  onOpenMap: (id: RunId) => void;
 }
 
 /* Плотность строки — тот же выбор, что и в базе расчётов: «разглядеть» или
@@ -79,14 +83,26 @@ const FILTERS: { value: Filter; label: string }[] = [
    расчётов — поиск, отбор, порядок, плотность и доска виджетов сверху, — и
    это осознанное повторение: два справочника об одном хозяйстве, и переучивать
    диспетчера на втором незачем. */
-export function DbEngineersScreen({ registry, mode, onChanged, onTrack }: Props) {
+export function DbEngineersScreen({
+  registry,
+  mode,
+  onChanged,
+  onTrack,
+  onOpenRun,
+  onOpenMap
+}: Props) {
   /* С какой плотности открывается база — настройка сервиса, общая с базой
      расчётов: одному важно разглядеть, другому охватить. */
   const [perRow, setPerRow] = useState(() => service().perRow as string);
   const [sort, setSort] = useState<Sort>('visits');
   const [desc, setDesc] = useState(true);
   const [filter, setFilter] = useState<Filter>('all');
-  const [skill, setSkill] = useState<string | null>(null);
+  /* Отмеченные навыки. Их несколько, и они сужают выборку вместе: отмечено
+     два — остаются те, кто владеет обоими. Так чип и должен работать в отборе:
+     каждый следующий сужает, а не расширяет. Складывать их по «или» смысла
+     мало — навыков всего три, и отметить все значило бы вернуться к списку
+     целиком. */
+  const [picks, setPicks] = useState<string[]>([]);
   const [query, setQuery] = useState('');
   const dense = perRow === '6';
   /* Чей профиль открыт. Правка живёт внутри того же окна — кнопка «Править»
@@ -119,17 +135,93 @@ export function DbEngineersScreen({ registry, mode, onChanged, onTrack }: Props)
     return [...set].sort((a, b) => skillName(a).localeCompare(skillName(b)));
   }, [all]);
 
+  /* Указатель «номер → кто по нему работал».
+
+     Диспетчер приходит сюда не только с фамилией. У него на руках номер — с
+     заявки, с маршрута, из расчёта, от клиента, — и вопрос один: кто это
+     вёз. Раньше ответа не было вовсе: поиск знал имя, табельный, адрес
+     выезда и навык, а номера всех четырёх видов не находил ничего.
+
+     Заводить под это четыре правила сортировки было бы неправильно: искать
+     по номеру — не то же самое, что упорядочивать, и четыре лишних кнопки в
+     полосе отбора отвечали бы на вопрос, который задают одной строкой. Номер
+     сам говорит, что он такое: C — клиент, M — маршрут, R с четырьмя знаками
+     — заявка, R с тремя — расчёт. Поэтому здесь одно поле, а разбор номера
+     берёт на себя указатель.
+
+     Строится он один раз на весь справочник и переживает набор строки по
+     букве: перебирать двести заявок на каждое нажатие клавиши незачем. */
+  const byNumber = useMemo(() => {
+    const index = new Map<string, Set<string>>();
+    const put = (key: string, engineerId: string | null) => {
+      if (!key || !engineerId) return;
+      const low = key.toLowerCase();
+      const cell = index.get(low) ?? new Set<string>();
+      cell.add(engineerId);
+      index.set(low, cell);
+    };
+
+    /* Заявка и клиент опознают исполнителя через саму заявку: кто её вёз, тот
+       и ездил по этому адресу. Заявка, оставшаяся без инженера, в указатель
+       не попадает — по её номеру искать некого. */
+    const clientCodeByKey = new Map(registry.clients.map((client) => [client.key, client.code]));
+    for (const order of registry.orders) {
+      put(order.id, order.engineerId);
+      const clientKey = order.address ?? `${order.district} · ${order.lat},${order.lon}`;
+      put(clientCodeByKey.get(clientKey) ?? '', order.engineerId);
+    }
+    for (const route of registry.routes) {
+      put(route.code, route.engineerId);
+      /* Расчёт — это все, кто получил в нём маршрут. Вышедшие на смену, но
+         оставшиеся без работы, сюда не идут: по номеру расчёта ищут тех, кто
+         в нём ездил. */
+      put(route.run.code, route.engineerId);
+    }
+    return index;
+  }, [registry]);
+
+  /* Что за номер набрали — для строки-подсказки под полем. Разбирается по
+     первой букве и длине: C — клиент, M — маршрут, R с четырьмя знаками —
+     заявка, R с тремя — расчёт. Этого хватает: ни один из четырёх видов
+     номеров не выглядит как другой. */
+  const hit = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return null;
+    const found = byNumber.get(needle);
+    if (!found) return null;
+
+    const code = needle.toUpperCase();
+    const digits = needle.length - 1;
+    const what = needle.startsWith('c')
+      ? { text: `клиент ${code}`, icon: 'user' }
+      : needle.startsWith('m')
+        ? { text: `маршрут ${code}`, icon: 'path' }
+        : needle.startsWith('r') && digits >= 4
+          ? { text: `заявка ${code}`, icon: 'clipboard-list' }
+          : { text: `расчёт ${code}`, icon: 'stack' };
+
+    return {
+      icon: what.icon,
+      text: `${what.text} — ${plural(found.size, 'инженер', 'инженера', 'инженеров')}`
+    };
+  }, [byNumber, query]);
+
   /* Отбор и порядок считаем один раз на оба вида: карточки и таблица должны
      показывать одну и ту же выборку, иначе переключение вида молча меняет
      набор. */
   const rows = useMemo(() => {
     const needle = query.trim().toLowerCase();
+    /* Набранное — номер из указателя? Тогда он и решает, кого показать: у
+       номера один правильный ответ, и подмешивать к нему совпадения по
+       фамилии значило бы прятать этот ответ среди чужих. */
+    const byCode = needle ? byNumber.get(needle) : undefined;
     const picked = all.filter((row) => {
-      if (skill && !row.skills.includes(skill)) return false;
+      if (picks.length > 0 && !picks.every((key) => row.skills.includes(key))) return false;
       if (filter === 'idle' && row.idleRuns === 0) return false;
       if (filter === 'busy' && row.occupancyMean < 0.75) return false;
       if (filter === 'loose' && row.occupancyMean >= 0.6) return false;
       if (!needle) return true;
+      if (byCode) return byCode.has(row.id);
       /* Ищем и по навыку словом: «электрик» набирают чаще, чем ищут его в
          ряду значков. */
       return (
@@ -164,7 +256,7 @@ export function DbEngineersScreen({ registry, mode, onChanged, onTrack }: Props)
       const diff = rank(a) - rank(b);
       return side * (diff !== 0 ? diff : a.name.localeCompare(b.name));
     });
-  }, [all, desc, filter, query, skill, sort]);
+  }, [all, byNumber, desc, filter, picks, query, sort]);
 
   /* Повторный щелчок по выбранному правилу переворачивает порядок; щелчок по
      другому — переключает правило и берёт его сторону по умолчанию. */
@@ -584,28 +676,50 @@ export function DbEngineersScreen({ registry, mode, onChanged, onTrack }: Props)
       {/* Числа шапки и есть доска: отдельным блоком «что иллюстрируем» они
           спорили бы сами с собой — два ряда об одном и том же, один выбран за
           диспетчера, другой им самим. */}
-      <DbHead title="База инженеров" board={board.node} />
-
-      {/* Полоса управления выборкой. Разложена по вопросам, а не по порядку,
-          в котором писалась: сверху — что попадает в выборку (поиск и отбор),
-          ниже — как она показана (порядок и плотность), последней строкой —
-          навыки, потому что их много и они занимают ширину целиком. */}
-      <section className="panel">
+      {/* Полоса управления выборкой стоит в шапке базы, под её заголовком, и
+          разложена столбиком «подпись — орган»: подписи выстроены в колонку,
+          переключатели начинаются от одной черты. Порядок — по смыслу: сперва
+          всё, что сужает выборку (отбор и навыки), потом то, как её показать.
+          Наверху — поиск и плотность: это не отбор, а то, с какой стороны на
+          список смотрят. */}
+      <DbHead title="База инженеров" board={board.node}>
         <div className="filters filters--runs">
-          <label className="dbsearch">
-            <Icon name="search" size={14} />
-            <input
-              className="dbsearch__input"
-              value={query}
-              placeholder="Найти инженера: фамилия, табельный, адрес, навык"
-              onChange={(event) => setQuery(event.currentTarget.value)}
-            />
-            {query && (
-              <button type="button" className="dbsearch__clear" onClick={() => setQuery('')}>
-                <Icon name="x" size={12} />
-              </button>
+          <div className="filters__top">
+            <label className="dbsearch">
+              <Icon name="search" size={14} />
+              <input
+                className="dbsearch__input"
+                value={query}
+                placeholder="Фамилия, табельный, навык или номер: заявки, маршрута, расчёта, клиента"
+                onChange={(event) => setQuery(event.currentTarget.value)}
+              />
+              {query && (
+                <button type="button" className="dbsearch__clear" onClick={() => setQuery('')}>
+                  <Icon name="x" size={12} />
+                </button>
+              )}
+            </label>
+
+            {/* Что распознали в набранном. Без этой строки поиск по номеру
+                молчалив до неотличимости от поломки: набрал «M0010», список
+                сузился до одного человека — и непонятно, нашёлся он по
+                маршруту или случайно совпал с чем-то в имени. */}
+            {hit && (
+              <span className="dbsearch__hit">
+                <Icon name={hit.icon} size={12} />
+                {hit.text}
+              </span>
             )}
-          </label>
+
+            {/* Плотность строки — только у карточек: в таблице строка одна и в
+                строке она одна. */}
+            {mode !== 'table' && (
+              <div className="filters__group filters__group--tight">
+                <span className="filters__label">Карточек в строке</span>
+                <SegmentedControl size="sm" items={DENSITY} value={perRow} onChange={setPerRow} />
+              </div>
+            )}
+          </div>
 
           <div className="filters__group">
             <span className="filters__label">Отбор</span>
@@ -630,15 +744,6 @@ export function DbEngineersScreen({ registry, mode, onChanged, onTrack }: Props)
             />
           </div>
 
-          {/* Плотность строки — только у карточек: в таблице строка одна и в
-              строке она одна. */}
-          {mode !== 'table' && (
-            <div className="filters__group">
-              <span className="filters__label">Карточек в строке</span>
-              <SegmentedControl size="sm" items={DENSITY} value={perRow} onChange={setPerRow} />
-            </div>
-          )}
-
           {/* Навыки — отдельной строкой во всю ширину: их полтора десятка, и
               рядом с переключателями они сминали бы полосу. Отбор здесь тот
               же, что и по щелчку на навыке в карточке. */}
@@ -649,19 +754,30 @@ export function DbEngineersScreen({ registry, mode, onChanged, onTrack }: Props)
                 <button
                   key={key}
                   type="button"
-                  className={'chip' + (skill === key ? ' chip--on' : '')}
-                  onClick={() => setSkill(skill === key ? null : key)}
-                  aria-pressed={skill === key}
+                  className={'chip' + (picks.includes(key) ? ' chip--on' : '')}
+                  onClick={() =>
+                    setPicks((was) =>
+                      was.includes(key) ? was.filter((one) => one !== key) : [...was, key]
+                    )
+                  }
+                  aria-pressed={picks.includes(key)}
+                  title={
+                    picks.includes(key)
+                      ? `Снять «${skillName(key)}»`
+                      : picks.length > 0
+                        ? `Оставить тех, кто умеет и это тоже`
+                        : `Оставить тех, кто умеет «${skillName(key)}»`
+                  }
                 >
                   <Icon name={skillIcon(key)} size={12} />
                   {skillName(key)}
-                  {skill === key && <Icon name="x" size={12} />}
+                  {picks.includes(key) && <Icon name="x" size={12} />}
                 </button>
               ))}
             </span>
           </div>
         </div>
-      </section>
+      </DbHead>
 
       {rows.length === 0 ? (
         <section className="panel">
@@ -792,7 +908,7 @@ export function DbEngineersScreen({ registry, mode, onChanged, onTrack }: Props)
                 onOpen={() => setOpened(engineer)}
                 photo={photos.get(engineer.id)}
                 dense={dense}
-                skill={skill}
+                skills={picks}
                 workedMinutes={worked.work + worked.travel}
                 workMinutes={worked.work}
                 travelMinutes={worked.travel}
@@ -802,11 +918,40 @@ export function DbEngineersScreen({ registry, mode, onChanged, onTrack }: Props)
         </div>
       )}
 
+      {/* Итог выборки под списком — тот же приём, что во всех справочниках:
+          сверху доска отвечает на «как дела вообще», здесь строка отвечает на
+          «а что сейчас на экране». Числа выбраны по вопросу самой базы: кто у
+          нас есть, сколько они отработали и сколько раз выходили впустую. */}
+      {rows.length > 0 && (
+        <p className="filters__note filters__note--under">
+          {plural(rows.length, 'инженер', 'инженера', 'инженеров')} в выборке
+          {rows.length !== all.length && ` из ${all.length}`}
+          {` · ${pluralVisits(rows.reduce((sum, one) => sum + one.visits, 0))}`}
+          {` · ${hoursText(
+            rows.reduce((sum, one) => sum + one.workMinutes + one.travelMinutes, 0)
+          )} отработано`}
+          {` · ${plural(
+            rows.reduce((sum, one) => sum + one.idleRuns, 0),
+            'смена',
+            'смены',
+            'смен'
+          )} без маршрута`}
+        </p>
+      )}
+
       <CrewProfile
         crew={opened}
         registry={registry}
         places={places}
         onClose={() => setOpened(null)}
+        onOpenRun={(id) => {
+          setOpened(null);
+          onOpenRun(id as RunId);
+        }}
+        onOpenMap={(id) => {
+          setOpened(null);
+          onOpenMap(id as RunId);
+        }}
         onTrack={(id) => {
           setOpened(null);
           onTrack(id);

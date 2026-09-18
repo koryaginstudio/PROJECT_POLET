@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { RefObject } from 'react';
 import { Icon } from '../ds/components/core/Icon.jsx';
 import type { RunId, DaySummary } from '../data/load.ts';
-import { daysAgo, whenLabel } from '../data/load.ts';
+import { dayOf, daysAgo, whenLabel } from '../data/load.ts';
 import { dec } from '../data/derive.ts';
 
 /* Быстрые периоды в списке. «15 дней назад» — это не поиск по номеру, а
@@ -96,20 +96,28 @@ export function RunMenu({
     return [...runs]
       .reverse()
       .filter((run) => {
+        /* Отбирают по времени, когда расчёт завели: сюда приходят за своей
+           работой — «что я считал вчера». День, который в расчёте разложен,
+           у всех расчётов одной выгрузки один и тот же, и периоды по нему не
+           делили бы ничего. */
+        const made = dayOf(run.created);
         if (period === 'range') {
           /* Даты сравниваем строками: они в формате «год-месяц-день», и в
              нём лексикографический порядок совпадает с календарным. Разбор
              в Date ради этого только добавил бы часовые пояса. */
-          if (from && run.date < from) return false;
-          if (to && run.date > to) return false;
-        } else if (limit !== null && daysAgo(run.date) > limit) {
+          if (from && made < from) return false;
+          if (to && made > to) return false;
+        } else if (limit !== null && daysAgo(run.created) > limit) {
           return false;
         }
         if (!needle) return true;
+        /* Ищут и по тому, и по другому: номер наряда помнят днём выгрузки,
+           а свой вчерашний расчёт — днём, когда его считали. */
         return (
           run.code.toLowerCase().includes(needle) ||
+          made.includes(needle) ||
           run.date.includes(needle) ||
-          whenLabel(run.date).includes(needle)
+          whenLabel(run.created).includes(needle)
         );
       });
   }, [runs, period, query, from, to]);
@@ -230,7 +238,7 @@ export function RunMenu({
           >
             <span className="runmenu__code">{run.code}</span>
             <span className="runmenu__facts">
-              <span className="runmenu__when">{whenLabel(run.date)}</span>
+              <span className="runmenu__when">{whenLabel(run.created)}</span>
               покрытие {dec(run.coverage)} % · без инженера {run.unassigned}
             </span>
             {isOn(run.id) ? (

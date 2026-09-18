@@ -188,7 +188,7 @@ export function DispatchGate({ runs, activeRun, onCreate, onOpen }: Props) {
                   onClick={() => onOpen(run.id)}
                 >
                   <span className="gaterow__code">{run.code}</span>
-                  <span className="gaterow__when">{whenLabel(run.date)}</span>
+                  <span className="gaterow__when">{whenLabel(run.created)}</span>
                   <span className="gaterow__facts">
                     покрытие {dec(run.coverage)} % · разложено {run.ordersAssigned} из{' '}
                     {run.ordersTotal} · без инженера {run.unassigned}

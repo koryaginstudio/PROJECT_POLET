@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Icon } from '../ds/components/core/Icon.jsx';
+import { PersonName } from './PersonName.tsx';
 import type { DayView } from '../data/derive.ts';
 import { hhmm, placeOf, visits } from '../data/derive.ts';
 import { routeColor } from './MapBoard.tsx';
+import { transportIcon, transportName } from '../data/dictionary.ts';
 import { routeLabel, routeNumber } from '../data/routeIds.ts';
 
 interface Props {
@@ -222,7 +224,37 @@ export function RoutePanel({
 
                 <span className="rlist__body">
                   <span className="rlist__top">
-                    <span className="rlist__name">{load.engineer.name}</span>
+                    <span className="rlist__name">
+                      <PersonName name={load.engineer.name} stacked={false} />
+                    </span>
+
+                    {/* Отметка средства передвижения. Значком, а не словом:
+                        строка и так плотная, а слово читается по наведению —
+                        и здесь, и подписью у самого пути на карте. Пусто поле
+                        — место остаётся пустым: придумывать инженеру
+                        транспорт, которого в выгрузке нет, нельзя, а убрать
+                        клетку значит сдвинуть всю колонку. */}
+                    <span
+                      className={
+                        'rlist__ride' + (load.engineer.transport ? '' : ' rlist__ride--none')
+                      }
+                      role={load.engineer.transport ? 'img' : undefined}
+                      title={
+                        load.engineer.transport
+                          ? `Средство передвижения: ${transportName(load.engineer.transport)}`
+                          : undefined
+                      }
+                      aria-label={
+                        load.engineer.transport
+                          ? `Средство передвижения: ${transportName(load.engineer.transport)}`
+                          : undefined
+                      }
+                    >
+                      {load.engineer.transport && (
+                        <Icon name={transportIcon(load.engineer.transport)} size={12} />
+                      )}
+                    </span>
+
                     <span className="rlist__load">{Math.round(load.occupancy * 100)}%</span>
                   </span>
                   {/* Номер маршрута первым: маршрут называют им, а не фамилией

@@ -1,21 +1,36 @@
-import L from 'leaflet';
-
-/* Полосы маршрутов на общей дороге.
+/* Слои маршрутов на общей дороге.
 
    Два инженера, едущие по одной улице, — это две линии в одних и тех же
    пикселях: видно только ту, что нарисована последней. Читается это не как
    «они едут вместе», а как «второго маршрута здесь нет»; на карте дня, где
    путей дюжина, пропадали целые перегоны.
 
-   Поэтому маршруты раскладываются по полосам, как линии на схеме метро: тот,
-   кто пришёл на дорогу первым, идёт по её оси, следующий — чуть правее по
-   ходу своего движения, третий — ещё правее. Сдвинуть оба от оси нельзя:
-   тогда ни один не лежит на своей дороге, и карта врёт уже про обоих.
+   Сначала пути разводились вбок, полосами, как линии на схеме метро. Но пять
+   инженеров на одном проспекте давали пять линий рядом — на карте это пять
+   разных дорог, которых в городе нет, и ни одна из них не лежит на той, по
+   которой едут.
 
-   Сдвиг считается в пикселях экрана, а не в метрах. В метрах он либо
-   схлопывается в ноль на обзоре города, либо разносит линии на полквартала
-   во дворе: одно и то же расстояние на разных масштабах значит разное.
-   Расплата за это — пересчёт линий при смене масштаба, и его делает карта.
+   Поэтому теперь все едут по оси своей дороги, а различает их толщина: один
+   маршрут рисуется поверх и тоньше, другой — под ним и шире ровно настолько,
+   чтобы выступить из-под него узкой каймой с обеих сторон. Дорога остаётся
+   одна, а цветов на ней видно столько, сколько по ней едет.
+
+   Толщина у маршрута одна на весь путь. Считать её по кускам — где он один,
+   тоньше, где вдвоём, шире — казалось бережливее, но на экране линия то
+   толстела, то худела посреди улицы, и читалось это как сбой отрисовки, а не
+   как «здесь он едет не один».
+
+   Раз толщина одна, её назначают как цвета на карте: маршруту достаётся самая
+   тонкая из тех, что не заняты теми, с кем он делит дорогу. Двое, которые
+   нигде не встречаются, спокойно берут одну и ту же.
+
+   Число толщин при этом ограничено сверху, и это сознательная уступка. В
+   плотном центре одиннадцать путей делят дороги попарно все со всеми, и
+   честная раскладка потребовала бы одиннадцати толщин — последняя вышла бы в
+   восемнадцать пикселей, шире квартала, по которому идёт. Поэтому толщин
+   немного, а тем, кому не хватило, достаётся самая редкая у соседей: на
+   длинных общих улицах цвета по-прежнему расходятся, а на коротких двое
+   могут совпасть — там верхний закроет нижнего.
 
    Совпадение ищем по клеткам, а не по вершинам. Маршрутизатор отдаёт ломаную
    упрощённой с допуском в два десятка метров, и одна и та же улица у двух
@@ -23,8 +38,8 @@ import L from 'leaflet';
    разбивается шагом мельче клетки, каждый шаг метит клетку сетки, и клетка,
    помеченная дважды, говорит, что здесь двое едут рядом.
 
-   Короткие совпадения отбрасываем: на перекрёстке общая клетка есть всегда,
-   и без этого полоса дёргалась бы на каждом пересечении. */
+   Короткие совпадения отбрасываем: на перекрёстке общая клетка есть всегда, и
+   без этого соседями считались бы все со всеми. */
 
 /** Шаг разбивки пути, метры. Мельче клетки — иначе путь перешагивает клетки
     по диагонали и часть общей дороги остаётся неразмеченной. */
@@ -37,20 +52,16 @@ const CELL = 40;
 /** Короче этого совпадение считаем случайным пересечением, метры. */
 const MIN_RUN = 200;
 
-/** Сдвиг одной полосы, пиксели экрана. Линия рисуется в 3,5 пикселя, так что
-    пяти хватает на просвет между путями и мало, чтобы увести их с дороги. */
-const LANE = 5;
-
 const M_PER_DEG_LAT = 111320;
 
 export interface Lane {
-  /** Ломаная маршрута: исходные вершины плюс точки на границах полос. */
+  /** Ломаная маршрута как есть: по оси своей дороги, без сдвигов. */
   points: [number, number][];
-  /** Полоса в каждой точке: 0 — по оси дороги, 1 — на шаг правее, и так далее. */
-  ranks: number[];
-  /** Есть ли сдвиг вообще: маршрут, который нигде ни с кем не пересёкся,
-      при смене масштаба пересчитывать незачем. */
-  shifted: boolean;
+  /** Толщина: 0 — поверх всех и самый тонкий, дальше каждый следующий шире на
+      кайму. Одна на весь путь. */
+  rank: number;
+  /** Делит ли маршрут дорогу хоть с кем-нибудь. */
+  shared: boolean;
 }
 
 export interface RoutePath {
@@ -90,25 +101,10 @@ function at(points: [number, number][], cum: number[], d: number): [number, numb
   ];
 }
 
-/* Короткие куски полосы затирает соседний: пересечение двух маршрутов даёт
-   одну-две общие клетки, и без этого линия отскакивала бы вбок на каждом
-   перекрёстке — рябь вместо пути. */
-function settle(ranks: number[], minRun: number): void {
-  let i = 0;
-  while (i < ranks.length) {
-    let j = i;
-    while (j < ranks.length && ranks[j] === ranks[i]) j += 1;
-    if (j - i < minRun) {
-      const fill = i > 0 ? ranks[i - 1] : j < ranks.length ? ranks[j] : ranks[i];
-      for (let k = i; k < j; k += 1) ranks[k] = fill;
-    }
-    i = j;
-  }
-}
-
-/** Раскладывает маршруты по полосам. Порядок путей в списке задаёт старшинство:
-    кто выше, тот и держит ось дороги. */
-export function laneLayout(paths: RoutePath[]): Map<string, Lane> {
+/** Раскладывает маршруты по толщинам. Порядок путей в списке задаёт
+    старшинство: кто выше, тот и получает толщину потоньше, то есть рисуется
+    поверх остальных. */
+export function laneLayout(paths: RoutePath[], levels = 5): Map<string, Lane> {
   const lanes = new Map<string, Lane>();
   const usable = paths.filter((path) => path.points.length >= 2);
   if (usable.length === 0) return lanes;
@@ -116,96 +112,76 @@ export function laneLayout(paths: RoutePath[]): Map<string, Lane> {
   /* Широта для перевода градусов в метры берётся одна на всю карту. Считать
      её в каждой точке нельзя: множитель для долготы тогда плывёт вместе с
      широтой, и сетка расползается на километры поперёк города. */
-  const mPerDegLon =
-    M_PER_DEG_LAT * Math.cos((usable[0].points[0][0] * Math.PI) / 180);
+  const mPerDegLon = M_PER_DEG_LAT * Math.cos((usable[0].points[0][0] * Math.PI) / 180);
 
-  /* Кто застолбил клетку. Порядок в списке — это и есть номер полосы. */
-  const claims = new Map<string, string[]>();
-
-  const walks = usable.map(({ id, points }) => {
+  /* Клетки, по которым прошёл каждый путь. */
+  const cells = new Map<string, Set<string>>();
+  for (const { id, points } of usable) {
     const cum = measure(points, mPerDegLon);
     const total = cum[cum.length - 1];
     const steps = Math.max(1, Math.ceil(total / STEP));
-    const cells: string[] = [];
     const own = new Set<string>();
-
     for (let k = 0; k < steps; k += 1) {
       const [lat, lon] = at(points, cum, k * STEP);
-      const key = `${Math.round((lon * mPerDegLon) / CELL)}:${Math.round(
-        (lat * M_PER_DEG_LAT) / CELL
-      )}`;
-      cells.push(key);
-      /* Клетку маршрут занимает один раз: путь, дважды прошедший по своей же
-         улице, не должен уступать полосу самому себе. */
-      if (own.has(key)) continue;
-      own.add(key);
-      const owners = claims.get(key);
-      if (owners) owners.push(id);
-      else claims.set(key, [id]);
+      own.add(
+        `${Math.round((lon * mPerDegLon) / CELL)}:${Math.round((lat * M_PER_DEG_LAT) / CELL)}`
+      );
+    }
+    cells.set(id, own);
+  }
+
+  /* С кем каждый делит дорогу. Соседство считается общей длиной, а не фактом
+     пересечения: на перекрёстке пути пересекаются все со всеми, и без порога
+     толщин понадобилось бы столько, сколько маршрутов. */
+  const minCells = Math.max(2, Math.round(MIN_RUN / CELL));
+  const rivals = new Map<string, Set<string>>();
+  const link = (a: string, b: string) => {
+    const set = rivals.get(a) ?? new Set<string>();
+    set.add(b);
+    rivals.set(a, set);
+  };
+
+  for (let i = 0; i < usable.length; i += 1) {
+    for (let j = i + 1; j < usable.length; j += 1) {
+      const a = cells.get(usable[i].id)!;
+      const b = cells.get(usable[j].id)!;
+      const [small, big] = a.size <= b.size ? [a, b] : [b, a];
+      let common = 0;
+      for (const cell of small) {
+        if (!big.has(cell)) continue;
+        common += 1;
+        if (common >= minCells) break;
+      }
+      if (common >= minCells) {
+        link(usable[i].id, usable[j].id);
+        link(usable[j].id, usable[i].id);
+      }
+    }
+  }
+
+  /* Раскраска по старшинству: каждому достаётся самая тонкая толщина из тех,
+     что не заняты его соседями по дороге. Свободной не нашлось — берём ту,
+     которую соседи заняли реже всего: совпадение неизбежно, но пусть оно
+     придётся на одну пару, а не на половину карты. */
+  for (const { id, points } of usable) {
+    const neighbours = rivals.get(id) ?? new Set<string>();
+    const taken = new Map<number, number>();
+    for (const other of neighbours) {
+      const lane = lanes.get(other);
+      if (lane) taken.set(lane.rank, (taken.get(lane.rank) ?? 0) + 1);
     }
 
-    return { id, points, cum, total, cells };
-  });
-
-  const minRun = Math.max(2, Math.round(MIN_RUN / STEP));
-
-  for (const walk of walks) {
-    const ranks = walk.cells.map((key) => {
-      const owners = claims.get(key);
-      const place = owners ? owners.indexOf(walk.id) : 0;
-      return place < 0 ? 0 : place;
-    });
-    settle(ranks, minRun);
-
-    const rankAt = (d: number) =>
-      ranks[Math.min(ranks.length - 1, Math.max(0, Math.floor(d / STEP)))];
-
-    /* Точки будущей линии: все исходные вершины плюс по паре на каждой
-       границе полос. Пара нужна, чтобы переход был коротким: без неё линия
-       сползала бы вбок через весь перегон, а это читается как крюк. */
-    const marks: { d: number; rank: number }[] = walk.cum.map((d) => ({ d, rank: rankAt(d) }));
-    for (let k = 1; k < ranks.length; k += 1) {
-      if (ranks[k] === ranks[k - 1]) continue;
-      marks.push({ d: Math.max(0, k * STEP - STEP / 2), rank: ranks[k - 1] });
-      marks.push({ d: Math.min(walk.total, k * STEP), rank: ranks[k] });
+    let rank = 0;
+    while (rank < levels && taken.has(rank)) rank += 1;
+    if (rank === levels) {
+      rank = 0;
+      for (let one = 1; one < levels; one += 1) {
+        if ((taken.get(one) ?? 0) < (taken.get(rank) ?? 0)) rank = one;
+      }
     }
-    marks.sort((a, b) => a.d - b.d);
 
-    lanes.set(walk.id, {
-      points: marks.map((mark) => at(walk.points, walk.cum, mark.d)),
-      ranks: marks.map((mark) => mark.rank),
-      shifted: ranks.some((rank) => rank > 0)
-    });
+    lanes.set(id, { points, rank, shared: neighbours.size > 0 });
   }
 
   return lanes;
-}
-
-/** Линия маршрута со сдвигом полос для текущего масштаба. */
-export function laneShift(map: L.Map, lane: Lane, zoom: number): L.LatLngExpression[] {
-  if (!lane.shifted) return lane.points;
-
-  const flat = lane.points.map(([lat, lon]) => map.project(L.latLng(lat, lon), zoom));
-
-  return lane.points.map(([lat, lon], i) => {
-    const rank = lane.ranks[i];
-    if (rank === 0) return L.latLng(lat, lon);
-
-    /* Направление берём по соседям, а не по одному перегону: на изломе пути
-       так обе половины сдвигаются согласованно и угол не расходится. */
-    const prev = flat[i - 1] ?? flat[i];
-    const next = flat[i + 1] ?? flat[i];
-    const dx = next.x - prev.x;
-    const dy = next.y - prev.y;
-    const len = Math.hypot(dx, dy);
-    if (len < 1e-6) return L.latLng(lat, lon);
-
-    /* Правый борт по ходу движения. У экрана ось Y смотрит вниз, поэтому
-       поворот направо — это (x, y) → (−y, x). */
-    const shift = rank * LANE;
-    return map.unproject(
-      L.point(flat[i].x + (-dy / len) * shift, flat[i].y + (dx / len) * shift),
-      zoom
-    );
-  });
 }

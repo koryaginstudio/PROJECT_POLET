@@ -36,3 +36,9 @@ Thumbs.db
 # Misc
 scratch/
 tmp/
+
+# Кэш ответов маршрутизатора для сборки дорог. Восстановимый: `dataset/roads.py`
+# наберёт его заново, были бы сеть и время. Сами дороги (dataset/out/*/roads.json
+# и app/public/data/*/roads.json) в репозитории нужны — без них карта рисует
+# перегоны прямыми.
+dataset/roadcache.json

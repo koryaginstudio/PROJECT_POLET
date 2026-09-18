@@ -14,3 +14,5 @@ export interface IconProps {
   style?: React.CSSProperties;
 }
 export declare function Icon(props: IconProps): JSX.Element | null;
+/** Path data of a glyph, for markup built outside React (map tooltips). */
+export declare function iconPath(name: string): string | null;

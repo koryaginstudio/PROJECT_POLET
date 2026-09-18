@@ -8,6 +8,7 @@ import {
   latestRun,
   loadDay,
   loadSummaries,
+  seedRuns,
   engineReady,
   runCode,
   runEntry
@@ -30,6 +31,7 @@ import { HomeScreen } from '../screens/HomeScreen.tsx';
 import { DispatchGate } from '../screens/DispatchGate.tsx';
 import { CreateRunScreen } from '../screens/CreateRunScreen.tsx';
 import { DashboardScreen } from '../screens/DashboardScreen.tsx';
+import { OverviewScreen } from '../screens/OverviewScreen.tsx';
 import { MonitorScreen } from '../screens/MonitorScreen.tsx';
 import { ControlScreen } from '../screens/ControlScreen.tsx';
 import { RoutePanel } from './RoutePanel.tsx';
@@ -47,11 +49,12 @@ import { SettingsScreen } from '../screens/SettingsScreen.tsx';
 import { RunEditDialog } from './RunEditDialog.tsx';
 import { ManualDialog } from './ManualDialog.tsx';
 import { IncidentDialog } from './IncidentDialog.tsx';
-import { isDbSection, needsRegistry, SUBHEADER } from './nav.ts';
+import { isDbSection, SUBHEADER } from './nav.ts';
 import type { SectionId } from './nav.ts';
 import { firstView, readRoute, sameRoute, writeRoute } from './route.ts';
 import type { Route } from './route.ts';
 import { COMPARE_MAX } from './compare.ts';
+import { dropDuty, dutyOf } from '../data/duty.ts';
 import { OVERVIEW } from './selection.ts';
 import type { Selection } from './selection.ts';
 
@@ -183,22 +186,45 @@ export function App() {
     };
   }, [runId]);
 
+  /* История расчётов: сперва затравка, потом сводки.
+
+     Затравка нужна ровно один раз и ровно в одном случае — когда браузер
+     здесь впервые и хранилище пустое. Тогда она считает по расчёту на зону,
+     и список открывается не пустым. Адрес к этой минуте уже разобран и
+     ссылается в пустоту, поэтому свежий расчёт надо ещё и подставить в
+     него — но только если своего там нет: ссылка на конкретный расчёт
+     важнее того, что мы завели сами. */
   useEffect(() => {
     let cancelled = false;
-    loadSummaries()
-      .then((list) => !cancelled && setRuns(list))
+    seedRuns()
+      .then((seeded) => {
+        if (cancelled) return null;
+        if (seeded) setRoute((prev) => (prev.runId ? prev : { ...prev, runId: latestRun() }));
+        return loadSummaries();
+      })
+      .then((list) => {
+        if (list && !cancelled) setRuns(list);
+      })
       .catch(() => undefined);
     return () => {
       cancelled = true;
     };
   }, []);
 
-  /* Заходим в раздел поверх прогонов — подтягиваем справочники один раз:
-     они общие для баз и статистики и от выбранного расчёта не зависят. */
-  const crossRun = needsRegistry(section);
+  /* Справочники подтягиваем сразу при запуске, а не при заходе в базы.
+
+     Раньше они ждали первого захода в раздел баз данных, и до него счётчики
+     в меню — «Заявки 205», «Инженеры 34» — показывать было нечего: они
+     считаются из справочников и стояли на нуле, а ноль в меню не рисуется
+     вовсе. Меню обещало пустые базы, пока в них не зайдёшь.
+
+     Стоит это немногого: к этому времени файлы уже прочитаны — сводки
+     расчётов идут за теми же, — и остаётся сборка справочников в памяти,
+     единицы миллисекунд. Экран её не ждёт: он и так стоит на «Загружаем
+     расчёт…», а это тяжелее. */
   const onDb = isDbSection(section);
   useEffect(() => {
-    if (!crossRun || registry) return;
+    if (registry) return;
     let cancelled = false;
     setRegistryError(null);
     loadRegistry()
@@ -213,7 +239,7 @@ export function App() {
     return () => {
       cancelled = true;
     };
-  }, [crossRun, registry]);
+  }, [registry]);
 
   /* И справочники, и лента подшапки, и счётчик в меню собраны из истории
      расчётов — правка записи обесценивает их все сразу. Пересобираем оттуда
@@ -234,6 +260,11 @@ export function App() {
   const dropRun = () => {
     if (!editing) return;
     const gone = editing.id;
+    /* День, который держал удаляемый расчёт, освобождается вместе с ним:
+       ссылка на несуществующую запись не мешала бы работать — карточки
+       сверяются со своим номером и молча остались бы серыми, — но день после
+       этого числился бы занятым, а хозяина у него не было. */
+    if (editing.date && dutyOf(editing.date) === gone) dropDuty(editing.date);
     deleteRun(gone);
     setEditing(null);
     setCompare((prev) => prev.filter((id) => id !== gone));
@@ -307,7 +338,7 @@ export function App() {
     try {
       const entry = await saveReplan(draft.spec, runId);
       setDraft(null);
-      loadSummaries().then(setRuns).catch(() => undefined);
+      refreshRuns();
       openRun(entry.id);
     } catch (failure) {
       setSaveFailed(failure instanceof Error ? failure.message : 'Сохранить не удалось');
@@ -349,6 +380,9 @@ export function App() {
      карта — основной способ смотреть на день: на вкладке «Карта» в
      диспетчерской и на всём мониторинге, который сам почти целиком карта. */
   const onPlan = section === 'dispatch' && stage === 'plan';
+  /* Обзор — карта на оба поля: правой панели у него нет, и колонку под неё
+     он не оставляет. Числа расчёта лежат на самой карте. */
+  const onOverview = onPlan && view === 'overview';
   const onMap = (onPlan && view === 'map') || section === 'monitor';
 
   const goSection = (id: SectionId) => {
@@ -364,14 +398,33 @@ export function App() {
   const openRun = (id: RunId) => {
     setCut(dayStart());
     /* Выбор расчёта — где угодно: в ленте подшапки, в базе расчётов, на
-       дашборде — и есть открытие плана. */
-    nav({ runId: id, stage: 'plan' });
+       дашборде — и есть открытие плана.
+
+       Открытый расчёт показывается обзором: к какой бы вкладке диспетчер ни
+       пришёл до этого, новый расчёт он встречает картой дня, а не чужой
+       сводкой, оставшейся от предыдущего. В других разделах вкладку не
+       трогаем: лента подшапки работает и в мониторинге, и переключение
+       расчёта не должно уводить оттуда. */
+    nav({ runId: id, stage: 'plan', ...(section === 'dispatch' ? { view: firstView('dispatch') } : {}) });
   };
 
   /* Щелчок по карте в карточке расчёта: открыть его и сразу показать карту —
      плитка обещает карту, значит, к ней и ведёт. */
   const openRunMap = (id: RunId) => {
     setCut(dayStart());
+    nav({ runId: id, stage: 'plan', section: 'dispatch', view: 'map' });
+  };
+
+  /* Щелчок по карточке маршрута в базе: открыть карту его расчёта и
+     закрепить на ней этот маршрут. Плитка в карточке показывает один
+     маршрут — значит, и большая карта должна встретить им же, а не днём
+     целиком, в котором свою линию потом ищи глазами. Своего экрана у
+     маршрута нет, и это единственное место, где его смотрят как есть. */
+  const openRouteMap = (id: RunId, engineerId: string) => {
+    setCut(dayStart());
+    setPinnedRoute(engineerId);
+    setRouteFocus((n) => n + 1);
+    setSelection({ kind: 'engineer', id: engineerId });
     nav({ runId: id, stage: 'plan', section: 'dispatch', view: 'map' });
   };
 
@@ -451,7 +504,7 @@ export function App() {
       /* День берём тот же, что у открытого расчёта: смысл ручного управления
          в том, чтобы сравнить два плана на одних данных. */
       const entry = await createRun(params, runEntry(runId)?.source ?? undefined, runEntry(runId)?.day);
-      loadSummaries().then(setRuns).catch(() => undefined);
+      refreshRuns();
       setManual(false);
       openRun(entry.id);
     } catch (failure) {
@@ -474,7 +527,7 @@ export function App() {
     setSolveFailed(null);
     try {
       const entry = await createRun(params, zone);
-      loadSummaries().then(setRuns).catch(() => undefined);
+      refreshRuns();
       openRun(entry.id);
       setRebuilding(true);
     } catch (failure) {
@@ -543,7 +596,7 @@ export function App() {
      её не показываем — и колонку под неё тоже, иначе справа остаётся пустая
      полоса, которая читается как несработавший экран. Дашборд обзорный и
      объекта не выбирает, поэтому тоже идёт без неё. */
-  const withDetail = onPlan || section === 'monitor';
+  const withDetail = (onPlan && !onOverview) || section === 'monitor';
 
   const registryPending = registryError ? (
     <div className="stub enter">
@@ -564,7 +617,10 @@ export function App() {
       className={
         'shell' +
         (navCollapsed ? ' shell--nav-collapsed' : '') +
-        (withDetail ? '' : ' shell--wide')
+        (withDetail ? '' : ' shell--wide') +
+        /* Обзор идёт без полей вокруг: карта в нём доходит до краёв, а
+           рамка вокруг карты на весь экран — рамка вокруг пустоты. */
+        (onOverview ? ' shell--flush' : '')
       }
     >
       <Header
@@ -616,6 +672,7 @@ export function App() {
           {section === 'monitor' && (
             <MonitorScreen
               view={dayView}
+              runId={runId}
               live={liveRoute}
               onLive={setHoverRoute}
               pinned={pinnedRoute}
@@ -652,10 +709,56 @@ export function App() {
             />
           )}
 
-          {section === 'dispatch' && stage === 'plan' && (
+          {/* Обзор стоит перед сводкой: расчёт открывают картой дня, а
+              числа читают на ней же. Остальные вкладки — тот же расчёт
+              другими способами, и держит их общий экран плана. */}
+          {onOverview && (
+            <OverviewScreen
+              view={dayView}
+              runId={runId}
+              run={runCode(runId)}
+              live={liveRoute}
+              onLive={setHoverRoute}
+              pinned={pinnedRoute}
+              onPin={pinRoute}
+              focus={routeFocus}
+              selectedOrder={selection.kind === 'order' ? selection.id : null}
+              /* Щелчок по точке остаётся на карте: обзор отвечает сводкой в
+                 правой колонке, на месте итогов расчёта. Раньше он уводил в
+                 «Карту», и человек терял и карту, и место, на которое
+                 смотрел. Пусто — выбор сняли, колонка возвращает итоги. */
+              onSelectOrder={(id) => setSelection(id ? { kind: 'order', id } : OVERVIEW)}
+              /* Инженера показывает справочник в сводке — туда и ведём:
+                 список маршрутов карточки человека не открывает. */
+              onSelectEngineer={(id) => {
+                setSelection({ kind: 'engineer', id });
+                nav({ view: 'summary' });
+              }}
+              onOpenMetric={(group) => {
+                setSelection({ kind: 'group', id: group });
+                nav({ view: 'summary' });
+              }}
+              onOpenSummary={() => nav({ view: 'summary' })}
+              registry={registry}
+              onOpenRun={(id) => openRun(id as RunId)}
+              onOpenMap={(id) => openRunMap(id as RunId)}
+              onTrack={(id) => {
+                nav({ section: 'monitor' });
+                if (dayView?.loads.some((load) => load.engineer.id === id)) {
+                  pinRoute(id);
+                  setSelection({ kind: 'engineer', id });
+                }
+              }}
+              onChanged={refreshRuns}
+              draft={draftNote}
+            />
+          )}
+
+          {section === 'dispatch' && stage === 'plan' && !onOverview && (
             <DashboardScreen
               day={day}
               view={dayView}
+              runId={runId}
               mode={view}
               run={runCode(runId)}
               selectedOrder={selection.kind === 'order' ? selection.id : null}
@@ -736,17 +839,22 @@ export function App() {
             ) : section === 'db-clients' ? (
               <DbClientsScreen registry={registry} mode={view} />
             ) : section === 'db-routes' ? (
-              <DbRoutesScreen registry={registry} mode={view} />
+              <DbRoutesScreen registry={registry} mode={view} onOpenRoute={openRouteMap} />
             ) : (
               <DbEngineersScreen
                 registry={registry}
                 mode={view}
+                /* Профиль инженера открывает заявки, которые он вёз, а из
+                   заявки уходят в её расчёт и на карту — те же две дороги,
+                   что и из базы заявок. */
+                onOpenRun={openRunFromDb}
+                onOpenMap={openRunMap}
                 /* Правка штата меняет данные, а не только карточку: справочник
                    и открытый расчёт пересобираются с нуля. */
                 onChanged={() => {
                   setRegistry(null);
                   loadDay(runId).then(setDay).catch(() => undefined);
-                  loadSummaries().then(setRuns).catch(() => undefined);
+                  refreshRuns();
                 }}
                 /* «Отследить» из профиля: пока своего экрана слежения нет,
                    ведём в мониторинг — он и отвечает на «где инженер сейчас

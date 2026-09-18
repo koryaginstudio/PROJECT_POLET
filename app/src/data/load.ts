@@ -23,10 +23,14 @@
 
 import { SCHEMA, schemaAccepted } from './contract.ts';
 import type { Day, Dictionaries, Engineer, Order, Plan, Simulation } from './contract.ts';
+import { engineDefaults } from './engine.ts';
 import type { EngineParams } from './engine.ts';
 import { applyCrew, crewVersion } from './crew.ts';
 import { datasetByKey, datasets } from './datasets.ts';
+import type { Dataset } from './datasets.ts';
 import { planDay } from './planner.ts';
+import { readRoads, roadsCover } from './roads.ts';
+import type { Roads } from './roads.ts';
 import type { PlannedDay } from './planner.ts';
 import {
   createEngineRun,
@@ -264,6 +268,39 @@ export async function createRun(
   return entry;
 }
 
+/** Заводит стартовую историю: по расчёту на каждую встроенную зону.
+
+    История живёт в хранилище браузера, а оно своё у каждого адреса: открыл
+    стенд на другом порту — и список расчётов пуст, хотя данные те же самые.
+    Пустой список при этом не говорит «ничего не считали», он говорит «этот
+    браузер здесь впервые», и разбираться в этом диспетчеру незачем — тем
+    более что считать нечего: зоны лежат файлами и готовы к расчёту всегда.
+
+    Поэтому первый заход считает их сам, по одной на зону, с переменными
+    движка по умолчанию. Дальше история живёт как обычно: расчёты добавляют
+    кнопкой, удаляют по одному, и повторно затравка не срабатывает — пустой
+    она становится только после того, как всё стёрли руками, а это уже
+    осознанное «начать сначала».
+
+    Возвращает, завела ли что-нибудь: адрес к этому времени уже прочитан и
+    указывает в пустоту, и звавшему надо знать, что теперь есть куда. */
+export async function seedRuns(): Promise<boolean> {
+  if (RUNS.length > 0) return false;
+  /* С живым движком историю приносит его архив, а не мы: подмешивать к ней
+     свои расчёты значило бы выдать посчитанное здесь за посчитанное им. */
+  if (engineOn && engineTakesRealData()) return false;
+
+  for (const zone of BUILT_IN) {
+    try {
+      await createRun(engineDefaults(), zone);
+    } catch {
+      /* Зона может не прочитаться — файла нет, сеть отвалилась. Остальные
+         от этого не страдают: две зоны из трёх лучше, чем пустой список. */
+    }
+  }
+  return RUNS.length > 0;
+}
+
 /** Правит поля записи, которые заводит человек. Цифры плана не трогает —
     их в `RunPatch` и нет. */
 export function updateRun(id: RunId, patch: RunPatch): void {
@@ -321,16 +358,28 @@ export function shortStamp(created: string): string {
   return time ? `${day}.${month}.${year.slice(2)}, ${time}` : `${day}.${month}.${year.slice(2)}`;
 }
 
+/** День без времени: «2026-09-16T20:01» и «2026-09-16» дают одно и то же.
+    Нужен потому, что дату расчёта пишут в двух видах — у дня она без часов,
+    у записи в истории с часами, — а сравнивают их наравне. */
+export const dayOf = (iso: string) => iso.split('T')[0] ?? iso;
+
 /** Сколько дней назад была эта дата. */
 export function daysAgo(iso: string): number {
-  const then = new Date(iso + 'T00:00:00');
+  const then = new Date(dayOf(iso) + 'T00:00:00');
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   return Math.round((today.getTime() - then.getTime()) / 86_400_000);
 }
 
 /** Расчёты приходят с датой, а диспетчер помнит их «вчерашним» и «недельной
-    давности» — переводим на этот язык. */
+    давности» — переводим на этот язык.
+
+    Считается это по дню, когда расчёт завели, а не по дню, который в нём
+    разложен. Дни разные: выгрузка «Билайн Бизнес» собрана за 17 августа, и
+    расчёт по ней, посчитанный сегодня, подписывался «30 дн. назад» — тогда
+    как в базе расчётов рядом стояла сегодняшняя дата. Диспетчер ищет здесь
+    свою работу — «что я считал вчера», — а какой день разложен, сказано в
+    самом расчёте. */
 export function whenLabel(iso: string): string {
   const days = daysAgo(iso);
   if (days <= 0) return 'Сегодня';
@@ -420,6 +469,92 @@ export interface ZoneData {
   title: string;
   orders: Order[];
   engineers: Engineer[];
+  /** Дороги зоны для карты и длины перегонов. `null` у набора, который
+      принесли со стороны: его адресов нет в нашем графе. */
+  roads: Roads | null;
+}
+
+/* Дороги лежат рядом с заявками отдельным файлом и грузятся вместе с ними.
+   Файл тяжелее прочих — в нём ломаная на каждую пару адресов зоны, — но
+   читается один раз за сеанс и переиспользуется всеми расчётами по этой
+   зоне. Его отсутствие не ошибка: расчёт вернётся к прямым линиям, а
+   интерфейс откроется как ни в чём не бывало. */
+async function fetchRoads(zone: SourceId): Promise<Roads | null> {
+  try {
+    const response = await fetch(`/data/${zone}/roads.json`);
+    if (!response.ok) {
+      /* Молча возвращаться к прямым нельзя: на экране это выглядит не как
+         «файла нет», а как «программа врёт про маршруты», и искать причину
+         приходится по всему коду. Сама карта скажет о том же словом, а здесь
+         остаётся след для того, кто полезет в консоль. */
+      console.warn(
+        `[polet] дороги зоны «${zone}» не отдались (${response.status}) — карта нарисует перегоны прямыми`
+      );
+      return null;
+    }
+    const roads = readRoads(await response.json());
+    if (!roads) {
+      console.warn(`[polet] дороги зоны «${zone}» не разобрались — карта нарисует перегоны прямыми`);
+    }
+    return roads;
+  } catch (error) {
+    console.warn(`[polet] дороги зоны «${zone}» не прочитались:`, error);
+    return null;
+  }
+}
+
+/* Дороги одной зоны читаются один раз за сеанс: файл на полтора мегабайта, и
+   перечитывать его ради каждого загруженного набора незачем. */
+const roadsCache = new Map<SourceId, Promise<Roads | null>>();
+
+const zoneRoads = (zone: SourceId): Promise<Roads | null> => {
+  const ready = roadsCache.get(zone);
+  if (ready) return ready;
+  const reading = fetchRoads(zone);
+  roadsCache.set(zone, reading);
+  return reading;
+};
+
+/* Дороги для набора, загруженного диспетчером.
+
+   Своего файла дорог у такого набора нет — его собирает `dataset/roads.py`
+   рядом с зоной, — и до сих пор карта рисовала по нему одни отрезки. Но чаще
+   всего диспетчер подкладывает ту же выгрузку, что лежит и встроенной зоной:
+   те же дома, те же координаты до шестого знака. Тогда готовые ломаные
+   подходят как есть, и незачем показывать прямые из-за того, что набор пришёл
+   другим путём.
+
+   Поэтому ищем зону, чьи дороги накрывают набор, и берём её. Порог — половина
+   точек: набор бывает частью зоны (подложили один участок), и терять из-за
+   этого дороги жалко; а совпадение ниже половины — случайное, пара домов на
+   границе, и рисовать по чужим улицам хуже, чем по прямой. */
+async function borrowRoads(set: Dataset): Promise<Roads | null> {
+  const points: [number, number][] = [
+    ...set.orders.map((order) => [order.lat, order.lon] as [number, number]),
+    ...set.engineers.map((one) => [one.home_lat, one.home_lon] as [number, number])
+  ].filter((point) => Number.isFinite(point[0]) && Number.isFinite(point[1]));
+
+  if (points.length === 0) return null;
+
+  let best: Roads | null = null;
+  let bestShare = 0;
+  for (const zone of BUILT_IN) {
+    const roads = await zoneRoads(zone);
+    if (!roads) continue;
+    const share = roadsCover(roads, points) / points.length;
+    if (share > bestShare) {
+      bestShare = share;
+      best = roads;
+    }
+  }
+
+  if (bestShare < 0.5) {
+    console.warn(
+      `[polet] для набора «${set.title}» готовых дорог не нашлось (совпало ${Math.round(bestShare * 100)} % точек) — карта нарисует перегоны прямыми`
+    );
+    return null;
+  }
+  return best;
 }
 
 const zoneCache = new Map<SourceId, Promise<ZoneData>>();
@@ -447,20 +582,23 @@ export function loadZone(zone: SourceId): Promise<ZoneData> {
         date: stored.date,
         title: stored.title,
         orders: stored.orders,
-        engineers: applyCrew(stored.engineers)
+        engineers: applyCrew(stored.engineers),
+        roads: await borrowRoads(stored)
       };
     }
 
-    const [orders, engineers] = await Promise.all([
+    const [orders, engineers, roads] = await Promise.all([
       fetchForm<OrdersForm>(zone, 'orders'),
-      fetchForm<EngineersForm>(zone, 'engineers')
+      fetchForm<EngineersForm>(zone, 'engineers'),
+      zoneRoads(zone)
     ]);
     return {
       zone,
       date: orders.meta.date,
       title: orders.meta.zone || zoneTitle(zone),
       orders: orders.orders,
-      engineers: applyCrew(engineers.engineers)
+      engineers: applyCrew(engineers.engineers),
+      roads
     };
   })();
 
@@ -566,7 +704,7 @@ export function computeDay(zone: SourceId, params: EngineParams): Promise<Planne
 
   const computing = (async () => {
     const data = await loadZone(zone);
-    return planDay(data.orders, data.engineers, params, data.date);
+    return planDay(data.orders, data.engineers, params, data.date, data.roads);
   })();
 
   planCache.set(key, computing);
@@ -604,7 +742,11 @@ export async function loadDay(id: RunId): Promise<Day> {
 export interface DaySummary {
   id: RunId;
   code: string;
+  /** День, который разложен в расчёте: дата выгрузки, а не работы диспетчера. */
   date: string;
+  /** Когда расчёт завели. По нему подписывают «сегодня» и «вчера» и отбирают
+      по периодам: в списках ищут свою работу, а не день выгрузки. */
+  created: string;
   coverage: number;
   ordersTotal: number;
   ordersAssigned: number;
@@ -667,6 +809,7 @@ export async function loadSummaries(): Promise<DaySummary[]> {
       id: run.id,
       code: run.code,
       date: run.date,
+      created: run.created,
       coverage: simulation.coverage,
       ordersTotal: plan.meta.orders_total,
       ordersAssigned: plan.meta.orders_assigned,

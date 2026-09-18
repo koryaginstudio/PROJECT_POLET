@@ -3,13 +3,17 @@ import { Button } from '../ds/components/core/Button.jsx';
 import { Icon } from '../ds/components/core/Icon.jsx';
 import { Select } from '../ds/components/forms/Select.jsx';
 import { SegmentedControl } from '../ds/components/forms/SegmentedControl.jsx';
-import type { EngineerRecord, Registry } from '../data/registry.ts';
+import type { EngineerRecord, OrderRecord, Registry } from '../data/registry.ts';
 import type { CrewPatch } from '../data/crew.ts';
 import { dec, hhmm, hoursText } from '../data/derive.ts';
 import { skillIcon, skillName, teamName, transportIcon, transportName } from '../data/dictionary.ts';
 import { transportWhy } from '../data/rationale.ts';
 import { faceOf } from '../data/photos.ts';
 import { PersonName } from './PersonName.tsx';
+import { OrderProfile } from './OrderProfile.tsx';
+import { NoteField } from './NoteField.tsx';
+import { VisitsDialog } from './VisitsDialog.tsx';
+import type { VisitsScope } from './VisitsDialog.tsx';
 import { WhyMark } from './WhyMark.tsx';
 
 interface Place {
@@ -32,6 +36,10 @@ interface Props {
   places: Place[];
   onSave: (patch: CrewPatch) => void;
   onDelete: () => void;
+  /** Уйти в расчёт заявки, открытой отсюда, и показать её на карте: те же
+      две дороги, что ведут из базы заявок. */
+  onOpenRun: (id: string) => void;
+  onOpenMap: (id: string) => void;
 }
 
 /* Профиль инженера: всё, что мы о нём знаем, на одном экране — и то же окно,
@@ -60,12 +68,33 @@ interface PostDraft {
   zone: string;
 }
 
-export function CrewProfile({ crew, registry, onClose, onTrack, places, onSave, onDelete }: Props) {
+export function CrewProfile({
+  crew,
+  registry,
+  onClose,
+  onTrack,
+  places,
+  onSave,
+  onDelete,
+  onOpenRun,
+  onOpenMap
+}: Props) {
   /* Какая из трёх историй открыта. Сбрасывается на сменах, когда открывают
      другого человека: вкладка, оставшаяся от предыдущего профиля, показала
      бы чужой по смыслу разрез — пришли посмотреть на человека, а открылись
      его заявки. */
   const [tab, setTab] = useState<Tab>('shifts');
+
+  /* Какой отбор визитов сейчас раскрыт поверх профиля. Профиль отвечает
+     сводно — «восемь раз чинил линк», — а это окно показывает сами восемь
+     раз: что, где и когда. Открывается из четырёх мест, и все четыре кладут
+     сюда готовый отбор, а не свои правила. */
+  const [visits, setVisits] = useState<VisitsScope | null>(null);
+
+  /* Какая заявка раскрыта поверх. Профиль заявки — то же окно, что и в базе
+     заявок: заводить для него второй вид, потому что пришли из другого
+     раздела, значило бы держать две карточки одной и той же вещи. */
+  const [order, setOrder] = useState<OrderRecord | null>(null);
 
   /* Правится ли карточка прямо сейчас. */
   const [editing, setEditing] = useState(false);
@@ -81,6 +110,10 @@ export function CrewProfile({ crew, registry, onClose, onTrack, places, onSave, 
     if (crew) setTab('shifts');
     setEditing(false);
     setConfirming(false);
+    /* Открыли другого человека — чужой отбор визитов закрывается: он про
+       предыдущего, и остаться поверх нового профиля не может. */
+    setVisits(null);
+    setOrder(null);
   }, [crew?.id]);
 
   /* Поля формы наполняются заново при каждом входе в правку: то, что
@@ -101,6 +134,12 @@ export function CrewProfile({ crew, registry, onClose, onTrack, places, onSave, 
     if (!crew) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
+      /* Пока поверх профиля раскрыто окно — визиты или карточка заявки, —
+         Escape принадлежит ему: оно само себя и закроет. Профиль в этот
+         момент молчит, иначе одно нажатие схлопывало бы сразу два слоя, и
+         диспетчер, закрывая заявку, терял бы человека, из которого в неё
+         пришёл. */
+      if (visits || order) return;
       /* Escape в форме отменяет правку, а не закрывает профиль целиком:
          обе команды на одной клавише читались бы как одна, и случайный Esc
          во время редактирования выкидывал бы из карточки, а не из формы. */
@@ -109,7 +148,7 @@ export function CrewProfile({ crew, registry, onClose, onTrack, places, onSave, 
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [crew, editing, onClose]);
+  }, [crew, editing, onClose, visits, order]);
 
   const routes = useMemo(
     () => (crew ? registry.routes.filter((route) => route.engineerId === crew.id) : []),
@@ -125,9 +164,15 @@ export function CrewProfile({ crew, registry, onClose, onTrack, places, onSave, 
      на котором список навыков останавливается, — навык говорит «умеет», а
      это говорит «делает». */
   const byWork = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const order of orders) map.set(order.workTitle, (map.get(order.workTitle) ?? 0) + 1);
-    return [...map.entries()].sort((a, b) => b[1] - a[1]);
+    /* Ключом — код вида работ, а не подпись: по нему отбирают заявки для
+       окна визитов, и подписи двух разных кодов могут совпасть. */
+    const map = new Map<string, { title: string; count: number }>();
+    for (const order of orders) {
+      const cell = map.get(order.workType) ?? { title: order.workTitle, count: 0 };
+      cell.count += 1;
+      map.set(order.workType, cell);
+    }
+    return [...map.entries()].sort((a, b) => b[1].count - a[1].count);
   }, [orders]);
 
   /* Табельные, уже занятые другими: новый номер не должен свести двух
@@ -488,15 +533,38 @@ export function CrewProfile({ crew, registry, onClose, onTrack, places, onSave, 
                   </div>
                 </div>
 
+                <div className="crewpro__cell crewpro__cell--wide">
+                  <span className="crewpro__label">Заметка</span>
+                  {/* Всё в этой панели пришло из выгрузки и расчёта. Заметка —
+                      единственное, что знает только диспетчер: «не берёт
+                      вечерние», «звонить на личный». */}
+                  <NoteField kind="engineer" id={crew.id} placeholder="Добавить заметку об инженере" />
+                </div>
+
                 {byWork.length > 0 && (
                   <div className="crewpro__cell crewpro__cell--wide">
                     <span className="crewpro__label">Выполнил</span>
+                    {/* Чип — кнопка: число на нём отвечает «сколько раз», а
+                        нажатие — «что это были за разы». Раньше число было
+                        тупиком: восемь раз чинил линк, а где и когда — иди
+                        ищи в трёх таблицах ниже. */}
                     <div className="crewpro__works">
-                      {byWork.slice(0, 8).map(([title, count]) => (
-                        <span className="crewpro__work" key={title}>
-                          <span className="crewpro__work-title">{title}</span>
-                          <span className="crewpro__work-count">{count}</span>
-                        </span>
+                      {byWork.slice(0, 8).map(([type, work]) => (
+                        <button
+                          type="button"
+                          className="crewpro__work crewpro__work--open"
+                          key={type}
+                          onClick={() =>
+                            setVisits({
+                              title: work.title,
+                              lede: `${crew.name} — что делал по этому виду работ`,
+                              orders: orders.filter((order) => order.workType === type)
+                            })
+                          }
+                        >
+                          <span className="crewpro__work-title">{work.title}</span>
+                          <span className="crewpro__work-count">{work.count}</span>
+                        </button>
                       ))}
                     </div>
                   </div>
@@ -539,7 +607,18 @@ export function CrewProfile({ crew, registry, onClose, onTrack, places, onSave, 
                       </thead>
                       <tbody>
                         {shifts.map((shift) => (
-                          <tr className="tbl__row" key={shift.runId}>
+                          <tr
+                            className="tbl__row"
+                            key={shift.runId}
+                            title={`Визиты в расчёте ${shift.code}`}
+                            onClick={() =>
+                              setVisits({
+                                title: `Смена в расчёте ${shift.code}`,
+                                lede: `${crew.name} — что делал в этом расчёте`,
+                                orders: orders.filter((order) => order.run.id === shift.runId)
+                              })
+                            }
+                          >
                             <td>
                               <span className="tbl__strong">{shift.code}</span>
                             </td>
@@ -586,7 +665,20 @@ export function CrewProfile({ crew, registry, onClose, onTrack, places, onSave, 
                       </thead>
                       <tbody>
                         {routes.map((route) => (
-                          <tr className="tbl__row" key={route.key}>
+                          <tr
+                            className="tbl__row"
+                            key={route.key}
+                            title={`Визиты маршрута ${route.code}`}
+                            onClick={() =>
+                              setVisits({
+                                title: `Маршрут ${route.code}`,
+                                lede: `${crew.name}, расчёт ${route.run.code} — визиты по порядку объезда`,
+                                orders: orders.filter(
+                                  (order) => order.run.id === route.run.id && order.seq !== null
+                                )
+                              })
+                            }
+                          >
                             <td>
                               <span className="tbl__strong">{route.code}</span>
                             </td>
@@ -627,7 +719,12 @@ export function CrewProfile({ crew, registry, onClose, onTrack, places, onSave, 
                       </thead>
                       <tbody>
                         {orders.map((order) => (
-                          <tr className="tbl__row" key={order.key}>
+                          <tr
+                            className="tbl__row"
+                            key={order.key}
+                            title={`Карточка заявки ${order.id}`}
+                            onClick={() => setOrder(order)}
+                          >
                             <td>
                               <span className="tbl__strong">{order.id}</span>
                             </td>
@@ -648,6 +745,32 @@ export function CrewProfile({ crew, registry, onClose, onTrack, places, onSave, 
           </>
         )}
       </div>
+
+      {/* Оба окна стоят поверх профиля, а не вместо него: диспетчер разворачивал
+          карточку человека и провалился на шаг глубже — закрыв визит, он обязан
+          вернуться туда, откуда пришёл, а не на пустой экран базы. */}
+      <VisitsDialog
+        scope={visits}
+        onClose={() => setVisits(null)}
+        onOpenOrder={(picked) => {
+          setVisits(null);
+          setOrder(picked);
+        }}
+      />
+
+      <OrderProfile
+        order={order}
+        registry={registry}
+        onClose={() => setOrder(null)}
+        onOpenRun={(id) => {
+          setOrder(null);
+          onOpenRun(id);
+        }}
+        onOpenMap={(id) => {
+          setOrder(null);
+          onOpenMap(id);
+        }}
+      />
     </div>
   );
 }

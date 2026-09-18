@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Icon } from '../ds/components/core/Icon.jsx';
+import { service } from '../data/service.ts';
 
 /* Виджеты баз данных.
 
@@ -713,6 +714,32 @@ export function useWidgetBoard({ storeKey, catalogue, fallback, filter }: Option
   const known = new Set(catalogue.map((item) => item.key));
   const [saved, setSaved] = useState<Saved>(() => readSaved(storeKey, fallback, known));
   const [open, setOpen] = useState<Open>({ kind: 'none' });
+  /* Раскрыта ли доска. В базу приходят за записями — за инженером, заявкой,
+     расчётом, — а сводка над ними отвечает на другой вопрос и занимает
+     полэкрана до того, как первая карточка покажется. Поэтому по умолчанию
+     она свёрнута в одну строку и раскрывается тогда, когда спросили.
+
+     С чего открывать, решает настройка рабочего места: кто читает базы
+     сводкой, ставит «показывать» и не разворачивает их каждый раз руками.
+     Дальше состояние живёт в самом экране: раскрыл — смотрит, ушёл и
+     вернулся — снова как в настройке. Помнить это за диспетчера мы не
+     беремся: настройка для того и есть. */
+  const [board, setBoard] = useState(() => service().dbStats === 'open');
+  /* Доска досталa своё место и стоит спокойно — можно вернуть ей выпадающие
+     списки. Пока она едет, обёртка режет по своей высоте, иначе меню набора и
+     выбор вида вылезали бы из схлопнутой панели; как только движение
+     кончилось, обрезку снимаем — иначе эти же меню обрезались бы у раскрытой
+     доски, где они и нужны. */
+  const [settled, setSettled] = useState(board);
+
+  useEffect(() => {
+    if (!board) {
+      setSettled(false);
+      return;
+    }
+    const timer = setTimeout(() => setSettled(true), 340);
+    return () => clearTimeout(timer);
+  }, [board]);
   /* Что тащат и над чем держат. Порядок важен диспетчеру, а не данным: слева
      ставят то, на что смотрят первым, и никакой сортировкой за него это не
      угадать. */
@@ -1066,15 +1093,54 @@ export function useWidgetBoard({ storeKey, catalogue, fallback, filter }: Option
 
   return {
     node: (
-      <div className="wboard">
-        {/* Строка управления доской: слева срок, справа набор. Оба про доску,
-            а не про список под ней, поэтому и стоят вместе с ней. */}
-        <div className="wboard__bar">
-          {filter ?? <span />}
-          {picker}
+      <section
+        className={
+          'panel wboard' + (board ? ' wboard--open' : '') + (settled ? ' wboard--settled' : '')
+        }
+      >
+        {/* Заголовок панели он же выключатель. Тихой строчки под заголовком
+            базы не хватало: доска съезжала под чужое имя, а строка, которой её
+            раскрывают, терялась среди подписей. Теперь это полноценная шапка
+            своей панели — заголовок того же роста, что «База расчётов» под
+            ней, значок слева, число плиток и слово с птичкой справа, — и
+            нажимается она вся целиком, а не значок в ней. */}
+        <button
+          type="button"
+          className="wboard__head"
+          aria-expanded={board}
+          onClick={() => setBoard((was) => !was)}
+        >
+          <span className="wboard__mark" aria-hidden="true">
+            <Icon name="bar-chart-3" size={15} />
+          </span>
+          <span className="wboard__title">Статистика</span>
+          {/* Числа плиток у заголовка нет: пилюля с цифрой читалась как метка
+              состояния — «пять чего-то требует внимания», — а говорила всего
+              лишь, сколько плиток набрано. Сколько их, видно, как только
+              доску раскрыли, и до того это знание никому не нужно. */}
+          <span className="wboard__more">
+            {board ? 'Свернуть' : 'Показать'}
+            <Icon name="chevron-down" size={13} />
+          </span>
+        </button>
+
+        {/* Раскрывается ростом, а не появлением: строка из `0fr` в `1fr` тянет
+            высоту обёртки к настоящей высоте содержимого, и панель разъезжает
+            плавно, сама подбирая, до какой высоты ехать. Держать содержимое в
+            дереве всё время дешевле, чем мерить его высоту руками, и только
+            так у схлопывания есть обратный ход. */}
+        <div className="wboard__fold">
+          <div className="wboard__inner">
+            {/* Строка управления доской: слева срок, справа набор. Оба про
+                доску, а не про список под ней, поэтому и стоят вместе с ней. */}
+            <div className="wboard__bar">
+              {filter ?? <span />}
+              {picker}
+            </div>
+            {grid}
+          </div>
         </div>
-        {grid}
-      </div>
+      </section>
     )
   };
 }

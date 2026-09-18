@@ -14,9 +14,12 @@
 
 import { loadAllOrders, loadRoster, loadRunData, RUNS } from './load.ts';
 import type { RunId } from './load.ts';
-import type { Engineer, Order, Plan, Simulation } from './contract.ts';
+import type { Engineer, Order, Plan, Route, Simulation } from './contract.ts';
 import { placeOf, roadPath } from './derive.ts';
+import { isUrgent } from './dictionary.ts';
 import { routeLabel, routeNumbers } from './routeIds.ts';
+import { clientLabel, clientNumbers } from './clientIds.ts';
+import { companyOf } from './companies.ts';
 
 export interface RunRef {
   id: RunId;
@@ -52,6 +55,16 @@ export interface Bounds {
 export interface ClientRecord {
   /** Ключ точки обслуживания: почтовый адрес дома, а без него — район. */
   key: string;
+  /** Сквозной номер точки на всю базу: C0001, C0002… Выдаётся раз и
+      закрепляется за адресом — см. `clientIds.ts`. Им клиента находят
+      поиском и им же его называют, потому что адресом не назовёшь. */
+  code: string;
+  /** Тот же номер числом — им сортируют. */
+  number: number;
+  /** Кто заказывает: название компании-клиента. В выгрузке нарядов клиента
+      нет — там точка обслуживания и контактное лицо, — поэтому название
+      берётся из своего справочника по номеру точки, см. `companies.ts`. */
+  company: string;
   /** Как точку называют в интерфейсе: адрес дома либо район. */
   address: string;
   district: string;
@@ -127,6 +140,11 @@ export interface OrderRecord {
   /** Адрес дома либо, если стенд без адресов, район. */
   address: string;
   district: string;
+  /** Кто заказал: та же компания, что стоит на этом адресе в базе клиентов.
+      Считается один раз, реестром, и берётся обеими базами оттуда: назови мы
+      её в двух местах по-своему — и одна и та же заявка оказалась бы от
+      разных заказчиков на соседних экранах. */
+  company: string;
   windowStart: number;
   windowEnd: number;
   slaDeadline: number;
@@ -138,6 +156,13 @@ export interface OrderRecord {
   engineerName: string | null;
   /** Порядковый номер визита в маршруте, если заявка в него попала. */
   seq: number | null;
+  /** Когда инженер начинает и кончает работу на объекте по плану, минуты от
+      полуночи. Пусто у заявки, которая в маршрут не попала: у невзятой
+      работы времени нет — есть только окно, когда её были готовы принять. */
+  visitStart: number | null;
+  visitEnd: number | null;
+  /** Номер маршрута, в котором стоит этот визит: M0001. Пусто у невзятой. */
+  routeCode: string | null;
 
   /* ─── что о заявке говорит сама выгрузка ───────────────────────────────
      Схема 1.2 приносит о заявке больше, чем нужно движку для раскладки:
@@ -182,8 +207,29 @@ export interface RouteRecord {
   end: number;
   /** Районы, которые маршрут прошёл, в порядке первого появления. */
   districts: string[];
+  /** Номера заявок маршрута — в порядке объезда. Ими маршрут и назван по
+      существу: «где он был» отвечается адресами, а не районами, а район
+      слишком крупен, чтобы что-то о визите сказать. */
+  orderIds: string[];
   /** Остановок с высоким риском опоздания. */
   risky: number;
+
+  /* ─── чем маршрут лёг по городу ────────────────────────────────────────
+     Запись маршрута до сих пор состояла из одних чисел, и карточке в базе
+     нечего было показать: числа у двух маршрутов совпадают до минуты, а
+     ездят они в разных концах области. Геометрия здесь та же, что в
+     наброске расчёта и на большой карте, — один и тот же путь не должен
+     идти в трёх местах по-разному. */
+
+  /** Ломаная по улицам: от места выезда инженера и дальше по визитам,
+      `[широта, долгота]`. Пусто, когда маршрут не из чего сложить: инженера
+      нет в плане либо перегонов меньше двух. */
+  path: [number, number][];
+  /** Точки визитов по порядку объезда — ими на карточке помечают остановки. */
+  stops: [number, number][];
+  /** Какая по счёту линия маршрута в наброске расчёта. Ею маршрут красится, и
+      два маршрута одного расчёта не сливаются в один цвет. */
+  lane: number;
 }
 
 /** Как инженер отработал в одном прогоне. Ряд из таких смен и есть его
@@ -265,6 +311,8 @@ export interface RunStat {
   assignedShare: number;
   routes: number;
   visits: number;
+  /** Человеко-минуты на объектах по всем маршрутам расчёта. */
+  workMinutes: number;
   travelMinutes: number;
   occupancy: number;
   engineersTotal: number;
@@ -333,10 +381,15 @@ export interface Registry {
 }
 
 function buildClients(plans: { run: RunRef; plan: Plan }[]): ClientRecord[] {
-  const map = new Map<
-    string,
-    ClientRecord & { minutes: number[]; typeSet: Set<string>; runSet: Set<string> }
-  >();
+  /* Копится запись без номера и без заказчика: номер выдаётся в самом конце,
+     всем адресам разом, а заказчик — по этому номеру, и до тех пор ни того,
+     ни другого у точки просто нет. */
+  type Building = Omit<ClientRecord, 'code' | 'number' | 'company'> & {
+    minutes: number[];
+    typeSet: Set<string>;
+    runSet: Set<string>;
+  };
+  const map = new Map<string, Building>();
 
   for (const { run, plan } of plans) {
     for (const order of plan.orders) {
@@ -377,9 +430,17 @@ function buildClients(plans: { run: RunRef; plan: Plan }[]): ClientRecord[] {
     }
   }
 
+  /* Номера выдаём в том порядке, в каком адреса встретились в расчётах: у
+     первого увиденного дома C0001. Порядок обхода задан расчётами, а он
+     одинаков от загрузки к загрузке, так что и номера выйдут те же. */
+  const numbers = clientNumbers([...map.keys()]);
+
   return [...map.values()]
     .map((entry) => ({
       key: entry.key,
+      code: clientLabel(numbers.get(entry.key) ?? 0),
+      number: numbers.get(entry.key) ?? 0,
+      company: companyOf(numbers.get(entry.key) ?? 0),
       address: entry.address,
       district: entry.district,
       lat: entry.lat,
@@ -396,15 +457,42 @@ function buildClients(plans: { run: RunRef; plan: Plan }[]): ClientRecord[] {
     .sort((a, b) => b.orders - a.orders || a.address.localeCompare(b.address, 'ru'));
 }
 
-function buildOrders(plans: { run: RunRef; plan: Plan }[]): OrderRecord[] {
+function buildOrders(
+  plans: { run: RunRef; plan: Plan }[],
+  routes: RouteRecord[],
+  clients: ClientRecord[]
+): OrderRecord[] {
   const list: OrderRecord[] = [];
+  /* Номер маршрута по паре «расчёт + инженер»: его выдала сборка маршрутов,
+     и заново выдавать его здесь нельзя — он выйдет другим. */
+  const routeCodeByKey = new Map(routes.map((route) => [route.key, route.code]));
+  /* Заказчик у заявки тот же, что у её точки в базе клиентов: ключ точки —
+     это её адрес, и обе базы опознают его одинаково. Заявка с адресом, не
+     попавшим в клиенты, не бывает — клиенты из тех же заявок и собраны, — но
+     запасное имя всё равно нужно: пустая строка на месте заказчика читалась
+     бы как «заказчика нет», а он есть, просто адрес записан так, что точку по
+     нему не опознать. */
+  const companyByKey = new Map(clients.map((client) => [client.key, client.company]));
+  const companyFor = (order: Order) =>
+    companyByKey.get(order.address ?? `${order.district} · ${order.lat},${order.lon}`) ??
+    'Клиент не опознан';
+
   for (const { run, plan } of plans) {
     const nameById = new Map(plan.engineers.map((e) => [e.id, e.name]));
-    /* Порядок визита лежит в маршруте, а не в заявке: собираем один раз, чтобы
-       не искать его по остановкам для каждой строки. */
-    const seqByOrder = new Map<string, number>();
+    /* Порядок и время визита лежат в маршруте, а не в заявке: собираем один
+       раз, чтобы не искать их по остановкам для каждой строки. Время — то,
+       что посчитал движок: когда инженер встанет у двери и когда от неё
+       отойдёт. Окно приёма, которое стоит в самой заявке, отвечает на другой
+       вопрос — когда клиент готов принять, а не когда к нему приедут. */
+    const stopByOrder = new Map<string, { seq: number; start: number; finish: number }>();
     for (const route of plan.routes) {
-      for (const stop of route.stops) seqByOrder.set(stop.order_id, stop.seq);
+      for (const stop of route.stops) {
+        stopByOrder.set(stop.order_id, {
+          seq: stop.seq,
+          start: stop.start,
+          finish: stop.finish
+        });
+      }
     }
     for (const order of plan.orders) {
       list.push({
@@ -416,6 +504,7 @@ function buildOrders(plans: { run: RunRef; plan: Plan }[]): OrderRecord[] {
         skill: order.skill,
         address: placeOf(order),
         district: order.district,
+        company: companyFor(order),
         windowStart: order.window_start,
         windowEnd: order.window_end,
         slaDeadline: order.sla_deadline,
@@ -424,7 +513,12 @@ function buildOrders(plans: { run: RunRef; plan: Plan }[]): OrderRecord[] {
         needsAccess: order.needs_access,
         engineerId: order.assigned_to,
         engineerName: order.assigned_to ? nameById.get(order.assigned_to) ?? order.assigned_to : null,
-        seq: seqByOrder.get(order.id) ?? null,
+        seq: stopByOrder.get(order.id)?.seq ?? null,
+        visitStart: stopByOrder.get(order.id)?.start ?? null,
+        visitEnd: stopByOrder.get(order.id)?.finish ?? null,
+        routeCode: order.assigned_to
+          ? routeCodeByKey.get(`${run.id}:${order.assigned_to}`) ?? null
+          : null,
         lat: order.lat,
         lon: order.lon,
         orderClass: order.order_class ?? null,
@@ -557,12 +651,18 @@ function buildRoutes(plans: { run: RunRef; plan: Plan }[]): RouteRecord[] {
   for (const { run, plan } of plans) {
     const nameById = new Map(plan.engineers.map((e) => [e.id, e.name]));
     const districtByOrder = new Map(plan.orders.map((o) => [o.id, o.district]));
+    /* Линии плана и их порядок: номер линии — это цвет маршрута, и берётся он
+       оттуда же, откуда сама линия. */
+    const lines = pathsOf(plan);
+    const lanes = [...lines.keys()];
     for (const route of plan.routes) {
       const districts: string[] = [];
+      const orderIds: string[] = [];
       let risky = 0;
       for (const stop of route.stops) {
         const district = districtByOrder.get(stop.order_id);
         if (district && !districts.includes(district)) districts.push(district);
+        orderIds.push(stop.order_id);
         if (stop.risk === 'high') risky += 1;
       }
       const key = `${run.id}:${route.engineer_id}`;
@@ -576,14 +676,20 @@ function buildRoutes(plans: { run: RunRef; plan: Plan }[]): RouteRecord[] {
         engineerName: nameById.get(route.engineer_id) ?? route.engineer_id,
         visits: route.totals.visits,
         travelMinutes: route.totals.travel_minutes,
-        workMinutes: route.totals.work_minutes,
+        workMinutes: workMinutesOf(route),
         idleMinutes: route.totals.idle_minutes,
         overtimeMinutes: route.totals.overtime_minutes,
         occupancy: route.totals.occupancy,
         start: route.totals.start,
         end: route.totals.end,
         districts,
-        risky
+        orderIds,
+        risky,
+        path: lines.get(route.engineer_id)?.path ?? [],
+        stops: lines.get(route.engineer_id)?.stops ?? [],
+        /* Маршрута, которого нет в наброске, нет и среди линий: красить
+           нечего, и место в ряду цветов ему ни к чему. */
+        lane: Math.max(0, lanes.indexOf(route.engineer_id))
       });
     }
   }
@@ -689,7 +795,13 @@ function buildServices(orders: Order[], plans: { plan: Plan }[]): ServiceRecord[
   for (const order of orders) {
     const entry = touch(order);
     entry.orders += 1;
-    if (order.priority_class === 'urgent' || order.priority >= 2) entry.urgent += 1;
+    /* Срочность считаем тем же правилом, что и весь остальной интерфейс:
+       есть `priority_class` — он и решает, нет — выводим из уровня. Своё
+       правило здесь («класс срочный ИЛИ уровень от второго») расходилось с
+       общим на заявках, где движок прислал `normal` при высоком уровне, и
+       база услуг показывала за один и тот же срок два разных числа срочных:
+       одно из записи, другое посчитанное по заявкам. */
+    if (isUrgent(order.priority_class, order.priority)) entry.urgent += 1;
     if (order.needs_access) entry.access += 1;
   }
 
@@ -746,7 +858,7 @@ function buildEngineers(
         routed: Boolean(route),
         visits: route?.totals.visits ?? 0,
         travelMinutes: route?.totals.travel_minutes ?? 0,
-        workMinutes: route?.totals.work_minutes ?? 0,
+        workMinutes: route ? workMinutesOf(route) : 0,
         overtimeMinutes: route?.totals.overtime_minutes ?? 0,
         occupancy: route?.totals.occupancy ?? 0
       });
@@ -758,7 +870,7 @@ function buildEngineers(
       entry.routes += 1;
       entry.visits += route.totals.visits;
       entry.travelMinutes += route.totals.travel_minutes;
-      entry.workMinutes += route.totals.work_minutes;
+      entry.workMinutes += workMinutesOf(route);
       entry.overtimeMinutes += route.totals.overtime_minutes;
       entry.occupancies.push(route.totals.occupancy);
     }
@@ -813,9 +925,49 @@ function cityBounds(plans: { plan: Plan }[]): Bounds {
   return { minLat, maxLat, minLon, maxLon };
 }
 
-/* Наброски считаем один раз на источник, а не на запись истории: файлов три,
-   а расчётов два десятка, и один и тот же план приходит в них тем же объектом.
-   Двадцать четыре раза разбирать одну и ту же геометрию незачем. */
+/* Линии маршрутов плана: `id инженера → ломаная по улицам` и точки визитов к
+   ней. Порядок вставки — порядок `plan.routes`, и он же порядок линий в
+   наброске расчёта: им маршрут красится, и одна и та же линия в карточке
+   расчёта и в карточке маршрута выходит одного цвета.
+
+   Считаются один раз на план, а не на запись истории: файлов три, а расчётов
+   два десятка, и один и тот же план приходит в них тем же объектом. Отсюда
+   же их берёт и набросок: разбирать одну и ту же геометрию дважды — раз для
+   расчёта, раз для маршрута — незачем, а разойдись эти два разбора, и путь
+   в двух карточках пошёл бы по-разному. */
+const pathCache = new WeakMap<Plan, Map<string, { path: [number, number][]; stops: [number, number][] }>>();
+
+function pathsOf(plan: Plan) {
+  const cached = pathCache.get(plan);
+  if (cached) return cached;
+
+  const orderById = new Map(plan.orders.map((order) => [order.id, order]));
+  const engineerById = new Map(plan.engineers.map((engineer) => [engineer.id, engineer]));
+  const map = new Map<string, { path: [number, number][]; stops: [number, number][] }>();
+
+  for (const route of plan.routes) {
+    const home = engineerById.get(route.engineer_id);
+    if (!home) continue;
+    /* Та же линия по улицам, что и на большой карте: карточка — уменьшенный
+       вид того же расчёта, и путь в ней не должен идти иначе. */
+    const path = roadPath(route, [home.home_lat, home.home_lon], (orderId) => {
+      const order = orderById.get(orderId);
+      return order ? [order.lat, order.lon] : undefined;
+    });
+    if (path.length < 2) continue;
+    const stops = route.stops
+      .map((stop) => orderById.get(stop.order_id))
+      .filter((order): order is NonNullable<typeof order> => Boolean(order))
+      .map((order) => [order.lat, order.lon] as [number, number]);
+    map.set(route.engineer_id, { path, stops });
+  }
+
+  pathCache.set(plan, map);
+  return map;
+}
+
+/* Наброски считаем один раз на источник — по той же причине и так же, как
+   линии над ними. */
 const sketchCache = new WeakMap<Plan, RunSketch>();
 
 function buildSketch(plan: Plan): RunSketch {
@@ -823,21 +975,7 @@ function buildSketch(plan: Plan): RunSketch {
   if (cached) return cached;
 
   const orderById = new Map(plan.orders.map((order) => [order.id, order]));
-  const engineerById = new Map(plan.engineers.map((engineer) => [engineer.id, engineer]));
-
-  const routes: [number, number][][] = [];
-  for (const route of plan.routes) {
-    const home = engineerById.get(route.engineer_id);
-    if (!home) continue;
-    /* Та же линия по улицам, что и на большой карте: карточка — уменьшенный
-       вид того же расчёта, и путь в ней не должен идти иначе. */
-    const points = roadPath(route, [home.home_lat, home.home_lon], (orderId) => {
-      const order = orderById.get(orderId);
-      return order ? [order.lat, order.lon] : undefined;
-    });
-    if (points.length < 2) continue;
-    routes.push(points);
-  }
+  const routes = [...pathsOf(plan).values()].map((one) => one.path);
 
   const loose = plan.unassigned
     .map((id) => orderById.get(id))
@@ -847,6 +985,22 @@ function buildSketch(plan: Plan): RunSketch {
   const sketch = { routes, loose };
   sketchCache.set(plan, sketch);
   return sketch;
+}
+
+/* Часы на объектах по одному маршруту.
+
+   Берём из итогов, а когда их там нет — складываем по остановкам: «начал» и
+   «закончил» у визита есть всегда, и разница между ними это и есть работа на
+   объекте — без дороги и без ожидания, пока откроется окно. Поле итогов
+   контракт называет обязательным, но приходит план не только от нашего
+   планировщика: в архиве движка лежат прогоны, посчитанные когда угодно и
+   чем угодно, и одного пустого поля хватало, чтобы сумма по всем маршрутам
+   стала `NaN`, а карточка расчёта показала «NaN мин». Пустое поле в чужом
+   плане — обычное дело; «NaN» на экране читается как сломанная программа. */
+function workMinutesOf(route: Route): number {
+  const total = route.totals.work_minutes;
+  if (Number.isFinite(total)) return total;
+  return route.stops.reduce((sum, stop) => sum + Math.max(0, stop.finish - stop.start), 0);
 }
 
 function buildStats(
@@ -864,6 +1018,7 @@ function buildStats(
       workTypes.set(order.work_type, (workTypes.get(order.work_type) ?? 0) + 1);
     }
     const visits = plan.routes.reduce((sum, r) => sum + r.totals.visits, 0);
+    const work = plan.routes.reduce((sum, r) => sum + workMinutesOf(r), 0);
     const travel = plan.routes.reduce((sum, r) => sum + r.totals.travel_minutes, 0);
     const occupancy =
       plan.routes.reduce((sum, r) => sum + r.totals.occupancy, 0) / (plan.routes.length || 1);
@@ -877,6 +1032,7 @@ function buildStats(
         : 0,
       routes: plan.routes.length,
       visits,
+      workMinutes: work,
       travelMinutes: travel,
       occupancy,
       engineersTotal: plan.meta.engineers_total,
@@ -935,13 +1091,23 @@ export async function loadRegistry(): Promise<Registry> {
     for (const order of plan.orders) workTypeTitle[order.work_type] = order.work_title;
   }
 
+  /* Маршруты собираются раньше заявок: номер маршрута выдаётся при их
+     сборке, а заявке он нужен готовым — визит называют маршрутом, в котором
+     он стоит. Собрать их наоборот значило бы выдать номера дважды и в разном
+     порядке. */
+  const routes = buildRoutes(plans);
+  /* Клиенты собираются раньше заявок: заказчик закрепляется за точкой при их
+     сборке, а заявке он нужен готовым — иначе название пришлось бы раздавать
+     дважды и по-разному. */
+  const clients = buildClients(plans);
+
   return {
     runs: plans.map((p) => p.run),
     bounds: cityBounds(plans),
     workTypeTitle,
-    orders: buildOrders(plans),
-    clients: buildClients(plans),
-    routes: buildRoutes(plans),
+    orders: buildOrders(plans, routes, clients),
+    clients,
+    routes,
     engineers,
     services,
     profiles: buildProfiles(plans),

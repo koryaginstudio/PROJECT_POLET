@@ -67,6 +67,7 @@
    ],
    "skill_combos": [
     "connect",
+    "connect+emergency",
     "connect+emergency+local",
     "connect+local",
     "local"

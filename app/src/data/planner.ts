@@ -17,12 +17,16 @@
 
    ── Допущения, которые ТЗ разрешает прямо (пункт 3.2) ──
 
-   Расстояние и время в пути считаются по координатам, а не берутся из
-   маршрутизатора: расстояние по прямой умножается на 1.3 — поправку на то,
-   что улицы не идут напрямик, — и делится на скорость того транспорта,
-   который есть у инженера. Настоящая дорожная сеть живёт в движке; здесь
-   её нет, и выдавать оценку за измерение нельзя, поэтому солвер плана
-   называется `demo/greedy`, а не как-нибудь солиднее. */
+   Расстояние берётся по дорогам — из `roads.json`, собранного заранее по
+   графу OpenStreetMap, — а время считается от него нашей скоростью для
+   того транспорта, который есть у инженера. Скорость своя не по бедности:
+   маршрутизатор отвечает временем свободного потока, а день, который мы
+   раскладываем, идёт в Москве, и по его счёту дорога выходит вдвое быстрее
+   правды. Там, где дорог нет — чужой набор, незнакомый адрес, — остаётся
+   прежняя оценка: прямая, умноженная на 1.3.
+
+   Глобальной оптимизации всё равно нет, поэтому солвер плана называется
+   `demo/greedy`, а не как-нибудь солиднее. */
 
 import { SCHEMA } from './contract.ts';
 import type {
@@ -41,6 +45,8 @@ import type {
 } from './contract.ts';
 import type { EngineParams } from './engine.ts';
 import { skillName, transportName } from './dictionary.ts';
+import { roadLeg } from './roads.ts';
+import type { Roads } from './roads.ts';
 
 /** Средняя скорость по городу, км/ч. Автомобиль медленнее, чем кажется:
     в черте города его съедают светофоры и дворы, а не магистрали. */
@@ -52,7 +58,13 @@ const SPEED_KMH: Record<string, number> = {
 };
 
 /** Во сколько раз дорога длиннее прямой линии. Городская застройка редко
-    даёт меньше — в плотных кварталах доходит до полутора. */
+    даёт меньше — в плотных кварталах доходит до полутора.
+
+    Запасной вариант: там, где дорожная сеть есть, берётся её длина. Средним
+    этот коэффициент угадан верно — по нашим адресам настоящее отношение
+    ровно 1,31, — но средним и остаётся: перегон в два километра по прямой
+    бывает и четырёхкилометровым, если между домами река или железная
+    дорога, и на нём оценка ошибается вдвое. */
 const WINDING = 1.3;
 
 const speedOf = (transport: string | null | undefined) =>
@@ -72,17 +84,33 @@ function haversineKm(aLat: number, aLon: number, bLat: number, bLon: number): nu
 interface Leg {
   minutes: number;
   km: number;
+  /** Линия для карты: по улицам, если сеть есть, иначе отрезок. */
+  line: [number, number][];
 }
 
+/* Время считается от длины пути и нашей скорости, а не берётся у
+   маршрутизатора: OSRM отвечает временем свободного потока, и на московском
+   дне это заведомо оптимистично — по его счёту дорога выходит вдвое быстрее
+   нашей. Скорость же в таблице выше сведена с городом, светофорами и
+   дворами. Длина при этом настоящая, и вместе они дают честный перегон. */
 function leg(
   fromLat: number,
   fromLon: number,
   toLat: number,
   toLon: number,
-  transport: string | null | undefined
+  transport: string | null | undefined,
+  roads: Roads | null
 ): Leg {
-  const km = haversineKm(fromLat, fromLon, toLat, toLon) * WINDING;
-  return { km, minutes: Math.ceil((km / speedOf(transport)) * 60) };
+  const road = roadLeg(roads, fromLat, fromLon, toLat, toLon);
+  const km = road ? road.km : haversineKm(fromLat, fromLon, toLat, toLon) * WINDING;
+  return {
+    km,
+    minutes: Math.ceil((km / speedOf(transport)) * 60),
+    line: road ? road.line : [
+      [fromLat, fromLon],
+      [toLat, toLon]
+    ]
+  };
 }
 
 /* ─── состояние маршрута по ходу расчёта ───────────────────────────────── */
@@ -112,7 +140,12 @@ interface Attempt {
 const bufferFor = (visitIndex: number, params: EngineParams) =>
   Math.round(params.buffer_base + params.buffer_step * Math.sqrt(visitIndex));
 
-function tryPlace(progress: Progress, order: Order, params: EngineParams): Attempt {
+function tryPlace(
+  progress: Progress,
+  order: Order,
+  params: EngineParams,
+  roads: Roads | null
+): Attempt {
   const engineer = progress.engineer;
 
   if (!engineer.skills.includes(order.skill)) {
@@ -128,7 +161,7 @@ function tryPlace(progress: Progress, order: Order, params: EngineParams): Attem
     };
   }
 
-  const drive = leg(progress.lat, progress.lon, order.lat, order.lon, engineer.transport);
+  const drive = leg(progress.lat, progress.lon, order.lat, order.lon, engineer.transport, roads);
   const buffer = bufferFor(progress.stops.length, params);
   const arrive = progress.free + drive.minutes + buffer;
   const start = Math.max(arrive, order.window_start, engineer.shift_start);
@@ -166,12 +199,10 @@ function tryPlace(progress: Progress, order: Order, params: EngineParams): Attem
       wait_minutes: wait,
       slack_minutes: slack,
       risk: slack >= 45 ? 'low' : slack >= 15 ? 'medium' : 'high',
-      /* Геометрия — прямая от предыдущей точки до этой. Ломаной по улицам
-         взять неоткуда: дорожная сеть живёт в движке. */
-      geometry: [
-        [progress.lat, progress.lon],
-        [order.lat, order.lon]
-      ],
+      /* Ломаная по улицам от предыдущей точки до этой — из `roads.json`,
+         собранного по графу OSM. Сети нет (чужой набор, незнакомый адрес) —
+         остаётся отрезок, и карта рисует перегон грубо. */
+      geometry: drive.line,
       distance_km: Number(drive.km.toFixed(2)),
       status: order.status ?? 'draft',
       fact: null,
@@ -190,17 +221,65 @@ const onShift = (engineer: Engineer) =>
 /* ─── причина отказа ────────────────────────────────────────────────────
 
    Заявку отвергли все — надо назвать одну причину, а не перечислять
-   двенадцать. Берём самую раннюю по строгости: если навыка нет ни у кого,
-   разговор о времени уже не имеет смысла. */
+   двенадцать. Раньше называлась самая строгая из встретившихся, и этого
+   хватало ровно до первого смешанного отказа: одного инженера без навыка
+   среди одиннадцати занятых довольно, чтобы панель написала «ни у кого нет
+   навыка». Навык был у одиннадцати — не хватило им времени, и диспетчер
+   читал над списком кандидатов обратное тому, что стояло в самом списке.
 
-const REASON_ORDER: Verdict[] = ['no_skill', 'no_vehicle', 'shift_mismatch', 'no_room'];
+   Причина теперь та, что помешала большинству, а при равенстве — та, что
+   ниже по цепочке проверок: она называет последнее препятствие, а не
+   первое, и подсказывает, что менять. Число стоит в тексте там же: «у
+   одиннадцати из двенадцати» и «ни у кого» — разные ответы на один вопрос,
+   и путать их нельзя. */
 
-const REASON_TEXT: Record<string, (order: Order) => string> = {
-  no_skill: (order) => `Ни у кого на смене нет навыка «${skillName(order.skill)}»`,
-  no_vehicle: (order) =>
-    `Нет свободного инженера с транспортом «${transportName(order.required_transport ?? 'car')}»`,
-  shift_mismatch: () => 'Работа не помещается в смену — сдвинуть некуда',
-  no_room: (order) => `Свободных исполнителей в окне ${hhmm(order.window_start)}–${hhmm(order.window_end)} нет`
+/* Порядок проверок в `tryPlace`: навык, транспорт, окно, смена. Он же
+   порядок причин — иначе «ниже по цепочке» считалось бы не по той шкале. */
+const REASON_ORDER: Verdict[] = ['no_skill', 'no_vehicle', 'no_room', 'shift_mismatch'];
+
+/** Три текста на причину — по числу тех, кого спрашивали.
+
+    `all` говорит «ни у кого», и говорить так можно, только если это правда.
+    `some` называет, скольким именно помешало. `locked` — про закреплённую
+    заявку: её предлагали одному инженеру, и «ни у кого на смене» про этот
+    случай столь же неверно, сколько про одиннадцать занятых из двенадцати. */
+interface ReasonText {
+  all: (order: Order) => string;
+  some: (order: Order, part: string) => string;
+  locked: (order: Order) => string;
+}
+
+const REASON_TEXT: Record<string, ReasonText> = {
+  no_skill: {
+    all: (order) => `Ни у кого на смене нет навыка «${skillName(order.skill)}»`,
+    some: (order, part) => `Навыка «${skillName(order.skill)}» нет у ${part}`,
+    locked: (order) =>
+      `Заявка закреплена за инженером без навыка «${skillName(order.skill)}»`
+  },
+  no_vehicle: {
+    all: (order) =>
+      `Нет свободного инженера с транспортом «${transportName(order.required_transport ?? 'car')}»`,
+    some: (order, part) =>
+      `Транспорта «${transportName(order.required_transport ?? 'car')}» нет у ${part}`,
+    locked: (order) =>
+      `Заявка закреплена за инженером без транспорта «${transportName(
+        order.required_transport ?? 'car'
+      )}»`
+  },
+  no_room: {
+    all: (order) =>
+      `Свободных исполнителей в окне ${hhmm(order.window_start)}–${hhmm(order.window_end)} нет`,
+    some: (order, part) =>
+      `В окне ${hhmm(order.window_start)}–${hhmm(order.window_end)} не нашлось места у ${part}`,
+    locked: (order) =>
+      `У инженера, за которым закреплена заявка, нет места в окне ` +
+      `${hhmm(order.window_start)}–${hhmm(order.window_end)}`
+  },
+  shift_mismatch: {
+    all: () => 'Работа не помещается в смену — сдвинуть некуда',
+    locked: () => 'У инженера, за которым закреплена заявка, работа не помещается в смену',
+    some: (_order, part) => `Работа не помещается в смену у ${part}`
+  }
 };
 
 const REASON_CODE: Record<string, string> = {
@@ -210,11 +289,48 @@ const REASON_CODE: Record<string, string> = {
   no_room: 'window_missed'
 };
 
+/** «11 инженеров из 12». Родительный падеж после «у»: у одного инженера, у
+    двух инженеров — единственное число только на единице, кроме одиннадцати. */
+const engineersOf = (count: number, total: number) => {
+  const one = count % 10 === 1 && count % 100 !== 11;
+  return `${count} ${one ? 'инженера' : 'инженеров'} из ${total}`;
+};
+
 function reasonOf(order: Order, verdicts: Verdict[]): UnassignedReason {
-  const worst = REASON_ORDER.find((code) => verdicts.every((v) => v === code)) ??
-    REASON_ORDER.find((code) => verdicts.includes(code)) ??
-    'no_room';
-  return { code: REASON_CODE[worst] ?? 'no_time', text: REASON_TEXT[worst](order) };
+  /* Кандидатов нет вовсе — на смене пусто. Прежний код на пустом списке
+     отвечал «ни у кого нет навыка»: `every` на пустом массиве истинно для
+     любой причины, и побеждала первая. */
+  if (verdicts.length === 0) {
+    return order.locked_to
+      ? { code: 'no_time', text: 'Инженер, за которым закреплена заявка, сегодня не на смене' }
+      : { code: 'no_time', text: 'На смене нет ни одного инженера' };
+  }
+
+  const count = new Map<Verdict, number>();
+  for (const verdict of verdicts) count.set(verdict, (count.get(verdict) ?? 0) + 1);
+
+  let worst: Verdict | null = null;
+  let most = 0;
+  for (const code of REASON_ORDER) {
+    const times = count.get(code) ?? 0;
+    /* Нестрогое сравнение и прямой порядок дают при равенстве ту причину,
+       что ниже по цепочке: до неё дошли дальше. */
+    if (times > 0 && times >= most) {
+      most = times;
+      worst = code;
+    }
+  }
+
+  if (!worst) return { code: 'no_time', text: 'Подходящего инженера не нашлось' };
+
+  /* Закреплённую заявку предлагали одному инженеру — про него и говорим.
+     «Ни у кого на смене» здесь означало бы, что спрашивали всех. */
+  const text = order.locked_to
+    ? REASON_TEXT[worst].locked(order)
+    : most === verdicts.length
+      ? REASON_TEXT[worst].all(order)
+      : REASON_TEXT[worst].some(order, engineersOf(most, verdicts.length));
+  return { code: REASON_CODE[worst] ?? 'no_time', text };
 }
 
 /* ─── базовый вариант ТЗ ────────────────────────────────────────────────
@@ -224,7 +340,12 @@ function reasonOf(order: Order, verdicts: Verdict[]): UnassignedReason {
    порядок назначения. Считается ради двух чисел в сводке: без него «план на
    столько-то заявок» не с чем сравнить. */
 
-function runBaseline(orders: Order[], engineers: Engineer[], params: EngineParams) {
+function runBaseline(
+  orders: Order[],
+  engineers: Engineer[],
+  params: EngineParams,
+  roads: Roads | null
+) {
   const crew = engineers.filter(onShift);
   const progress = new Map<string, Progress>(
     crew.map((engineer) => [
@@ -246,7 +367,7 @@ function runBaseline(orders: Order[], engineers: Engineer[], params: EngineParam
   for (const order of orders) {
     for (const engineer of crew) {
       const state = progress.get(engineer.id)!;
-      const attempt = tryPlace(state, order, params);
+      const attempt = tryPlace(state, order, params, roads);
       if (attempt.verdict === 'feasible' && attempt.stop) {
         commit(state, attempt.stop, order);
         assigned += 1;
@@ -301,7 +422,8 @@ export function planDay(
   orders: Order[],
   engineers: Engineer[],
   params: EngineParams,
-  date: string
+  date: string,
+  roads: Roads | null = null
 ): PlannedDay {
   const crew = engineers.filter(onShift);
 
@@ -348,7 +470,7 @@ export function planDay(
 
     for (const engineer of pool) {
       const state = progress.get(engineer.id)!;
-      const attempt = tryPlace(state, order, params);
+      const attempt = tryPlace(state, order, params, roads);
       candidates.push({
         engineer_id: engineer.id,
         verdict: attempt.verdict,
@@ -462,7 +584,7 @@ export function planDay(
       },
       engineers_used: routes.length,
       distance_km_total: Number(distanceTotal.toFixed(1)),
-      baseline: runBaseline(orders, engineers, params)
+      baseline: runBaseline(orders, engineers, params, roads)
     },
     engineers,
     orders: plannedOrders,

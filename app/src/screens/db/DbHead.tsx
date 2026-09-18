@@ -7,6 +7,10 @@ interface Stat {
 
 interface Props {
   title: string;
+  /** Полоса управления выборкой — поиск, отбор, порядок. Стоит в шапке, под
+      заголовком базы, а не отдельной панелью следом: это органы управления
+      тем самым списком, который шапка называет. */
+  children?: ReactNode;
   /** Действие раздела — справа от заголовка, на месте снятой пометки. Не у
       всех: в большинстве баз заводить нечего, они собраны из расчётов. */
   action?: ReactNode;
@@ -27,23 +31,30 @@ interface Props {
    строке о разделе, и делала это в каждой базе. Перечня расчётов, из которых
    раздел собран, тоже нет — два десятка одинаковых плашек с номером и датой
    занимали половину экрана и ничего к разделу не добавляли; какие расчёты
-   есть, видно в самой базе расчётов. */
-export function DbHead({ title, action, lede, stats, board }: Props) {
+   есть, видно в самой базе расчётов.
+
+   Доска виджетов стоит своей панелью и под своим заголовком — «Статистика»,
+   — а не внутри шапки базы. Внутри выходило нелогично: панель называлась
+   «База расчётов», а лежала в ней сводка, и заголовок обещал список, до
+   которого оставалось ещё полэкрана. Теперь порядок прямой: сверху
+   статистика, под ней сама база со своим именем и своими органами
+   управления. */
+export function DbHead({ title, children, action, lede, stats, board }: Props) {
   return (
-    <section className="panel">
-      <div className="dash__section-head">
-        <h2 className="dash__section-title">{title}</h2>
-        {action}
-      </div>
+    <>
+      {board}
 
-      {lede && <p className="clients__lede">{lede}</p>}
+      <section className="panel">
+        <div className="dash__section-head">
+          <h2 className="dash__section-title">{title}</h2>
+          {action}
+        </div>
 
-      {/* Либо ряд чисел, выбранный за диспетчера, либо доска, которую он
-          набрал сам. Вместе они не встают: это одно и то же место экрана и
-          один и тот же вопрос — «что тут вообще есть». */}
-      {board ?? (
-        stats &&
-        stats.length > 0 && (
+        {lede && <p className="clients__lede">{lede}</p>}
+
+        {/* Ряд чисел, выбранный за диспетчера, — там, где доски нет. Вместе
+            они не встают: это один и тот же вопрос — «что тут вообще есть». */}
+        {!board && stats && stats.length > 0 && (
           <div className="dbstats">
             {stats.map((stat) => (
               <div key={stat.label} className="dbstat">
@@ -52,8 +63,10 @@ export function DbHead({ title, action, lede, stats, board }: Props) {
               </div>
             ))}
           </div>
-        )
-      )}
-    </section>
+        )}
+
+        {children}
+      </section>
+    </>
   );
 }

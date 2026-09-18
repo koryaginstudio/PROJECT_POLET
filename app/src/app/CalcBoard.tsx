@@ -30,7 +30,10 @@ interface Props {
   onClose: () => void;
 }
 
-function MetricTile({ metric, onOpen }: { metric: Metric; onOpen: () => void }) {
+/* Плитка числа. Вынесена наружу: те же пять чисел стоят и на карте обзора,
+   и выглядеть они там обязаны ровно так же — иначе одно и то же покрытие
+   читалось бы как два разных показателя. */
+export function MetricTile({ metric, onOpen }: { metric: Metric; onOpen: () => void }) {
   return (
     <button type="button" className="cmetric" onClick={onOpen}>
       <span className="cmetric__label">

@@ -31,6 +31,8 @@ interface Props {
   /** Вкладка подшапки: сводка или гант. */
   mode: string;
   /** Номер открытого расчёта движка. */
+  /** Расчёт, чей план на карте: по нему у маршрутов их собственные номера. */
+  runId: string;
   run: string;
   /** Выбранная заявка: канбан подсвечивает её карточку. */
   selectedOrder: string | null;
@@ -132,6 +134,7 @@ function ClassRow({
 export function DashboardScreen({
   day,
   view,
+  runId,
   mode,
   run,
   selectedOrder,
@@ -238,6 +241,7 @@ export function DashboardScreen({
           </div>
           <MapBoard
             view={view}
+            runId={runId}
             selectedOrder={selectedOrder}
             live={live}
             onLive={onLive}

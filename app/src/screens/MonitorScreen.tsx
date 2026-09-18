@@ -6,6 +6,8 @@ import type { LiveEngineer } from '../data/derive.ts';
 import { MapBoard } from '../app/MapBoard.tsx';
 
 interface Props {
+  /** Расчёт, чей план на карте: по нему у маршрутов их собственные номера. */
+  runId: string;
   view: DayView;
   live: string | null;
   onLive: (engineerId: string | null) => void;
@@ -27,6 +29,7 @@ const RANK: Record<string, number> = Object.fromEntries(
    срезе прямо сейчас. */
 export function MonitorScreen({
   view,
+  runId,
   live,
   onLive,
   pinned,
@@ -163,6 +166,7 @@ export function MonitorScreen({
         </div>
         <MapBoard
           view={view}
+          runId={runId}
           live={live}
           onLive={onLive}
           pinned={pinned}

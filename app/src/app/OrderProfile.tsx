@@ -8,7 +8,6 @@ import {
   equipmentName,
   isUrgent,
   orderClassName,
-  priorityClassName,
   requiredTransportName,
   skillIcon,
   skillName,
@@ -18,6 +17,7 @@ import {
 } from '../data/dictionary.ts';
 import { durationWhy, requiredTransportWhy } from '../data/rationale.ts';
 import { OrderWindow } from './OrderWindow.tsx';
+import { NoteField } from './NoteField.tsx';
 import { WhyMark } from './WhyMark.tsx';
 
 interface Props {
@@ -93,29 +93,37 @@ export function OrderProfile({ order, registry, onClose, onOpenRun, onOpenMap }:
       <button type="button" className="modal__veil" onClick={onClose} aria-label="Закрыть" />
 
       <div className="modal__card crewpro">
-        {/* Шапка устроена как у инженера: слева то, по чему запись узнают с
-            первого взгляда, справа имя, контакт и цифры. У человека слева
-            лицо, у заявки лица нет — вместо него знак вида работ и её
-            состояние: по ним заявку опознают в списке. */}
-        <div className="crewpro__hero">
-          <div className={'ordpro__badge' + (urgent ? ' ordpro__badge--urgent' : '')}>
-            <Icon name={workTypeIcon(order.workType)} size={52} />
-            <span className="ordpro__badge-class">
-              {order.orderClass ? orderClassName(order.orderClass) : order.workType}
-            </span>
-            {order.status && <span className="pill">{statusName(order.status)}</span>}
-          </div>
-
+        {/* Шапка у инженера двухколоночная: слева портрет, справа имя и
+            цифры. У заявки лица нет и не будет — стоявший на его месте
+            квадрат со значком вида работ ничего не добавлял: тот же значок
+            стоит рядом с названием работы, а класс и состояние — это текст,
+            и читать их удобнее строкой, а не подписью под картинкой.
+            Поэтому колонка одна, во всю ширину, и в ней только текст. */}
+        <div className="crewpro__hero ordpro__hero">
           <div className="crewpro__hero-body">
             <div className="crewpro__top">
               <div className="crewpro__who">
                 <div className="crewpro__idrow">
                   <span className="crewpro__id">{order.id}</span>
                   <span className="crewpro__role">
-                    Заявка · расчёт {order.run.code} от {order.run.date}
+                    {order.orderClass ? orderClassName(order.orderClass) : 'Заявка'} · расчёт{' '}
+                    {order.run.code} от {order.run.date}
                   </span>
+                  {order.status && <span className="pill">{statusName(order.status)}</span>}
                 </div>
-                <h2 className="crewpro__name">{order.workTitle}</h2>
+                <h2 className="crewpro__name ordpro__name">
+                  <Icon name={workTypeIcon(order.workType)} size={20} />
+                  {order.workTitle}
+                  {/* «Срочная» стоит в заголовке и горит красным: это первое,
+                      что нужно знать о заявке, и в ряду серых цифр ниже —
+                      где она была раньше — это терялось. */}
+                  {urgent && (
+                    <span className="ordpro__urgent">
+                      <Icon name="warning" size={13} />
+                      Срочная
+                    </span>
+                  )}
+                </h2>
                 {order.contactName && (
                   <span className="crewpro__phone">
                     {order.contactName}
@@ -165,10 +173,15 @@ export function OrderProfile({ order, registry, onClose, onOpenRun, onOpenMap }:
                 label="запас до срока"
                 bad={slack <= 0}
               />
+              {/* Приоритет отсюда ушёл в заголовок: срочность — не рядовая
+                  величина в ряду шести, а первое, что нужно знать. Обычной
+                  заявке он и вовсе ничего не сообщал: «приоритет —
+                  обычный» занимало шестую часть ряда, чтобы сказать «ничего
+                  особенного». */}
               <Stat
-                value={priorityClassName(order.priorityClass, order.priority)}
-                label="приоритет"
-                bad={urgent}
+                value={order.visitStart == null ? '—' : hhmm(order.visitStart)}
+                label="когда приедет"
+                bad={order.visitStart == null}
               />
               <Stat value={order.engineerId ?? '—'} label="инженер" bad={!order.engineerId} />
               <Stat
@@ -207,8 +220,18 @@ export function OrderProfile({ order, registry, onClose, onOpenRun, onOpenMap }:
               {/* Окно на шкале дня: два часа посреди дня и окно с девяти до
                   девяти это разные заявки, а в строке «12:00–14:00» разницы
                   не видно, пока не прочитаешь обе. */}
+              {/* Окно и визит на одной шкале: «когда готовы принять» и «когда
+                  приедут» — два разных времени, и вопрос у диспетчера всегда
+                  про их соотношение. Раньше визит сюда не передавался вовсе,
+                  и полоса показывала одно окно. */}
               <div className="ordwin">
-                <OrderWindow from={order.windowStart} to={order.windowEnd} risky={slack <= 0} />
+                <OrderWindow
+                  from={order.windowStart}
+                  to={order.windowEnd}
+                  start={order.visitStart ?? undefined}
+                  finish={order.visitEnd ?? undefined}
+                  risky={slack <= 0}
+                />
               </div>
               <dl className="engmetrics">
                 <div className="engmetrics__row">
@@ -216,6 +239,17 @@ export function OrderProfile({ order, registry, onClose, onOpenRun, onOpenMap }:
                   <span className="engmetrics__leader" aria-hidden="true" />
                   <dd>
                     {hhmm(order.windowStart)}–{hhmm(order.windowEnd)}
+                  </dd>
+                </div>
+                <div className="engmetrics__row">
+                  <dt>Когда приедет</dt>
+                  <span className="engmetrics__leader" aria-hidden="true" />
+                  <dd>
+                    {order.visitStart == null || order.visitEnd == null ? (
+                      <span className="crewpro__muted">не назначена</span>
+                    ) : (
+                      `${hhmm(order.visitStart)}–${hhmm(order.visitEnd)}`
+                    )}
                   </dd>
                 </div>
                 <div className={'engmetrics__row' + (slack <= 0 ? ' engmetrics__row--bad' : '')}>
@@ -232,6 +266,13 @@ export function OrderProfile({ order, registry, onClose, onOpenRun, onOpenMap }:
                   <dd>{order.estMinutes} мин</dd>
                 </div>
               </dl>
+            </div>
+
+            <div className="crewpro__cell crewpro__cell--wide">
+              <span className="crewpro__label">Заметка</span>
+              {/* То, чего нет ни в выгрузке, ни в расчёте: «домофон не
+                  работает», «просили перезвонить за час». */}
+              <NoteField kind="order" id={order.id} placeholder="Добавить заметку о заявке" />
             </div>
 
             <div className="crewpro__cell">
@@ -274,10 +315,20 @@ export function OrderProfile({ order, registry, onClose, onOpenRun, onOpenMap }:
             <div className="crewpro__cell">
               <span className="crewpro__label">Кому</span>
               <dl className="engfacts">
+                {/* Заказчик и контактное лицо — разные вещи, и раньше под
+                    «Клиентом» стояло второе. Договор у компании, а у двери
+                    встречает человек: диспетчер, который ищет «чья это
+                    заявка», спрашивает о первом. */}
                 <div className="engfacts__row">
                   <dt>Клиент</dt>
-                  <dd>{order.contactName ?? '—'}</dd>
+                  <dd>{order.company}</dd>
                 </div>
+                {order.contactName && (
+                  <div className="engfacts__row">
+                    <dt>Контакт</dt>
+                    <dd>{order.contactName}</dd>
+                  </div>
+                )}
                 {order.contactPhone && (
                   <div className="engfacts__row">
                     <dt>Телефон</dt>

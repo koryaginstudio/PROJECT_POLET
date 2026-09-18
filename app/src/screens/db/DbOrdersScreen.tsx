@@ -12,6 +12,9 @@ import {
   workTypeIcon
 } from '../../data/dictionary.ts';
 import { OrderCard } from '../../app/OrderCard.tsx';
+import { SortMenu } from '../../app/SortMenu.tsx';
+import type { SortRule } from '../../app/SortMenu.tsx';
+import { fitsWork, WorkTypeFilter } from '../../app/WorkTypeFilter.tsx';
 import { OrderProfile } from '../../app/OrderProfile.tsx';
 import { useWidgetBoard, WidgetPeriod, withinPeriod } from '../../app/DbWidgets.tsx';
 import type { PeriodKey, WidgetDef } from '../../app/DbWidgets.tsx';
@@ -42,15 +45,54 @@ const DENSITY = [
 ];
 
 /* По чему упорядочены заявки. Первым — крайний срок: это ответ на «что горит».
-   Повторный щелчок по выбранному правилу переворачивает порядок. */
+
+   У каждого правила названы обе стороны, и названы по-своему: «сначала
+   ближний срок» диспетчер понимает сразу, а «по возрастанию» ему пришлось бы
+   переводить на заявки. Прежний скрытый жест — повторный щелчок по выбранному
+   правилу — этими двумя строками и заменён. */
 type Sort = 'deadline' | 'window' | 'duration' | 'district' | 'run';
 
-const SORTS: { value: Sort; label: string; desc: boolean }[] = [
-  { value: 'deadline', label: 'По сроку', desc: false },
-  { value: 'window', label: 'По окну приёма', desc: false },
-  { value: 'duration', label: 'По длительности', desc: true },
-  { value: 'district', label: 'По району', desc: false },
-  { value: 'run', label: 'По расчёту', desc: false }
+const SORTS: (SortRule & { value: Sort; desc: boolean })[] = [
+  {
+    value: 'deadline',
+    label: 'По сроку',
+    note: 'Что горит',
+    desc: false,
+    up: 'Сначала ближайший срок',
+    down: 'Сначала дальний срок'
+  },
+  {
+    value: 'window',
+    label: 'По окну приёма',
+    note: 'Во сколько заявку ждут',
+    desc: false,
+    up: 'Сначала ранние окна',
+    down: 'Сначала поздние окна'
+  },
+  {
+    value: 'duration',
+    label: 'По длительности',
+    note: 'Сколько занимает работа',
+    desc: true,
+    up: 'Сначала короткие работы',
+    down: 'Сначала долгие работы'
+  },
+  {
+    value: 'district',
+    label: 'По району',
+    note: 'Заявки одного района подряд',
+    desc: false,
+    up: 'Районы от А до Я',
+    down: 'Районы от Я до А'
+  },
+  {
+    value: 'run',
+    label: 'По расчёту',
+    note: 'Заявки одного расчёта подряд',
+    desc: false,
+    up: 'От первого расчёта к последнему',
+    down: 'От последнего расчёта к первому'
+  }
 ];
 
 /* Отбор по тому, как заявка отработана: кому не досталось инженера, что горит
@@ -81,7 +123,10 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
   const [sort, setSort] = useState<Sort>('deadline');
   const [desc, setDesc] = useState(false);
   const [filter, setFilter] = useState<Filter>('all');
-  const [type, setType] = useState<string | null>(null);
+  /* Отмеченные виды работ. Отметок может быть несколько, и они складываются:
+     вид работ у заявки один, и «то и это» через «и» дало бы пустой список.
+     Пусто — показаны все. */
+  const [picks, setPicks] = useState<string[]>([]);
   const [run, setRun] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [limit, setLimit] = useState(PAGE);
@@ -90,14 +135,6 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
   const dense = perRow === '6';
 
   const all = registry.orders;
-
-  const types = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const order of all) map.set(order.workType, (map.get(order.workType) ?? 0) + 1);
-    return [...map.entries()]
-      .map(([key, count]) => ({ key, count }))
-      .sort((a, b) => b.count - a.count);
-  }, [all]);
 
   /* В каких расчётах встречается каждый номер. Считаем один раз на всю базу:
      карточка видит одну строку и о соседних прогонах не знает. */
@@ -113,11 +150,13 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
     return map;
   }, [all]);
 
-  const rows = useMemo(() => {
+  /* Выборка без учёта видов работ. По ней считается разбивка под полосой:
+     иначе доска «По видам работ» сужала бы сама себя — отметив один вид,
+     второй с неё стало бы нечем добавить. */
+  const basis = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    const picked = all.filter((order) => {
+    return all.filter((order) => {
       if (run && order.run.id !== run) return false;
-      if (type && order.workType !== type) return false;
       if (filter === 'free' && order.engineerId) return false;
       if (filter === 'routed' && !order.engineerId) return false;
       if (filter === 'urgent' && !isUrgent(order.priorityClass, order.priority)) return false;
@@ -129,10 +168,15 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
         order.address.toLowerCase().includes(needle) ||
         order.district.toLowerCase().includes(needle) ||
         order.workTitle.toLowerCase().includes(needle) ||
+        order.company.toLowerCase().includes(needle) ||
         (order.engineerName ?? '').toLowerCase().includes(needle) ||
         (order.contactName ?? '').toLowerCase().includes(needle)
       );
     });
+  }, [all, filter, query, run]);
+
+  const rows = useMemo(() => {
+    const picked = basis.filter((order) => fitsWork(order, picks));
 
     const rank = (order: OrderRecord) => {
       switch (sort) {
@@ -159,32 +203,18 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
       const diff = rank(a) - rank(b);
       return side * (diff !== 0 ? diff : tie(a, b));
     });
-  }, [all, desc, filter, query, run, sort, type]);
+  }, [basis, desc, picks, sort]);
 
+  /* Смена правила заодно ставит сторону, с которой его читают чаще: у срока
+     это ближний, у длительности — долгие работы. Выбранное правило повторным
+     нажатием не трогаем: сторону теперь переставляют в том же списке, и
+     сбрасывать её под рукой у диспетчера незачем. */
   const pickSort = (value: Sort) => {
-    if (value === sort) {
-      setDesc((prev) => !prev);
-      return;
-    }
+    if (value === sort) return;
     setSort(value);
     setDesc(SORTS.find((item) => item.value === value)?.desc ?? false);
     setLimit(PAGE);
   };
-
-  /* Стрелка стоит только у выбранного правила: у остальных она обещала бы
-     сторону, которой они сейчас не задают. */
-  const sortItems = SORTS.map((item) => ({
-    value: item.value,
-    label:
-      item.value === sort ? (
-        <>
-          {item.label}
-          <Icon name={desc ? 'chevron-down' : 'chevron-up'} size={11} />
-        </>
-      ) : (
-        item.label
-      )
-  }));
 
   /* Срок, за который считает доска. Отдельно от отбора списка: список отвечает
      на «какие заявки показать», доска — на «за какой срок считать». */
@@ -483,11 +513,13 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
     )
   });
 
-  /* Разбивка по видам работ считается по той же выборке, что и список: иначе
-     отбор менял бы список, но не картину над ним. */
+  /* Разбивка по видам работ считается по выборке без учёта самих видов работ:
+     отбор по расчёту, поиску и состоянию картину меняет — она об этой
+     выборке, — а отметка вида работ оставила бы на доске одну плитку, и
+     добавить с неё второй вид стало бы нечем. */
   const breakdown = useMemo(() => {
     const map = new Map<string, { key: string; total: number; assigned: number; minutes: number }>();
-    for (const order of rows) {
+    for (const order of basis) {
       const entry = map.get(order.workType) ?? {
         key: order.workType,
         total: 0,
@@ -500,13 +532,45 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
       map.set(order.workType, entry);
     }
     return [...map.values()].sort((a, b) => b.total - a.total);
-  }, [rows]);
+  }, [basis]);
 
   const shown = rows.slice(0, limit);
   const hidden = rows.length - shown.length;
 
-  /* Сменили отбор — счётчик показанного начинается заново: иначе после
-     сужения выборки кнопка обещала бы строки, которых уже нет. */
+  /* Разбивка по расчётам для вида по умолчанию. Раскладывается та же выборка,
+     что и в остальных видах: полоса отбора стоит в шапке базы и над этим
+     видом тоже, и список, который её не слушается, читался бы как поломка.
+     Расчёт, из которого под отбор не подошло ничего, секцией не рисуется —
+     пустой заголовок с нулём обещал бы, что там что-то есть.
+
+     Внутри секции порядок тот, что выбран в полосе: заново упорядочивать
+     значило бы, что переключатель сортировки в этом виде стоит и ничего не
+     делает. Счётчик показанного общий на всю выборку, а не на каждый
+     расчёт: «Показать ещё» отвечает на «сколько всего осталось». */
+  const byRun = useMemo(() => {
+    const picked = new Map<string, OrderRecord[]>();
+    for (const order of shown) {
+      const list = picked.get(order.run.id);
+      if (list) list.push(order);
+      else picked.set(order.run.id, [order]);
+    }
+    return registry.runs
+      .filter((ref) => picked.has(ref.id))
+      .map((ref) => {
+        const list = picked.get(ref.id) ?? [];
+        return {
+          ref,
+          orders: list,
+          assigned: list.filter((one) => one.engineerId).length,
+          urgent: list.filter((one) => isUrgent(one.priorityClass, one.priority)).length,
+          minutes: list.reduce((sum, one) => sum + one.estMinutes, 0)
+        };
+      });
+  }, [registry, shown]);
+
+  /* Сменили отбор или порядок — счётчик показанного начинается заново: иначе
+     после сужения выборки кнопка обещала бы строки, которых уже нет, а после
+     переворота порядка длинный список пришлось бы перечитывать с конца. */
   const narrow = <T,>(set: (value: T) => void) => (value: T) => {
     set(value);
     setLimit(PAGE);
@@ -514,38 +578,48 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
 
   return (
     <div className="dash enter">
-      <DbHead title="База заявок" board={board.node} />
-
-      {/* Полоса управления выборкой — та же, что в базе инженеров: сверху что
-          попадает в выборку, ниже как она показана, последними строками —
-          расчёты и виды работ, потому что их много и они занимают ширину
-          целиком. */}
-      <section className="panel">
+      {/* Полоса управления выборкой — та же, что в базе инженеров: столбиком
+          «подпись — орган», сперва всё, что сужает выборку, потом то, как её
+          показать. Наверху — поиск и плотность: это не отбор, а то, с какой
+          стороны на список смотрят. */}
+      <DbHead title="База заявок" board={board.node}>
         <div className="filters filters--runs">
-          <label className="dbsearch">
-            <Icon name="search" size={14} />
-            <input
-              className="dbsearch__input"
-              value={query}
-              placeholder="Найти заявку: номер, адрес, район, работа, инженер, клиент"
-              onChange={(event) => {
-                setQuery(event.currentTarget.value);
-                setLimit(PAGE);
-              }}
-            />
-            {query && (
-              <button
-                type="button"
-                className="dbsearch__clear"
-                onClick={() => {
-                  setQuery('');
+          <div className="filters__top">
+            <label className="dbsearch">
+              <Icon name="search" size={14} />
+              <input
+                className="dbsearch__input"
+                value={query}
+                placeholder="Найти заявку: номер, клиент, адрес, район, работа, инженер"
+                onChange={(event) => {
+                  setQuery(event.currentTarget.value);
                   setLimit(PAGE);
                 }}
-              >
-                <Icon name="x" size={12} />
-              </button>
+              />
+              {query && (
+                <button
+                  type="button"
+                  className="dbsearch__clear"
+                  onClick={() => {
+                    setQuery('');
+                    setLimit(PAGE);
+                  }}
+                >
+                  <Icon name="x" size={12} />
+                </button>
             )}
-          </label>
+            </label>
+
+            {/* Плотность строки — везде, где рисуются карточки: и в сплошном
+                ряду, и в разбивке по расчётам. В таблице её нет — там строка
+                одна и в строке она одна. */}
+            {(mode === 'cards' || mode === 'runs') && (
+              <div className="filters__group filters__group--tight">
+                <span className="filters__label">Карточек в строке</span>
+                <SegmentedControl size="sm" items={DENSITY} value={perRow} onChange={setPerRow} />
+              </div>
+            )}
+          </div>
 
           <div className="filters__group">
             <span className="filters__label">Отбор</span>
@@ -556,26 +630,6 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
               onChange={narrow((value: string) => setFilter(value as Filter))}
             />
           </div>
-
-          <div
-            className="filters__group"
-            title="Щелчок по выбранному правилу переворачивает порядок"
-          >
-            <span className="filters__label">Сортировка</span>
-            <SegmentedControl
-              size="sm"
-              items={sortItems}
-              value={sort}
-              onChange={(value: string) => pickSort(value as Sort)}
-            />
-          </div>
-
-          {mode === 'cards' && (
-            <div className="filters__group">
-              <span className="filters__label">Карточек в строке</span>
-              <SegmentedControl size="sm" items={DENSITY} value={perRow} onChange={setPerRow} />
-            </div>
-          )}
 
           {registry.runs.length > 1 && (
             <div className="filters__group filters__group--wide">
@@ -600,45 +654,96 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
             </div>
           )}
 
-          <div className="filters__group filters__group--wide">
+          {/* Виды работ — тремя списками по навыку, а не рядом плашек: их
+              восемнадцать, и плашками они занимали три строки полосы. */}
+          <div className="filters__group filters__group--wide" role="group" aria-label="Вид работ">
             <span className="filters__label">Вид работ</span>
-            <span className="filters__types">
-              {types.map((entry) => (
-                <button
-                  key={entry.key}
-                  type="button"
-                  className={'chip' + (type === entry.key ? ' chip--on' : '')}
-                  onClick={() => {
-                    setType(type === entry.key ? null : entry.key);
-                    setLimit(PAGE);
-                  }}
-                  aria-pressed={type === entry.key}
-                >
-                  <Icon name={workTypeIcon(entry.key)} size={12} />
-                  {registry.workTypeTitle[entry.key] ?? entry.key}
-                  <span className="chip__count">{entry.count}</span>
-                </button>
-              ))}
-            </span>
+            <WorkTypeFilter
+              orders={all}
+              titles={registry.workTypeTitle}
+              picks={picks}
+              onChange={narrow(setPicks)}
+            />
+          </div>
+
+          <div className="filters__group" role="group" aria-label="Сортировка">
+            <span className="filters__label">Сортировка</span>
+            <SortMenu
+              rules={SORTS}
+              value={sort}
+              desc={desc}
+              onPick={(value: string) => pickSort(value as Sort)}
+              onOrder={narrow(setDesc)}
+            />
           </div>
         </div>
-      </section>
+      </DbHead>
 
       {rows.length === 0 ? (
         <section className="panel">
           <p className="clients__lede">
-            Под этот отбор не подошла ни одна заявка. Снимите фильтр, сбросьте вид работ или
+            Под этот отбор не подошла ни одна заявка. Снимите отбор, сбросьте виды работ или
             очистите поиск.
           </p>
         </section>
+      ) : mode === 'runs' ? (
+        <>
+          {byRun.map((entry) => (
+            <section key={entry.ref.id} className="panel">
+              <div className="dash__section-head">
+                <h2 className="dash__section-title">
+                  Расчёт {entry.ref.code}
+                  <span className="dbrun__date">{entry.ref.date}</span>
+                </h2>
+                <span className="dbrun__facts">
+                  {plural(entry.orders.length, 'заявка', 'заявки', 'заявок')} ·{' '}
+                  {entry.assigned} в маршрутах · {entry.orders.length - entry.assigned} без
+                  инженера
+                  {entry.urgent > 0 ? ` · ${entry.urgent} срочных` : ''} ·{' '}
+                  {dec(entry.minutes / 60)} ч работы
+                </span>
+              </div>
+              <div
+                className={'runs__grid' + (dense ? ' runs__grid--dense' : '')}
+                style={{ '--per-row': perRow } as React.CSSProperties}
+              >
+                {entry.orders.map((order, index) => (
+                  <OrderCard
+                    key={order.key}
+                    row={order}
+                    seat={index + 1}
+                    onOpen={() => setOpened(order)}
+                    dense={dense}
+                    workType={picks}
+                    runs={runsById.get(order.id) ?? []}
+                  />
+                ))}
+              </div>
+            </section>
+          ))}
+
+          {hidden > 0 && (
+            <button type="button" className="tblmore" onClick={() => setLimit((n) => n + PAGE)}>
+              Показать ещё {Math.min(PAGE, hidden)}
+              <span className="tblmore__rest">осталось {hidden}</span>
+            </button>
+          )}
+        </>
       ) : mode === 'types' ? (
         <div className="cboard">
           {breakdown.map((entry) => (
             <button
               key={entry.key}
               type="button"
-              className={'ccard' + (type === entry.key ? ' ccard--selected' : '')}
-              onClick={() => setType(type === entry.key ? null : entry.key)}
+              className={'ccard' + (picks.includes(entry.key) ? ' ccard--selected' : '')}
+              onClick={() =>
+                narrow(setPicks)(
+                  picks.includes(entry.key)
+                    ? picks.filter((one) => one !== entry.key)
+                    : [...picks, entry.key]
+                )
+              }
+              aria-pressed={picks.includes(entry.key)}
             >
               <span className="ccard__top">
                 <span className="ccard__name">
@@ -756,15 +861,12 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
                       {order.status ? statusName(order.status) : <span className="tbl__muted">—</span>}
                     </td>
                     <td>
-                      {order.contactName ? (
-                        <>
-                          <span className="tbl__strong">{order.contactName}</span>
-                          {order.contactPhone && (
-                            <span className="tbl__sub">{order.contactPhone}</span>
-                          )}
-                        </>
-                      ) : (
-                        <span className="tbl__muted">—</span>
+                      <span className="tbl__strong">{order.company}</span>
+                      {order.contactName && (
+                        <span className="tbl__sub">
+                          {order.contactName}
+                          {order.contactPhone ? ` · ${order.contactPhone}` : ''}
+                        </span>
                       )}
                     </td>
                     <td>
@@ -803,7 +905,7 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
                 seat={index + 1}
                 onOpen={() => setOpened(order)}
                 dense={dense}
-                workType={type}
+                workType={picks}
                 runs={runsById.get(order.id) ?? []}
               />
             ))}

@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react';
 import { Icon } from '../../ds/components/core/Icon.jsx';
 import { SegmentedControl } from '../../ds/components/forms/SegmentedControl.jsx';
-import type { Registry, RunRef } from '../../data/registry.ts';
+import type { Registry, RouteRecord, RunRef } from '../../data/registry.ts';
 import type { RunId } from '../../data/load.ts';
 import { stampOf } from '../../data/load.ts';
-import { dec, hoursText } from '../../data/derive.ts';
+import { dec, hoursText, plural } from '../../data/derive.ts';
 import { skillName } from '../../data/dictionary.ts';
 import { RunCard } from '../../app/RunCard.tsx';
 import { COMPARE_MAX } from '../../app/compare.ts';
@@ -104,6 +104,24 @@ export function DbRunsScreen({
   const dense = perRow === '6';
 
   const all = registry.stats.byRun;
+
+  /* Маршруты, разложенные по расчётам: карточке нужны её собственные — кем
+     расчёт занял людей и какие номера маршрутов из него вышли. Считаем один
+     раз на весь список, а не в каждой карточке: реестр маршрутов общий, и
+     тридцать карточек просеивали бы его тридцать раз. */
+  const routesByRun = useMemo(() => {
+    const map = new Map<string, RouteRecord[]>();
+    for (const route of registry.routes) {
+      const list = map.get(route.run.id);
+      if (list) list.push(route);
+      else map.set(route.run.id, [route]);
+    }
+    /* По номеру маршрута: номера сквозные, и внутри расчёта они идут подряд —
+       это и есть порядок, в котором их завёл движок. */
+    for (const list of map.values()) list.sort((a, b) => a.number - b.number);
+    return map;
+  }, [registry]);
+
   /* Отбор и порядок считаем один раз на оба вида: карточки и таблица должны
      показывать одну и ту же выборку, иначе переключение вида молча меняет
      набор. */
@@ -523,29 +541,47 @@ export function DbRunsScreen({
           спорили бы сами с собой — два ряда об одном и том же, один выбран за
           диспетчера, другой им самим. Кнопка набора стоит в строке заголовка,
           плитки — там же, где прежде стояла строка чисел. */}
-      <DbHead title="База расчётов" board={board.node} />
+      {/* Полоса управления выборкой стоит в шапке базы, под её заголовком:
+          это органы управления тем самым списком, который заголовок называет,
+          и отдельной панелью следом они читались как ещё один раздел.
 
-      {/* Полоса управления выборкой. Разложена по вопросам, а не по порядку,
-          в котором писалась: сверху — что попадает в выборку (поиск и отбор),
-          снизу — как она показана (порядок и плотность). Левая колонка
-          широкая, правая прижата к краю, поэтому строки читаются парами, а
-          не россыпью плашек. */}
-      <section className="panel">
+          Разложена столбиком «подпись — орган»: подписи выстроены в колонку,
+          переключатели начинаются от одной черты. Раньше строки цеплялись то
+          к левому краю, то к правому, и полоса читалась россыпью — три ряда,
+          у каждого своё выравнивание, посередине дыра. Наверху — поиск и
+          плотность: это не отбор, а то, с какой стороны на список смотрят. */}
+      <DbHead title="База расчётов" board={board.node}>
         <div className="filters filters--runs">
-          <label className="dbsearch">
-            <Icon name="search" size={14} />
-            <input
-              className="dbsearch__input"
-              value={query}
-              placeholder="Найти расчёт"
-              onChange={(event) => setQuery(event.currentTarget.value)}
-            />
-            {query && (
-              <button type="button" className="dbsearch__clear" onClick={() => setQuery('')}>
-                <Icon name="x" size={12} />
-              </button>
+          <div className="filters__top">
+            <label className="dbsearch">
+              <Icon name="search" size={14} />
+              <input
+                className="dbsearch__input"
+                value={query}
+                placeholder="Найти расчёт"
+                onChange={(event) => setQuery(event.currentTarget.value)}
+              />
+              {query && (
+                <button type="button" className="dbsearch__clear" onClick={() => setQuery('')}>
+                  <Icon name="x" size={12} />
+                </button>
+              )}
+            </label>
+
+            {/* Плотность строки — только у карточек: в таблице строка одна и в
+                строке она одна. */}
+            {mode !== 'table' && (
+              <div className="filters__group filters__group--tight">
+                <span className="filters__label">Карточек в строке</span>
+                <SegmentedControl
+                  size="sm"
+                  items={DENSITY}
+                  value={perRow}
+                  onChange={setPerRow}
+                />
+              </div>
             )}
-          </label>
+          </div>
 
           <div className="filters__group">
             <span className="filters__label">Отбор</span>
@@ -569,22 +605,8 @@ export function DbRunsScreen({
               onChange={(value: string) => pickSort(value as Sort)}
             />
           </div>
-
-          {/* Плотность строки — только у карточек: в таблице строка одна и в
-              строке она одна. */}
-          {mode !== 'table' && (
-            <div className="filters__group">
-              <span className="filters__label">Карточек в строке</span>
-              <SegmentedControl
-                size="sm"
-                items={DENSITY}
-                value={perRow}
-                onChange={setPerRow}
-              />
-            </div>
-          )}
         </div>
-      </section>
+      </DbHead>
 
       {rows.length === 0 ? (
         <section className="panel">
@@ -688,6 +710,13 @@ export function DbRunsScreen({
               key={row.run.id}
               row={row}
               bounds={registry.bounds}
+              routes={routesByRun.get(row.run.id) ?? []}
+              /* Кнопки «Открыть» в базе нет: карточка открывает расчёт
+                 целиком, щелчком в любое своё место, и кнопка внизу была
+                 второй дорогой туда же. Внизу осталось одно — отбор к
+                 сравнению и «В работу»: они никуда не уводят, и сами собой
+                 карточка их не сделает. */
+              showOpen={false}
               isActive={row.run.id === active}
               picked={compare.includes(row.run.id)}
               pickBlocked={compare.length >= COMPARE_MAX}
@@ -701,6 +730,30 @@ export function DbRunsScreen({
           ))}
           </div>
         </>
+      )}
+
+      {/* Итог выборки под списком — тот же приём, что во всех справочниках:
+          сверху доска отвечает на «как дела вообще», здесь строка отвечает на
+          «а что сейчас на экране». Числа выбраны по вопросу самой базы: что
+          считали, сколько заявок прошло через движок и что от них осталось. */}
+      {rows.length > 0 && (
+        <p className="filters__note filters__note--under">
+          {plural(rows.length, 'расчёт', 'расчёта', 'расчётов')} в выборке
+          {rows.length !== all.length && ` из ${all.length}`}
+          {` · ${plural(
+            rows.reduce((sum, one) => sum + one.orders, 0),
+            'заявка',
+            'заявки',
+            'заявок'
+          )}`}
+          {` · ${rows.reduce((sum, one) => sum + (one.orders - one.assigned), 0)} без инженера`}
+          {` · ${plural(
+            rows.reduce((sum, one) => sum + one.routes, 0),
+            'маршрут',
+            'маршрута',
+            'маршрутов'
+          )}`}
+        </p>
       )}
     </div>
   );

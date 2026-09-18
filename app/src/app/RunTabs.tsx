@@ -139,7 +139,7 @@ export function RunTabs({
             title={
               full && !isOn(run.id)
                 ? fullHint
-                : `${whenLabel(run.date)} · заявок ${run.ordersTotal}` +
+                : `${whenLabel(run.created)} · заявок ${run.ordersTotal}` +
                   ` · инженеров на маршрутах ${run.engineersOnShift}` +
                   ` · покрытие ${dec(run.coverage)} %`
             }

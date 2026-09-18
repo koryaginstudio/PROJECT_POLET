@@ -61,9 +61,28 @@ const SKILL_NAMES: Record<string, string> = {
   emergency: 'Аварийные работы'
 };
 
+/* Короткая подпись навыка для тесных мест — кнопки в полосе отбора. Сокращено
+   ровно одно значение из трёх: «Работы на подключение и дозаказы» не влезает
+   в ряд кнопок и переносится на вторую строку, остальные влезают и трогать их
+   незачем. Полное название справочника стоит шапкой в самом списке. */
+const SKILL_SHORT: Record<string, string> = {
+  connect: 'Подключения и дозаказы'
+};
+
+/* Порядок навыков — от основного потока к редкому: подключения и конвергенция
+   идут сотнями, локальные работы десятками, аварии единичны. По нему стоят
+   группы видов работ в полосе отбора. Незнакомый навык уходит в конец, а не
+   втискивается в середину: где его место, данные не говорят. */
+const SKILL_ORDER = ['connect', 'local', 'emergency'];
+
 export const workTypeIcon = (key: string) => WORK_TYPE_ICONS[key] ?? 'clipboard-list';
 export const skillIcon = (key: string) => SKILL_ICONS[key] ?? 'wrench';
 export const skillName = (key: string) => label('skills', key, SKILL_NAMES);
+export const skillShort = (key: string) => SKILL_SHORT[key] ?? skillName(key);
+export const skillRank = (key: string) => {
+  const index = SKILL_ORDER.indexOf(key);
+  return index === -1 ? SKILL_ORDER.length : index;
+};
 export const workTypeName = (key: string, title?: string) =>
   (loaded?.work_types?.[key] ?? title ?? key);
 

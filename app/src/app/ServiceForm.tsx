@@ -271,6 +271,34 @@ export function ServiceForm() {
 
         <div className="srvrow">
           <span className="srvrow__key">
+            Статистика над базой
+            <span className="srvrow__where">с чем открываются базы данных</span>
+          </span>
+          {/* Не «показывать или нет», а «раскрыта или свёрнута»: доска на месте
+              в обоих случаях, разница в том, ждёт она вопроса или отвечает
+              сразу. Свёрнутая — заводское: в базу приходят за записями, а
+              сводка над ними занимает полэкрана до первой карточки. */}
+          <span className="srvform__pills">
+            {(
+              [
+                { value: 'hidden', label: 'Свёрнута' },
+                { value: 'open', label: 'Раскрыта' }
+              ] as const
+            ).map((item) => (
+              <button
+                key={item.value}
+                type="button"
+                className={'svc__pill' + (settings.dbStats === item.value ? ' svc__pill--on' : '')}
+                onClick={() => setService({ dbStats: item.value })}
+              >
+                {item.label}
+              </button>
+            ))}
+          </span>
+        </div>
+
+        <div className="srvrow">
+          <span className="srvrow__key">
             Виджеты баз
             <span className="srvrow__where">наборы плиток над каждой базой</span>
           </span>
