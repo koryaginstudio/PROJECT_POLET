@@ -140,6 +140,12 @@ export interface OrderRecord {
   /** Адрес дома либо, если стенд без адресов, район. */
   address: string;
   district: string;
+  /** Ключ точки обслуживания в базе клиентов. Ссылка, а не совпадение строк:
+      экраны сверяли адрес показанной строкой, а она собрана для показа — на
+      наборе без адресов туда попадал весь район одной кучей. */
+  clientKey: string;
+  /** Сквозной номер точки: C0105. По нему заявку ищут и им её подписывают. */
+  clientCode: string;
   /** Кто заказал: та же компания, что стоит на этом адресе в базе клиентов.
       Считается один раз, реестром, и берётся обеими базами оттуда: назови мы
       её в двух местах по-своему — и одна и та же заявка оказалась бы от
@@ -380,6 +386,14 @@ export interface Registry {
   stats: RegistryStats;
 }
 
+/** Ключ точки обслуживания: адрес, а если его нет — район с координатами.
+
+    Одно правило на обе базы. Клиенты собираются по нему, заявки по нему же
+    на клиентов ссылаются; разойдись эти два места — и связь между базами
+    порвалась бы, не сказав ни слова. */
+export const clientKeyOf = (order: Order) =>
+  order.address ?? `${order.district} · ${order.lat},${order.lon}`;
+
 function buildClients(plans: { run: RunRef; plan: Plan }[]): ClientRecord[] {
   /* Копится запись без номера и без заказчика: номер выдаётся в самом конце,
      всем адресам разом, а заказчик — по этому номеру, и до тех пор ни того,
@@ -396,7 +410,7 @@ function buildClients(plans: { run: RunRef; plan: Plan }[]): ClientRecord[] {
       /* Ключ — адрес: одна и та же квартира приходит в разных расчётах, и это
          одна точка, а не две. Дом без адреса опознаём по координатам, чтобы
          соседние дома одного района не слиплись в одну строку. */
-      const key = order.address ?? `${order.district} · ${order.lat},${order.lon}`;
+      const key = clientKeyOf(order);
       let entry = map.get(key);
       if (!entry) {
         entry = {
@@ -472,10 +486,11 @@ function buildOrders(
      запасное имя всё равно нужно: пустая строка на месте заказчика читалась
      бы как «заказчика нет», а он есть, просто адрес записан так, что точку по
      нему не опознать. */
-  const companyByKey = new Map(clients.map((client) => [client.key, client.company]));
-  const companyFor = (order: Order) =>
-    companyByKey.get(order.address ?? `${order.district} · ${order.lat},${order.lon}`) ??
-    'Клиент не опознан';
+  const byKey = new Map(clients.map((client) => [client.key, client]));
+  /* Ключ точки собирается тем же правилом, что и в самой базе клиентов, и
+     правило это живёт в одном месте — иначе две базы опознают один дом
+     по-разному, и связь между ними рвётся молча. */
+  const keyFor = (order: Order) => clientKeyOf(order);
 
   for (const { run, plan } of plans) {
     const nameById = new Map(plan.engineers.map((e) => [e.id, e.name]));
@@ -504,7 +519,9 @@ function buildOrders(
         skill: order.skill,
         address: placeOf(order),
         district: order.district,
-        company: companyFor(order),
+        clientKey: keyFor(order),
+        clientCode: byKey.get(keyFor(order))?.code ?? '',
+        company: byKey.get(keyFor(order))?.company ?? 'Клиент не опознан',
         windowStart: order.window_start,
         windowEnd: order.window_end,
         slaDeadline: order.sla_deadline,

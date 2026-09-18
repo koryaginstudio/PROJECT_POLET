@@ -18,6 +18,9 @@ interface Props {
   /** Вид работ, по которому сейчас отобран список: в карточке он помечен,
       чтобы было видно, за что адрес сюда попал. */
   workType?: string | null;
+  /** Щелчок по карточке открывает запись. Без него карточка только
+      показывает: обещать открытие там, где открывать нечего, нельзя. */
+  onOpen?: () => void;
 }
 
 /* Карточка клиента. Собрана по образцу карточек расчёта и инженера, и это не
@@ -45,7 +48,8 @@ export function ClientCard({
   workTypeTitle,
   logo,
   dense = false,
-  workType = null
+  workType = null,
+  onOpen
 }: Props) {
   const rate = row.orders === 0 ? 0 : row.assigned / row.orders;
   const missed = row.orders - row.assigned;
@@ -70,7 +74,23 @@ export function ClientCard({
   const poor = rate < 0.8;
 
   return (
-    <article className={'runcard runcard--flat' + (dense ? ' runcard--dense' : '')}>
+    /* Вся карточка — вход в запись: значки внутри живут своей жизнью, но
+       отдельных кнопок у неё нет. Тот же приём, что у карточки заявки:
+       обёртка кнопкой не годится — кнопка в кнопке не работает ни мышью,
+       ни с клавиатуры. */
+    <article
+      className={'runcard runcard--flat' + (onOpen ? ' runcard--open' : '') + (dense ? ' runcard--dense' : '')}
+      onClick={onOpen}
+      role={onOpen ? 'button' : undefined}
+      tabIndex={onOpen ? 0 : undefined}
+      onKeyDown={(event) => {
+        if (!onOpen) return;
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onOpen();
+        }
+      }}
+    >
       <div className="runcard__head">
         <span className="runcard__ident clicard__ident">
           {/* Первым — кто заказывает, а не куда ехать. Адрес отвечает на

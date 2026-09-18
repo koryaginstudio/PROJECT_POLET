@@ -157,6 +157,20 @@ export const SUBHEADER: Record<SectionId, { title: string; views: { value: strin
   /* Переключателя видов у статистики нет: экран снят под новую сборку, и
      вкладки над пустым местом обещали бы содержимое, которого нет. */
   stats: { title: 'Статистика', views: [] },
+  /* Три вида есть у каждой базы: карточки, список и таблица. Это три ответа
+     на один вопрос «что тут есть», и каждый хорош своим. Карточка показывает
+     запись целиком и тратит на это четверть строки. Таблица кладёт в строку
+     всё, что о записи известно, и уезжает вбок. Список стоит между ними:
+     запись — строка во всю ширину, слева знак, по которому её узнают, справа
+     те числа, ради которых в базу и заходят; полсотни записей читаются одним
+     движением колеса.
+
+     Идут они всегда подряд и всегда в этом порядке — от «разглядеть» к
+     «охватить». Разрезы — по расчётам, по навыкам, по видам работ — остаются
+     каждый на своём месте: разрез отвечает не на «что тут есть», а на «как
+     это разложено», и заменять его видом нечем. Где разрез и есть главный
+     вопрос к справочнику, он стоит первым и открывается сам; где он побочный,
+     как «По расчётам» у маршрутов, — стоит последним. */
   'db-orders': {
     /* «По расчётам» первым, тем же доводом, что и «По навыкам» у услуг:
        сплошной ряд из двух тысяч заявок не отвечает ни на один вопрос, с
@@ -169,6 +183,7 @@ export const SUBHEADER: Record<SectionId, { title: string; views: { value: strin
     views: [
       { value: 'runs', label: 'По расчётам' },
       { value: 'cards', label: 'Карточки' },
+      { value: 'list', label: 'Список' },
       { value: 'table', label: 'Таблица' },
       { value: 'types', label: 'По видам работ' }
     ]
@@ -184,6 +199,7 @@ export const SUBHEADER: Record<SectionId, { title: string; views: { value: strin
     views: [
       { value: 'skills', label: 'По навыкам' },
       { value: 'cards', label: 'Карточки' },
+      { value: 'list', label: 'Список' },
       { value: 'table', label: 'Таблица' }
     ]
   },
@@ -194,6 +210,7 @@ export const SUBHEADER: Record<SectionId, { title: string; views: { value: strin
        умолчанию. */
     views: [
       { value: 'cards', label: 'Карточки' },
+      { value: 'list', label: 'Список' },
       { value: 'table', label: 'Таблица' }
     ]
   },
@@ -204,6 +221,7 @@ export const SUBHEADER: Record<SectionId, { title: string; views: { value: strin
     title: 'База маршрутов',
     views: [
       { value: 'cards', label: 'Карточки' },
+      { value: 'list', label: 'Список' },
       { value: 'table', label: 'Таблица' },
       { value: 'runs', label: 'По расчётам' }
     ]
@@ -215,6 +233,7 @@ export const SUBHEADER: Record<SectionId, { title: string; views: { value: strin
        умолчанию. */
     views: [
       { value: 'cards', label: 'Карточки' },
+      { value: 'list', label: 'Список' },
       { value: 'table', label: 'Таблица' }
     ]
   },
@@ -222,6 +241,7 @@ export const SUBHEADER: Record<SectionId, { title: string; views: { value: strin
     title: 'База расчётов',
     views: [
       { value: 'cards', label: 'Карточки' },
+      { value: 'list', label: 'Список' },
       { value: 'table', label: 'Таблица' }
     ]
   },

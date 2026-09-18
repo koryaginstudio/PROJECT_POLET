@@ -1,18 +1,23 @@
 import { useMemo, useState } from 'react';
 import { Icon } from '../../ds/components/core/Icon.jsx';
 import { SegmentedControl } from '../../ds/components/forms/SegmentedControl.jsx';
-import type { ClientRecord, Registry } from '../../data/registry.ts';
+import type { ClientRecord, OrderRecord, Registry } from '../../data/registry.ts';
 import { dec, hhmm, plural } from '../../data/derive.ts';
 import { workTypeIcon } from '../../data/dictionary.ts';
 import { ClientCard } from '../../app/ClientCard.tsx';
+import { ClientProfile } from '../../app/ClientProfile.tsx';
+import { OrderProfile } from '../../app/OrderProfile.tsx';
 import { useWidgetBoard } from '../../app/DbWidgets.tsx';
 import type { WidgetDef } from '../../app/DbWidgets.tsx';
 import { service } from '../../data/service.ts';
 import { DbHead } from './DbHead.tsx';
+import { DbList } from './DbList.tsx';
 
 interface Props {
   registry: Registry;
   mode: string;
+  /** Уйти в расчёт, в котором встречался адрес. */
+  onOpenRun: (id: string) => void;
 }
 
 /* Плотность строки — тот же выбор, что и в базах расчётов и инженеров:
@@ -65,7 +70,12 @@ const percent = (share: number) => `${Math.round(share * 100)}%`;
    Устроена как базы расчётов и инженеров — поиск, отбор, порядок, плотность
    и доска виджетов сверху, — и это осознанное повторение: три справочника об
    одном хозяйстве, и переучивать диспетчера на каждом незачем. */
-export function DbClientsScreen({ registry, mode }: Props) {
+export function DbClientsScreen({ registry, mode, onOpenRun }: Props) {
+  /* Какой адрес открыт карточкой. До сих пор в этой базе не открывался ни
+     один: карточка была картинкой, строка — не кнопкой, и вопрос «что мы
+     делали по этому адресу» из базы клиентов не решался вовсе. */
+  const [opened, setOpened] = useState<ClientRecord | null>(null);
+  const [openedOrder, setOpenedOrder] = useState<OrderRecord | null>(null);
   /* С какой плотности открывается база — настройка сервиса, общая с базами
      расчётов и инженеров: одному важно разглядеть, другому охватить. */
   const [perRow, setPerRow] = useState(() => service().perRow as string);
@@ -382,9 +392,9 @@ export function DbClientsScreen({ registry, mode }: Props) {
             />
           </div>
 
-          {/* Плотность строки — только у карточек: в таблице строка одна и в
-              строке она одна. */}
-          {mode !== 'table' && (
+          {/* Плотность строки — только у карточек: в таблице и в списке
+              строка одна и в строке она одна. */}
+          {mode !== 'table' && mode !== 'list' && (
             <div className="filters__group">
               <span className="filters__label">Карточек в строке</span>
               <SegmentedControl size="sm" items={DENSITY} value={perRow} onChange={setPerRow} />
@@ -422,6 +432,48 @@ export function DbClientsScreen({ registry, mode }: Props) {
             очистите поиск.
           </p>
         </section>
+      ) : mode === 'list' ? (
+        /* Список: адрес — строка. Названием стоит адрес, а не компания: сюда
+           приходят с вопросом «куда мы ездим» и «куда не доезжаем», и оба
+           вопроса об адресе. Компания и район ушли в подпись — по ним
+           уточняют, а не ищут. Строка открывает карточку адреса: его историю,
+           тех, кто сюда ездил, и расчёты, в которых он встречался. */
+        <DbList
+          rows={rows.map((client) => {
+            const rate = coverage(client);
+            return {
+              key: client.key,
+              lead: <Icon name="house" size={15} />,
+              code: client.code,
+              title: client.address,
+              sub: (
+                <>
+                  {client.company} · {client.district} ·{' '}
+                  {client.workTypes
+                    .map((type) => registry.workTypeTitle[type] ?? type)
+                    .join(' · ')}
+                </>
+              ),
+              cells: [
+                { label: 'Заявок', value: client.orders },
+                { label: 'Обслужено', value: client.assigned },
+                { label: 'Покрытие', value: percent(rate), tone: rate < 0.8 ? ('warn' as const) : undefined },
+                {
+                  label: 'Срочных',
+                  value: client.urgent > 0 ? client.urgent : '—',
+                  tone: client.urgent > 0 ? ('warn' as const) : ('muted' as const)
+                },
+                {
+                  label: 'Нужен доступ',
+                  value: client.access > 0 ? client.access : '—',
+                  tone: client.access > 0 ? undefined : ('muted' as const)
+                },
+                { label: 'Средняя работа', value: `${client.avgMinutes} мин` }
+              ],
+              onOpen: () => setOpened(client)
+            };
+          })}
+        />
       ) : mode === 'table' ? (
         <section className="panel">
           <div className="tbl-wrap">
@@ -446,7 +498,19 @@ export function DbClientsScreen({ registry, mode }: Props) {
                 {rows.map((client) => {
                   const rate = coverage(client);
                   return (
-                    <tr key={client.key} className="tbl__row">
+                    <tr
+                      key={client.key}
+                      className="tbl__row"
+                      tabIndex={0}
+                      role="button"
+                      onClick={() => setOpened(client)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          setOpened(client);
+                        }
+                      }}
+                    >
                       <td>
                         <span className="tbl__strong">{client.code}</span>
                       </td>
@@ -504,6 +568,7 @@ export function DbClientsScreen({ registry, mode }: Props) {
               workTypeTitle={registry.workTypeTitle}
               dense={dense}
               workType={workType}
+              onOpen={() => setOpened(client)}
             />
           ))}
         </div>
@@ -536,6 +601,37 @@ export function DbClientsScreen({ registry, mode }: Props) {
           )}%`}
         </p>
       )}
+
+      <ClientProfile
+        client={opened}
+        registry={registry}
+        onClose={() => setOpened(null)}
+        /* Заявка открывается поверх клиента и закрывает его: два окна друг на
+           друге диспетчер закрывал бы дважды, не понимая, почему. Закрыв
+           заявку, он возвращается на экран базы — туда, откуда пришёл. */
+        onOpenOrder={(order) => {
+          setOpened(null);
+          setOpenedOrder(order);
+        }}
+        onOpenRun={(id) => {
+          setOpened(null);
+          onOpenRun(id);
+        }}
+      />
+
+      <OrderProfile
+        order={openedOrder}
+        registry={registry}
+        onClose={() => setOpenedOrder(null)}
+        onOpenRun={(id) => {
+          setOpenedOrder(null);
+          onOpenRun(id);
+        }}
+        onOpenMap={(id) => {
+          setOpenedOrder(null);
+          onOpenRun(id);
+        }}
+      />
     </div>
   );
 }

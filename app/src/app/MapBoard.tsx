@@ -23,6 +23,10 @@ interface Props {
   focus: number;
   onSelectOrder: (id: string) => void;
   onSelectEngineer: (id: string) => void;
+  /** Щелчок по общему гнезду выезда: экран отвечает перечнем тех, кто отсюда
+      выезжает. Нет обработчика — гнездо только рассказывает о себе
+      подсказкой. */
+  onSelectNest?: (engineerIds: string[]) => void;
   /** Выбранная заявка: её выбирают и в списке справа, и щелчком по точке.
       Карта на это отвечает — обводит точку и подъезжает к ней. */
   selectedOrder?: string | null;
@@ -238,6 +242,7 @@ export function MapBoard({
   focus,
   onSelectOrder,
   onSelectEngineer,
+  onSelectNest,
   selectedOrder = null,
   fill = false,
   aside = null
@@ -292,8 +297,8 @@ export function MapBoard({
   const fitted = useRef(false);
   /* Обработчики держим в ссылке: слои пересобираются от данных, а не от
      того, что React заново создал функцию. */
-  const pick = useRef({ onSelectOrder, onSelectEngineer, onLive, onPin });
-  pick.current = { onSelectOrder, onSelectEngineer, onLive, onPin };
+  const pick = useRef({ onSelectOrder, onSelectEngineer, onLive, onPin, onSelectNest });
+  pick.current = { onSelectOrder, onSelectEngineer, onLive, onPin, onSelectNest };
 
   const colorOf = (engineerId: string) =>
     routeColor(view.loads.findIndex((load) => load.engineer.id === engineerId));
@@ -687,11 +692,13 @@ export function MapBoard({
           iconSize: [14, 14],
           iconAnchor: [7, 7]
         }),
-        /* Нажатие выбрало бы один маршрут из дюжины — наугад. Гнездо только
-           рассказывает о себе. */
         interactive: true,
         keyboard: false
       });
+      /* Нажатие выбирает не маршрут — из дюжины он был бы наугад, — а само
+         место: экран отвечает перечнем тех, кто отсюда выезжает, и из него
+         уже выбирают конкретный путь. */
+      mark.on('click', () => pick.current.onSelectNest?.(list.map((one) => one.engineer.id)));
       const nestCard = card('#8A8A8A', 'Общий выезд', [
         homeOf(first.engineer),
         `Отсюда выезжают ${list.length}: ` +
@@ -1217,8 +1224,14 @@ export function MapBoard({
      один пиксель при зуме z равен 156543,03 · cos φ / 2^z метрам. */
   const spanKm = (atZoom: number) => {
     const instance = map.current;
-    const width = instance?.getSize().x ?? 900;
-    const lat = instance?.getCenter().lat ?? 55.75;
+    /* Пока у карты нет вида, спрашивать её о центре нельзя: Leaflet на это
+       отвечает не пустотой, а ошибкой — «сначала задайте центр и масштаб», —
+       и она валит весь экран. А вид появляется не сразу: контейнер сперва
+       получает высоту, и только потом карта вписывается в границы дня.
+       Масштаб при этом безопасен: до вида он просто пуст. */
+    const ready = Boolean(instance && instance.getZoom() !== undefined);
+    const width = ready ? instance!.getSize().x : 900;
+    const lat = ready ? instance!.getCenter().lat : 55.75;
     const metersPerPixel = (156543.03392 * Math.cos((lat * Math.PI) / 180)) / 2 ** atZoom;
     return (metersPerPixel * width) / 1000;
   };

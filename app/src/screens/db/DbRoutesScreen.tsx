@@ -11,6 +11,7 @@ import { useWidgetBoard, WidgetPeriod, withinPeriod } from '../../app/DbWidgets.
 import type { PeriodKey, WidgetDef } from '../../app/DbWidgets.tsx';
 import { service } from '../../data/service.ts';
 import { DbHead } from './DbHead.tsx';
+import { DbList } from './DbList.tsx';
 
 interface Props {
   registry: Registry;
@@ -801,6 +802,56 @@ export function DbRoutesScreen({ registry, mode, onOpenRoute }: Props) {
               {table(entry.routes, false)}
             </section>
           ))}
+        </>
+      ) : mode === 'list' ? (
+        <>
+          {/* Список: маршрут — строка, названием стоит инженер. Маршрут без
+              человека — это набор чисел, неотличимый от соседнего; «чей он»
+              и есть то, по чему его узнают. Карты в строке нет — за ней идут
+              к карточке или на большую карту, куда строка и уводит. */}
+          <DbList
+            rows={shown.map((route) => ({
+              key: route.key,
+              lead: <Icon name="path" size={15} />,
+              code: route.code,
+              title: route.engineerName,
+              sub: (
+                <>
+                  Расчёт {route.run.code} · {route.run.date} ·{' '}
+                  {hhmm(route.start)}–{hhmm(route.end)}
+                  {route.districts.length > 0 ? ` · ${route.districts.join(' · ')}` : ''}
+                </>
+              ),
+              cells: [
+                { label: 'Визитов', value: route.visits },
+                { label: 'В работе', value: hoursText(route.workMinutes) },
+                { label: 'В дороге', value: hoursText(route.travelMinutes) },
+                {
+                  label: 'Занятость',
+                  value: percent(route.occupancy),
+                  tone: route.occupancy < 0.6 ? ('warn' as const) : undefined
+                },
+                {
+                  label: 'Сверх смены',
+                  value: route.overtimeMinutes > 0 ? hoursText(route.overtimeMinutes) : '—',
+                  tone: route.overtimeMinutes > 0 ? ('warn' as const) : ('muted' as const)
+                },
+                {
+                  label: 'Риск опоздать',
+                  value: route.risky > 0 ? route.risky : '—',
+                  tone: route.risky > 0 ? ('warn' as const) : ('muted' as const)
+                }
+              ],
+              onOpen: () => onOpenRoute(route.run.id, route.engineerId)
+            }))}
+          />
+
+          {hidden > 0 && (
+            <button type="button" className="tblmore" onClick={() => setLimit((n) => n + PAGE)}>
+              Показать ещё {Math.min(PAGE, hidden)}
+              <span className="tblmore__rest">осталось {hidden}</span>
+            </button>
+          )}
         </>
       ) : mode === 'table' ? (
         <section className="panel">

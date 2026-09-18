@@ -1,6 +1,6 @@
 import { Icon } from '../ds/components/core/Icon.jsx';
 import type { DayView } from '../data/derive.ts';
-import { hhmm, placeOf } from '../data/derive.ts';
+import { hhmm, homeOf, placeOf, visits } from '../data/derive.ts';
 import { transportIcon, transportName } from '../data/dictionary.ts';
 import { PersonName } from './PersonName.tsx';
 import { routeColor } from './MapBoard.tsx';
@@ -31,6 +31,10 @@ interface Props {
       сам. */
   pinned: string | null;
   selectedOrder: string | null;
+  /** Кто выезжает из общего гнезда, если нажали на него. */
+  nest: string[] | null;
+  /** Выбрать маршрут из перечня гнезда. */
+  onPickRoute: (id: string) => void;
   /** Закрыть сводку: вернуть итоги расчёта. */
   onClose: () => void;
   /** Открыть карточку из базы поверх карты. */
@@ -45,7 +49,16 @@ const spell = (minutes: number) => {
   return h > 0 ? `${h} ч ${m} мин` : `${m} мин`;
 };
 
-export function MapPick({ view, pinned, selectedOrder, onClose, onOpenEngineer, onOpenOrder }: Props) {
+export function MapPick({
+  view,
+  pinned,
+  selectedOrder,
+  nest,
+  onPickRoute,
+  onClose,
+  onOpenEngineer,
+  onOpenOrder
+}: Props) {
   const colorOf = (engineerId: string) =>
     routeColor(view.loads.findIndex((item) => item.engineer.id === engineerId));
 
@@ -53,7 +66,11 @@ export function MapPick({ view, pinned, selectedOrder, onClose, onOpenEngineer, 
   const placement = selectedOrder ? view.stopByOrder.get(selectedOrder) : undefined;
   const load = pinned ? view.loads.find((item) => item.engineer.id === pinned) : undefined;
 
-  if (!order && !load) return null;
+  const crowd = nest
+    ? view.loads.filter((one) => nest.includes(one.engineer.id))
+    : [];
+
+  if (!order && !load && crowd.length === 0) return null;
 
   const head = (tone: string, title: React.ReactNode, note: string, icon?: string) => (
     <div className="mpick__head">
@@ -77,6 +94,36 @@ export function MapPick({ view, pinned, selectedOrder, onClose, onOpenEngineer, 
       <span className="mpick__value">{value}</span>
     </div>
   );
+
+  /* Общее гнездо выезда. Отвечает на «кто отсюда едет»: место одно, а путей
+     из него дюжина, и выбрать нужный можно прямо здесь. */
+  if (crowd.length > 0 && !order && !load) {
+    return (
+      <section className="mapstat mpick" aria-label="Общий выезд">
+        {head('#8A8A8A', <b className="mpick__name">Общий выезд</b>, homeOf(crowd[0].engineer))}
+
+        <div className="mpick__rows">
+          {row('Выезжают', `${crowd.length}`)}
+        </div>
+
+        <div className="mpick__crowd">
+          {crowd.map((one) => (
+            <button
+              key={one.engineer.id}
+              type="button"
+              className="mpick__one"
+              onClick={() => onPickRoute(one.engineer.id)}
+              title={`Показать маршрут: ${one.engineer.name}`}
+            >
+              <span className="mpick__mark" style={{ background: colorOf(one.engineer.id) }} />
+              <PersonName name={one.engineer.name} stacked={false} />
+              <span className="mpick__num">{visits(one.visits)}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+    );
+  }
 
   /* Заявка. Отвечает на «что это за точка и кто на неё едет». */
   if (order) {

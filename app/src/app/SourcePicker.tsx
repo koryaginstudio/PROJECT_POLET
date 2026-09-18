@@ -1,24 +1,19 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Button } from '../ds/components/core/Button.jsx';
 import { Icon } from '../ds/components/core/Icon.jsx';
 import { BitrixMark, ExcelMark } from './BrandMarks.tsx';
 import { Switch } from '../ds/components/forms/Switch.jsx';
 import { Input } from '../ds/components/forms/Input.jsx';
-import type { DayView } from '../data/derive.ts';
+import type { Engineer } from '../data/contract.ts';
 import { hhmm, plural } from '../data/derive.ts';
 import { skillIcon, skillName } from '../data/dictionary.ts';
 import { ExcelImport } from './ExcelImport.tsx';
 
-/** Заявка, которую диспетчер завёл руками поверх выгрузки. */
-export interface ExtraOrder {
-  id: string;
-  address: string;
-  workTitle: string;
-  windowStart: number;
-  windowEnd: number;
-  minutes: number;
-  urgent: boolean;
-}
+/* Заявка, заведённая руками, описана в слое данных: её собирает расчёт, а не
+   форма, и тип обязан лежать там же, где им пользуются. Здесь она только
+   вводится, поэтому ввозится и вывозится дальше под прежним именем. */
+export type { ExtraOrder } from '../data/shift.ts';
+import type { ExtraOrder } from '../data/shift.ts';
 
 export interface SourceChoice {
   /** Откуда берём состав дня. */
@@ -32,7 +27,12 @@ export interface SourceChoice {
 }
 
 interface Props {
-  view: DayView;
+  /** Кто числится в смене той зоны, которую сейчас считают. Не день на
+      экране: считать можно соседнюю зону, а табельные у неё свои, и состав
+      от открытого расчёта увёл бы расчёт в пустоту. */
+  crew: Engineer[];
+  /** Сколько заявок в этой зоне — строкой под выбором источника. */
+  orderCount: number;
   value: SourceChoice;
   onChange: (next: SourceChoice) => void;
 }
@@ -73,11 +73,10 @@ const nextOrderId = (used: Set<string>) => {
   return `X${Date.now()}`;
 };
 
-export function SourcePicker({ view, value, onChange }: Props) {
+export function SourcePicker({ crew, orderCount, value, onChange }: Props) {
   const [openCrew, setOpenCrew] = useState(false);
   const [draft, setDraft] = useState<ExtraOrder | null>(null);
 
-  const crew = useMemo(() => view.loads.map((load) => load.engineer), [view]);
   const chosen = new Set(value.engineers);
 
   const set = (patch: Partial<SourceChoice>) => onChange({ ...value, ...patch });
@@ -149,8 +148,8 @@ export function SourcePicker({ view, value, onChange }: Props) {
             <span className="srccard__title">Добавить вручную</span>
           </span>
           <span className="srccard__what">
-            День стенда: {view.loads.length} инженеров и {view.orderById.size} заявок с реальными
-            адресами. Заявки дополняются вручную.
+            В этой зоне {crew.length} инженеров и {orderCount} заявок с реальными адресами.
+            Заявки дополняются вручную.
           </span>
         </button>
       </div>

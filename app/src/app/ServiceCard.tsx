@@ -25,6 +25,9 @@ interface Props {
   /** Навыки, отмеченные в полосе отбора: в карточке навык подсвечен, чтобы
       было видно, за что услуга сюда попала. */
   skills?: string[];
+  /** Щелчок по карточке открывает запись. Без него карточка только
+      показывает: обещать открытие там, где открывать нечего, нельзя. */
+  onOpen?: () => void;
 }
 
 /* Карточка услуги. Собрана по образцу карточек расчёта, инженера и заявки —
@@ -39,7 +42,7 @@ interface Props {
    ниже, только длиной. Картинка, пересказывающая соседнюю цифру, — не
    картинка, а лишние полсантиметра высоты в каждой из восемнадцати
    карточек. */
-export function ServiceCard({ row, seat, slice, dense = false, skills = [] }: Props) {
+export function ServiceCard({ row, seat, slice, dense = false, skills = [], onOpen }: Props) {
   const orders = slice ? slice.orders : row.orders;
   const urgent = slice ? slice.urgent : row.urgent;
   const access = slice ? slice.access : row.access;
@@ -52,7 +55,23 @@ export function ServiceCard({ row, seat, slice, dense = false, skills = [] }: Pr
   const spread = row.minutesTo > row.minutes;
 
   return (
-    <article className="runcard runcard--flat">
+    /* Вся карточка — вход в запись: значки внутри живут своей жизнью, но
+       отдельных кнопок у неё нет. Тот же приём, что у карточки заявки:
+       обёртка кнопкой не годится — кнопка в кнопке не работает ни мышью,
+       ни с клавиатуры. */
+    <article
+      className={'runcard runcard--flat' + (onOpen ? ' runcard--open' : '')}
+      onClick={onOpen}
+      role={onOpen ? 'button' : undefined}
+      tabIndex={onOpen ? 0 : undefined}
+      onKeyDown={(event) => {
+        if (!onOpen) return;
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onOpen();
+        }
+      }}
+    >
       <div className="runcard__head">
         <span className="runcard__ident">
           {/* Название и есть имя услуги: им её называют и по нему ищут.

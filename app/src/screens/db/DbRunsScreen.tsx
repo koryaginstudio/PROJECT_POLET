@@ -13,6 +13,7 @@ import { service } from '../../data/service.ts';
 import type { PeriodKey } from '../../app/DbWidgets.tsx';
 import type { WidgetDef } from '../../app/DbWidgets.tsx';
 import { DbHead } from './DbHead.tsx';
+import { DbList } from './DbList.tsx';
 
 interface Props {
   registry: Registry;
@@ -50,6 +51,12 @@ const DENSITY = [
 ];
 
 const percent = (share: number) => `${Math.round(share * 100)}%`;
+
+/* День расчёта из ISO-даты выгрузки: «2026-08-17» → «17.08.2026». */
+const dayOf = (date: string) => {
+  const [year, month, day] = date.split('-');
+  return day ? `${day}.${month}.${year}` : date;
+};
 
 /* По чему упорядочены расчёты. Первым идёт порядок по дате — свежий расчёт
    это то, с чем работают; остальные правила отвечают на «где вышло лучше» и
@@ -568,9 +575,9 @@ export function DbRunsScreen({
               )}
             </label>
 
-            {/* Плотность строки — только у карточек: в таблице строка одна и в
-                строке она одна. */}
-            {mode !== 'table' && (
+            {/* Плотность строки — только у карточек: в таблице и в списке
+                строка одна и в строке она одна. */}
+            {mode !== 'table' && mode !== 'list' && (
               <div className="filters__group filters__group--tight">
                 <span className="filters__label">Карточек в строке</span>
                 <SegmentedControl
@@ -614,6 +621,74 @@ export function DbRunsScreen({
             Под этот отбор не подошёл ни один расчёт. Снимите фильтр или очистите поиск.
           </p>
         </section>
+      ) : mode === 'list' ? (
+        /* Список: расчёт — строка, и в ней ровно то, ради чего в историю
+           заходят. Покрытие первым: это ответ на «как посчиталось», всё
+           остальное его объясняет. Кнопка перехода — в конце строки, как в
+           таблице: из базы в расчёт ведёт одна дорога, и она везде на одном
+           месте. */
+        <DbList
+          rows={rows.map((row) => ({
+            key: row.run.id,
+            lead: <Icon name="stack" size={15} />,
+            code: row.run.code,
+            /* Названием — день, на который считали: номером расчёт ищут, а
+               помнят его по дню. Когда завели — в подписи: два расчёта на
+               один день различают именно временем записи, но это уже
+               уточнение, а не имя. Заметка человека стоит перед числами: её
+               писал не движок, и теряться среди них ей не следует. */
+            title: row.run.date ? dayOf(row.run.date) : `Расчёт ${row.run.code}`,
+            sub: (
+              <>
+                {row.run.note ? `${row.run.note} · ` : ''}
+                заведён {stampOf(row.run.created)} ·{' '}
+                {plural(row.routes, 'маршрут', 'маршрута', 'маршрутов')} · {row.engineersOnRoute} из{' '}
+                {row.engineersTotal} инженеров с маршрутом
+                {row.run.id === active ? ' · открыт в диспетчерской' : ''}
+              </>
+            ),
+            cells: [
+              { label: 'Покрытие', value: percent(row.coverage), tone: row.coverage < 0.8 ? ('warn' as const) : undefined },
+              { label: 'Разложено', value: `${row.assigned}/${row.orders}` },
+              {
+                label: 'Без инженера',
+                value: row.orders - row.assigned,
+                tone: row.orders - row.assigned > 0 ? ('warn' as const) : ('muted' as const)
+              },
+              { label: 'Визитов', value: row.visits },
+              { label: 'Занятость', value: percent(row.occupancy) },
+              { label: 'В дороге', value: hoursText(row.travelMinutes) }
+            ],
+            action: (
+              <>
+                <button
+                  type="button"
+                  className="runcard__edit"
+                  onClick={() => onEdit(row.run)}
+                  title={`Изменить запись ${row.run.code}: номер, время, заметка`}
+                  aria-label={`Изменить запись ${row.run.code}`}
+                >
+                  <Icon name="pencil" size={13} />
+                </button>
+                {row.run.id === active ? (
+                  <button
+                    type="button"
+                    className="runcard__go runcard__go--open"
+                    onClick={() => onGo(row.run.id)}
+                  >
+                    <Icon name="arrow-right" size={13} />
+                    Перейти
+                  </button>
+                ) : (
+                  <button type="button" className="runcard__go" onClick={() => onOpen(row.run.id)}>
+                    <Icon name="arrow-right" size={13} />
+                    Открыть
+                  </button>
+                )}
+              </>
+            )
+          }))}
+        />
       ) : mode === 'table' ? (
         <section className="panel">
           <div className="tbl-wrap">

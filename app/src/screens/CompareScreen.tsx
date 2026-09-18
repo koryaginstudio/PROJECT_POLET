@@ -410,7 +410,7 @@ function snapshot(row: RunStat): SavedCompareRun {
     created: row.run.created,
     /* Номер дня у движка знает запись истории, а не справочник: в
        справочнике лежит то, что посчитано, а день — то, по чему считали. */
-    day: runEntry(row.run.id).day,
+    day: runEntry(row.run.id)?.day,
     note: row.run.note,
     orders: row.orders,
     assigned: row.assigned,

@@ -5,6 +5,8 @@ import { GlobalSearch } from './GlobalSearch.tsx';
 import { Notifications } from './Notifications.tsx';
 import { ServiceMenu } from './ServiceMenu.tsx';
 import type { DayView } from '../data/derive.ts';
+import type { Registry } from '../data/registry.ts';
+import type { Hit } from '../data/find.ts';
 import type { Selection } from './selection.ts';
 /* Простой знак: пчела контуром, заливка белая. Это присланный файл, а не
    производный — см. assets/logo/SOURCE.md, строка «lockup-h». */
@@ -15,6 +17,12 @@ interface Props {
   onToggleNav: () => void;
   view: DayView;
   onSelect: (selection: Selection) => void;
+  /** Справочники — по ним ищет строка в шапке. Поиск живёт над расчётом:
+      искать надо во всём, что есть, а не в том дне, который сейчас открыт. */
+  registry: Registry | null;
+  /** Куда ведёт находка. Решает оболочка: у разных родов записей это разные
+      карточки, а у расчёта — переход в сам расчёт. */
+  onFind: (hit: Hit) => void;
   /** Знак ведёт на дашборд. Привычка старше интерфейса: логотип в левом
       верхнем углу — это дорога домой, и ждать её там будут в любом случае. */
   onHome: () => void;
@@ -22,7 +30,16 @@ interface Props {
   onOpenSettings: () => void;
 }
 
-export function Header({ collapsed, onToggleNav, view, onSelect, onHome, onOpenSettings }: Props) {
+export function Header({
+  collapsed,
+  onToggleNav,
+  view,
+  onSelect,
+  registry,
+  onFind,
+  onHome,
+  onOpenSettings
+}: Props) {
   return (
     <header className="hdr">
       <div className="hdr__left">
@@ -45,7 +62,7 @@ export function Header({ collapsed, onToggleNav, view, onSelect, onHome, onOpenS
         </button>
       </div>
 
-      <GlobalSearch view={view} onSelect={onSelect} />
+      <GlobalSearch registry={registry} onOpen={onFind} />
 
       <div className="hdr__right">
         {/* Шестерёнка в шапке — настройки сервиса, а не движка: движок

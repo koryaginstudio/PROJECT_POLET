@@ -1,6 +1,6 @@
 import { Icon } from '../ds/components/core/Icon.jsx';
 import type { RouteRecord } from '../data/registry.ts';
-import { capitalize, dec, hhmm, hoursText, pluralWord } from '../data/derive.ts';
+import { capitalize, dec, hhmm, hoursText, pluralWord, shortName } from '../data/derive.ts';
 import { faceOf } from '../data/photos.ts';
 import { RouteMap } from './RouteMap.tsx';
 
@@ -20,18 +20,6 @@ interface Props {
   onOpen: () => void;
   /** День, на который построен план: `2026-09-08` → `08.09.2026`. */
   day?: string;
-}
-
-/** Фамилия с инициалами: «Попов О. Н.». Полное ФИО в строку полей не встаёт,
-    а фамилия — то, чем человека называют. Целиком имя остаётся в подсказке. */
-function shortName(name: string): string {
-  const [surname, first, patronymic] = name.trim().split(/\s+/).filter(Boolean);
-  if (!surname) return name;
-  const initials = [first, patronymic]
-    .filter(Boolean)
-    .map((part) => `${part![0].toUpperCase()}.`)
-    .join(' ');
-  return initials ? `${surname} ${initials}` : surname;
 }
 
 /* День расчёта из ISO-даты выгрузки. */

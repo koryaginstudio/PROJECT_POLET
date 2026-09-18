@@ -10,7 +10,7 @@ import {
   setEngineDefaults
 } from '../data/engine.ts';
 import { sources, zoneTitle } from '../data/load.ts';
-import { clearRunEdits, engineReady, RUNS, runEditCount } from '../data/load.ts';
+import { clearHistory, clearRunEdits, engineReady, RUNS, runCount, runEditCount } from '../data/load.ts';
 import { SCHEMA } from '../data/contract.ts';
 import { plural } from '../data/derive.ts';
 import type { Registry } from '../data/registry.ts';
@@ -35,6 +35,10 @@ interface Props {
   registry: Registry | null;
   /** Правки истории сняли — экраны, читающие её, надо пересобрать. */
   onEditsCleared: () => void;
+  /** Историю стёрли целиком. Открытого расчёта больше нет, и оболочка обязана
+      увести экран туда, где он не нужен, — иначе она покажет план записи,
+      которой не существует. */
+  onHistoryCleared: () => void;
 }
 
 /* Настройки.
@@ -52,7 +56,7 @@ interface Props {
    именно наша сторона держит у себя. Читать здесь можно всё, править —
    только то, что завели мы сами: справочники приходят из источника, и
    переписывать их в интерфейсе значило бы разойтись с ним. */
-export function SettingsScreen({ mode, registry, onEditsCleared }: Props) {
+export function SettingsScreen({ mode, registry, onEditsCleared, onHistoryCleared }: Props) {
   const [params, setParams] = useState<EngineParams>(engineDefaults());
   /* Счётчики читаются из хранилища, а не из состояния: снять правки можно и
      на этом же экране, и число под кнопкой должно после этого меняться. */
@@ -60,6 +64,11 @@ export function SettingsScreen({ mode, registry, onEditsCleared }: Props) {
   const saved = JSON.stringify(params) === JSON.stringify(engineDefaults());
   const factory = JSON.stringify(params) === JSON.stringify(ENGINE_DEFAULTS);
   const edits = runEditCount();
+  const history = runCount();
+  /* Стирание истории спрашивает подтверждение в самой кнопке, вторым щелчком:
+     отдельного окна это не стоит, а щелчок мимо — стоит всей истории. Приём
+     тот же, что у удаления расчёта и у удаления инженера. */
+  const [wiping, setWiping] = useState(false);
   /* Запущен ли движок и сколько записей пришло из его архива. Читается из
      загрузчика, а не из состояния: ответ известен с запуска и не меняется. */
   const live = engineReady();
@@ -170,8 +179,10 @@ export function SettingsScreen({ mode, registry, onEditsCleared }: Props) {
           </p>
 
           <div className="setrow">
-            <span className="setrow__key">Правок сохранено</span>
-            <span className="setrow__val">{edits}</span>
+            <span className="setrow__key">Правленых записей</span>
+            <span className="setrow__val">
+              {edits === 0 ? 'ни одной' : `${edits} из ${history}`}
+            </span>
           </div>
 
           <div className="setbar">
@@ -184,13 +195,64 @@ export function SettingsScreen({ mode, registry, onEditsCleared }: Props) {
                 setStamp((n) => n + 1);
                 onEditsCleared();
               }}
-              iconLeft={<Icon name="trash" size={14} />}
+              iconLeft={<Icon name="arrow-left" size={14} />}
             >
               Снять все правки
             </Button>
             <span className="setbar__note">
-              Изменённые записи вернутся к исходным значениям, удалённые — появятся снова после
-              обновления страницы.
+              Номер, время и заметка вернутся к тому, что посчитал движок. Сами расчёты остаются
+              на месте — снимаются правки, а не история.
+            </span>
+          </div>
+        </section>
+
+        {/* Стирание истории стоит отдельной панелью, а не второй кнопкой рядом
+            со снятием правок. Это разные по цене действия: одно откатывает
+            подпись, другое уносит всё посчитанное, и стоять им рядом — значит
+            звать промахнуться. */}
+        <section className="panel">
+          <div className="dash__section-head">
+            <h2 className="dash__section-title">История расчётов</h2>
+            <span className="dash__section-note">хранится в этом браузере</span>
+          </div>
+          <p className="clients__lede">
+            Все расчёты, посчитанные здесь, лежат в хранилище этого браузера. Данные зон это не
+            затрагивает: они лежат файлами, и посчитать день заново можно всегда.
+          </p>
+
+          <div className="setrow">
+            <span className="setrow__key">Расчётов в истории</span>
+            <span className="setrow__val">{history}</span>
+          </div>
+
+          <div className="setbar">
+            <Button
+              variant={wiping ? 'primary' : 'secondary'}
+              size="sm"
+              disabled={history === 0}
+              onClick={() => {
+                if (!wiping) {
+                  setWiping(true);
+                  return;
+                }
+                clearHistory();
+                setWiping(false);
+                setStamp((n) => n + 1);
+                onHistoryCleared();
+              }}
+              iconLeft={<Icon name="trash" size={14} />}
+            >
+              {wiping ? 'Да, стереть всё' : 'Стереть историю расчётов'}
+            </Button>
+            {wiping && (
+              <Button variant="ghost" size="sm" onClick={() => setWiping(false)}>
+                Отмена
+              </Button>
+            )}
+            <span className="setbar__note">
+              {wiping
+                ? `Будет стёрто ${plural(history, 'расчёт', 'расчёта', 'расчётов')}. Вернуть их нельзя — только посчитать заново.`
+                : 'Удалит все посчитанные расчёты разом. Отменить это нельзя.'}
             </span>
           </div>
         </section>

@@ -16,6 +16,7 @@ import { useWidgetBoard, WidgetPeriod, withinPeriod } from '../../app/DbWidgets.
 import type { PeriodKey, WidgetDef } from '../../app/DbWidgets.tsx';
 import { service } from '../../data/service.ts';
 import { DbHead } from './DbHead.tsx';
+import { DbList } from './DbList.tsx';
 import { CrewProfile } from '../../app/CrewProfile.tsx';
 import { editCrew, removeCrew } from '../../data/crew.ts';
 import { loadPlaces } from '../../data/load.ts';
@@ -711,9 +712,9 @@ export function DbEngineersScreen({
               </span>
             )}
 
-            {/* Плотность строки — только у карточек: в таблице строка одна и в
-                строке она одна. */}
-            {mode !== 'table' && (
+            {/* Плотность строки — только у карточек: в таблице и в списке
+                строка одна и в строке она одна. */}
+            {mode !== 'table' && mode !== 'list' && (
               <div className="filters__group filters__group--tight">
                 <span className="filters__label">Карточек в строке</span>
                 <SegmentedControl size="sm" items={DENSITY} value={perRow} onChange={setPerRow} />
@@ -786,6 +787,45 @@ export function DbEngineersScreen({
             поиск.
           </p>
         </section>
+      ) : mode === 'list' ? (
+        /* Список: инженер — строка, лицо слева. Числа те же, по которым его
+           ищут в карточке, — сколько отработал и не выходил ли впустую;
+           навыки и транспорт ушли в подпись, потому что это не числа и
+           колонкой не читаются. Щелчок открывает профиль, как и карточка. */
+        <DbList
+          rows={rows.map((engineer) => ({
+            key: engineer.id,
+            lead: <img src={photos.get(engineer.id)} alt="" loading="lazy" />,
+            code: engineer.id,
+            title: <PersonName name={engineer.name} stacked={false} />,
+            sub: (
+              <>
+                {engineer.skills.map((key) => skillName(key)).join(' · ') || 'без навыков'}
+                {engineer.transport ? ` · ${transportName(engineer.transport)}` : ''}
+                {engineer.team ? ` · ${teamName(engineer.team)}` : ''}
+                {engineer.zone ? ` · ${engineer.zone}` : ''}
+                {` · смена ${hhmm(engineer.shiftStart)}–${hhmm(engineer.shiftEnd)}`}
+              </>
+            ),
+            cells: [
+              { label: 'Смен', value: `${engineer.routes}/${engineer.runs}` },
+              { label: 'Визитов', value: engineer.visits },
+              { label: 'В работе', value: hoursText(engineer.workMinutes) },
+              { label: 'В дороге', value: hoursText(engineer.travelMinutes) },
+              {
+                label: 'Занятость',
+                value: percent(engineer.occupancyMean),
+                tone: engineer.occupancyMean < 0.6 ? ('warn' as const) : undefined
+              },
+              {
+                label: 'Без маршрута',
+                value: engineer.idleRuns > 0 ? engineer.idleRuns : '—',
+                tone: engineer.idleRuns > 0 ? ('warn' as const) : ('muted' as const)
+              }
+            ],
+            onOpen: () => setOpened(engineer)
+          }))}
+        />
       ) : mode === 'table' ? (
         <section className="panel">
           <div className="tbl-wrap">

@@ -10,15 +10,18 @@ import {
   loadSummaries,
   seedRuns,
   engineReady,
+  loadPlaces,
   runCode,
   runEntry
 } from '../data/load.ts';
+import { engineDefaults } from '../data/engine.ts';
 import type { EngineParams } from '../data/engine.ts';
-import type { RunId, DaySummary, SourceId } from '../data/load.ts';
+import type { RunId, DaySummary, Place, SourceId } from '../data/load.ts';
 import { exportRun } from '../data/report.ts';
 import { replanDay, saveReplan } from '../data/api.ts';
 import type { IncidentSpec, ReplanResult } from '../data/api.ts';
 import { loadRegistry } from '../data/registry.ts';
+import type { ShiftInput } from '../data/shift.ts';
 import type { Registry, RunRef } from '../data/registry.ts';
 import { buildDayView, dayStart, plural } from '../data/derive.ts';
 import { useService } from '../data/service.ts';
@@ -46,6 +49,11 @@ import { DbRunsScreen } from '../screens/db/DbRunsScreen.tsx';
 import { Stub } from '../screens/Stub.tsx';
 import { CompareScreen } from '../screens/CompareScreen.tsx';
 import { SettingsScreen } from '../screens/SettingsScreen.tsx';
+import { OrderProfile } from './OrderProfile.tsx';
+import { CrewProfile } from './CrewProfile.tsx';
+import { ClientProfile } from './ClientProfile.tsx';
+import { ServiceProfile } from './ServiceProfile.tsx';
+import type { Hit } from '../data/find.ts';
 import { RunEditDialog } from './RunEditDialog.tsx';
 import { ManualDialog } from './ManualDialog.tsx';
 import { IncidentDialog } from './IncidentDialog.tsx';
@@ -433,6 +441,58 @@ export function App() {
   const goToRun = (id: RunId) =>
     nav({ runId: id, stage: 'plan', section: 'dispatch', view: firstView('dispatch') });
 
+  /* ─── карточка найденной записи ───────────────────────────────────────
+
+     Карточка живёт здесь, а не в базе, по одной причине: поиск в шапке стоит
+     на каждом экране, и открывать он обязан отовсюду. Раньше найденное клали
+     в правую панель, а её нет ни в базах, ни на дашборде, ни в сравнении —
+     диспетчер выбирал строку в подсказке и не получал ничего.
+
+     Хранится не сама запись, а её род и ключ: справочники пересобираются
+     после правок, и запись, взятая по ссылке, после этого указывала бы на
+     прежний объект. Ключ переживает пересборку, объект — нет. */
+  const [lookup, setLookup] = useState<{ kind: 'order' | 'client' | 'engineer' | 'service'; key: string } | null>(
+    null
+  );
+  /* Участки нужны карточке инженера — она даёт менять участок, а список
+     мест лежит рядом с данными. Читаем один раз: он не меняется. */
+  const [places, setPlaces] = useState<Place[]>([]);
+  useEffect(() => {
+    loadPlaces()
+      .then(setPlaces)
+      .catch(() => undefined);
+  }, []);
+
+  const looked = useMemo(() => {
+    if (!lookup || !registry) return null;
+    if (lookup.kind === 'order') {
+      return { kind: 'order' as const, row: registry.orders.find((one) => one.key === lookup.key) ?? null };
+    }
+    if (lookup.kind === 'client') {
+      return { kind: 'client' as const, row: registry.clients.find((one) => one.key === lookup.key) ?? null };
+    }
+    if (lookup.kind === 'engineer') {
+      return { kind: 'engineer' as const, row: registry.engineers.find((one) => one.id === lookup.key) ?? null };
+    }
+    return { kind: 'service' as const, row: registry.services.find((one) => one.key === lookup.key) ?? null };
+  }, [lookup, registry]);
+
+  /* Куда ведёт находка. Четыре рода записей открываются карточкой поверх
+     экрана, два — переходом: у расчёта свой экран, а у маршрута своего нет,
+     и смотрят его на карте того расчёта, которому он принадлежит. */
+  const openHit = (hit: Hit) => {
+    if (hit.kind === 'run') {
+      goToRun(hit.key as RunId);
+      return;
+    }
+    if (hit.kind === 'route') {
+      const route = registry?.routes.find((one) => one.key === hit.key);
+      if (route) openRouteMap(route.run.id as RunId, route.engineerId);
+      return;
+    }
+    setLookup({ kind: hit.kind, key: hit.key });
+  };
+
   /* «Открыть» в базе расчётов открывает его по-настоящему — с переходом к
      плану. Раньше кнопка только помечала карточку, а диспетчерская всё равно
      встречала вопросом «создать или выбрать»: расчёт числился открытым и
@@ -464,8 +524,9 @@ export function App() {
   /* Выгрузка расчёта книгой Excel. Собирается из того, что уже загружено:
      формы открытого дня лежат в памяти, и ходить за ними второй раз незачем. */
   const exportDay = () => {
-    if (!day) return;
-    exportRun(day, runEntry(runId));
+    const entry = runEntry(runId);
+    if (!day || !entry) return;
+    exportRun(day, entry);
   };
 
   /* Короткая подпись под то, что показано: без неё полоса сообщала бы
@@ -521,12 +582,12 @@ export function App() {
   const [solving, setSolving] = useState(false);
   const [solveFailed, setSolveFailed] = useState<string | null>(null);
 
-  const runEngine = async (params: EngineParams, zone?: SourceId) => {
+  const runEngine = async (params: EngineParams, zone?: SourceId, shift?: ShiftInput) => {
     if (solving) return;
     setSolving(true);
     setSolveFailed(null);
     try {
-      const entry = await createRun(params, zone);
+      const entry = await createRun(params, zone, undefined, shift);
       refreshRuns();
       openRun(entry.id);
       setRebuilding(true);
@@ -547,7 +608,6 @@ export function App() {
       <CreateRunScreen
         onCancel={() => undefined}
         onCreate={runEngine}
-        view={null}
         solving={solving}
         failed={solveFailed}
         first
@@ -628,6 +688,8 @@ export function App() {
         onToggleNav={() => setNavCollapsed((v) => !v)}
         view={dayView}
         onSelect={setSelection}
+        registry={registry}
+        onFind={openHit}
         onHome={() => goSection('home')}
         onOpenSettings={() => nav({ section: 'engine', view: 'service' })}
       />
@@ -703,7 +765,6 @@ export function App() {
             <CreateRunScreen
               onCancel={() => nav({ stage: 'gate' })}
               onCreate={runEngine}
-              view={dayView}
               solving={solving}
               failed={solveFailed}
             />
@@ -828,7 +889,7 @@ export function App() {
                 onEdit={setEditing}
               />
             ) : section === 'db-services' ? (
-              <DbServicesScreen registry={registry} mode={view} />
+              <DbServicesScreen registry={registry} mode={view} onOpenRun={openRunFromDb} />
             ) : section === 'db-orders' ? (
               <DbOrdersScreen
                 registry={registry}
@@ -837,7 +898,7 @@ export function App() {
                 onOpenMap={openRunMap}
               />
             ) : section === 'db-clients' ? (
-              <DbClientsScreen registry={registry} mode={view} />
+              <DbClientsScreen registry={registry} mode={view} onOpenRun={openRunFromDb} />
             ) : section === 'db-routes' ? (
               <DbRoutesScreen registry={registry} mode={view} onOpenRoute={openRouteMap} />
             ) : (
@@ -873,7 +934,22 @@ export function App() {
             ))}
 
           {section === 'engine' && (
-            <SettingsScreen mode={view} registry={registry} onEditsCleared={refreshRuns} />
+            <SettingsScreen
+              mode={view}
+              registry={registry}
+              onEditsCleared={refreshRuns}
+              /* Истории больше нет — открытый расчёт ссылается в пустоту.
+                 Уводим на дашборд и забываем день: остаться на настройках
+                 можно, но всё, что читает открытый расчёт — шапка, лента,
+                 правая панель, — читало бы стёртую запись. */
+              onHistoryCleared={() => {
+                setDay(null);
+                setDraft(null);
+                setReplan(null);
+                refreshRuns();
+                setRoute({ section: 'home', view: '', stage: 'gate', runId: latestRun() });
+              }}
+            />
           )}
         </main>
 
@@ -929,7 +1005,7 @@ export function App() {
         open={incidentOpen}
         view={dayView}
         runCode={runCode(runId)}
-        day={runEntry(runId).day ?? null}
+        day={runEntry(runId)?.day ?? null}
         cut={cut}
         busy={incidentBusy}
         failed={incidentFailed}
@@ -945,7 +1021,7 @@ export function App() {
       <ManualDialog
         open={manual}
         runCode={runCode(runId)}
-        params={runEntry(runId).params}
+        params={runEntry(runId)?.params ?? engineDefaults()}
         busy={manualBusy}
         failed={manualFailed}
         onClose={() => setManual(false)}
@@ -958,6 +1034,86 @@ export function App() {
         onSave={saveRun}
         onDelete={dropRun}
       />
+
+      {/* Карточка найденной записи — поверх любого экрана.
+
+          Стоит в оболочке, а не в базах, потому что поиск стоит в шапке и
+          работает отовсюду: из мониторинга, из сравнения, из настроек. База
+          открывает те же карточки у себя — там они часть экрана, — а здесь
+          они отвечают поиску, и одно другому не мешает: открыта всегда одна.
+
+          Из карточки можно уйти вглубь: из клиента и услуги — в заявку, из
+          заявки — в расчёт и на карту. Тогда прежняя карточка закрывается, а
+          новая встаёт на её место: два окна друг поверх друга диспетчер
+          закрывал бы дважды, не понимая, почему. */}
+      {registry && looked?.kind === 'order' && (
+        <OrderProfile
+          order={looked.row}
+          registry={registry}
+          onClose={() => setLookup(null)}
+          onOpenRun={(id) => {
+            setLookup(null);
+            goToRun(id as RunId);
+          }}
+          onOpenMap={(id) => {
+            setLookup(null);
+            openRunMap(id as RunId);
+          }}
+        />
+      )}
+
+      {registry && looked?.kind === 'client' && (
+        <ClientProfile
+          client={looked.row}
+          registry={registry}
+          onClose={() => setLookup(null)}
+          onOpenOrder={(order) => setLookup({ kind: 'order', key: order.key })}
+          onOpenRun={(id) => {
+            setLookup(null);
+            goToRun(id as RunId);
+          }}
+        />
+      )}
+
+      {registry && looked?.kind === 'service' && (
+        <ServiceProfile
+          service={looked.row}
+          registry={registry}
+          onClose={() => setLookup(null)}
+          onOpenOrder={(order) => setLookup({ kind: 'order', key: order.key })}
+          onOpenRun={(id) => {
+            setLookup(null);
+            goToRun(id as RunId);
+          }}
+        />
+      )}
+
+      {registry && looked?.kind === 'engineer' && (
+        <CrewProfile
+          crew={looked.row}
+          registry={registry}
+          places={places}
+          onClose={() => setLookup(null)}
+          onTrack={(id) => {
+            setLookup(null);
+            setSelection({ kind: 'engineer', id });
+            nav({ section: 'monitor', view: firstView('monitor') });
+          }}
+          onOpenRun={(id) => {
+            setLookup(null);
+            goToRun(id as RunId);
+          }}
+          onOpenMap={(id) => {
+            setLookup(null);
+            openRunMap(id as RunId);
+          }}
+          /* Правка и удаление отсюда закрыты: карточка открыта поиском, а не
+             базой инженеров, и менять штат мимоходом — не то, за чем сюда
+             пришли. Кадровые действия остаются в своей базе. */
+          onSave={() => undefined}
+          onDelete={() => undefined}
+        />
+      )}
     </div>
   );
 }

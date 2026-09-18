@@ -1,6 +1,6 @@
 import { Icon } from '../ds/components/core/Icon.jsx';
 import type { OrderRecord } from '../data/registry.ts';
-import { dec, deadline, hhmm } from '../data/derive.ts';
+import { dec, deadline, hhmm, shortName } from '../data/derive.ts';
 import { requiredTransportWhy } from '../data/rationale.ts';
 import {
   equipmentName,
@@ -57,19 +57,6 @@ function dayLabel(iso: string): string {
   const [, month, day] = iso.split('-');
   const index = Number(month) - 1;
   return MONTHS[index] ? `${Number(day)} ${MONTHS[index]}` : iso;
-}
-
-/** Фамилия с инициалами: «Попов О. Н.». Полное ФИО в плитку шириной в треть
-    карточки не встаёт ни при какой плотности, а фамилия — то, чем человека
-    называют. Целиком имя остаётся в подсказке. */
-function shortName(name: string): string {
-  const [surname, first, patronymic] = name.trim().split(/\s+/).filter(Boolean);
-  if (!surname) return name;
-  const initials = [first, patronymic]
-    .filter(Boolean)
-    .map((part) => `${part![0].toUpperCase()}.`)
-    .join(' ');
-  return initials ? `${surname} ${initials}` : surname;
 }
 
 export function OrderCard({ row, seat, onOpen, dense = false, workType = [], runs = [] }: Props) {

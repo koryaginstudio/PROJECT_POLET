@@ -26,6 +26,8 @@ import type { Day, Dictionaries, Engineer, Order, Plan, Simulation } from './con
 import { engineDefaults } from './engine.ts';
 import type { EngineParams } from './engine.ts';
 import { applyCrew, crewVersion } from './crew.ts';
+import { applyShift, hasShiftInput, shiftKey } from './shift.ts';
+import type { ShiftInput } from './shift.ts';
 import { datasetByKey, datasets } from './datasets.ts';
 import type { Dataset } from './datasets.ts';
 import { planDay } from './planner.ts';
@@ -96,6 +98,11 @@ export interface RunEntry {
   solveSeconds?: number;
   /** С какими переменными движка его считали. */
   params: EngineParams;
+  /** Вводные смены, с которыми его считали: кто вышел, у кого сняли навык,
+      что дописали поверх выгрузки. Хранятся с записью, а не только в форме:
+      план пересчитывается при каждом открытии, и без них повторный расчёт
+      разошёлся бы с тем, что диспетчер видел утром. */
+  shift?: ShiftInput;
   /** Заметка человека: зачем этот расчёт считали и чем он кончился. Движок
       её не заполняет и не читает — это подпись к записи, а не входные данные. */
   note?: string;
@@ -228,7 +235,8 @@ export const latestRun = (): RunId => RUNS[RUNS.length - 1]?.id ?? '';
 export async function createRun(
   params: EngineParams,
   zone: SourceId = BUILT_IN[0],
-  day?: number
+  day?: number,
+  shift?: ShiftInput
 ): Promise<RunEntry> {
   const index = RUNS.length;
   const now = new Date();
@@ -251,7 +259,7 @@ export async function createRun(
   }
 
   const started = performance.now();
-  const computed = await computeDay(zone, params);
+  const computed = await computeDay(zone, params, shift);
   const entry: RunEntry = {
     id: `run-${Date.now().toString(36)}`,
     code: codeAt(index),
@@ -260,7 +268,10 @@ export async function createRun(
     created: `${iso(now)}T${clock(now.getHours() * 60 + now.getMinutes())}`,
     source: zone,
     solveSeconds: Number(((performance.now() - started) / 1000).toFixed(2)),
-    params
+    params,
+    /* Пустые вводные в запись не пишем: «считали выгрузку как есть» — это
+       отсутствие вводных, а не вводные из трёх пустых списков. */
+    ...(hasShiftInput(shift) ? { shift } : {})
   };
   RUNS.push(entry);
   RUN_BY_ID.set(entry.id, entry);
@@ -301,11 +312,62 @@ export async function seedRuns(): Promise<boolean> {
   return RUNS.length > 0;
 }
 
+/* ─── правки записей ─────────────────────────────────────────────────────
+
+   Номер, время создания и заметку у расчёта заводит человек. Чтобы «снять
+   все правки» значило то, что написано, надо помнить, каким поле было до
+   первой правки: без этого снимать нечего — правка уже стала записью.
+
+   Поэтому при первой правке поля его прежнее значение уходит в слепок, и
+   он же хранится рядом с историей. Снятие возвращает записи из слепка и
+   слепок стирает. Второй и следующие разы поле в слепок уже не кладутся:
+   вернуться надо к исходному, а не к предпоследнему. */
+
+const BASE_KEY = 'polet.runs.base.v1';
+
+type RunBase = Record<RunId, RunPatch>;
+
+function readBase(): RunBase {
+  if (typeof localStorage === 'undefined') return {};
+  try {
+    const raw = localStorage.getItem(BASE_KEY);
+    const parsed = raw ? (JSON.parse(raw) as RunBase) : {};
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+const RUN_BASE: RunBase = readBase();
+
+function saveBase() {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    localStorage.setItem(BASE_KEY, JSON.stringify(RUN_BASE));
+  } catch {
+    /* Та же причина, что и у истории: закрытое хранилище не ошибка. */
+  }
+}
+
 /** Правит поля записи, которые заводит человек. Цифры плана не трогает —
     их в `RunPatch` и нет. */
 export function updateRun(id: RunId, patch: RunPatch): void {
   const entry = RUN_BY_ID.get(id);
   if (!entry) return;
+
+  const before = RUN_BASE[id] ?? {};
+  let snapped = false;
+  for (const field of Object.keys(patch) as (keyof RunPatch)[]) {
+    if (patch[field] === entry[field]) continue;
+    if (field in before) continue;
+    (before as Record<string, unknown>)[field] = entry[field];
+    snapped = true;
+  }
+  if (snapped) {
+    RUN_BASE[id] = before;
+    saveBase();
+  }
+
   Object.assign(entry, patch);
   saveRuns();
 
@@ -323,21 +385,56 @@ export function deleteRun(id: RunId): void {
   if (at === -1) return;
   RUNS.splice(at, 1);
   RUN_BY_ID.delete(id);
+  delete RUN_BASE[id];
+  saveBase();
   saveRuns();
 }
 
-/** Сколько расчётов держит браузер. Нужно настройкам — там их и снимают. */
-export const runEditCount = () => RUNS.filter((run) => run.source !== null).length;
+/** Сколько записей правил человек. Именно записей, а не полей: диспетчер
+    считает правки записями — «трогал три расчёта», — и снимаются они тоже
+    записями, все разом. */
+export const runEditCount = () =>
+  Object.keys(RUN_BASE).filter((id) => RUN_BY_ID.has(id)).length;
+
+/** Возвращает правленые записи к исходным значениям. Историю не трогает:
+    расчёты остаются на месте, у них откатываются номер, время и заметка. */
+export function clearRunEdits(): void {
+  for (const [id, before] of Object.entries(RUN_BASE)) {
+    const entry = RUN_BY_ID.get(id);
+    if (entry) Object.assign(entry, before);
+    delete RUN_BASE[id];
+  }
+  saveBase();
+  saveRuns();
+}
+
+/** Сколько расчётов держит браузер. Нужно настройкам: стереть историю —
+    отдельное действие, и цена у него своя. */
+export const runCount = () => RUNS.filter((run) => run.source !== null).length;
 
 /** Стирает всю историю расчётов. Данные зон не трогает: они лежат файлами
-    и к истории отношения не имеют. */
-export function clearRunEdits(): void {
+    и к истории отношения не имеют.
+
+    Зовётся из одного места — из настроек, после подтверждения. Всё, что
+    показывает открытый расчёт, после этого ссылается в пустоту, поэтому
+    звавший обязан увести экран туда, где расчёт не нужен. */
+export function clearHistory(): void {
   RUNS.length = 0;
   RUN_BY_ID.clear();
+  for (const id of Object.keys(RUN_BASE)) delete RUN_BASE[id];
+  saveBase();
   saveRuns();
 }
 
-export const runEntry = (id: RunId): RunEntry => RUN_BY_ID.get(id) ?? RUNS[RUNS.length - 1];
+/** Запись расчёта по номеру.
+
+    Неизвестный номер отдаёт последнюю запись — ссылка на удалённый расчёт
+    открывает свежий, а не пустой экран. Пустая история не отдаёт ничего, и
+    это не исключительный случай, а первое утро: звавший обязан проверить.
+    Раньше здесь стоял тип без пустоты, и два места в оболочке читали у неё
+    поля напрямую — стёртая история роняла экран в белое. */
+export const runEntry = (id: RunId): RunEntry | undefined =>
+  RUN_BY_ID.get(id) ?? RUNS[RUNS.length - 1];
 
 export const runCode = (id: RunId) => runEntry(id)?.code ?? '';
 
@@ -692,22 +789,33 @@ export function loadDictionaries(): Promise<Dictionaries | null> {
    этого не меняется. */
 const planCache = new Map<string, Promise<PlannedDay>>();
 
-const planKey = (zone: SourceId, params: EngineParams) =>
+const planKey = (zone: SourceId, params: EngineParams, shift?: ShiftInput) =>
   `${zone}|${crewVersion()}|${params.duration_factor}|${params.buffer_base}|` +
-  `${params.buffer_step}|${params.balance_weight}`;
+  `${params.buffer_step}|${params.balance_weight}|${shiftKey(shift)}`;
 
-/** Считает день по данным зоны. */
-export function computeDay(zone: SourceId, params: EngineParams): Promise<PlannedDay> {
-  const key = planKey(zone, params);
+/** Считает день по данным зоны с вводными смены.
+
+    Вводные входят в ключ кеша: день без снятого инженера и день с ним — это
+    два разных плана, и отдавать второй вместо первого нельзя. */
+export function computeDay(
+  zone: SourceId,
+  params: EngineParams,
+  shift?: ShiftInput
+): Promise<PlannedDay> {
+  const key = planKey(zone, params, shift);
   const cached = planCache.get(key);
   if (cached) return cached;
 
   const computing = (async () => {
-    const data = await loadZone(zone);
+    const data = applyShift(await loadZone(zone), shift);
     return planDay(data.orders, data.engineers, params, data.date, data.roads);
   })();
 
   planCache.set(key, computing);
+  /* Отказ из кеша убираем: одна потерянная секунда сети иначе навсегда
+     закрывала бы расчёт по этой зоне — каждый следующий заход получал бы
+     тот же отклонённый обмен, не сходив в сеть ни разу. */
+  computing.catch(() => planCache.delete(key));
   return computing;
 }
 
@@ -733,7 +841,7 @@ export async function loadDay(id: RunId): Promise<Day> {
   }
 
   const [computed, dict] = await Promise.all([
-    computeDay(entry.source, entry.params),
+    computeDay(entry.source, entry.params, entry.shift),
     loadDictionaries()
   ]);
   return { id, ...computed, dictionaries: dict };
@@ -783,7 +891,7 @@ export async function loadRunData(): Promise<Map<RunId, { plan: Plan; simulation
   const own = RUNS.filter((run) => run.source !== null);
   const computed = await Promise.all(
     own.map(async (run) => {
-      const day = await computeDay(run.source!, run.params);
+      const day = await computeDay(run.source!, run.params, run.shift);
       return [run.id, { plan: day.plan, simulation: day.simulation }] as const;
     })
   );

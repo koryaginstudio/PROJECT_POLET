@@ -139,6 +139,19 @@ export const pct = (n: number) => `${dec(n)}`;
     уже смешанным по регистру. */
 export const capitalize = (text: string) => (text ? text[0].toUpperCase() + text.slice(1) : text);
 
+/** Фамилия с инициалами: «Попов О. Н.». Полное ФИО не встаёт ни в плитку
+    шириной в треть карточки, ни в колонку списка, а фамилия — то, чем
+    человека называют и по чему его ищут. Целиком имя остаётся в подсказке. */
+export function shortName(name: string): string {
+  const [surname, first, patronymic] = name.trim().split(/\s+/).filter(Boolean);
+  if (!surname) return name;
+  const initials = [first, patronymic]
+    .filter(Boolean)
+    .map((part) => `${part![0].toUpperCase()}.`)
+    .join(' ');
+  return initials ? `${surname} ${initials}` : surname;
+}
+
 export function pluralWord(n: number, one: string, few: string, many: string) {
   const abs = Math.abs(n) % 100;
   const last = abs % 10;

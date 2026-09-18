@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Icon } from '../../ds/components/core/Icon.jsx';
 import { SegmentedControl } from '../../ds/components/forms/SegmentedControl.jsx';
 import type { OrderRecord, Registry } from '../../data/registry.ts';
-import { dec, deadline, hhmm, hoursText, plural } from '../../data/derive.ts';
+import { dec, deadline, hhmm, hoursText, plural, shortName } from '../../data/derive.ts';
 import {
   isUrgent,
   orderClassName,
@@ -20,6 +20,7 @@ import { useWidgetBoard, WidgetPeriod, withinPeriod } from '../../app/DbWidgets.
 import type { PeriodKey, WidgetDef } from '../../app/DbWidgets.tsx';
 import { service } from '../../data/service.ts';
 import { DbHead } from './DbHead.tsx';
+import { DbList } from './DbList.tsx';
 
 interface Props {
   registry: Registry;
@@ -771,6 +772,58 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
             </button>
           ))}
         </div>
+      ) : mode === 'list' ? (
+        <>
+          {/* Список: заявка — строка. Названием стоит вид работ, а не номер:
+              номером заявку ищут, но читают всё-таки «что там делать».
+              Справа — окно приёма, крайний срок и кто поехал: три вопроса, с
+              которыми к заявке и подходят. Инженер последним и колонкой
+              пошире: «Без инженера» — это не число, а приговор строке, и
+              именно его в этом виде высматривают. */}
+          <DbList
+            rows={shown.map((order) => ({
+              key: order.key,
+              lead: <Icon name={workTypeIcon(order.workType)} size={15} />,
+              code: order.id,
+              title: order.workTitle,
+              sub: (
+                <>
+                  {order.address} · {order.district} · {order.company} · расчёт {order.run.code}
+                  {order.needsAccess ? ' · нужен доступ' : ''}
+                  {order.status ? ` · ${statusName(order.status)}` : ''}
+                </>
+              ),
+              cells: [
+                { label: 'Окно приёма', value: `${hhmm(order.windowStart)}–${hhmm(order.windowEnd)}`, wide: true },
+                { label: 'Крайний срок', value: deadline(order.slaDeadline), wide: true },
+                { label: 'Работа', value: `${order.estMinutes} мин` },
+                {
+                  label: 'Приоритет',
+                  value: priorityClassName(order.priorityClass, order.priority),
+                  tone: isUrgent(order.priorityClass, order.priority) ? ('warn' as const) : ('muted' as const)
+                },
+                {
+                  label: 'Инженер',
+                  value: order.engineerName ? (
+                    <span title={order.engineerName}>{shortName(order.engineerName)}</span>
+                  ) : (
+                    'Без инженера'
+                  ),
+                  wide: true,
+                  tone: order.engineerName ? undefined : ('warn' as const)
+                }
+              ],
+              onOpen: () => setOpened(order)
+            }))}
+          />
+
+          {hidden > 0 && (
+            <button type="button" className="tblmore" onClick={() => setLimit((n) => n + PAGE)}>
+              Показать ещё {Math.min(PAGE, hidden)}
+              <span className="tblmore__rest">осталось {hidden}</span>
+            </button>
+          )}
+        </>
       ) : mode === 'table' ? (
         <section className="panel">
           <div className="tbl-wrap">

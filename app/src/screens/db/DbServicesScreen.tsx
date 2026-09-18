@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Icon } from '../../ds/components/core/Icon.jsx';
 import { SegmentedControl } from '../../ds/components/forms/SegmentedControl.jsx';
-import type { Registry, ServiceRecord } from '../../data/registry.ts';
+import type { OrderRecord, Registry, ServiceRecord } from '../../data/registry.ts';
 import { dec, plural } from '../../data/derive.ts';
 import {
   equipmentName,
@@ -12,16 +12,21 @@ import {
   skillName
 } from '../../data/dictionary.ts';
 import { ServiceCard } from '../../app/ServiceCard.tsx';
+import { ServiceProfile } from '../../app/ServiceProfile.tsx';
+import { OrderProfile } from '../../app/OrderProfile.tsx';
 import { SortMenu } from '../../app/SortMenu.tsx';
 import type { SortRule } from '../../app/SortMenu.tsx';
 import { useWidgetBoard, WidgetPeriod, withinPeriod } from '../../app/DbWidgets.tsx';
 import type { PeriodKey, WidgetDef } from '../../app/DbWidgets.tsx';
 import { service } from '../../data/service.ts';
 import { DbHead } from './DbHead.tsx';
+import { DbList } from './DbList.tsx';
 
 interface Props {
   registry: Registry;
   mode: string;
+  /** Уйти в расчёт, в котором встречалась услуга. */
+  onOpenRun: (id: string) => void;
 }
 
 /* Плотность ряда — та же настройка, что в базах расчётов, инженеров и заявок.
@@ -128,7 +133,12 @@ const EMPTY: Slice = { orders: 0, assigned: 0, urgent: 0, access: 0, planned: 0 
    сверху, полоса отбора, карточки или таблица, — и это осознанное повторение:
    справочники об одном хозяйстве, и переучивать диспетчера на четвёртом
    незачем. */
-export function DbServicesScreen({ registry, mode }: Props) {
+export function DbServicesScreen({ registry, mode, onOpenRun }: Props) {
+  /* Какая услуга открыта карточкой. До сих пор в этой базе не открывалась ни
+     одна: восемнадцать карточек только показывали числа, и вопрос «покажи
+     все заявки по замене роутера» из базы услуг не решался. */
+  const [opened, setOpened] = useState<ServiceRecord | null>(null);
+  const [openedOrder, setOpenedOrder] = useState<OrderRecord | null>(null);
   const [perRow, setPerRow] = useState(() => service().perRow as string);
   const [sort, setSort] = useState<Sort>('orders');
   const [desc, setDesc] = useState(true);
@@ -550,6 +560,7 @@ export function DbServicesScreen({ registry, mode }: Props) {
           slice={sliceOf(row)}
           dense={dense}
           skills={picks}
+          onOpen={() => setOpened(row)}
         />
       ))}
     </div>
@@ -579,9 +590,9 @@ export function DbServicesScreen({ registry, mode }: Props) {
               )}
             </label>
 
-            {/* Плотность строки — только у карточек: в таблице строка одна и в
-                строке она одна. */}
-            {mode !== 'table' && (
+            {/* Плотность строки — только у карточек: в таблице и в списке
+                строка одна и в строке она одна. */}
+            {mode !== 'table' && mode !== 'list' && (
               <div className="filters__group filters__group--tight">
                 <span className="filters__label">Карточек в строке</span>
                 <SegmentedControl size="sm" items={DENSITY} value={perRow} onChange={setPerRow} />
@@ -670,6 +681,54 @@ export function DbServicesScreen({ registry, mode }: Props) {
             {cards(list)}
           </section>
         ))
+      ) : mode === 'list' ? (
+        /* Список: услуга — строка, навык иконкой слева. Это тот же вопрос,
+           что и у вида «По навыкам», только заданный по-другому: там навык
+           собирает услуги в группы, здесь он стоит у каждой строки, и
+           восемнадцать услуг читаются подряд, в выбранном порядке. */
+        <DbList
+          rows={rows.map((row) => {
+            const slice = sliceOf(row);
+            return {
+              key: row.key,
+              lead: <Icon name={skillIcon(row.skill)} size={15} />,
+              /* Код вида работ — только когда он и название разные строки: в
+                 нынешней выгрузке они совпадают, и номер повторял бы имя. */
+              code: row.key !== row.title ? row.key : undefined,
+              title: row.title,
+              sub: (
+                <>
+                  {skillName(row.skill)}
+                  {row.orderClass ? ` · ${orderClassName(row.orderClass)}` : ''}
+                  {row.equipment.length > 0
+                    ? ` · ${row.equipment.map((item) => equipmentName(item)).join(' · ')}`
+                    : ' · без оборудования'}
+                  {row.requiredTransport ? ` · ${requiredTransportName(row.requiredTransport)}` : ''}
+                </>
+              ),
+              cells: [
+                { label: 'Длительность', value: minutesLabel(row), wide: true },
+                { label: 'Заявок', value: slice.orders },
+                {
+                  label: 'Срочных',
+                  value: slice.urgent > 0 ? slice.urgent : '—',
+                  tone: slice.urgent > 0 ? ('warn' as const) : ('muted' as const)
+                },
+                {
+                  label: 'Нужен доступ',
+                  value: slice.access > 0 ? slice.access : '—',
+                  tone: slice.access > 0 ? undefined : ('muted' as const)
+                },
+                {
+                  label: 'Разложено',
+                  value: slice.planned > 0 ? `${slice.assigned}/${slice.planned}` : '—',
+                  tone: slice.planned > 0 ? undefined : ('muted' as const)
+                }
+              ],
+              onOpen: () => setOpened(row)
+            };
+          })}
+        />
       ) : mode === 'table' ? (
         <section className="panel">
           <div className="tbl-wrap">
@@ -692,7 +751,19 @@ export function DbServicesScreen({ registry, mode }: Props) {
                 {rows.map((row) => {
                   const slice = sliceOf(row);
                   return (
-                    <tr key={row.key} className="tbl__row">
+                    <tr
+                      key={row.key}
+                      className="tbl__row"
+                      tabIndex={0}
+                      role="button"
+                      onClick={() => setOpened(row)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          setOpened(row);
+                        }
+                      }}
+                    >
                       <td>
                         <span className="tbl__strong">{row.title}</span>
                         {/* Код вида работ — только когда он и название разные
@@ -776,6 +847,34 @@ export function DbServicesScreen({ registry, mode }: Props) {
           )}`}
         </p>
       )}
+
+      <ServiceProfile
+        service={opened}
+        registry={registry}
+        onClose={() => setOpened(null)}
+        onOpenOrder={(order) => {
+          setOpened(null);
+          setOpenedOrder(order);
+        }}
+        onOpenRun={(id) => {
+          setOpened(null);
+          onOpenRun(id);
+        }}
+      />
+
+      <OrderProfile
+        order={openedOrder}
+        registry={registry}
+        onClose={() => setOpenedOrder(null)}
+        onOpenRun={(id) => {
+          setOpenedOrder(null);
+          onOpenRun(id);
+        }}
+        onOpenMap={(id) => {
+          setOpenedOrder(null);
+          onOpenRun(id);
+        }}
+      />
     </div>
   );
 }

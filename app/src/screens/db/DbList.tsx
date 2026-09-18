@@ -36,7 +36,7 @@ export interface DbListRow {
   title: ReactNode;
   /** Вторая строка: чем запись подписана — адрес, расчёт, бригада. */
   sub?: ReactNode;
-  /** Числа справа. Больше пяти сюда не ставим: шестое уже не читается
+  /** Числа справа. Больше шести сюда не ставим: седьмое уже не читается
       взглядом, и за ним идут в таблицу. */
   cells?: DbListCell[];
   /** Щелчок по строке. Без него строка не кнопка и на наведение не отвечает:
@@ -49,15 +49,15 @@ export interface DbListRow {
 
 interface Props {
   rows: DbListRow[];
-  /** Плотнее: строка ужимается до одной линии, вторая строка и знак уходят.
-      Тот же выбор «разглядеть или охватить», что и плотность у карточек. */
-  dense?: boolean;
 }
 
-export function DbList({ rows, dense = false }: Props) {
+/* Плотности у списка нет: он сам и есть плотный вид, а переключатель в
+   полосе отбора называется «Карточек в строке» и к строке во всю ширину
+   отношения не имеет. */
+export function DbList({ rows }: Props) {
   return (
     <section className="panel">
-      <ul className={'dblist' + (dense ? ' dblist--dense' : '')}>
+      <ul className="dblist">
         {rows.map((row) => {
           const body = (
             <>
