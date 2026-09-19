@@ -6,6 +6,7 @@ import { deadline, hhmm, hoursText, plural, shortName } from '../../data/derive.
 import {
   isUrgent,
   orderClassName,
+  orderClosed,
   priorityClassName,
   skillShort,
   statusName,
@@ -664,12 +665,23 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
   }
 
   /* Итог выборки — над списком: ответ на «что дал отбор» должен стоять
-     там, где на него смотрят, а не за пятнадцатью экранами прокрутки. */
+     там, где на него смотрят, а не за пятнадцатью экранами прокрутки.
+
+     Закрытые до расчёта называем отдельно. База заявок показывает всё, что
+     заведено, — и выполненное, и отменённое: она отвечает на «что у нас
+     есть», а не «что сегодня разложено». Но тогда её число расходится с
+     числом в остальных базах, где считаются только открытые, и расхождение
+     надо объяснить прямо в строке, а не оставлять диспетчеру гадать, почему
+     здесь двести пять, а у клиентов семьдесят две. */
+  const openRows = rows.filter((one) => !orderClosed({ status: one.status }));
+  const closedRows = rows.length - openRows.length;
   const summary = (
     <>
       <b>{plural(rows.length, 'заявка', 'заявки', 'заявок')}</b> в выборке
       {rows.length !== all.length && ` из ${all.length}`}
-      {rows.length > 0 && ` · ${hoursText(rows.reduce((sum, one) => sum + one.estMinutes, 0))} работы`}
+      {closedRows > 0 && ` · ${openRows.length} ждут выезда · ${closedRows} закрыты до расчёта`}
+      {openRows.length > 0 &&
+        ` · ${hoursText(openRows.reduce((sum, one) => sum + one.estMinutes, 0))} работы впереди`}
     </>
   );
 

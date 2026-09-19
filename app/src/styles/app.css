@@ -6543,13 +6543,55 @@ b.ccard__bad {
   text-overflow: ellipsis;
 }
 
+/* Подпись числа осталась в разметке ради чтения вслух, но глазами её не
+   видно: колонку называет шапка над списком. Прячем так, чтобы экранный
+   диктор её всё-таки прочёл, — `display: none` он пропускает. */
 .dblist__label {
-  max-width: 100%;
-  font-size: var(--fs-small);
-  color: var(--text-muted);
-  white-space: nowrap;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Шапка списка: подписи колонок один раз наверху. Держится при прокрутке —
+   иначе на второй сотне строк колонка цифр снова становится безымянной. */
+.dblist__head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: flex-end;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-4);
+  background: var(--surface-card);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+/* Место слева под знак записи и её название: шапка не подписывает их —
+   что это за список, сказано в подшапке экрана. */
+.dblist__head-gap {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Подпись в шапке переносится на вторую строку: «Средняя работа» в ширину
+   колонки одной строкой не встаёт, а резать её многоточием — значит снова
+   не назвать колонку. */
+.dblist__head .dblist__cell {
+  align-items: flex-end;
+  text-align: right;
+  font-size: var(--fs-small);
+  line-height: 1.15;
+  color: var(--text-secondary);
+  white-space: normal;
+  /* Переносим по словам, а не по буквам: «Обслужено» одним куском читается,
+     «Обслужен о» — нет. Рвать слово разрешаем только тогда, когда оно и
+     целиком в колонку не встаёт. */
+  overflow-wrap: break-word;
 }
 
 .dblist__cell--warn .dblist__value {

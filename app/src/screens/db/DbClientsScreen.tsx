@@ -213,9 +213,17 @@ export function DbClientsScreen({ registry, mode, onOpenRun }: Props) {
     const access = all.reduce((sum, c) => sum + c.access, 0);
     const urgent = all.reduce((sum, c) => sum + c.urgent, 0);
 
-    const full = all.filter((c) => c.assigned === c.orders).length;
-    const part = all.filter((c) => c.assigned > 0 && c.assigned < c.orders).length;
-    const none = all.filter((c) => c.assigned === 0).length;
+    /* Доли считаем только по адресам, у которых есть открытые заявки. Дом,
+       вся история которого закрыта до расчёта, ждать инженера не мог: без
+       этой оговорки он попадал разом и в «обслужены целиком» (ноль из нуля),
+       и в «не обслужены ни разу» (обслужено ноль), и сумма долей выходила
+       больше числа адресов. Такие дома называем отдельной строкой — они не
+       беда, а закрытая работа. */
+    const live = all.filter((c) => c.orders > 0);
+    const done = all.length - live.length;
+    const full = live.filter((c) => c.assigned === c.orders).length;
+    const part = live.filter((c) => c.assigned > 0 && c.assigned < c.orders).length;
+    const none = live.filter((c) => c.assigned === 0).length;
     const repeat = all.filter((c) => c.orders > 1).length;
 
     const byType = new Map<string, number>();
@@ -238,14 +246,17 @@ export function DbClientsScreen({ registry, mode, onOpenRun }: Props) {
           value: String(all.length),
           caption: 'домов по всем расчётам',
           facts: [
+            `${live.length} ждут выезда`,
             `${full} обслужены целиком`,
-            `${none} не обслужены ни разу`
+            `${none} не обслужены ни разу`,
+            ...(done > 0 ? [`${done} закрыты до расчёта`] : [])
           ],
           whole: true,
           parts: [
             { key: 'full', label: 'Целиком', value: full, tone: 'ok' },
             { key: 'part', label: 'Частично', value: part, tone: 'warn' },
-            { key: 'none', label: 'Ни разу', value: none, tone: 'bad' }
+            { key: 'none', label: 'Ни разу', value: none, tone: 'bad' },
+            { key: 'done', label: 'Закрыты до расчёта', value: done, tone: 'neutral' }
           ],
           legend: 'адресов'
         }
