@@ -922,6 +922,7 @@ export function DbRoutesScreen({
               строке нет — за ней идут к карточке или на большую карту, куда
               строка и уводит. */}
           <DbList
+          lead="Маршрут"
             rows={shown.map((route) => ({
               key: route.key,
               lead: <Icon name="path" size={15} />,

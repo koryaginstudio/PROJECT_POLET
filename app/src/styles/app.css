@@ -443,14 +443,58 @@ body {
   background: var(--border-hairline);
 }
 
+/* Заголовок группы. Стоит между двумя рядами пунктов, и без чужого места
+   вокруг читается как ещё один пункт: раньше он был того же цвета, того же
+   веса и прижат к следующему пункту снизу, а к предыдущему — вплотную.
+   Выходила сплошная лента, в которой подписи только мешали.
+
+   Правим тремя вещами разом. Первая — близость: воздух уходит наверх, к
+   границе с чужой группой, а к своим пунктам заголовок прижимается. Вторая —
+   черта над ним: она и делит панель на части, и позволяет держать подпись
+   тихой, не крича размером. Третья — цвет: подпись тише пунктов, а пункты
+   темнее её, и колонка сразу читается на два уровня.
+
+   Тянущаяся строка «Мониторинг и контроль» в две строки ломала ритм — на
+   разрядке чуть плотнее она встаёт в одну. */
 .nav__group {
-  padding: var(--sp-2) var(--sp-3) var(--sp-1);
+  position: relative;
+  margin-top: var(--sp-4);
+  padding: var(--sp-2) var(--sp-3) 2px;
   font-size: var(--fs-overline);
-  line-height: var(--lh-caption);
-  letter-spacing: var(--ls-overline);
+  line-height: 1.2;
+  letter-spacing: 0.055em;
   text-transform: uppercase;
   font-weight: var(--fw-bold);
   color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.nav__group::before {
+  content: '';
+  position: absolute;
+  left: var(--sp-3);
+  right: var(--sp-3);
+  top: 0;
+  height: 1px;
+  /* Заметнее волосяной: этой черте поручено делить панель на части, и
+     самая бледная линия системы такую работу не тянет — она читается как
+     край чего-то, а не как граница между разделами. */
+  background: var(--border-subtle);
+}
+
+/* Первая группа стоит сразу под шапкой: делить ей не с чем, и черта над
+   ней была бы второй чертой подряд — шапка уже отделена своей.
+
+   Условие берём по её блоку, а не по ней самой: каждая группа обёрнута в
+   свой `div`, и `:first-child` у заголовка верен внутри любого из них — с
+   ним отступ пропадал у всех четырёх разом. */
+.nav__list > div:first-child > .nav__group {
+  margin-top: 0;
+  padding-top: var(--sp-1);
+}
+
+.nav__list > div:first-child > .nav__group::before {
+  content: none;
 }
 
 .nav__item {
@@ -458,12 +502,15 @@ body {
   align-items: center;
   gap: var(--sp-3);
   width: 100%;
-  height: 34px;
+  height: 32px;
   padding: 0 var(--sp-3);
   border: 0;
   border-radius: var(--r-control);
   background: transparent;
-  color: var(--text-secondary);
+  /* Пункт темнее своего заголовка: это то, по чему ходят, а подпись только
+     называет часть. Прежде оба были одного серого, и колонка читалась
+     в один уровень. */
+  color: var(--ink-700);
   font-family: var(--font-sans);
   font-size: var(--fs-body-s);
   font-weight: var(--fw-medium);
@@ -6569,13 +6616,25 @@ b.ccard__bad {
   padding: var(--sp-2) var(--sp-4);
   background: var(--surface-card);
   border-bottom: 1px solid var(--border-subtle);
+  /* Начертание задаём шапке целиком: имя первой колонки и подписи колонок
+     чисел — одно и то же по роли, и набраны они обязаны быть одинаково. */
+  font-size: var(--fs-small);
+  line-height: 1.15;
+  color: var(--text-secondary);
 }
 
-/* Место слева под знак записи и её название: шапка не подписывает их —
-   что это за список, сказано в подшапке экрана. */
-.dblist__head-gap {
+/* Имя первой колонки — той, по которой запись узнают. Стоит слева, над
+   знаком и названием, и набрано так же, как подписи колонок справа: шапка,
+   начатая с середины, читалась как недоделанная. */
+.dblist__head-lead {
   flex: 1 1 auto;
   min-width: 0;
+  /* Отступ слева равен ширине знака записи с его зазором — подпись встаёт
+     ровно над названием, а не над иконкой. */
+  padding-left: calc(15px + var(--sp-3));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Подпись в шапке переносится на вторую строку: «Средняя работа» в ширину
@@ -6584,9 +6643,6 @@ b.ccard__bad {
 .dblist__head .dblist__cell {
   align-items: flex-end;
   text-align: right;
-  font-size: var(--fs-small);
-  line-height: 1.15;
-  color: var(--text-secondary);
   white-space: normal;
   /* Переносим по словам, а не по буквам: «Обслужено» одним куском читается,
      «Обслужен о» — нет. Рвать слово разрешаем только тогда, когда оно и

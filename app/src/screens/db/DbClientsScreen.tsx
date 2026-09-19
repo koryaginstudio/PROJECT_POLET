@@ -640,6 +640,7 @@ export function DbClientsScreen({ registry, mode, onOpenRun }: Props) {
               карточку адреса: его историю, тех, кто сюда ездил, и расчёты,
               в которых он встречался. */}
           <DbList
+          lead="Адрес"
             rows={shown.map((client) => {
               const rate = coverage(client);
               return {

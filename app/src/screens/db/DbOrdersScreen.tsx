@@ -993,6 +993,7 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
               последним и колонкой пошире: «Без инженера» — это не число, а
               приговор строке, и именно его в этом виде высматривают. */}
           <DbList
+          lead="Заявка"
             rows={shown.map((order) => ({
               key: order.key,
               lead: <Icon name={workTypeIcon(order.workType)} size={15} />,

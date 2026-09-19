@@ -740,6 +740,7 @@ export function DbServicesScreen({ registry, mode, onOpenRun }: Props) {
            собирает услуги в группы, здесь он стоит у каждой строки, и
            восемнадцать услуг читаются подряд, в выбранном порядке. */
         <DbList
+          lead="Услуга"
           rows={rows.map((row) => {
             const slice = sliceOf(row);
             return {

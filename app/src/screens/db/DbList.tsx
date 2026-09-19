@@ -49,6 +49,10 @@ export interface DbListRow {
 
 interface Props {
   rows: DbListRow[];
+  /** Чем названа первая колонка: «Заявка», «Клиент», «Инженер». Колонки
+      чисел в шапке подписаны, а самая широкая — та, по которой запись и
+      узнают, — стояла без имени, и шапка читалась начатой с середины. */
+  lead: string;
 }
 
 /* Плотности у списка нет: он сам и есть плотный вид, а переключатель в
@@ -63,7 +67,7 @@ interface Props {
    может перенести слово на вторую строку и освобождает в каждой строке
    место, которого не хватало адресу. Шапка держится при прокрутке: без неё
    на второй сотне строк колонка цифр снова становится безымянной. */
-export function DbList({ rows }: Props) {
+export function DbList({ rows, lead }: Props) {
   /* Колонки берём у первой строки: набор чисел в списке один на всю базу,
      и строка с другим набором означала бы, что это два разных списка. */
   const columns = rows[0]?.cells ?? [];
@@ -72,7 +76,7 @@ export function DbList({ rows }: Props) {
     <section className="panel">
       {columns.length > 0 && (
         <div className="dblist__head" aria-hidden="true">
-          <span className="dblist__head-gap" />
+          <span className="dblist__head-lead">{lead}</span>
           <span className="dblist__cells">
             {columns.map((cell) => (
               <span

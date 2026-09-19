@@ -690,6 +690,7 @@ export function DbRunsScreen({
            таблице: из базы в расчёт ведёт одна дорога, и она везде на одном
            месте. */
         <DbList
+          lead="Расчёт"
           rows={shown.map((row) => ({
             key: row.run.id,
             lead: <Icon name="stack" size={15} />,

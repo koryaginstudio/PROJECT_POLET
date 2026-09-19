@@ -1036,6 +1036,7 @@ export function DbEngineersScreen({
            это не числа и колонкой не читаются. Щелчок открывает профиль, как
            и карточка. */
         <DbList
+          lead="Инженер"
           rows={rows.map((engineer) => {
             const team = crewTeam(engineer);
             return {
