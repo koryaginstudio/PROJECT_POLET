@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Icon } from '../ds/components/core/Icon.jsx';
 import { service } from '../data/service.ts';
+import { wholePercents } from '../data/derive.ts';
 
 /* Виджеты баз данных.
 
@@ -113,7 +114,23 @@ const TONE_VAR: Record<WidgetTone, string> = {
 const partColor = (part: WidgetPart, index: number) =>
   part.tone ? TONE_VAR[part.tone] : `var(--series-${(index % 8) + 1})`;
 
-const share = (value: number, sum: number) => (sum > 0 ? Math.round((value / sum) * 100) : 0);
+/* Доли в процентах округляются вместе, а не поодиночке: шесть независимых
+   округлений дают в сумме 99 или 101, и кольцо, у которого доли не сходятся
+   в сотню, читается как ошибка счёта. `wholePercents` раздаёт остаток по
+   наибольшим хвостам. */
+const sharesOf = (parts: WidgetPart[]) => wholePercents(parts.map((part) => part.value));
+
+/** Верхушка списка долей с хвостом «прочее». Кольцо обещает, что сумма
+    секторов — это всё; шесть первых из восемнадцати видов работ этого
+    обещания не держат. Хвост складывает остальное в один сектор, и целое
+    снова сходится. Хвоста нет, когда обрезать нечего. */
+export function topWithRest(parts: WidgetPart[], size: number, label = 'Прочее'): WidgetPart[] {
+  if (parts.length <= size) return parts;
+  const head = parts.slice(0, size);
+  const rest = parts.slice(size).reduce((sum, part) => sum + part.value, 0);
+  if (rest <= 0) return head;
+  return [...head, { key: 'rest', label: `${label} (${parts.length - size})`, value: rest, tone: 'neutral' }];
+}
 
 /* Выпадающий список, вправленный в экран.
 
@@ -303,7 +320,10 @@ export function WidgetPeriod({
             className={'wperiod__item' + (value === period.key ? ' wperiod__item--on' : '')}
             onClick={() => onChange(period.key)}
             aria-pressed={value === period.key}
-            disabled={count === 0}
+            /* «Всё время» не гаснет никогда: при пустой истории это
+               единственный срок, на который можно вернуться, и погасший
+               он запирал бы доску на «сегодня» без выхода. */
+            disabled={period.key !== 'all' && count === 0}
             title={
               count === undefined
                 ? undefined
@@ -421,6 +441,7 @@ function DonutView({ data }: { data: WidgetData }) {
   const sum = parts.reduce((acc, part) => acc + part.value, 0);
   const shown = parts.filter((part) => part.value > 0);
   const picked = parts.find((part) => part.key === live);
+  const percents = sharesOf(parts);
   let offset = 0;
 
   /* В середине стоит сумма долей, а не итог виджета: у «Средней занятости»
@@ -481,7 +502,7 @@ function DonutView({ data }: { data: WidgetData }) {
           {picked ? (picked.text ?? picked.value) : sum}
         </text>
         <text className="wdonut__caption" x="60" y="74">
-          {picked ? `${share(picked.value, sum)} %` : (data.legend ?? data.caption)}
+          {picked ? `${percents[parts.indexOf(picked)]} %` : (data.legend ?? data.caption)}
         </text>
       </svg>
 
@@ -516,9 +537,16 @@ function BarsView({ data }: { data: WidgetData }) {
   const [pinned, setPinned] = useState<string | null>(null);
   const live = pinned ?? hot;
 
-  const parts = (data.parts ?? []).slice(0, 4);
+  /* В плитку встают четыре строки. Доля в подсказке считается от этих же
+     четырёх — она и подписана «от показанных»; знаменатель по всему списку
+     при четырёх видимых строках давал бы проценты, которые ни во что не
+     складываются. Сколько строк осталось за кадром, сказано под списком. */
+  const all = data.parts ?? [];
+  const parts = all.slice(0, 4);
   const top = Math.max(1, ...parts.map((part) => part.value));
-  const sum = (data.parts ?? []).reduce((acc, part) => acc + part.value, 0);
+  const sum = parts.reduce((acc, part) => acc + part.value, 0);
+  const percents = sharesOf(parts);
+  const rest = all.length - parts.length;
 
   return (
     <div className="wbars">
@@ -535,7 +563,7 @@ function BarsView({ data }: { data: WidgetData }) {
               className="wbar__btn"
               onClick={() => setPinned((was) => (was === part.key ? null : part.key))}
               title={`${part.label}: ${part.text ?? part.value}${
-                sum > 0 ? ` · ${share(part.value, sum)} % от показанных` : ''
+                sum > 0 ? ` · ${percents[index]} % от показанных` : ''
               }`}
             >
               <span className="wbar__top">
@@ -556,7 +584,12 @@ function BarsView({ data }: { data: WidgetData }) {
           </li>
         ))}
       </ul>
-      {data.legend && <span className="wbars__caption">{data.legend}</span>}
+      {data.legend && (
+        <span className="wbars__caption">
+          {data.legend}
+          {rest > 0 ? ` · и ещё ${rest}` : ''}
+        </span>
+      )}
     </div>
   );
 }
@@ -650,21 +683,32 @@ function LineView({ data }: { data: WidgetData }) {
         )}
         {/* Невидимые столбцы поверх линии: попасть курсором в точку графика
             нельзя, а знать, что это за расчёт, надо. Ловят они, показывает
-            подсказка. */}
-        {points.map((point, index) => (
-          <rect
-            key={`${point.label}-${index}`}
-            className="wtrend__grip"
-            x={points.length > 1 ? (index / points.length) * W : 0}
-            y={0}
-            width={W / Math.max(points.length, 1)}
-            height={H}
-            onMouseEnter={() => setHot(index)}
-            onMouseLeave={() => setHot(null)}
-          >
-            <title>{`${point.label}: ${point.value}`}</title>
-          </rect>
-        ))}
+            подсказка.
+
+            Ловушка стоит вокруг своей точки — по полшага влево и вправо, —
+            а не начинается от неё: иначе курсор над точкой попадал бы в
+            ловушку соседа слева, и подсказка называла бы не тот расчёт. У
+            крайних точек ловушка обрезана по краю графика. */}
+        {points.map((point, index) => {
+          const step = points.length > 1 ? W / (points.length - 1) : W;
+          const centre = at(index).x;
+          const from = Math.max(0, centre - step / 2);
+          const to = Math.min(W, centre + step / 2);
+          return (
+            <rect
+              key={`${point.label}-${index}`}
+              className="wtrend__grip"
+              x={from}
+              y={0}
+              width={Math.max(to - from, 0.5)}
+              height={H}
+              onMouseEnter={() => setHot(index)}
+              onMouseLeave={() => setHot(null)}
+            >
+              <title>{`${point.label}: ${point.value}`}</title>
+            </rect>
+          );
+        })}
       </svg>
       {/* Подписи крайних точек: без них линия говорит про форму, но молчит о
           том, между какими расчётами она эту форму приняла. */}

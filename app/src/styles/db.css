@@ -1,0 +1,147 @@
+/* ─── базы данных: полоса управления выборкой ─────────────────────────────
+
+   Стили баз, которые не нужны остальному интерфейсу. Подключаются из общей
+   шапки баз (`DbHead`), поэтому грузятся вместе с первой открытой базой.
+
+   Прежняя полоса отбора занимала до первой записи 667 пикселей из 768: отбор
+   плашками, восемнадцать чипов видов работ, плотность, сортировка в ряд — и
+   всё это раскрыто всегда, хотя действует из него обычно ничего. Теперь
+   наверху стоит только то, что действует прямо сейчас: поиск, чипы активных
+   отборов со снятием, порядок — а остальное лежит под кнопкой «Отбор». */
+
+.dbbar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+/* Поиск во всю ширину: узкое поле рядом с чипами выглядело обрезком. Справа
+   от него может стоять подсказка, что распознали в набранном. */
+.dbbar__search {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.dbbar__search .dbsearch {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 30px;
+}
+
+.dbbar__search .dbsearch__input {
+  width: 100%;
+}
+
+/* Одна полоса: слева кнопка «Отбор» и чипы того, что сейчас действует,
+   справа порядок. Чипы переносятся, порядок остаётся у правого края. */
+.dbbar__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.dbbar__chips {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.dbbar__sort {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-left: auto;
+}
+
+/* Чип активного отбора — тот же выбранный чип, что и в перечнях, только с
+   крестиком: нажатие снимает отбор, а не переключает его. */
+.dbbar__chip .dbbar__chip-key {
+  font-weight: var(--fw-regular);
+  color: var(--text-secondary);
+}
+
+/* Итог выборки — строкой под полосой, перед самим списком. Это ответ на
+   вопрос «что дал отбор», и стоять он должен там, где на него смотрят
+   первым, а не за тридцатью экранами прокрутки. */
+.dbbar__summary {
+  margin: 0;
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.dbbar__summary b {
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+
+/* Раскрытый отбор отделён чертой: это продолжение полосы, а не новая
+   панель. Внутри — та же сетка «подпись — орган», что и раньше. */
+.dbbar__fold {
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--border-hairline);
+}
+
+/* Кнопка-ссылка внутри карточки: имя инженера, чип заявки, номер расчёта.
+   Выглядит текстом и подчёркивается под курсором — в карточке, которая вся
+   целиком нажимается, ещё одна обведённая кнопка спорила бы с ней. */
+.dblink {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--r-sm);
+}
+
+.dblink:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.dblink:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+
+/* Название клиента в две строки, не в три: третья строка у длинных названий
+   растила карточку, и ряд карточек расходился по высоте. Целиком название
+   читается в подсказке. */
+.clicard__name {
+  -webkit-line-clamp: 2;
+}
+
+/* Конфликт штата: человек числится в двух участках, и смены накладываются.
+   Красным в строке смены, там же, где у остальных стоят часы. */
+.engcard__clash {
+  color: var(--danger-500);
+  font-weight: var(--fw-semibold);
+}
+
+/* Строка таблицы, которая открывает запись, доступна и с клавиатуры. */
+.tbl__row--open:focus-visible {
+  outline: none;
+  box-shadow: inset var(--ring-focus);
+}
+
+/* Пустая выборка: текст и рядом кнопка «снять отбор» — путь назад должен
+   быть на том же месте, где сообщили о тупике. */
+.dbempty {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.dbempty .clients__lede {
+  margin: 0;
+}

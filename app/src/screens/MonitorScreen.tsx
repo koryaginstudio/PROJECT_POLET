@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Icon } from '../ds/components/core/Icon.jsx';
 import type { DayView } from '../data/derive.ts';
-import { buildLiveRoster, cutMinutes, dayEnd, dayStart, hhmm, LIVE_STATUS_ORDER } from '../data/derive.ts';
+import { buildLiveRoster, cutMinutes, dayEnd, dayStart, hhmm, LIVE_STATUS_ORDER, placeOf } from '../data/derive.ts';
 import type { LiveEngineer } from '../data/derive.ts';
+import { runDate } from '../data/load.ts';
 import { MapBoard } from '../app/MapBoard.tsx';
 
 interface Props {
@@ -49,8 +50,13 @@ export function MonitorScreen({
   }, []);
 
   const cut = cutMinutes(now);
-  const beforeShift = now.getHours() * 60 + now.getMinutes() < dayStart();
-  const afterShift = now.getHours() * 60 + now.getMinutes() > dayEnd();
+  const wall = now.getHours() * 60 + now.getMinutes();
+  const beforeShift = wall < dayStart();
+  const afterShift = wall > dayEnd();
+  /* Какой день разложен в плане. Часы идут настенные, а план — на день
+     выгрузки, и без подписи «сейчас 14:20» на плане 17 августа читалось бы
+     как сегодняшнее положение дел. */
+  const planDay = runDate(runId).split('-').reverse().join('.');
 
   const roster = useMemo(() => buildLiveRoster(view, cut), [view, cut]);
   const sorted = useMemo(
@@ -72,18 +78,23 @@ export function MonitorScreen({
       <section className="panel">
         <div className="dash__section-head">
           <h2 className="dash__section-title">Мониторинг</h2>
-          <span className="livenow" title="Текущее время: раздел показывает состояние на эту минуту и обновляется сам">
+          {/* Часы настенные и не замирают: срез плана прижат к границам
+              смены, и это сказано отдельной строкой ниже, а не подменой
+              времени — «21:00, обновлено 21:30» читалось как поломка. */}
+          <span className="livenow" title="Текущее время: раздел показывает состояние плана на эту минуту и обновляется сам">
             <span className="livenow__dot" />
-            {hhmm(cut)}
-            <span className="livenow__stamp">обновлено {now.toLocaleTimeString('ru-RU').slice(0, 5)}</span>
+            {hhmm(wall)}
+            <span className="livenow__stamp">
+              {planDay ? `план от ${planDay} · ` : ''}обновлено {hhmm(wall)}
+            </span>
           </span>
         </div>
 
         {(beforeShift || afterShift) && (
           <p className="clients__lede">
             {beforeShift
-              ? 'Смена ещё не началась: часы вне рабочего окна, ниже показан план на его начало.'
-              : 'Смена на сегодня закончилась: часы вне рабочего окна, ниже показан план на его конец.'}
+              ? `Смена по плану начинается в ${hhmm(dayStart())}: часы ещё вне рабочего окна, ниже показан план на его начало.`
+              : `Смена по плану закончилась в ${hhmm(dayEnd())}: часы уже вне рабочего окна, ниже показано положение на её конец.`}
           </p>
         )}
 
@@ -146,18 +157,25 @@ export function MonitorScreen({
         <div className="dash__section-head">
           <h2 className="dash__section-title">Инженеры на смене</h2>
         </div>
-        <div className="roster">
-          {sorted.map((row) => (
-            <RosterRow
-              key={row.engineer.id}
-              row={row}
-              active={live === row.engineer.id || pinned === row.engineer.id}
-              onLive={onLive}
-              onPin={onPin}
-              onSelectEngineer={onSelectEngineer}
-            />
-          ))}
-        </div>
+        {/* Пустой состав — словами: в расчёте без инженеров пустой список
+            читался бы как несработавший экран. */}
+        {sorted.length === 0 ? (
+          <p className="clients__lede">В этом расчёте на смене никого нет: план посчитан без инженеров.</p>
+        ) : (
+          <div className="roster">
+            {sorted.map((row) => (
+              <RosterRow
+                key={row.engineer.id}
+                row={row}
+                view={view}
+                active={live === row.engineer.id || pinned === row.engineer.id}
+                onLive={onLive}
+                onPin={onPin}
+                onSelectEngineer={onSelectEngineer}
+              />
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="panel">
@@ -182,17 +200,24 @@ export function MonitorScreen({
 
 function RosterRow({
   row,
+  view,
   active,
   onLive,
   onPin,
   onSelectEngineer
 }: {
   row: LiveEngineer;
+  view: DayView;
   active: boolean;
   onLive: (id: string | null) => void;
   onPin: (id: string | null) => void;
   onSelectEngineer: (id: string) => void;
 }) {
+  /* Куда едет и что делает — адресом и видом работ, а не одним номером:
+     «Едет к R0193» ничего не говорит тому, кто не держит номера в голове.
+     Номер остаётся в подсказке. */
+  const target = row.orderId ? view.orderById.get(row.orderId) : undefined;
+  const where = target ? `${placeOf(target)} · ${target.work_title}` : row.orderId ?? '';
   return (
     <button
       type="button"
@@ -206,10 +231,10 @@ function RosterRow({
     >
       <span className="roster__name">{row.engineer.name}</span>
       <span className={'pill pill--' + row.tone}>{row.label}</span>
-      <span className="roster__note">
-        {row.status === 'overdue' && `Опаздывает на ${row.lateMinutes} мин`}
-        {row.status === 'working' && row.orderId && `Работает: ${row.orderId}`}
-        {row.status === 'enroute' && row.orderId && `Едет к ${row.orderId}`}
+      <span className="roster__note" title={row.orderId ? `Заявка ${row.orderId}` : undefined}>
+        {row.status === 'overdue' && `Опаздывает на ${row.lateMinutes} мин${where ? ` · ${where}` : ''}`}
+        {row.status === 'working' && row.orderId && `Работает: ${where}`}
+        {row.status === 'enroute' && row.orderId && `Едет: ${where}`}
         {(row.status === 'done' || row.status === 'before' || row.status === 'no-route') && '—'}
       </span>
       <span className="roster__visits">

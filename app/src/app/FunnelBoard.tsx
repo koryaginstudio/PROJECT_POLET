@@ -130,7 +130,7 @@ function badges(stage: Stage, delta: number, crew: number) {
         key="risk"
         tone="alarm"
         icon="alert-triangle"
-        text={`${stage.atRisk} просрочены`}
+        text={`${stage.atRisk} — окно уже открыто`}
         tip={`У ${plural(stage.atRisk, 'заявки', 'заявок', 'заявок')} без инженера окно приёма уже открыто: назначить их без потерь времени не получится`}
       />
     );

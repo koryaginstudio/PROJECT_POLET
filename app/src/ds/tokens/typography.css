@@ -44,9 +44,14 @@
   --lh-body:1.5; /* @kind font */
   --fs-body-s:14px;
   --lh-body-s:1.45; /* @kind font */
-  --fs-caption:12px;
+  /* Нижняя граница — 12px. Диспетчер за ноутбуком 1366×768 читает подписи
+     и шкалы часами; 10–11px там не читаются. Подписи таблиц и форм — 13px,
+     самый мелкий кегль (шкалы, коды, счётчики) — 12px, мельче не ставим. */
+  --fs-caption:13px;
   --lh-caption:1.35; /* @kind font */
-  --fs-overline:11px;
+  --fs-small:12px;
+  --lh-small:1.3; /* @kind font */
+  --fs-overline:12px;
   --ls-overline:0.09em; /* @kind font */
   --numeric-tabular:tabular-nums; /* @kind other */
 }

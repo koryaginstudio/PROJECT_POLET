@@ -2,11 +2,12 @@ import { useMemo, useState } from 'react';
 import { Icon } from '../../ds/components/core/Icon.jsx';
 import { SegmentedControl } from '../../ds/components/forms/SegmentedControl.jsx';
 import type { OrderRecord, Registry } from '../../data/registry.ts';
-import { dec, deadline, hhmm, hoursText, plural, shortName } from '../../data/derive.ts';
+import { deadline, hhmm, hoursText, plural, shortName } from '../../data/derive.ts';
 import {
   isUrgent,
   orderClassName,
   priorityClassName,
+  skillShort,
   statusName,
   techName,
   workTypeIcon
@@ -16,10 +17,11 @@ import { SortMenu } from '../../app/SortMenu.tsx';
 import type { SortRule } from '../../app/SortMenu.tsx';
 import { fitsWork, WorkTypeFilter } from '../../app/WorkTypeFilter.tsx';
 import { OrderProfile } from '../../app/OrderProfile.tsx';
-import { useWidgetBoard, WidgetPeriod, withinPeriod } from '../../app/DbWidgets.tsx';
+import { topWithRest, useWidgetBoard, WidgetPeriod, withinPeriod } from '../../app/DbWidgets.tsx';
 import type { PeriodKey, WidgetDef } from '../../app/DbWidgets.tsx';
-import { service } from '../../data/service.ts';
-import { DbHead } from './DbHead.tsx';
+import { DbHead, DENSITY, usePerRow } from './DbHead.tsx';
+import { DbBar, ChipKey, DbEmpty, DbMore, usePaging } from './DbBar.tsx';
+import type { DbChip } from './DbBar.tsx';
 import { DbList } from './DbList.tsx';
 
 interface Props {
@@ -36,21 +38,12 @@ interface Props {
    целиком и потом на ней же спотыкается при прокрутке. */
 const PAGE = 120;
 
-/* Плотность ряда — та же настройка, что в базе инженеров: «разглядеть» или
-   «охватить». По две и по четыре карточка живёт целиком, по шесть сжимается
-   до строки справочника. */
-const DENSITY = [
-  { value: '2', label: '2' },
-  { value: '4', label: '4' },
-  { value: '6', label: '6' }
-];
-
 /* По чему упорядочены заявки. Первым — крайний срок: это ответ на «что горит».
 
    У каждого правила названы обе стороны, и названы по-своему: «сначала
    ближний срок» диспетчер понимает сразу, а «по возрастанию» ему пришлось бы
-   переводить на заявки. Прежний скрытый жест — повторный щелчок по выбранному
-   правилу — этими двумя строками и заменён. */
+   переводить на заявки. Повторное нажатие на выбранное правило
+   переворачивает сторону. */
 type Sort = 'deadline' | 'window' | 'duration' | 'district' | 'run';
 
 const SORTS: (SortRule & { value: Sort; desc: boolean })[] = [
@@ -112,15 +105,25 @@ const FILTERS: { value: Filter; label: string }[] = [
 
 const percent = (share: number) => `${Math.round(share * 100)}%`;
 
+/* Отметка полосы видов работ словами — для чипа наверху. Ключ дозаказов
+   устроен иначе, чем вид работ (см. `addonKey`), и подписывается по своему
+   навыку. */
+function pickLabel(key: string, titles: Record<string, string>): string {
+  const addon = /^class:addon@(.+)$/.exec(key);
+  if (addon) return `Дозаказы · ${skillShort(addon[1])}`;
+  return titles[key] ?? key;
+}
+
 /* База заявок: все заявки, прошедшие через расчёты. Строка — заявка в одном
    расчёте: номера в прогонах повторяются, но стоят за ними разные точки, окна
    и инженеры, поэтому расчёт указан у каждой записи.
 
-   Устроена как база инженеров — доска виджетов со сроком сверху, полоса
-   отбора, карточки или таблица, — и это осознанное повторение: два справочника
-   об одном хозяйстве, и переучивать диспетчера на втором незачем. */
+   Устроена как остальные базы — доска виджетов со сроком сверху, полоса
+   отбора, список, карточки или таблица, — и это осознанное повторение: шесть
+   справочников об одном хозяйстве, и переучивать диспетчера на каждом
+   незачем. */
 export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) {
-  const [perRow, setPerRow] = useState(() => service().perRow as string);
+  const [perRow, setPerRow] = usePerRow();
   const [sort, setSort] = useState<Sort>('deadline');
   const [desc, setDesc] = useState(false);
   const [filter, setFilter] = useState<Filter>('all');
@@ -130,7 +133,7 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
   const [picks, setPicks] = useState<string[]>([]);
   const [run, setRun] = useState<string | null>(null);
   const [query, setQuery] = useState('');
-  const [limit, setLimit] = useState(PAGE);
+  const paging = usePaging(PAGE);
   /* Какая заявка открыта. Карточка одна на всю базу: двух сразу не читают. */
   const [opened, setOpened] = useState<OrderRecord | null>(null);
   const dense = perRow === '6';
@@ -151,9 +154,9 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
     return map;
   }, [all]);
 
-  /* Выборка без учёта видов работ. По ней считается разбивка под полосой:
-     иначе доска «По видам работ» сужала бы сама себя — отметив один вид,
-     второй с неё стало бы нечем добавить. */
+  /* Выборка без учёта видов работ. По ней считается разбивка «По видам
+     работ»: иначе доска сужала бы сама себя — отметив один вид, второй с
+     неё стало бы нечем добавить. */
   const basis = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return all.filter((order) => {
@@ -206,15 +209,35 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
     });
   }, [basis, desc, picks, sort]);
 
+  /* Сменили отбор или порядок — счётчик показанного начинается заново. */
+  const narrow = <T,>(set: (value: T) => void) => (value: T) => {
+    set(value);
+    paging.reset();
+  };
+
+  /* Снятие чипа значения не выбирает — оно возвращает отбор к «всем», и
+     потому берёт действие целиком, а не значение. Счётчик показанного при
+     этом начинается заново, как и при обычной смене отбора. */
+  const clear = (run: () => void) => () => {
+    run();
+    paging.reset();
+  };
+
   /* Смена правила заодно ставит сторону, с которой его читают чаще: у срока
-     это ближний, у длительности — долгие работы. Выбранное правило повторным
-     нажатием не трогаем: сторону теперь переставляют в том же списке, и
-     сбрасывать её под рукой у диспетчера незачем. */
+     это ближний, у длительности — долгие работы. Повторное нажатие на
+     выбранное правило переворачивает сторону — это делает само меню. */
   const pickSort = (value: Sort) => {
-    if (value === sort) return;
     setSort(value);
     setDesc(SORTS.find((item) => item.value === value)?.desc ?? false);
-    setLimit(PAGE);
+    paging.reset();
+  };
+
+  const reset = () => {
+    setFilter('all');
+    setPicks([]);
+    setRun(null);
+    setQuery('');
+    paging.reset();
   };
 
   /* Срок, за который считает доска. Отдельно от отбора списка: список отвечает
@@ -481,12 +504,15 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
         data: {
           value: String(byClass.length),
           caption: 'классов в выгрузке',
+          /* Классы складываются в целое, и кольцо у них честное только тогда,
+             когда в нём все классы: верхушка списка дополняется сектором
+             «прочее». */
           whole: true,
-          parts: top(byClass).map(([key, value]) => ({
-            key,
-            label: orderClassName(key),
-            value
-          })),
+          parts: topWithRest(
+            byClass.map(([key, value]) => ({ key, label: orderClassName(key), value })),
+            6,
+            'Другие классы'
+          ),
           legend: byClass.length > 0 ? 'заявок класса' : 'классов в выгрузке нет'
         }
       },
@@ -535,22 +561,22 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
     return [...map.values()].sort((a, b) => b.total - a.total);
   }, [basis]);
 
-  const shown = rows.slice(0, limit);
+  const shown = rows.slice(0, paging.limit);
   const hidden = rows.length - shown.length;
 
-  /* Разбивка по расчётам для вида по умолчанию. Раскладывается та же выборка,
-     что и в остальных видах: полоса отбора стоит в шапке базы и над этим
-     видом тоже, и список, который её не слушается, читался бы как поломка.
-     Расчёт, из которого под отбор не подошло ничего, секцией не рисуется —
-     пустой заголовок с нулём обещал бы, что там что-то есть.
+  /* Разбивка по расчётам для вида «По расчётам». Раскладывается вся
+     выборка, а не показанная её часть: заголовок секции «7 заявок · 3,2 ч»
+     — это итог расчёта под этим отбором, и считать его по первой странице
+     значило бы, что итог растёт от каждого «Показать ещё». Режется только
+     отрисовка — см. `byRunShown`.
 
-     Внутри секции порядок тот, что выбран в полосе: заново упорядочивать
-     значило бы, что переключатель сортировки в этом виде стоит и ничего не
-     делает. Счётчик показанного общий на всю выборку, а не на каждый
-     расчёт: «Показать ещё» отвечает на «сколько всего осталось». */
+     Расчёт, из которого под отбор не подошло ничего, секцией не рисуется —
+     пустой заголовок с нулём обещал бы, что там что-то есть. Внутри секции
+     порядок тот, что выбран в полосе: заново упорядочивать значило бы, что
+     переключатель сортировки в этом виде стоит и ничего не делает. */
   const byRun = useMemo(() => {
     const picked = new Map<string, OrderRecord[]>();
-    for (const order of shown) {
+    for (const order of rows) {
       const list = picked.get(order.run.id);
       if (list) list.push(order);
       else picked.set(order.run.id, [order]);
@@ -567,108 +593,96 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
           minutes: list.reduce((sum, one) => sum + one.estMinutes, 0)
         };
       });
-  }, [registry, shown]);
+  }, [registry, rows]);
 
-  /* Сменили отбор или порядок — счётчик показанного начинается заново: иначе
-     после сужения выборки кнопка обещала бы строки, которых уже нет, а после
-     переворота порядка длинный список пришлось бы перечитывать с конца. */
-  const narrow = <T,>(set: (value: T) => void) => (value: T) => {
-    set(value);
-    setLimit(PAGE);
+  /* Что из разбивки рисуем сейчас: секции идут подряд, и первая страница —
+     это первые PAGE заявок по всем секциям вместе. Счётчик показанного общий
+     на всю выборку: «Показать ещё» отвечает на «сколько всего осталось». */
+  const byRunShown = useMemo(() => {
+    let left = paging.limit;
+    const out: (typeof byRun[number] & { shown: OrderRecord[] })[] = [];
+    for (const entry of byRun) {
+      if (left <= 0) break;
+      const list = entry.orders.slice(0, left);
+      left -= list.length;
+      out.push({ ...entry, shown: list });
+    }
+    return out;
+  }, [byRun, paging.limit]);
+
+  /* Та же заявка в другом расчёте — по чипу «Есть также в» на карточке. */
+  const openIn = (order: OrderRecord, runId: string) => {
+    const twin = all.find((one) => one.id === order.id && one.run.id === runId);
+    if (twin) setOpened(twin);
   };
+
+  const card = (order: OrderRecord, index: number) => (
+    <OrderCard
+      key={order.key}
+      row={order}
+      seat={index + 1}
+      onOpen={() => setOpened(order)}
+      dense={dense}
+      workType={picks}
+      runs={runsById.get(order.id) ?? []}
+      onOpenIn={(runId) => openIn(order, runId)}
+    />
+  );
+
+  /* Активные отборы — чипами наверху. Каждый снимается своим крестиком. */
+  const chips: DbChip[] = [];
+  if (filter !== 'all') {
+    chips.push({
+      key: 'filter',
+      label: FILTERS.find((item) => item.value === filter)?.label ?? filter,
+      onRemove: clear(() => setFilter('all'))
+    });
+  }
+  if (run) {
+    chips.push({
+      key: 'run',
+      label: (
+        <>
+          <ChipKey>Расчёт</ChipKey>
+          {registry.runs.find((ref) => ref.id === run)?.code ?? run}
+        </>
+      ),
+      onRemove: clear(() => setRun(null))
+    });
+  }
+  for (const key of picks) {
+    chips.push({
+      key: `pick:${key}`,
+      label: (
+        <>
+          <ChipKey>Вид работ</ChipKey>
+          {pickLabel(key, registry.workTypeTitle)}
+        </>
+      ),
+      onRemove: clear(() => setPicks(picks.filter((one) => one !== key)))
+    });
+  }
+
+  /* Итог выборки — над списком: ответ на «что дал отбор» должен стоять
+     там, где на него смотрят, а не за пятнадцатью экранами прокрутки. */
+  const summary = (
+    <>
+      <b>{plural(rows.length, 'заявка', 'заявки', 'заявок')}</b> в выборке
+      {rows.length !== all.length && ` из ${all.length}`}
+      {rows.length > 0 && ` · ${hoursText(rows.reduce((sum, one) => sum + one.estMinutes, 0))} работы`}
+    </>
+  );
 
   return (
     <div className="dash enter">
-      {/* Полоса управления выборкой — та же, что в базе инженеров: столбиком
-          «подпись — орган», сперва всё, что сужает выборку, потом то, как её
-          показать. Наверху — поиск и плотность: это не отбор, а то, с какой
-          стороны на список смотрят. */}
       <DbHead title="База заявок" board={board.node}>
-        <div className="filters filters--runs">
-          <div className="filters__top">
-            <label className="dbsearch">
-              <Icon name="search" size={14} />
-              <input
-                className="dbsearch__input"
-                value={query}
-                placeholder="Найти заявку: номер, клиент, адрес, район, работа, инженер"
-                onChange={(event) => {
-                  setQuery(event.currentTarget.value);
-                  setLimit(PAGE);
-                }}
-              />
-              {query && (
-                <button
-                  type="button"
-                  className="dbsearch__clear"
-                  onClick={() => {
-                    setQuery('');
-                    setLimit(PAGE);
-                  }}
-                >
-                  <Icon name="x" size={12} />
-                </button>
-            )}
-            </label>
-
-            {/* Плотность строки — везде, где рисуются карточки: и в сплошном
-                ряду, и в разбивке по расчётам. В таблице её нет — там строка
-                одна и в строке она одна. */}
-            {(mode === 'cards' || mode === 'runs') && (
-              <div className="filters__group filters__group--tight">
-                <span className="filters__label">Карточек в строке</span>
-                <SegmentedControl size="sm" items={DENSITY} value={perRow} onChange={setPerRow} />
-              </div>
-            )}
-          </div>
-
-          <div className="filters__group">
-            <span className="filters__label">Отбор</span>
-            <SegmentedControl
-              size="sm"
-              items={FILTERS}
-              value={filter}
-              onChange={narrow((value: string) => setFilter(value as Filter))}
-            />
-          </div>
-
-          {registry.runs.length > 1 && (
-            <div className="filters__group filters__group--wide">
-              <span className="filters__label">Расчёт</span>
-              <span className="filters__types">
-                {registry.runs.map((ref) => (
-                  <button
-                    key={ref.id}
-                    type="button"
-                    className={'chip' + (run === ref.id ? ' chip--on' : '')}
-                    onClick={() => {
-                      setRun(run === ref.id ? null : ref.id);
-                      setLimit(PAGE);
-                    }}
-                    aria-pressed={run === ref.id}
-                  >
-                    {ref.code}
-                    {run === ref.id && <Icon name="x" size={12} />}
-                  </button>
-                ))}
-              </span>
-            </div>
-          )}
-
-          {/* Виды работ — тремя списками по навыку, а не рядом плашек: их
-              восемнадцать, и плашками они занимали три строки полосы. */}
-          <div className="filters__group filters__group--wide" role="group" aria-label="Вид работ">
-            <span className="filters__label">Вид работ</span>
-            <WorkTypeFilter
-              orders={all}
-              titles={registry.workTypeTitle}
-              picks={picks}
-              onChange={narrow(setPicks)}
-            />
-          </div>
-
-          <div className="filters__group" role="group" aria-label="Сортировка">
-            <span className="filters__label">Сортировка</span>
+        <DbBar
+          query={query}
+          onQuery={narrow(setQuery)}
+          placeholder="Найти заявку: номер, клиент, адрес, район, работа, инженер"
+          chips={chips}
+          onReset={reset}
+          sort={
             <SortMenu
               rules={SORTS}
               value={sort}
@@ -676,20 +690,78 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
               onPick={(value: string) => pickSort(value as Sort)}
               onOrder={narrow(setDesc)}
             />
+          }
+          summary={summary}
+        >
+          {/* Под кнопкой «Отбор» — сетка «подпись — орган»: сперва всё, что
+              сужает выборку, потом то, как её показать. */}
+          <div className="filters filters--runs">
+            <div className="filters__group">
+              <span className="filters__label">Отбор</span>
+              <SegmentedControl
+                size="sm"
+                items={FILTERS}
+                value={filter}
+                onChange={narrow((value: string) => setFilter(value as Filter))}
+              />
+            </div>
+
+            {registry.runs.length > 1 && (
+              <div className="filters__group filters__group--wide">
+                <span className="filters__label">Расчёт</span>
+                <span className="filters__types">
+                  {registry.runs.map((ref) => (
+                    <button
+                      key={ref.id}
+                      type="button"
+                      className={'chip' + (run === ref.id ? ' chip--on' : '')}
+                      onClick={narrow(() => setRun(run === ref.id ? null : ref.id))}
+                      aria-pressed={run === ref.id}
+                    >
+                      {ref.code}
+                      {run === ref.id && <Icon name="x" size={12} />}
+                    </button>
+                  ))}
+                </span>
+              </div>
+            )}
+
+            {/* Виды работ — тремя списками по навыку, а не рядом плашек: их
+                восемнадцать, и плашками они занимали три строки полосы. */}
+            <div className="filters__group filters__group--wide" role="group" aria-label="Вид работ">
+              <span className="filters__label">Вид работ</span>
+              <WorkTypeFilter
+                orders={all}
+                titles={registry.workTypeTitle}
+                picks={picks}
+                onChange={narrow(setPicks)}
+              />
+            </div>
+
+            {/* Плотность ряда — везде, где рисуются карточки: и в сплошном
+                ряду, и в разбивке по расчётам. В таблице и списке её нет —
+                там строка одна и в строке она одна. */}
+            {(mode === 'cards' || mode === 'runs') && (
+              <div className="filters__group">
+                <span className="filters__label">Карточек в строке</span>
+                <SegmentedControl size="sm" items={DENSITY} value={perRow} onChange={setPerRow} />
+              </div>
+            )}
           </div>
-        </div>
+        </DbBar>
       </DbHead>
 
       {rows.length === 0 ? (
-        <section className="panel">
-          <p className="clients__lede">
-            Под этот отбор не подошла ни одна заявка. Снимите отбор, сбросьте виды работ или
-            очистите поиск.
-          </p>
-        </section>
+        <DbEmpty
+          miss="Под этот отбор не подошла ни одна заявка."
+          blank="Заявок в базе пока нет: они собираются из сохранённых расчётов, и до первого расчёта база пуста."
+          query={query.trim() !== ''}
+          filtered={filter !== 'all' || picks.length > 0 || run !== null}
+          onReset={reset}
+        />
       ) : mode === 'runs' ? (
         <>
-          {byRun.map((entry) => (
+          {byRunShown.map((entry) => (
             <section key={entry.ref.id} className="panel">
               <div className="dash__section-head">
                 <h2 className="dash__section-title">
@@ -701,34 +773,22 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
                   {entry.assigned} в маршрутах · {entry.orders.length - entry.assigned} без
                   инженера
                   {entry.urgent > 0 ? ` · ${entry.urgent} срочных` : ''} ·{' '}
-                  {dec(entry.minutes / 60)} ч работы
+                  {hoursText(entry.minutes)} работы
+                  {entry.shown.length < entry.orders.length
+                    ? ` · показано ${entry.shown.length}`
+                    : ''}
                 </span>
               </div>
               <div
                 className={'runs__grid' + (dense ? ' runs__grid--dense' : '')}
                 style={{ '--per-row': perRow } as React.CSSProperties}
               >
-                {entry.orders.map((order, index) => (
-                  <OrderCard
-                    key={order.key}
-                    row={order}
-                    seat={index + 1}
-                    onOpen={() => setOpened(order)}
-                    dense={dense}
-                    workType={picks}
-                    runs={runsById.get(order.id) ?? []}
-                  />
-                ))}
+                {entry.shown.map(card)}
               </div>
             </section>
           ))}
 
-          {hidden > 0 && (
-            <button type="button" className="tblmore" onClick={() => setLimit((n) => n + PAGE)}>
-              Показать ещё {Math.min(PAGE, hidden)}
-              <span className="tblmore__rest">осталось {hidden}</span>
-            </button>
-          )}
+          <DbMore hidden={hidden} page={PAGE} onMore={paging.more} />
         </>
       ) : mode === 'types' ? (
         <div className="cboard">
@@ -772,58 +832,6 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
             </button>
           ))}
         </div>
-      ) : mode === 'list' ? (
-        <>
-          {/* Список: заявка — строка. Названием стоит вид работ, а не номер:
-              номером заявку ищут, но читают всё-таки «что там делать».
-              Справа — окно приёма, крайний срок и кто поехал: три вопроса, с
-              которыми к заявке и подходят. Инженер последним и колонкой
-              пошире: «Без инженера» — это не число, а приговор строке, и
-              именно его в этом виде высматривают. */}
-          <DbList
-            rows={shown.map((order) => ({
-              key: order.key,
-              lead: <Icon name={workTypeIcon(order.workType)} size={15} />,
-              code: order.id,
-              title: order.workTitle,
-              sub: (
-                <>
-                  {order.address} · {order.district} · {order.company} · расчёт {order.run.code}
-                  {order.needsAccess ? ' · нужен доступ' : ''}
-                  {order.status ? ` · ${statusName(order.status)}` : ''}
-                </>
-              ),
-              cells: [
-                { label: 'Окно приёма', value: `${hhmm(order.windowStart)}–${hhmm(order.windowEnd)}`, wide: true },
-                { label: 'Крайний срок', value: deadline(order.slaDeadline), wide: true },
-                { label: 'Работа', value: `${order.estMinutes} мин` },
-                {
-                  label: 'Приоритет',
-                  value: priorityClassName(order.priorityClass, order.priority),
-                  tone: isUrgent(order.priorityClass, order.priority) ? ('warn' as const) : ('muted' as const)
-                },
-                {
-                  label: 'Инженер',
-                  value: order.engineerName ? (
-                    <span title={order.engineerName}>{shortName(order.engineerName)}</span>
-                  ) : (
-                    'Без инженера'
-                  ),
-                  wide: true,
-                  tone: order.engineerName ? undefined : ('warn' as const)
-                }
-              ],
-              onOpen: () => setOpened(order)
-            }))}
-          />
-
-          {hidden > 0 && (
-            <button type="button" className="tblmore" onClick={() => setLimit((n) => n + PAGE)}>
-              Показать ещё {Math.min(PAGE, hidden)}
-              <span className="tblmore__rest">осталось {hidden}</span>
-            </button>
-          )}
-        </>
       ) : mode === 'table' ? (
         <section className="panel">
           <div className="tbl-wrap">
@@ -851,7 +859,15 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
                   <tr
                     key={order.key}
                     className="tbl__row tbl__row--open"
+                    tabIndex={0}
+                    role="button"
                     onClick={() => setOpened(order)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        setOpened(order);
+                      }
+                    }}
                   >
                     <td>
                       <span className="tbl__strong">{order.id}</span>
@@ -866,7 +882,12 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
                         <Icon name={workTypeIcon(order.workType)} size={13} />
                         {order.workTitle}
                       </span>
-                      <span className="tbl__sub">{order.workType}</span>
+                      {/* Код вида работ — только когда он и название разные
+                          строки: в выгрузке заказчика они совпадают у всех, и
+                          подстрочник повторял бы саму ячейку. */}
+                      {order.workType !== order.workTitle && (
+                        <span className="tbl__sub">{order.workType}</span>
+                      )}
                     </td>
                     <td>
                       <span className="tbl__strong">{order.address}</span>
@@ -938,46 +959,67 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
             </table>
           </div>
 
-          {hidden > 0 && (
-            <button type="button" className="tblmore" onClick={() => setLimit((n) => n + PAGE)}>
-              Показать ещё {Math.min(PAGE, hidden)}
-              <span className="tblmore__rest">осталось {hidden}</span>
-            </button>
-          )}
+          <DbMore hidden={hidden} page={PAGE} onMore={paging.more} />
         </section>
-      ) : (
+      ) : mode === 'cards' ? (
         <>
           <div
             className={'runs__grid' + (dense ? ' runs__grid--dense' : '')}
             style={{ '--per-row': perRow } as React.CSSProperties}
           >
-            {shown.map((order, index) => (
-              <OrderCard
-                key={order.key}
-                row={order}
-                seat={index + 1}
-                onOpen={() => setOpened(order)}
-                dense={dense}
-                workType={picks}
-                runs={runsById.get(order.id) ?? []}
-              />
-            ))}
+            {shown.map(card)}
           </div>
 
-          {hidden > 0 && (
-            <button type="button" className="tblmore" onClick={() => setLimit((n) => n + PAGE)}>
-              Показать ещё {Math.min(PAGE, hidden)}
-              <span className="tblmore__rest">осталось {hidden}</span>
-            </button>
-          )}
+          <DbMore hidden={hidden} page={PAGE} onMore={paging.more} />
+        </>
+      ) : (
+        <>
+          {/* Список — вид по умолчанию: заявка — строка. Названием стоит вид
+              работ, а не номер: номером заявку ищут, но читают всё-таки
+              «что там делать». Справа — окно приёма, крайний срок и кто
+              поехал: три вопроса, с которыми к заявке и подходят. Инженер
+              последним и колонкой пошире: «Без инженера» — это не число, а
+              приговор строке, и именно его в этом виде высматривают. */}
+          <DbList
+            rows={shown.map((order) => ({
+              key: order.key,
+              lead: <Icon name={workTypeIcon(order.workType)} size={15} />,
+              code: order.id,
+              title: order.workTitle,
+              sub: (
+                <>
+                  {order.address} · {order.district} · {order.company} · расчёт {order.run.code}
+                  {order.needsAccess ? ' · нужен доступ' : ''}
+                  {order.status ? ` · ${statusName(order.status)}` : ''}
+                </>
+              ),
+              cells: [
+                { label: 'Окно приёма', value: `${hhmm(order.windowStart)}–${hhmm(order.windowEnd)}`, wide: true },
+                { label: 'Крайний срок', value: deadline(order.slaDeadline), wide: true },
+                { label: 'Работа', value: `${order.estMinutes} мин` },
+                {
+                  label: 'Приоритет',
+                  value: priorityClassName(order.priorityClass, order.priority),
+                  tone: isUrgent(order.priorityClass, order.priority) ? ('warn' as const) : ('muted' as const)
+                },
+                {
+                  label: 'Инженер',
+                  value: order.engineerName ? (
+                    <span title={order.engineerName}>{shortName(order.engineerName)}</span>
+                  ) : (
+                    'Без инженера'
+                  ),
+                  wide: true,
+                  tone: order.engineerName ? undefined : ('warn' as const)
+                }
+              ],
+              onOpen: () => setOpened(order)
+            }))}
+          />
+
+          <DbMore hidden={hidden} page={PAGE} onMore={paging.more} />
         </>
       )}
-
-      <p className="filters__note filters__note--under">
-        {plural(rows.length, 'заявка', 'заявки', 'заявок')} в выборке
-        {rows.length !== all.length && ` из ${all.length}`}
-        {rows.length > 0 && ` · ${dec(rows.reduce((sum, one) => sum + one.estMinutes, 0) / 60)} ч работы`}
-      </p>
 
       <OrderProfile
         order={opened}

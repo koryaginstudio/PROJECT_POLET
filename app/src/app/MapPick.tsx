@@ -1,6 +1,6 @@
 import { Icon } from '../ds/components/core/Icon.jsx';
 import type { DayView } from '../data/derive.ts';
-import { hhmm, homeOf, placeOf, visits } from '../data/derive.ts';
+import { deadline, hhmm, homeOf, placeOf, visits } from '../data/derive.ts';
 import { transportIcon, transportName } from '../data/dictionary.ts';
 import { PersonName } from './PersonName.tsx';
 import { routeColor } from './MapBoard.tsx';
@@ -140,7 +140,9 @@ export function MapPick({
         <div className="mpick__rows">
           {row('Адрес', placeOf(order))}
           {row('Окно приёма', `${hhmm(order.window_start)}–${hhmm(order.window_end)}`)}
-          {row('Крайний срок', hhmm(order.sla_deadline))}
+          {/* Срок уходит за полночь у трети заявок: «37:00» читается как
+              опечатка, а «13:00 завтра» — как срок. */}
+          {row('Крайний срок', deadline(order.sla_deadline))}
           {row('Работа', `${order.est_minutes} мин`)}
           {stop && row('Визит', `${hhmm(stop.arrive)}–${hhmm(stop.finish)}`)}
           {row(

@@ -34,6 +34,9 @@ export function ExcelImport({ usedIds, onAdd }: Props) {
   const input = useRef<HTMLInputElement>(null);
   const [parsed, setParsed] = useState<Parsed | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /* Файл читается. На большой выгрузке это заметная пауза, и кнопка без
+     ответа на неё читалась бы как несработавшая. */
+  const [reading, setReading] = useState(false);
 
   const take = async (file: File) => {
     setError(null);
@@ -48,13 +51,20 @@ export function ExcelImport({ usedIds, onAdd }: Props) {
       return;
     }
 
-    const text = await file.text();
-    const result = parseOrders(text, usedIds, file.name);
-    if (result.orders.length === 0 && result.skipped.length === 0) {
-      setError('В файле не нашлось ни одной строки с адресом. Проверьте, что в шапке есть столбец «Адрес».');
-      return;
+    setReading(true);
+    try {
+      const text = await file.text();
+      const result = parseOrders(text, usedIds, file.name);
+      if (result.orders.length === 0 && result.skipped.length === 0) {
+        setError('В файле не нашлось ни одной строки с адресом. Проверьте, что в шапке есть столбец «Адрес».');
+        return;
+      }
+      setParsed(result);
+    } catch {
+      setError('Файл не прочитался. Проверьте, что он не открыт в другой программе, и выберите его ещё раз.');
+    } finally {
+      setReading(false);
     }
-    setParsed(result);
   };
 
   const download = () => {
@@ -96,9 +106,10 @@ export function ExcelImport({ usedIds, onAdd }: Props) {
           variant="secondary"
           size="sm"
           onClick={() => input.current?.click()}
+          disabled={reading}
           iconLeft={<Icon name="clipboard-text" size={14} />}
         >
-          Выбрать файл
+          {reading ? 'Читаем файл…' : 'Выбрать файл'}
         </Button>
         <button type="button" className="srcexcel__template" onClick={download}>
           <Icon name="list" size={13} />

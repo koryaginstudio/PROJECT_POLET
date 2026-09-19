@@ -2,15 +2,29 @@
    здесь живут только правила раскладки, которых в системе нет. */
 
 :root {
-  --header-h: 64px;
+  /* Шапка и левая рельса — те же величины, что в токенах дизайн-системы:
+     свои числа здесь разъезжались бы с ней при первой же правке. */
+  --header-h: var(--topbar-h);
   --subheader-h: 48px;
-  --rail-left: 248px;
+  --rail-left: var(--sidebar-w);
   --rail-left-collapsed: 64px;
   --rail-right: 380px;
 
   /* Кривые из практики: встроенные CSS-easing слишком вялые. */
   --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1);
+
+  /* Ряд категориальных цветов диаграмм собран из тех же чернил и акцента,
+     что и всё остальное: сначала контрастные, потом приглушённые, чтобы
+     соседние секторы не сливались даже вшестером. */
+  --series-1: var(--accent-500);
+  --series-2: var(--ink-500);
+  --series-3: var(--gold-500);
+  --series-4: var(--ink-300);
+  --series-5: var(--accent-700);
+  --series-6: var(--ink-600);
+  --series-7: var(--accent-200);
+  --series-8: var(--ink-400);
 }
 
 html,
@@ -372,13 +386,35 @@ body {
 }
 
 /* Поля держит не сама колонка, а её части: иначе полоса прокрутки списка
-   встаёт в двенадцати точках от края и читается как чужая. */
+   встаёт в двенадцати точках от края и читается как чужая.
+
+   Меню сжато под ноутбук 1366×768: под список с подвалом там остаётся
+   около 655 точек, и четыре группы с двенадцатью пунктами должны встать
+   без прокрутки — иначе «Инженеры», «Клиенты» и «Маршруты» уезжают за край
+   и диспетчер не знает, что они есть. Пункт 34 точки, заголовок группы
+   28, поля списка по 8: всего около 630.
+
+   Если список всё же прокручивается (мелкое окно, крупный шрифт), у его
+   краёв лежит тень: обрезанная строка иначе читается как конец списка.
+   Тени нарисованы фоном: две белые заслонки едут вместе с содержимым
+   (local) и закрывают тень, когда список докручен до края; сами тени
+   стоят на месте (scroll). Пока прокручивать нечего, заслонки лежат ровно
+   на тенях, и ничего не видно. */
 .nav__list {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: var(--sp-3) var(--sp-3) var(--sp-4);
+  padding: var(--sp-2) var(--sp-3);
+  background-image:
+    linear-gradient(var(--white) 30%, rgb(255 255 255 / 0)),
+    linear-gradient(rgb(255 255 255 / 0), var(--white) 70%),
+    radial-gradient(farthest-side at 50% 0, rgb(0 0 0 / 0.14), rgb(0 0 0 / 0)),
+    radial-gradient(farthest-side at 50% 100%, rgb(0 0 0 / 0.14), rgb(0 0 0 / 0));
+  background-position: center top, center bottom, center top, center bottom;
+  background-size: 100% 36px, 100% 36px, 100% 14px, 100% 14px;
+  background-repeat: no-repeat;
+  background-attachment: local, local, scroll, scroll;
 }
 
 .nav--collapsed .nav__list,
@@ -398,7 +434,7 @@ body {
 }
 
 .nav--collapsed .nav__group {
-  padding: var(--sp-4) 0 var(--sp-2);
+  padding: var(--sp-2) 0 var(--sp-1);
 }
 
 .nav__rule {
@@ -408,8 +444,9 @@ body {
 }
 
 .nav__group {
-  padding: var(--sp-4) var(--sp-3) var(--sp-2);
+  padding: var(--sp-2) var(--sp-3) var(--sp-1);
   font-size: var(--fs-overline);
+  line-height: var(--lh-caption);
   letter-spacing: var(--ls-overline);
   text-transform: uppercase;
   font-weight: var(--fw-bold);
@@ -421,7 +458,7 @@ body {
   align-items: center;
   gap: var(--sp-3);
   width: 100%;
-  height: 40px;
+  height: 34px;
   padding: 0 var(--sp-3);
   border: 0;
   border-radius: var(--r-control);
@@ -614,7 +651,7 @@ body {
   padding: 1px 5px;
   border-radius: var(--r-xs);
   background: var(--ink-100);
-  font-size: 11px;
+  font-size: var(--fs-small);
   font-weight: var(--fw-semibold);
   color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
@@ -948,6 +985,11 @@ body {
   color: var(--text-primary);
 }
 
+.cmp__open:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+
 .cmp__cell {
   display: flex;
   align-items: center;
@@ -1149,12 +1191,12 @@ body {
 }
 
 .runs__grid--dense .runcard__unit {
-  font-size: 11px;
+  font-size: var(--fs-small);
 }
 
 .runs__grid--dense .runcard__label,
 .runs__grid--dense .runcard__stamp {
-  font-size: 10px;
+  font-size: var(--fs-small);
 }
 
 .runs__grid--dense .runcard__facts {
@@ -1178,7 +1220,7 @@ body {
 .runs__grid--dense .runcard__act {
   padding: 3px 7px;
   gap: 4px;
-  font-size: 10px;
+  font-size: var(--fs-small);
 }
 
 .runs__grid--dense .runcard__stamp {
@@ -1313,11 +1355,13 @@ body {
   cursor: pointer;
   /* Отход длиннее подхода: карточка возвращается на место мягко, не
      отскакивая. Разгон пологий — резкое ускорение на такой мелкой амплитуде
-     читается как рывок, а не как движение. */
-  transition: transform var(--dur-slow) var(--ease-in-out),
-    border-color var(--dur-slow) var(--ease-in-out),
-    background-color var(--dur-slow) var(--ease-in-out),
-    box-shadow var(--dur-slow) var(--ease-in-out);
+     читается как рывок, а не как движение. Но и отход короткий: в сетке из
+     двух десятков плиток курсор идёт по ним быстро, и трети секунды на
+     возврат каждой не хватало — за ним тянулся шлейф приподнятых карточек. */
+  transition: transform var(--dur) var(--ease-in-out),
+    border-color var(--dur) var(--ease-in-out),
+    background-color var(--dur) var(--ease-in-out),
+    box-shadow var(--dur) var(--ease-in-out);
 }
 
 /* Карточка под курсором чуть подаётся вперёд и теплеет фоном: в сетке из
@@ -1328,7 +1372,7 @@ body {
 .runcard:hover,
 .runcard:focus-within {
   z-index: 1;
-  transition-duration: var(--dur);
+  transition-duration: var(--dur-fast);
   transform: translateY(-2px) scale(1.008);
   border-color: var(--ink-300);
   background: var(--ink-50);
@@ -1378,15 +1422,15 @@ body {
 /* Серая и мельче самого номера: подсказывает, что это за число, но не
    спорит с ним весом. */
 .engcard__idlabel {
-  font-size: 10px;
-  color: var(--ink-300);
+  font-size: var(--fs-small);
+  color: var(--text-muted);
 }
 
 /* Составной селектор, а не одиночный класс: `.crewpro__id` в файле ниже и
    при равной специфичности переопределил бы кегль по одному имени класса —
    победил бы просто тот, кто дальше по каскаду. */
 .crewpro__id.engcard__idbadge {
-  font-size: 9px;
+  font-size: var(--fs-small);
   font-weight: var(--fw-semibold);
   padding: 1px 6px;
 }
@@ -1417,7 +1461,7 @@ body {
   align-items: center;
   gap: 5px;
   margin: -4px 0 var(--sp-3);
-  font-size: 11px;
+  font-size: var(--fs-small);
   font-variant-numeric: tabular-nums;
   color: var(--text-muted);
 }
@@ -1437,7 +1481,7 @@ body {
 /* Фон плитки тёмный: пока подложка грузится, карточка не должна вспыхивать
    белым прямоугольником. */
 .rmap {
-  background: #2B2B2B;
+  background: var(--ink-800);
   position: relative;
   display: block;
   width: 100%;
@@ -1520,7 +1564,7 @@ body {
    одно и то же обозначение в плитке и в полном виде. */
 .rmap__loose {
   fill: var(--white);
-  stroke: #2B2B2B;
+  stroke: var(--ink-800);
 }
 
 /* ─── плитка одного маршрута ──────────────────────────────────────────────
@@ -1539,14 +1583,14 @@ body {
 /* Тёмный подбой под своей линией. На светлом куске подложки цветная линия
    сама по себе теряется; обводка держит её читаемой на любом. */
 .rmap__under {
-  stroke: #1A1A1A;
+  stroke: var(--ink-800);
   opacity: 0.55;
 }
 
 /* Визиты точками в цвет линии, с тёмной обводкой: белая спорила бы с
    заявками без инженера у соседней плитки, а там белое значит другое. */
 .rmap__stop {
-  stroke: #1A1A1A;
+  stroke: var(--ink-800);
 }
 
 /* Место выезда — кольцом, а не точкой: это не визит, и по нему видно, с
@@ -1568,8 +1612,8 @@ body {
 }
 
 .rmap__blank {
-  font-size: 11px;
-  color: var(--ink-300);
+  font-size: var(--fs-small);
+  color: var(--text-muted);
 }
 
 /* Подпись выезжает только под курсором: в спокойном виде карточка должна
@@ -1582,7 +1626,7 @@ body {
   border-radius: var(--r-pill);
   background: var(--ink-1000);
   color: var(--white);
-  font-size: 10px;
+  font-size: var(--fs-small);
   opacity: 0;
   transition: opacity 120ms var(--ease-out-strong);
 }
@@ -1788,7 +1832,7 @@ body {
   background: transparent;
   font-family: var(--font-sans);
   font-size: var(--fs-caption);
-  color: var(--ink-300);
+  color: var(--text-muted);
   cursor: pointer;
   transition: var(--t-control);
 }
@@ -1876,7 +1920,7 @@ body {
 
 .runcard__foot {
   margin-top: var(--sp-3);
-  font-size: 11px;
+  font-size: var(--fs-small);
   line-height: 1.35;
   color: var(--text-muted);
 }
@@ -2111,7 +2155,7 @@ body {
   border-radius: var(--r-pill);
   background: var(--danger-500);
   color: var(--white);
-  font-size: 11px;
+  font-size: var(--fs-small);
   font-weight: var(--fw-bold);
   font-variant-numeric: tabular-nums;
   box-shadow: 0 0 0 2px var(--white);
@@ -2273,7 +2317,7 @@ body {
    и цвете читается быстрее любого знака. */
 .runtabs__meta {
   font-weight: var(--fw-regular);
-  font-size: 11px;
+  font-size: var(--fs-small);
   color: var(--text-muted);
 }
 
@@ -2371,7 +2415,7 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 4px 8px 8px;
-  font-size: 11px;
+  font-size: var(--fs-small);
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -2465,7 +2509,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 1px;
-  font-size: 11px;
+  font-size: var(--fs-small);
   color: var(--text-muted);
 }
 
@@ -2474,8 +2518,8 @@ body {
 }
 
 .runmenu__mark {
-  font-size: 11px;
-  color: var(--accent-600);
+  font-size: var(--fs-small);
+  color: var(--accent-700);
   font-weight: var(--fw-semibold);
 }
 
@@ -2491,41 +2535,23 @@ body {
 /* Все шаги одного размера, включая «Всего заявок»: раньше он занимал свою
    узкую колонку и выпадал из ряда, хотя читается так же — число и подпись.
 
-   Ширину клетки задаём снизу, а не числом колонок: на широком экране все
-   шаги встают в один ряд и читаются как ход смены слева направо, а на узком
-   переносятся — но остаются такими же квадратами, а не сплющиваются до
-   девяноста пикселей, где не помещается ни число, ни подпись. */
+   Семь равных колонок: «всего» — такая же величина, как остальные шесть,
+   и место ему нужно то же. Под плашками колонка не может быть уже слова,
+   которое в ней стоит, поэтому ниже 1500 ряд переносится на две строки —
+   лучше две строки, чем семь обрезанных подписей. */
 .funnel__rail {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: var(--sp-2);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--sp-3);
   align-items: stretch;
 }
 
-.funnel__lead {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 2px;
-  padding-right: var(--sp-4);
-  border-right: 1px solid var(--border-hairline);
+@media (max-width: 1500px) {
+  .funnel__rail {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    row-gap: var(--sp-4);
+  }
 }
-
-.funnel__lead-value {
-  font-family: var(--font-display);
-  font-size: 40px;
-  font-weight: var(--fw-extrabold);
-  line-height: 1;
-  letter-spacing: -0.03em;
-  font-variant-numeric: tabular-nums;
-}
-
-.funnel__lead-label {
-  font-size: var(--fs-body-s);
-  color: var(--text-secondary);
-}
-
-
 
 /* Шаг — квадратная рамка. Раньше шаги стояли на общем фоне, и глаз сам решал,
    к какому числу относится плашка под ним; при семи шагах в ряд он решал
@@ -2586,10 +2612,6 @@ body {
   transition: width 140ms var(--ease-out-strong);
 }
 
-.stage__bar--planned .stage__bar-fill {
-  background: var(--ink-400);
-}
-
 .stage__bar--accent .stage__bar-fill {
   background: var(--accent-500);
 }
@@ -2598,21 +2620,13 @@ body {
   background: var(--success-500);
 }
 
-.stage__bar--lost .stage__bar-fill {
-  background: var(--danger-500);
-}
-
-.stage__bar--idle .stage__bar-fill {
-  background: var(--ink-400);
-}
-
 /* Подпись стоит под числом: сверху читается величина, а уже потом её имя.
    Место под вторую строку больше не резервируем — плашки выравнивает не
    пустота над ними, а то, что они прижаты к низу рамки. */
 .stage__label {
   min-width: 0;
   margin-top: 1px;
-  font-size: 12px;
+  font-size: var(--fs-caption);
   font-weight: var(--fw-semibold);
   line-height: 1.3;
   letter-spacing: -0.01em;
@@ -2647,10 +2661,6 @@ body {
   color: var(--text-primary);
 }
 
-.stage--lost .stage__value {
-  color: var(--danger-600);
-}
-
 @media (prefers-reduced-motion: reduce) {
   .search__drop,
   .notify__card {
@@ -2663,22 +2673,6 @@ body {
 
 
 /* ─── воронка: шесть блоков + полоса внимания ────────────────────────── */
-
-/* Семь равных колонок: «всего» — такая же величина, как остальные шесть,
-   и место ему нужно то же. Под плашками колонка не может быть уже слова,
-   которое в ней стоит, поэтому ниже 1500 ряд переносится на две строки —
-   лучше две строки, чем семь обрезанных подписей. */
-.funnel__rail {
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: var(--sp-3);
-}
-
-@media (max-width: 1500px) {
-  .funnel__rail {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    row-gap: var(--sp-4);
-  }
-}
 
 .stage--total {
   cursor: default;
@@ -2706,7 +2700,7 @@ body {
    рисует линию, тон 600 держит контраст в тексте. */
 .stage--enroute .stage__value,
 .stage--working .stage__value {
-  color: var(--accent-600);
+  color: var(--accent-700);
 }
 
 /* Заявки без инженера кричат цветом: это единственный этап, из которого
@@ -2721,101 +2715,6 @@ body {
 
 .stage--unassigned .stage__bar-fill {
   background: var(--danger-500);
-}
-
-.funnel__attention {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--sp-3);
-  margin-top: var(--sp-5);
-  padding-top: var(--sp-5);
-  border-top: 1px solid var(--border-hairline);
-}
-
-.alert {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-  padding: var(--sp-3) var(--sp-4);
-  border: 1px solid var(--border-hairline);
-  border-radius: var(--r-md);
-  background: var(--white);
-  font-family: var(--font-sans);
-  text-align: left;
-  cursor: pointer;
-  transition: border-color 120ms var(--ease-out-strong), background-color 120ms var(--ease-out-strong);
-}
-
-.alert:hover:not(:disabled) {
-  border-color: var(--ink-300);
-  background: var(--ink-50);
-}
-
-.alert:active:not(:disabled) {
-  transform: scale(0.997);
-}
-
-.alert:focus-visible {
-  outline: none;
-  box-shadow: var(--ring-focus);
-}
-
-.alert:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-.alert__icon {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: var(--r-pill);
-}
-
-.alert--lost .alert__icon {
-  background: var(--danger-100);
-  color: var(--danger-600);
-}
-
-.alert--attention .alert__icon {
-  background: var(--accent-100);
-  color: var(--accent-700);
-}
-
-.alert__body {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.alert__title {
-  font-size: var(--fs-body-s);
-  font-weight: var(--fw-semibold);
-  color: var(--text-primary);
-}
-
-.alert__meta {
-  font-size: var(--fs-caption);
-  color: var(--text-secondary);
-  font-variant-numeric: tabular-nums;
-}
-
-.alert__value {
-  flex: 0 0 auto;
-  font-family: var(--font-display);
-  font-size: 26px;
-  font-weight: var(--fw-extrabold);
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-}
-
-.alert--lost .alert__value {
-  color: var(--danger-600);
 }
 
 /* ─── этапы одного инженера ───────────────────────────────────────────── */
@@ -2883,7 +2782,7 @@ button.ministage:hover:not(:disabled) {
 }
 
 .ministage__label {
-  font-size: 11px;
+  font-size: var(--fs-small);
   line-height: 1.25;
   color: var(--text-secondary);
 }
@@ -2924,7 +2823,7 @@ button.ministage:hover:not(:disabled) {
 .tl__tick {
   position: absolute;
   transform: translateX(-50%);
-  font-size: 10px;
+  font-size: var(--fs-small);
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -3349,7 +3248,7 @@ button.ministage:hover:not(:disabled) {
 .shiftplan__steps .stepper__btn {
   height: 24px;
   padding: 0 6px;
-  font-size: 11px;
+  font-size: var(--fs-small);
   white-space: nowrap;
 }
 
@@ -3426,7 +3325,7 @@ button.ministage:hover:not(:disabled) {
   border-radius: var(--r-xs);
   background: var(--ink-1000);
   color: var(--white);
-  font-size: 11px;
+  font-size: var(--fs-small);
   font-weight: var(--fw-semibold);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -3487,7 +3386,7 @@ button.ministage:hover:not(:disabled) {
 }
 
 .shiftplan__meta {
-  font-size: 11px;
+  font-size: var(--fs-small);
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
   overflow: hidden;
@@ -3540,10 +3439,12 @@ button.ministage:hover:not(:disabled) {
   position: absolute;
   top: 0;
   bottom: 0;
+  z-index: 0;
   padding: 0;
   border: 0;
   border-radius: 0;
-  transition: filter 120ms var(--ease-out-strong);
+  transition: filter 120ms var(--ease-out-strong), top 120ms var(--ease-out-strong),
+    bottom 120ms var(--ease-out-strong), opacity 120ms var(--ease-out-strong);
 }
 
 /* Белая риска между соседними отрезками — как в полосе состояния смены:
@@ -3558,13 +3459,11 @@ button.ministage:hover:not(:disabled) {
    Порознь ни то ни другое не работает. Полосы идут вплотную, и выросший
    отрезок теряется среди соседей того же цвета; одно затухание не говорит,
    что именно выбрано. Вместе получается однозначно, и приём тот же, что на
-   соседнем экране, — учить его второй раз не нужно. */
-.shiftplan__seg {
-  z-index: 0;
-  transition: top 120ms var(--ease-out-strong), bottom 120ms var(--ease-out-strong),
-    opacity 120ms var(--ease-out-strong);
-}
+   соседнем экране, — учить его второй раз не нужно.
 
+   То же затухание работает и с легенды под лентой: наведение на строку
+   легенды гасит куски других цветов, и связь цвета с подписью видна без
+   расшифровки. */
 .shiftplan__seg--on {
   z-index: 2;
   top: -2px;
@@ -3572,7 +3471,7 @@ button.ministage:hover:not(:disabled) {
 }
 
 .shiftplan__seg--dim {
-  opacity: 0.3;
+  opacity: 0.28;
 }
 
 .shiftplan__seg--work {
@@ -3648,13 +3547,13 @@ button.ministage:hover:not(:disabled) {
 }
 
 .shiftplan__tip-head {
-  font-size: 11px;
+  font-size: var(--fs-small);
   font-weight: var(--fw-semibold);
   line-height: 1.3;
 }
 
 .shiftplan__tip-line {
-  font-size: 11px;
+  font-size: var(--fs-small);
   line-height: 1.3;
   color: var(--ink-300);
   font-variant-numeric: tabular-nums;
@@ -3769,17 +3668,9 @@ button.ministage:hover:not(:disabled) {
 }
 
 .geo__layers-title {
-  font-size: 10px;
+  font-size: var(--fs-small);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--text-muted);
-}
-
-/* Источник подложки — сноска, а не обозначение: тише всего на этой строке
-   и прижат к правому краю блока карты. */
-.geo__credit {
-  margin-left: auto;
-  font-size: 10px;
   color: var(--text-muted);
 }
 
@@ -3814,15 +3705,20 @@ button.ministage:hover:not(:disabled) {
 
 /* Карта живёт в своей рамке и своей высотой: подложка растровая, ей нужен
    реальный размер, а не пропорция SVG. */
+/* Высота — от окна, а не 560 всегда: на ноутбуке 768 по высоте над картой
+   стоят шапка (64), подшапка (48), поля рабочей области (48), панель с
+   заголовком (~70), строка обозначений и строка слоёв (~90) — итого около
+   320, и 560 вместе с ними не помещалось, легенда уезжала за низ. Ниже 360
+   карта перестаёт быть картой, выше 560 не нужна. */
 .geo__plot {
   position: relative;
-  height: 560px;
+  height: clamp(360px, calc(100vh - 320px), 560px);
   border: 1px solid var(--border-hairline);
   border-radius: var(--r-md);
   /* Тёмный фон под плитками, а не светлый: пока они грузятся, рамка не
      должна вспыхивать белым, а на дробном зуме между плитками бывают
      щели — на светлом фоне они читаются как разрывы карты. */
-  background: #2B2B2B;
+  background: var(--ink-800);
   overflow: hidden;
   z-index: 0;
 }
@@ -3900,6 +3796,11 @@ button.ministage:hover:not(:disabled) {
   color: var(--text-accent);
 }
 
+.geo__card-name:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+
 .geo__card-facts {
   display: flex;
   flex-wrap: wrap;
@@ -3927,7 +3828,7 @@ button.ministage:hover:not(:disabled) {
   box-shadow: 0 0 0 2px var(--white);
   color: var(--white);
   font-family: var(--font-sans);
-  font-size: 11px;
+  font-size: var(--fs-small);
   font-weight: var(--fw-bold);
   line-height: 1;
 }
@@ -3946,9 +3847,9 @@ button.ministage:hover:not(:disabled) {
 }
 
 .geo__seq--key {
-  width: 16px;
-  height: 16px;
-  font-size: 9px;
+  width: 18px;
+  height: 18px;
+  font-size: var(--fs-small);
 }
 
 .geo__line {
@@ -4038,7 +3939,7 @@ button.ministage:hover:not(:disabled) {
 /* Постоянная подпись точки: только имя объекта, без подробностей. */
 .gtip--mini {
   padding: 3px 8px;
-  font-size: 11px;
+  font-size: var(--fs-small);
   font-weight: var(--fw-semibold);
   color: var(--text-primary);
   white-space: nowrap;
@@ -4074,14 +3975,8 @@ button.ministage:hover:not(:disabled) {
 }
 
 .leaflet-control-attribution {
-  font-size: 10px;
+  font-size: var(--fs-small);
   background: rgba(255, 255, 255, 0.85);
-}
-
-/* Без инженера — контур, а не заливка: точка есть, работы за ней нет. */
-.geo__base {
-  fill: var(--ink-1000);
-  cursor: pointer;
 }
 
 .geo__note {
@@ -4175,14 +4070,14 @@ button.ministage:hover:not(:disabled) {
 
 .rstops__no {
   flex: 0 0 auto;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border-radius: var(--r-pill);
   background: var(--ink-150);
-  font-size: 10px;
+  font-size: var(--fs-small);
   font-weight: var(--fw-bold);
   color: var(--text-secondary);
 }
@@ -4645,13 +4540,13 @@ button.ministage:hover:not(:disabled) {
 }
 
 .engine__note {
-  font-size: 11px;
+  font-size: var(--fs-small);
   line-height: 1.45;
   color: var(--text-muted);
 }
 
 .engine__note code {
-  font-size: 11px;
+  font-size: var(--fs-small);
   color: var(--text-secondary);
 }
 
@@ -4715,7 +4610,7 @@ button.ministage:hover:not(:disabled) {
   width: 100%;
   /* Вровень с «Настройками» над ней: две кнопки подвала — пара, и разная
      высота читалась бы как разный вес. */
-  height: 40px;
+  height: 34px;
   padding: 0 12px;
   border: 0;
   border-radius: var(--r-control);
@@ -4802,7 +4697,7 @@ button.ministage:hover:not(:disabled) {
   font-family: var(--font-sans);
   /* На кегль меньше подписи: в узкой колонке слово должно уместиться
      целиком — обрезанное многоточием оно бесполезно. */
-  font-size: 11px;
+  font-size: var(--fs-small);
   font-weight: var(--fw-semibold);
   line-height: 1.45;
   letter-spacing: 0;
@@ -4889,7 +4784,7 @@ button.ministage:hover:not(:disabled) {
   background: var(--ink-1000);
   box-shadow: var(--shadow-lg);
   color: var(--white);
-  font-size: 11px;
+  font-size: var(--fs-small);
   font-weight: var(--fw-regular);
   line-height: 1.35;
   letter-spacing: 0;
@@ -5088,7 +4983,7 @@ button.bsq:focus-visible {
 }
 
 .calc__kicker {
-  font-size: 11px;
+  font-size: var(--fs-small);
   font-weight: var(--fw-semibold);
   color: var(--text-secondary);
   white-space: nowrap;
@@ -5181,13 +5076,13 @@ button.bsq:focus-visible {
 }
 
 .cmetric__unit {
-  font-size: 12px;
+  font-size: var(--fs-caption);
   font-weight: var(--fw-bold);
   color: var(--text-muted);
 }
 
 .cmetric__caption {
-  font-size: 11px;
+  font-size: var(--fs-small);
   line-height: 1.3;
   color: var(--text-muted);
 }
@@ -5375,7 +5270,7 @@ button.bsq:focus-visible {
   top: 8px;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 10px;
+  font-size: var(--fs-small);
   line-height: 1;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
@@ -5443,7 +5338,7 @@ button.bsq:focus-visible {
 }
 
 .ctile__label {
-  font-size: 11px;
+  font-size: var(--fs-small);
   font-weight: var(--fw-semibold);
   color: var(--text-primary);
   white-space: nowrap;
@@ -5720,20 +5615,8 @@ button.bsq:focus-visible {
 
 
 /* ─── кольцевые диаграммы ────────────────────────────────────────────────
-   Ряд категориальных цветов собран из тех же чернил и акцента, что и всё
-   остальное: сначала контрастные, потом приглушённые, чтобы соседние
-   секторы не сливались даже вшестером. */
-
-:root {
-  --series-1: var(--accent-500);
-  --series-2: var(--ink-500);
-  --series-3: var(--gold-500);
-  --series-4: var(--ink-300);
-  --series-5: var(--accent-700);
-  --series-6: var(--ink-600);
-  --series-7: var(--accent-200);
-  --series-8: var(--ink-400);
-}
+   Ряд цветов секторов (--series-1…8) объявлен в корне файла вместе с
+   остальными переменными каркаса. */
 
 .charts {
   display: grid;
@@ -5799,7 +5682,7 @@ button.bsq:focus-visible {
 .donut__center-caption {
   fill: var(--text-muted);
   font-family: var(--font-sans);
-  font-size: 10px;
+  font-size: var(--fs-small);
   text-anchor: middle;
 }
 
@@ -6032,7 +5915,7 @@ button.bars__btn:focus-visible {
   background: var(--ink-1000);
   box-shadow: var(--shadow-lg);
   color: var(--white);
-  font-size: 11px;
+  font-size: var(--fs-small);
   line-height: 1.35;
   opacity: 0;
   transform: translateY(3px);
@@ -6142,136 +6025,16 @@ button.bars__btn:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
-/* ─── доска заявок ─────────────────────────────────────────────────────── */
-
-.oboard {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: var(--sp-3);
-  align-items: start;
-}
-
-.ocol {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  padding: var(--sp-3);
-  border-radius: var(--r-lg);
-  background: var(--ink-50);
-  box-shadow: var(--shadow-inset-hairline);
-}
-
-.ocol__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-2);
-  padding-bottom: var(--sp-2);
-  border-bottom: 2px solid var(--ink-300);
-  margin-bottom: var(--sp-3);
-}
-
-.ocol__head--success {
-  border-color: var(--success-500);
-}
-
-.ocol__head--danger {
-  border-color: var(--danger-500);
-}
-
-.ocol__head--accent {
-  border-color: var(--accent-500);
-}
-
-.ocol__head--idle {
-  border-color: var(--ink-500);
-}
-
-.ocol__title {
-  font-size: var(--fs-caption);
-  font-weight: var(--fw-semibold);
-  color: var(--text-primary);
-}
-
-.ocol__count {
-  font-family: var(--font-display);
-  font-size: var(--fs-body-s);
-  font-weight: var(--fw-extrabold);
-  font-variant-numeric: tabular-nums;
-}
-
-.ocol__body {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  max-height: 520px;
-  overflow-y: auto;
-}
-
-.ocol__empty {
-  margin: 0;
-  font-size: var(--fs-caption);
-  color: var(--text-muted);
-}
-
-.ocard {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 8px 10px;
-  border: 1px solid var(--border-hairline);
-  border-radius: var(--r-sm);
-  background: var(--white);
-  font-family: var(--font-sans);
-  text-align: left;
-  cursor: pointer;
-  transition: border-color 120ms var(--ease-out-strong), box-shadow 120ms var(--ease-out-strong);
-}
-
-.ocard:hover {
-  border-color: var(--ink-300);
-}
-
-.ocard:focus-visible {
-  outline: none;
-  box-shadow: var(--ring-focus);
-}
-
-.ocard--selected {
-  border-color: var(--ink-1000);
-  box-shadow: var(--shadow-sm);
-}
-
-.ocard__title {
-  font-size: var(--fs-caption);
-  font-weight: var(--fw-semibold);
-  color: var(--text-primary);
-  line-height: 1.3;
-}
-
-.ocard__meta {
-  font-size: 11px;
-  color: var(--text-secondary);
-  font-variant-numeric: tabular-nums;
-}
-
-.ocard__foot {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px;
-  margin-top: 2px;
-}
-
-.ocard__who {
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
 /* ─── таблицы ──────────────────────────────────────────────────────────── */
 
+/* Обёртка — контейнер прокрутки в обе стороны, и шапка липнет к её верху:
+   к странице она прилипнуть не может, потому что overflow уже сделал
+   обёртку своим контейнером. Высота — остаток экрана под шапкой (64),
+   подшапкой (48) и полями рабочей области (2×24): таблица длиннее этого
+   прокручивается внутри, а заголовки колонок остаются на виду. */
 .tbl-wrap {
-  overflow-x: auto;
+  max-height: calc(100vh - var(--header-h) - var(--subheader-h) - 2 * var(--sp-6));
+  overflow: auto;
 }
 
 .tbl {
@@ -6280,16 +6043,43 @@ button.bars__btn:focus-visible {
   font-size: var(--fs-caption);
 }
 
+/* Черта под шапкой — тенью, а не границей: в схлопнутой таблице границы
+   липкой ячейки остаются на месте, когда сама ячейка уже уехала. Подписи
+   переносятся по пробелу, а не тянут колонку в ширину: «Сверх смены» в две
+   строки лучше, чем таблица, уехавшая за правый край. */
 .tbl th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   padding: 0 var(--sp-2) var(--sp-2);
+  background: var(--white);
   text-align: left;
+  vertical-align: bottom;
   font-weight: var(--fw-semibold);
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  font-size: 11px;
-  white-space: nowrap;
-  border-bottom: 1px solid var(--border-subtle);
+  font-size: var(--fs-small);
+  line-height: 1.2;
+  box-shadow: inset 0 -1px 0 var(--border-subtle);
+}
+
+/* Первая колонка — номер или имя записи — держится при боковой прокрутке:
+   без неё строка из одних чисел ни о чём. Фон обязателен, иначе под ней
+   просвечивает то, что уехало. Угол шапки стоит выше и шапки, и колонки. */
+.tbl th:first-child,
+.tbl td:first-child {
+  position: sticky;
+  left: 0;
+  background: var(--white);
+}
+
+.tbl th:first-child {
+  z-index: 3;
+}
+
+.tbl td:first-child {
+  z-index: 1;
 }
 
 .tbl td {
@@ -6308,6 +6098,17 @@ button.bars__btn:focus-visible {
   background: var(--ink-50);
 }
 
+/* Клавиатура: кольцо рисуют ячейки — у самой строки в схлопнутой таблице
+   тень не показывается. Строке нужен tabIndex, иначе фокус до неё не дойдёт. */
+.tbl__row:focus-visible {
+  outline: none;
+}
+
+.tbl__row:focus-visible td {
+  background: var(--ink-50);
+  box-shadow: inset 0 0 0 2px var(--accent-400);
+}
+
 .tbl__row--selected td {
   background: var(--accent-100);
 }
@@ -6320,7 +6121,7 @@ button.bars__btn:focus-visible {
 
 .tbl__sub {
   display: block;
-  font-size: 11px;
+  font-size: var(--fs-small);
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -6344,7 +6145,7 @@ button.bars__btn:focus-visible {
   padding: 2px 8px;
   border-radius: var(--r-pill);
   background: var(--ink-100);
-  font-size: 11px;
+  font-size: var(--fs-small);
   font-weight: var(--fw-semibold);
   color: var(--text-secondary);
   white-space: nowrap;
@@ -6368,425 +6169,6 @@ button.bars__btn:focus-visible {
 .pill--idle {
   background: var(--ink-150);
   color: var(--ink-600);
-}
-
-/* ─── гант по заявкам ──────────────────────────────────────────────────── */
-
-.gantt {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.gantt__scale {
-  position: relative;
-  height: 18px;
-  margin-left: 200px;
-  border-bottom: 1px solid var(--border-hairline);
-}
-
-.gantt__tick {
-  position: absolute;
-  transform: translateX(-50%);
-  font-size: 11px;
-  color: var(--text-muted);
-  font-variant-numeric: tabular-nums;
-}
-
-.gantt__row {
-  display: grid;
-  grid-template-columns: 200px minmax(0, 1fr);
-  align-items: center;
-  gap: var(--sp-3);
-  padding: 3px 0;
-  border: 0;
-  border-radius: var(--r-sm);
-  background: transparent;
-  font-family: var(--font-sans);
-  text-align: left;
-  cursor: pointer;
-}
-
-.gantt__row:hover {
-  background: var(--ink-50);
-}
-
-.gantt__row:focus-visible {
-  outline: none;
-  box-shadow: var(--ring-focus);
-}
-
-.gantt__row--selected {
-  background: var(--accent-100);
-}
-
-.gantt__label {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  padding-left: 6px;
-}
-
-.gantt__title {
-  font-size: var(--fs-caption);
-  color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.gantt__sub {
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-.gantt__track {
-  position: relative;
-  height: 16px;
-  border-radius: var(--r-pill);
-  background: var(--ink-50);
-}
-
-.gantt__window {
-  position: absolute;
-  top: 4px;
-  height: 8px;
-  border-radius: var(--r-pill);
-  background: var(--ink-200);
-}
-
-.gantt__visit {
-  position: absolute;
-  top: 2px;
-  height: 12px;
-  border-radius: var(--r-pill);
-  background: var(--accent-500);
-}
-
-.gantt__visit--breach {
-  background: var(--danger-500);
-}
-
-.gantt__sla {
-  position: absolute;
-  top: 0;
-  width: 2px;
-  height: 100%;
-  background: var(--danger-500);
-  opacity: 0.5;
-}
-
-.gantt__now {
-  position: absolute;
-  top: -2px;
-  width: 1px;
-  height: calc(100% + 4px);
-  background: var(--ink-1000);
-}
-
-/* ─── карточки инженеров ───────────────────────────────────────────────── */
-
-.ecards {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: var(--sp-3);
-}
-
-.ecard {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-2);
-  padding: var(--sp-4);
-  border: 1px solid var(--border-hairline);
-  border-radius: var(--r-md);
-  background: var(--white);
-  font-family: var(--font-sans);
-  text-align: left;
-  cursor: pointer;
-  transition: border-color 120ms var(--ease-out-strong), box-shadow 120ms var(--ease-out-strong);
-}
-
-.ecard:hover {
-  border-color: var(--ink-300);
-}
-
-.ecard:focus-visible {
-  outline: none;
-  box-shadow: var(--ring-focus);
-}
-
-.ecard--selected {
-  border-color: var(--ink-1000);
-  box-shadow: var(--shadow-sm);
-}
-
-.ecard__top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-2);
-}
-
-.ecard__name {
-  font-size: var(--fs-body-s);
-  font-weight: var(--fw-semibold);
-  color: var(--text-primary);
-}
-
-.ecard__badges {
-  display: flex;
-  gap: 4px;
-}
-
-.ecard__meta {
-  font-size: var(--fs-caption);
-  color: var(--text-secondary);
-  font-variant-numeric: tabular-nums;
-}
-
-.ecard__skills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-.ecard__load {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-}
-
-.ecard__load-track {
-  flex: 1 1 auto;
-  height: 6px;
-  border-radius: var(--r-pill);
-  background: var(--ink-150);
-  overflow: hidden;
-}
-
-.ecard__load-fill {
-  display: block;
-  height: 100%;
-  border-radius: var(--r-pill);
-  background: var(--success-500);
-}
-
-.ecard__load-fill--hot {
-  background: var(--danger-500);
-}
-
-.ecard__load-value {
-  font-size: var(--fs-caption);
-  font-weight: var(--fw-semibold);
-  color: var(--text-primary);
-  font-variant-numeric: tabular-nums;
-}
-
-.ecard__track {
-  position: relative;
-  display: block;
-  height: 14px;
-  border-radius: var(--r-pill);
-  background: var(--ink-100);
-  overflow: hidden;
-}
-
-.ecard__now {
-  position: absolute;
-  top: 0;
-  width: 1px;
-  height: 100%;
-  background: var(--ink-1000);
-}
-
-@media (max-width: 1320px) {
-  .oboard {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-
-/* ─── маршруты ─────────────────────────────────────────────────────────── */
-
-.rlist {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-  gap: var(--sp-3);
-  align-items: start;
-}
-
-.rcard {
-  border: 1px solid var(--border-hairline);
-  border-radius: var(--r-md);
-  background: var(--white);
-  overflow: hidden;
-}
-
-.rcard--selected {
-  border-color: var(--ink-1000);
-  box-shadow: var(--shadow-sm);
-}
-
-.rcard__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-3);
-  width: 100%;
-  padding: var(--sp-3) var(--sp-4);
-  border: 0;
-  border-bottom: 1px solid var(--border-hairline);
-  background: var(--ink-50);
-  font-family: var(--font-sans);
-  text-align: left;
-  cursor: pointer;
-}
-
-.rcard__head:hover {
-  background: var(--ink-100);
-}
-
-.rcard__head:focus-visible {
-  outline: none;
-  box-shadow: var(--ring-focus);
-}
-
-.rcard__who {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.rcard__name {
-  font-size: var(--fs-body-s);
-  font-weight: var(--fw-semibold);
-  color: var(--text-primary);
-}
-
-.rcard__meta {
-  font-size: var(--fs-caption);
-  color: var(--text-secondary);
-  font-variant-numeric: tabular-nums;
-}
-
-.rcard__nums {
-  display: flex;
-  gap: var(--sp-3);
-  flex: 0 0 auto;
-}
-
-.rcard__num {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-.rcard__num b {
-  font-family: var(--font-display);
-  font-size: var(--fs-body-s);
-  font-weight: var(--fw-extrabold);
-  color: var(--text-primary);
-  font-variant-numeric: tabular-nums;
-}
-
-.rstops {
-  margin: 0;
-  padding: var(--sp-2);
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.rstop {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-  width: 100%;
-  padding: 6px 8px;
-  border: 0;
-  border-radius: var(--r-sm);
-  background: transparent;
-  font-family: var(--font-sans);
-  text-align: left;
-  cursor: pointer;
-}
-
-.rstop:hover {
-  background: var(--ink-50);
-}
-
-.rstop:focus-visible {
-  outline: none;
-  box-shadow: var(--ring-focus);
-}
-
-.rstop--selected {
-  background: var(--accent-100);
-}
-
-/* Пройденные визиты приглушаются, но остаются читаемыми: это история дня,
-   а не выключенные строки. */
-.rstop--passed .rstop__title,
-.rstop--passed .rstop__meta {
-  color: var(--text-muted);
-}
-
-.rstop__seq {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border-radius: var(--r-pill);
-  background: var(--ink-100);
-  font-size: 11px;
-  font-weight: var(--fw-semibold);
-  color: var(--text-secondary);
-  font-variant-numeric: tabular-nums;
-}
-
-.rstop__main {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.rstop__title {
-  font-size: var(--fs-caption);
-  color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.rstop__meta {
-  font-size: 11px;
-  color: var(--text-secondary);
-  font-variant-numeric: tabular-nums;
-}
-
-.rstop__side {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex: 0 0 auto;
-}
-
-.rstop__slack {
-  font-size: 11px;
-  color: var(--text-muted);
-  font-variant-numeric: tabular-nums;
-}
-
-.gantt__track--tall {
-  height: 22px;
 }
 
 /* ─── клиенты ──────────────────────────────────────────────────────────── */
@@ -6854,7 +6236,7 @@ button.bars__btn:focus-visible {
    строкой, а не через точку в одной, — иначе длинный адрес выталкивает район
    за край карточки, и остаётся ни того ни другого. */
 .ccard__where {
-  font-size: 11px;
+  font-size: var(--fs-small);
   font-weight: var(--fw-regular);
   color: var(--text-muted);
 }
@@ -6878,7 +6260,7 @@ button.bars__btn:focus-visible {
   align-items: baseline;
   justify-content: space-between;
   gap: var(--sp-2);
-  font-size: 11px;
+  font-size: var(--fs-small);
   color: var(--text-muted);
 }
 
@@ -6898,8 +6280,13 @@ button.bars__btn:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
-.ccard__bad {
-  color: var(--danger-600) !important;
+/* Элемент вместе с классом, а не класс сам по себе: у «.ccard__row b» и
+   «.dbrun__facts b» свой цвет с той же силой, и без элемента в селекторе
+   побеждал бы тот, кто дальше по файлу, — раньше это гасили !important. */
+.ccard__row b.ccard__bad,
+.dbrun__facts b.ccard__bad,
+b.ccard__bad {
+  color: var(--danger-600);
 }
 
 .tbl__inline {
@@ -6984,7 +6371,7 @@ button.bars__btn:focus-visible {
 }
 
 .dbstat__label {
-  font-size: 11px;
+  font-size: var(--fs-small);
   color: var(--text-muted);
 }
 
@@ -7063,7 +6450,7 @@ button.bars__btn:focus-visible {
   overflow: hidden;
   background: var(--ink-100);
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--fs-small);
   font-weight: var(--fw-semibold);
   font-variant-numeric: tabular-nums;
 }
@@ -7095,7 +6482,7 @@ button.bars__btn:focus-visible {
 .dblist__code {
   flex: 0 0 auto;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-small);
   font-weight: var(--fw-semibold);
   letter-spacing: 0.02em;
   color: var(--text-muted);
@@ -7112,7 +6499,7 @@ button.bars__btn:focus-visible {
 }
 
 .dblist__sub {
-  font-size: 11px;
+  font-size: var(--fs-small);
   color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
@@ -7158,7 +6545,7 @@ button.bars__btn:focus-visible {
 
 .dblist__label {
   max-width: 100%;
-  font-size: 10px;
+  font-size: var(--fs-small);
   color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
@@ -7301,7 +6688,9 @@ button.bars__btn:focus-visible {
   flex-direction: column;
   gap: var(--sp-2);
   flex: 0 0 auto;
-  padding: var(--sp-3) var(--sp-3) var(--sp-6);
+  /* Подвал ужат вместе со списком: снизу 12, а не 24 — иначе на 768 по
+     высоте последние разделы не помещаются. */
+  padding: var(--sp-2) var(--sp-3) var(--sp-3);
   border-top: 1px solid var(--border-hairline);
   background: var(--white);
   box-shadow: 0 -8px 16px -12px rgb(0 0 0 / 0.18);
@@ -7339,9 +6728,9 @@ button.bars__btn:focus-visible {
 }
 
 .statrun__mark {
-  font-size: 11px;
+  font-size: var(--fs-small);
   font-weight: var(--fw-regular);
-  color: var(--accent-600);
+  color: var(--accent-700);
 }
 
 .statrun__value {
@@ -7356,7 +6745,7 @@ button.bars__btn:focus-visible {
    читают целиком. */
 .statrun__facts {
   grid-column: 1 / -1;
-  font-size: 11px;
+  font-size: var(--fs-small);
   color: var(--text-muted);
 }
 
@@ -7409,7 +6798,7 @@ button.bars__btn:focus-visible {
 }
 
 .statbar__value {
-  font-size: 11px;
+  font-size: var(--fs-small);
   color: var(--text-muted);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
@@ -7432,6 +6821,11 @@ button.bars__btn:focus-visible {
 
 .dash__section-link:hover {
   color: var(--text-primary);
+}
+
+.dash__section-link:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
 }
 
 .home__actions {
@@ -7489,6 +6883,11 @@ button.bars__btn:focus-visible {
   border-color: var(--ink-300);
 }
 
+.homerun:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+
 .homerun--active {
   border-color: var(--ink-1000);
 }
@@ -7514,13 +6913,13 @@ button.bars__btn:focus-visible {
 }
 
 .homerun__label {
-  font-size: 11px;
+  font-size: var(--fs-small);
   color: var(--text-muted);
 }
 
 .homerun__fact {
   margin-top: 4px;
-  font-size: 11px;
+  font-size: var(--fs-small);
   color: var(--text-muted);
 }
 
@@ -7569,8 +6968,31 @@ button.bars__btn:focus-visible {
   border-radius: var(--r-md);
   background: color-mix(in srgb, var(--danger-600) 6%, var(--white));
   color: var(--danger-600);
+  font-family: var(--font-sans);
   text-align: left;
   cursor: pointer;
+  transition: border-color 120ms var(--ease-out-strong), background-color 120ms var(--ease-out-strong);
+}
+
+/* Под курсором тревога густеет, а не сереет: раньше её перекрашивало
+   наведение из старого набора правил с серой палитрой. */
+.alert:hover:not(:disabled) {
+  border-color: var(--danger-700);
+  background: color-mix(in srgb, var(--danger-600) 12%, var(--white));
+}
+
+.alert:active:not(:disabled) {
+  transform: scale(0.997);
+}
+
+.alert:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+
+.alert:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .alert--danger {
@@ -7582,10 +7004,12 @@ button.bars__btn:focus-visible {
   flex-direction: column;
   gap: 2px;
   flex: 1 1 auto;
+  min-width: 0;
   color: var(--text-primary);
 }
 
 .alert__title {
+  font-size: var(--fs-body-s);
   font-weight: var(--fw-semibold);
 }
 
@@ -7619,6 +7043,11 @@ button.bars__btn:focus-visible {
 
 .roster__row:hover {
   background: var(--ink-50);
+}
+
+.roster__row:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
 }
 
 .roster__row--active {
@@ -7698,7 +7127,7 @@ button.bars__btn:focus-visible {
 }
 
 .kancol__label {
-  font-size: 11px;
+  font-size: var(--fs-small);
   font-weight: var(--fw-semibold);
   color: var(--text-primary);
   white-space: nowrap;
@@ -7707,7 +7136,7 @@ button.bars__btn:focus-visible {
 }
 
 .kancol__count {
-  font-size: 11px;
+  font-size: var(--fs-small);
   font-weight: var(--fw-semibold);
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
@@ -7725,7 +7154,7 @@ button.bars__btn:focus-visible {
 
 .kancol__empty {
   padding: var(--sp-2);
-  font-size: 11px;
+  font-size: var(--fs-small);
   color: var(--text-muted);
   text-align: center;
 }
@@ -7746,6 +7175,11 @@ button.bars__btn:focus-visible {
 
 .kancard:hover {
   border-color: var(--ink-300);
+}
+
+.kancard:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
 }
 
 .kancard--selected {
@@ -7786,7 +7220,7 @@ button.bars__btn:focus-visible {
   align-items: center;
   gap: 5px;
   min-width: 0;
-  font-size: 11px;
+  font-size: var(--fs-small);
   font-weight: var(--fw-regular);
   color: var(--text-secondary);
   overflow: hidden;
@@ -7801,14 +7235,14 @@ button.bars__btn:focus-visible {
    телефону, поэтому он стоит первым и держит вес строки. */
 .kancard__id {
   flex: 0 0 auto;
-  font-size: 11px;
+  font-size: var(--fs-small);
   font-weight: var(--fw-semibold);
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
 }
 
 .kancard__where {
-  font-size: 11px;
+  font-size: var(--fs-small);
   color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -7819,7 +7253,7 @@ button.bars__btn:focus-visible {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 10px;
+  font-size: var(--fs-small);
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -7840,7 +7274,7 @@ button.bars__btn:focus-visible {
   border-top: 1px solid var(--border-hairline);
   background: transparent;
   font-family: var(--font-sans);
-  font-size: 10px;
+  font-size: var(--fs-small);
   color: var(--text-secondary);
   cursor: pointer;
   text-align: left;
@@ -7993,6 +7427,11 @@ button.bars__btn:focus-visible {
   background: var(--ink-50);
 }
 
+.gaterow:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+
 .gaterow--active {
   background: var(--ink-100);
 }
@@ -8009,7 +7448,7 @@ button.bars__btn:focus-visible {
 }
 
 .gaterow__facts {
-  font-size: 11px;
+  font-size: var(--fs-small);
   color: var(--text-muted);
 }
 
@@ -8064,27 +7503,27 @@ button.bars__btn:focus-visible {
 }
 
 .preset__default {
-  font-size: 10px;
+  font-size: var(--fs-small);
   color: var(--text-muted);
   white-space: nowrap;
 }
 
 .preset__what {
-  font-size: 11px;
+  font-size: var(--fs-small);
   color: var(--text-secondary);
 }
 
 /* Замер выделен: это единственная цифра здесь, за которой стоит прогон,
    а не ожидание. */
 .preset__measured {
-  font-size: 11px;
+  font-size: var(--fs-small);
   font-weight: var(--fw-semibold);
-  color: var(--accent-600);
+  color: var(--accent-700);
 }
 
 .preset__num {
   margin-top: 2px;
-  font-size: 10px;
+  font-size: var(--fs-small);
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -8171,13 +7610,13 @@ button.bars__btn:focus-visible {
 .knob__ends {
   display: flex;
   justify-content: space-between;
-  font-size: 10px;
+  font-size: var(--fs-small);
   color: var(--text-muted);
 }
 
 .knob__hint {
   margin-top: 4px;
-  font-size: 11px;
+  font-size: var(--fs-small);
   line-height: 1.45;
   color: var(--text-muted);
 }
@@ -8223,6 +7662,14 @@ button.bars__btn:focus-visible {
   }
 }
 
+/* Без движения кольцо остаётся на месте: подпись рядом говорит, что идёт
+   расчёт, а вращение при отключённой анимации только мешает. */
+@media (prefers-reduced-motion: reduce) {
+  .createbar__spin {
+    animation: none;
+  }
+}
+
 /* Движок отказал. Не окно и не тост: форма остаётся набранной, а строка
    стоит ровно там, где человек искал бы ответ на «почему не считает». */
 .solvefail {
@@ -8231,8 +7678,8 @@ button.bars__btn:focus-visible {
   gap: var(--sp-2);
   padding: var(--sp-3);
   border-radius: var(--r-sm);
-  background: var(--danger-50, #FDECEB);
-  color: var(--danger-700, #9B211A);
+  background: var(--danger-50);
+  color: var(--danger-700);
   font-size: var(--fs-body-s);
   line-height: var(--lh-body-s);
 }
@@ -8250,6 +7697,11 @@ button.bars__btn:focus-visible {
 
 .createbar__reset:hover {
   color: var(--text-primary);
+}
+
+.createbar__reset:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
 }
 
 .createbar__actions {
@@ -8440,7 +7892,7 @@ button.bars__btn:focus-visible {
 }
 
 .shiftline__note {
-  font-size: 11px;
+  font-size: var(--fs-small);
   color: var(--text-muted);
 }
 
@@ -8494,7 +7946,7 @@ button.bars__btn:focus-visible {
   position: absolute;
   transform: translateX(-50%);
   white-space: nowrap;
-  font-size: 11px;
+  font-size: var(--fs-small);
   font-variant-numeric: tabular-nums;
 }
 
@@ -8574,7 +8026,7 @@ button.bars__btn:focus-visible {
 .owin__scale {
   position: relative;
   height: 18px;
-  font-size: 11px;
+  font-size: var(--fs-small);
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -8652,7 +8104,7 @@ button.bars__btn:focus-visible {
 
 .cxm--mid {
   background: var(--accent-100);
-  color: var(--accent-600);
+  color: var(--accent-700);
 }
 
 .cxm--mid .cxm__cell--on {
@@ -8696,7 +8148,7 @@ button.bars__btn:focus-visible {
   flex: 0 0 auto;
   border-radius: var(--r-pill);
   background: var(--white);
-  color: var(--accent-600);
+  color: var(--accent-700);
 }
 
 .accessnote__body {
@@ -8713,7 +8165,7 @@ button.bars__btn:focus-visible {
 }
 
 .accessnote__note {
-  font-size: 11px;
+  font-size: var(--fs-small);
   line-height: 1.4;
   color: var(--text-secondary);
 }
@@ -8769,7 +8221,7 @@ button.bars__btn:focus-visible {
   bottom: 0;
   transform: translateX(-50%);
   padding-bottom: 4px;
-  font-size: 10px;
+  font-size: var(--fs-small);
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -8816,12 +8268,6 @@ button.bars__btn:focus-visible {
   right: 0;
   left: auto;
   transform: none;
-}
-
-/* Наведение на ленту дня: неподсвеченные куски гаснут, а строка легенды с их
-   цветом выделяется — связь цвета и подписи видна сразу, без расшифровки. */
-.shiftplan__seg--dim {
-  opacity: 0.28;
 }
 
 .tl__key {
@@ -8948,7 +8394,7 @@ button.bars__btn:focus-visible {
 
 .stagerow__time {
   flex: 0 0 auto;
-  font-size: 11px;
+  font-size: var(--fs-small);
   font-variant-numeric: tabular-nums;
   color: var(--text-muted);
 }
@@ -8969,7 +8415,7 @@ button.bars__btn:focus-visible {
 }
 
 .stagerow__who {
-  font-size: 11px;
+  font-size: var(--fs-small);
   color: var(--text-muted);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -9009,7 +8455,7 @@ button.bars__btn:focus-visible {
 }
 
 .hourrow__time {
-  flex: 0 0 34px;
+  flex: 0 0 40px;
   font-size: var(--fs-caption);
   font-weight: var(--fw-semibold);
   font-variant-numeric: tabular-nums;
@@ -9059,7 +8505,7 @@ button.bars__btn:focus-visible {
    сколько уже некому отдать. */
 .hourrow__gap--on {
   font-weight: var(--fw-bold);
-  color: var(--danger-500);
+  color: var(--danger-600);
 }
 
 /* Час, где свободные руки сошлись с невзятыми окнами: здесь смену ещё можно
@@ -9069,7 +8515,7 @@ button.bars__btn:focus-visible {
 }
 
 .hourlist__line {
-  font-size: 11px;
+  font-size: var(--fs-small);
   color: var(--text-secondary);
 }
 
@@ -9095,7 +8541,7 @@ button.bars__btn:focus-visible {
   border-radius: var(--r-pill);
   background: var(--white);
   font-family: var(--font-sans);
-  font-size: 11px;
+  font-size: var(--fs-small);
   color: var(--text-secondary);
   cursor: pointer;
   transition: var(--t-control);
@@ -9117,7 +8563,7 @@ button.bars__btn:focus-visible {
   gap: var(--sp-2) var(--sp-4);
   padding-top: var(--sp-3);
   border-top: 1px solid var(--border-hairline);
-  font-size: 11px;
+  font-size: var(--fs-small);
   color: var(--text-muted);
 }
 
@@ -9136,12 +8582,12 @@ button.bars__btn:focus-visible {
   gap: var(--sp-3);
   padding: 0 10px 4px;
   border-bottom: 1px solid var(--border-hairline);
-  font-size: 10px;
+  font-size: var(--fs-small);
   color: var(--text-muted);
 }
 
 .hourcols__time {
-  flex: 0 0 34px;
+  flex: 0 0 40px;
 }
 
 .hourcols__bar {
@@ -9182,14 +8628,14 @@ button.bars__btn:focus-visible {
 }
 
 .hourtip__head {
-  font-size: 11px;
+  font-size: var(--fs-small);
   font-weight: var(--fw-semibold);
   font-variant-numeric: tabular-nums;
   color: var(--white);
 }
 
 .hourtip__line {
-  font-size: 11px;
+  font-size: var(--fs-small);
   line-height: 1.35;
   color: var(--ink-300);
   font-variant-numeric: tabular-nums;
@@ -9197,7 +8643,7 @@ button.bars__btn:focus-visible {
 
 .hourtip__note {
   margin-top: 2px;
-  font-size: 11px;
+  font-size: var(--fs-small);
   line-height: 1.35;
   color: var(--accent-500);
 }
@@ -9229,7 +8675,7 @@ button.bars__btn:focus-visible {
 }
 
 .crewtotal__label {
-  font-size: 11px;
+  font-size: var(--fs-small);
   line-height: 1.35;
   color: var(--text-secondary);
 }
@@ -9305,9 +8751,9 @@ button.bars__btn:focus-visible {
 
 .crewrow__now {
   padding: 2px 8px 4px;
-  font-size: 11px;
+  font-size: var(--fs-small);
   line-height: 1.35;
-  color: var(--accent-600);
+  color: var(--accent-700);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -9383,7 +8829,7 @@ button.bars__btn:focus-visible {
   border: 0;
   border-radius: var(--r-pill);
   background: transparent;
-  color: var(--ink-300);
+  color: var(--text-muted);
   cursor: pointer;
   transition: var(--t-control);
 }
@@ -9431,7 +8877,7 @@ button.bars__btn:focus-visible {
 .runcard__note {
   min-width: 0;
   margin: 0;
-  font-size: 11px;
+  font-size: var(--fs-small);
   line-height: 1.4;
   color: var(--text-secondary);
   white-space: nowrap;
@@ -9442,7 +8888,7 @@ button.bars__btn:focus-visible {
 .runcard__note::before {
   content: '·';
   margin-right: 5px;
-  color: var(--ink-300);
+  color: var(--text-muted);
 }
 
 /* Кнопки прижаты к низу карточки: цифр сверху может оказаться на строку
@@ -9557,7 +9003,7 @@ button.bars__btn:focus-visible {
 }
 
 .runedit__note {
-  font-size: 11px;
+  font-size: var(--fs-small);
   line-height: 1.4;
   color: var(--text-muted);
 }
@@ -9674,10 +9120,10 @@ button.bars__btn:focus-visible {
   margin: var(--sp-3) 0 0;
   padding: var(--sp-3);
   border-radius: var(--r-sm);
-  background: var(--ink-50, #F4F4F4);
+  background: var(--ink-50);
   border: 1px solid var(--border-hairline);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
+  font-size: var(--fs-caption);
   line-height: 1.7;
   color: var(--text-primary);
   overflow-x: auto;
@@ -9696,7 +9142,7 @@ button.bars__btn:focus-visible {
 
 .setbar__note {
   flex: 1 1 260px;
-  font-size: 11px;
+  font-size: var(--fs-small);
   line-height: 1.4;
   color: var(--text-muted);
 }
@@ -9708,9 +9154,11 @@ button.bars__btn:focus-visible {
   margin-top: var(--sp-3);
 }
 
+/* Средняя колонка — minmax(0, 1fr), а не 1fr: у «1fr» нижняя граница по
+   содержимому, и длинное имя навыка растягивало карточку за край сетки. */
 .skillcard {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 4px 10px;
   padding: var(--sp-3);
@@ -9720,6 +9168,10 @@ button.bars__btn:focus-visible {
 }
 
 .skillcard__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: var(--fs-body-s);
   font-weight: var(--fw-semibold);
   color: var(--text-primary);
@@ -9733,7 +9185,7 @@ button.bars__btn:focus-visible {
 
 .skillcard__code {
   grid-column: 2 / -1;
-  font-size: 11px;
+  font-size: var(--fs-small);
   color: var(--text-muted);
 }
 
@@ -9800,7 +9252,7 @@ button.bars__btn:focus-visible {
   display: flex;
   flex-direction: column;
   gap: 1px;
-  font-size: 11px;
+  font-size: var(--fs-small);
   color: var(--text-muted);
 }
 
@@ -9939,7 +9391,7 @@ button.bars__btn:focus-visible {
    слова, инженер движка ищет глазами именно это. */
 .rule__name {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 11px;
+  font-size: var(--fs-small);
   color: var(--text-muted);
 }
 
@@ -9962,7 +9414,7 @@ button.bars__btn:focus-visible {
   width: 110px;
   height: 34px;
   padding: 0 10px;
-  border: 1px solid var(--border-default, var(--border-hairline));
+  border: 1px solid var(--border-default);
   border-radius: var(--r-control);
   background: var(--white);
   font-family: var(--font-sans);
@@ -9979,7 +9431,7 @@ button.bars__btn:focus-visible {
 }
 
 .rule__limits {
-  font-size: 11px;
+  font-size: var(--fs-small);
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -9994,7 +9446,7 @@ button.bars__btn:focus-visible {
   background: transparent;
   padding: 0;
   font-family: var(--font-sans);
-  font-size: 11px;
+  font-size: var(--fs-small);
   color: var(--text-muted);
 }
 
@@ -10031,7 +9483,7 @@ button.bars__btn:focus-visible {
   padding: 1px 6px;
   border-radius: var(--r-pill);
   background: var(--ink-100);
-  font-size: 10px;
+  font-size: var(--fs-small);
   color: var(--text-muted);
 }
 
@@ -10041,7 +9493,7 @@ button.bars__btn:focus-visible {
   gap: 6px;
   margin: 0;
   max-width: 68ch;
-  font-size: 11px;
+  font-size: var(--fs-small);
   line-height: 1.5;
   color: var(--text-muted);
 }
@@ -10049,40 +9501,6 @@ button.bars__btn:focus-visible {
 .rule__caution svg {
   flex: 0 0 auto;
   margin-top: 2px;
-}
-
-/* Часы начала смены. Сетка, а не список с галочками: выбирают здесь не
-   «какие часы отметить», а форму рабочего утра — и она видна целиком. */
-.hourpick {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.hourpick__cell {
-  height: 30px;
-  padding: 0 10px;
-  border: 1px solid var(--border-hairline);
-  border-radius: var(--r-control);
-  background: var(--white);
-  font-family: var(--font-sans);
-  font-size: var(--fs-caption);
-  font-variant-numeric: tabular-nums;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: background-color 120ms var(--ease-out-strong), color 120ms var(--ease-out-strong);
-}
-
-.hourpick__cell:hover {
-  border-color: var(--ink-300);
-  color: var(--text-primary);
-}
-
-.hourpick__cell--on {
-  background: var(--ink-1000);
-  border-color: var(--ink-1000);
-  color: var(--white);
-  font-weight: var(--fw-semibold);
 }
 
 /* ─── свой масштаб карты ────────────────────────────────────────────────
@@ -10217,7 +9635,7 @@ button.bars__btn:focus-visible {
 .geo__zoomvalue {
   min-width: 34px;
   text-align: center;
-  font-size: 10px;
+  font-size: var(--fs-small);
   font-variant-numeric: tabular-nums;
   color: var(--text-muted);
 }
@@ -10261,6 +9679,11 @@ button.bars__btn:focus-visible {
   color: var(--text-primary);
 }
 
+.rtabs__item:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+
 .rtabs__item--on {
   background: var(--white);
   color: var(--text-primary);
@@ -10269,7 +9692,7 @@ button.bars__btn:focus-visible {
 }
 
 .rtabs__count {
-  font-size: 10px;
+  font-size: var(--fs-small);
   font-variant-numeric: tabular-nums;
   color: var(--text-muted);
 }
@@ -10327,7 +9750,7 @@ button.bars__btn:focus-visible {
 /* Время визита впритык или нарушенный срок — тем же красным, что точка на
    карте: одно состояние, один цвет во всём интерфейсе. */
 .rlist__load--risk {
-  color: var(--danger-600, #C22E26);
+  color: var(--danger-600);
 }
 
 /* У невзятой заявки метки маршрута нет. Не серая полоска, а пустое место:
@@ -10373,14 +9796,14 @@ button.bars__btn:focus-visible {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 13px;
-  height: 13px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
-  border: 1.5px solid #FFFFFF;
-  background: #FF3B30;
-  color: #FFFFFF;
+  border: 1.5px solid var(--white);
+  background: var(--danger-500);
+  color: var(--white);
   font-family: var(--font-sans);
-  font-size: 9px;
+  font-size: var(--fs-small);
   font-weight: var(--fw-extrabold);
   line-height: 1;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
@@ -10401,7 +9824,7 @@ button.bars__btn:focus-visible {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: var(--fs-small);
   color: var(--text-muted);
 }
 
@@ -10419,7 +9842,7 @@ button.bars__btn:focus-visible {
 
 /* Подсказка про пустой отрезок: он законен и означает «весь архив». */
 .runmenu__hint {
-  font-size: 11px;
+  font-size: var(--fs-small);
   color: var(--text-muted);
 }
 
@@ -10443,8 +9866,8 @@ button.bars__btn:focus-visible {
   margin-top: var(--sp-3);
   padding: var(--sp-3);
   border-radius: var(--r-sm);
-  background: var(--warning-50, #FFF6E5);
-  color: var(--warning-800, #7A4E00);
+  background: var(--warning-50);
+  color: var(--warning-800);
   font-size: var(--fs-caption);
   line-height: 1.5;
 }
@@ -10475,7 +9898,7 @@ button.bars__btn:focus-visible {
   gap: 6px;
   padding: 0 var(--sp-2);
   font-size: var(--fs-caption);
-  color: var(--success-600, #14834B);
+  color: var(--success-600);
 }
 
 /* ─── окно правки ─────────────────────────────────────────────────────── */
@@ -10527,6 +9950,11 @@ button.bars__btn:focus-visible {
   border-color: var(--ink-300);
 }
 
+.incident__kind:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+
 .incident__kind--on {
   border-color: var(--ink-1000);
   background: var(--ink-50);
@@ -10540,6 +9968,10 @@ button.bars__btn:focus-visible {
 
 .incident__kind-title {
   flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: var(--fs-body-s);
   font-weight: var(--fw-semibold);
   color: var(--text-primary);
@@ -10550,13 +9982,13 @@ button.bars__btn:focus-visible {
 .incident__verdict {
   padding: 1px 8px;
   border-radius: var(--r-pill);
-  font-size: 10px;
+  font-size: var(--fs-small);
   font-weight: var(--fw-semibold);
 }
 
 .incident__verdict--press {
-  background: var(--danger-50, #FDECEB);
-  color: var(--danger-700, #9B211A);
+  background: var(--danger-50);
+  color: var(--danger-700);
 }
 
 .incident__verdict--skip {
@@ -10583,7 +10015,7 @@ button.bars__btn:focus-visible {
 }
 
 .incident__field-label {
-  font-size: 11px;
+  font-size: var(--fs-small);
   color: var(--text-muted);
 }
 
@@ -10602,7 +10034,7 @@ button.bars__btn:focus-visible {
   font-size: var(--fs-h2);
   font-weight: var(--fw-extrabold);
   font-variant-numeric: tabular-nums;
-  color: var(--success-600, #14834B);
+  color: var(--success-600);
 }
 
 .incident__gain-value--flat {
@@ -10640,20 +10072,20 @@ button.bars__btn:focus-visible {
 }
 
 .incident__fate--ok .incident__fate-value {
-  color: var(--success-600, #14834B);
+  color: var(--success-600);
 }
 
 .incident__fate--bad .incident__fate-value {
-  color: var(--danger-600, #C22E26);
+  color: var(--danger-600);
 }
 
 .incident__fate-label {
-  font-size: 11px;
+  font-size: var(--fs-small);
   color: var(--text-secondary);
 }
 
 .incident__fate-ids {
-  font-size: 10px;
+  font-size: var(--fs-small);
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -10687,6 +10119,11 @@ button.bars__btn:focus-visible {
   border-color: var(--ink-300);
 }
 
+.srccard:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+
 .srccard--on {
   border-color: var(--ink-1000);
   background: var(--ink-50);
@@ -10700,6 +10137,10 @@ button.bars__btn:focus-visible {
 
 .srccard__title {
   flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: var(--fs-body-s);
   font-weight: var(--fw-semibold);
   color: var(--text-primary);
@@ -10710,13 +10151,13 @@ button.bars__btn:focus-visible {
 .srccard__state {
   padding: 1px 8px;
   border-radius: var(--r-pill);
-  font-size: 10px;
+  font-size: var(--fs-small);
   font-weight: var(--fw-semibold);
 }
 
 .srccard__state--on {
-  background: var(--success-50, #E7F6EE);
-  color: var(--success-700, #0F6B3D);
+  background: var(--success-50);
+  color: var(--success-700);
 }
 
 .srccard__state--off {
@@ -10761,7 +10202,7 @@ button.bars__btn:focus-visible {
 }
 
 .srcentity__what {
-  font-size: 11px;
+  font-size: var(--fs-small);
   color: var(--text-muted);
 }
 
@@ -10831,14 +10272,14 @@ button.bars__btn:focus-visible {
 }
 
 .srcman__id {
-  font-size: 10px;
+  font-size: var(--fs-small);
   font-weight: var(--fw-regular);
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
 
 .srcman__shift {
-  font-size: 11px;
+  font-size: var(--fs-small);
   color: var(--text-muted);
 }
 
@@ -10858,7 +10299,7 @@ button.bars__btn:focus-visible {
   border-radius: var(--r-pill);
   background: var(--white);
   font-family: var(--font-sans);
-  font-size: 11px;
+  font-size: var(--fs-small);
   color: var(--text-secondary);
   cursor: pointer;
   transition: var(--t-control);
@@ -10867,6 +10308,11 @@ button.bars__btn:focus-visible {
 .srcskill:hover:not(:disabled) {
   border-color: var(--ink-300);
   color: var(--text-primary);
+}
+
+.srcskill:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
 }
 
 /* Снятый навык зачёркнут: он никуда не делся из квалификации, его просто
@@ -10926,14 +10372,14 @@ button.bars__btn:focus-visible {
 .srcextra__flag {
   padding: 0 6px;
   border-radius: var(--r-pill);
-  background: var(--danger-50, #FDECEB);
-  color: var(--danger-700, #9B211A);
-  font-size: 10px;
+  background: var(--danger-50);
+  color: var(--danger-700);
+  font-size: var(--fs-small);
   font-weight: var(--fw-semibold);
 }
 
 .srcextra__where {
-  font-size: 11px;
+  font-size: var(--fs-small);
   color: var(--text-muted);
 }
 
@@ -10969,7 +10415,17 @@ button.bars__btn:focus-visible {
    внутри шапки базы. Внутри выходило нелогично: панель называлась «База
    расчётов», а лежала в ней сводка, и до самой базы оставалось ещё
    полэкрана. */
+/* Доска — контейнер для своей сетки: сколько плиток встаёт в ряд, решает
+   её ширина, а не ширина окна — в узкой колонке при широком окне пороги
+   по окну давали шесть плиток размером со значок.
+
+   Контейнер заодно становится слоем (stacking context), и выпадающие меню
+   плиток оказались бы под карточками, стоящими ниже по странице: те
+   позиционированы и идут позже в дереве. Поэтому доска поднята над ними. */
 .wboard {
+  position: relative;
+  z-index: 2;
+  container-type: inline-size;
   display: flex;
   flex-direction: column;
   padding: var(--sp-4) var(--sp-5);
@@ -11175,25 +10631,27 @@ button.bars__btn:focus-visible {
   z-index: 6;
 }
 
-@media (max-width: 1560px) {
+/* Пороги — по ширине доски: плитка не уже ~185 точек, пока их шесть, пять
+   или четыре; втроём и вдвоём они уже стоят на узкой панели. */
+@container (max-width: 1240px) {
   .wgrid {
     grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 }
 
-@media (max-width: 1320px) {
+@container (max-width: 1000px) {
   .wgrid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
-@media (max-width: 1080px) {
+@container (max-width: 760px) {
   .wgrid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
-@media (max-width: 760px) {
+@container (max-width: 440px) {
   .wgrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -11252,7 +10710,8 @@ button.bars__btn:focus-visible {
   border-radius: 50%;
 }
 
-.wadd:hover .wadd__mark {
+.wadd:hover .wadd__mark,
+.wadd:focus-visible .wadd__mark {
   border-color: var(--ink-1000);
   background: var(--ink-1000);
   color: var(--white);
@@ -11265,6 +10724,10 @@ button.bars__btn:focus-visible {
 
 /* Квадрат — не украшение: диаграммы разной формы в рамках разной высоты
    читаются как разной важности, а здесь они равноправны. */
+/* Плитка в руке: приподнялась и легла тенью на соседей. Подъём начинается
+   по нажатию, до первого движения, — так видно, что плитка взята, а не
+   что по ней просто щёлкнули. Отход мягче подхода: возвращается она без
+   отскока. */
 .wtile {
   display: flex;
   flex-direction: column;
@@ -11276,17 +10739,7 @@ button.bars__btn:focus-visible {
   border-radius: var(--r-md);
   background: var(--surface-tile);
   overflow: hidden;
-}
-
-.wtile {
   cursor: grab;
-}
-
-/* Плитка в руке: приподнялась и легла тенью на соседей. Подъём начинается
-   по нажатию, до первого движения, — так видно, что плитка взята, а не
-   что по ней просто щёлкнули. Отход мягче подхода: возвращается она без
-   отскока. */
-.wtile {
   transition: transform var(--dur-slow) var(--ease-in-out),
     box-shadow var(--dur-slow) var(--ease-in-out),
     opacity 120ms var(--ease-out-strong);
@@ -11435,12 +10888,15 @@ button.bars__btn:focus-visible {
 
 .wshape__name {
   flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .wtile__title {
   min-width: 0;
-  font-size: 10px;
+  font-size: var(--fs-small);
   font-weight: var(--fw-semibold);
   line-height: 1.25;
   letter-spacing: -0.01em;
@@ -11510,7 +10966,7 @@ button.bars__btn:focus-visible {
 }
 
 .wnum__caption {
-  font-size: 11px;
+  font-size: var(--fs-small);
   font-weight: var(--fw-medium);
   line-height: 1.25;
   color: var(--text-primary);
@@ -11523,7 +10979,7 @@ button.bars__btn:focus-visible {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  font-size: 10px;
+  font-size: var(--fs-small);
   line-height: 1.3;
   color: var(--text-muted);
 }
@@ -11583,7 +11039,7 @@ button.bars__btn:focus-visible {
 
 .wdonut__caption {
   text-anchor: middle;
-  font-size: 10px;
+  font-size: var(--fs-small);
   fill: var(--text-muted);
 }
 
@@ -11616,7 +11072,7 @@ button.bars__btn:focus-visible {
   border-radius: var(--r-sm);
   background: transparent;
   font-family: var(--font-sans);
-  font-size: 10px;
+  font-size: var(--fs-small);
   color: var(--text-secondary);
   text-align: left;
   cursor: pointer;
@@ -11658,7 +11114,7 @@ button.bars__btn:focus-visible {
 
 .wlegend__rest {
   padding: 0 3px;
-  font-size: 10px;
+  font-size: var(--fs-small);
   color: var(--text-muted);
 }
 
@@ -11722,7 +11178,7 @@ button.bars__btn:focus-visible {
 
 .wbar__label {
   min-width: 0;
-  font-size: 10px;
+  font-size: var(--fs-small);
   color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -11731,7 +11187,7 @@ button.bars__btn:focus-visible {
 
 .wbar__value {
   flex: 0 0 auto;
-  font-size: 10px;
+  font-size: var(--fs-small);
   font-weight: var(--fw-semibold);
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
@@ -11753,7 +11209,7 @@ button.bars__btn:focus-visible {
 }
 
 .wbars__caption {
-  font-size: 10px;
+  font-size: var(--fs-small);
   line-height: 1.25;
   color: var(--text-muted);
 }
@@ -11777,7 +11233,7 @@ button.bars__btn:focus-visible {
 
 .wtrend__caption {
   margin-top: 2px;
-  font-size: 10px;
+  font-size: var(--fs-small);
   line-height: 1.25;
   color: var(--text-muted);
 }
@@ -11851,7 +11307,7 @@ button.bars__btn:focus-visible {
   display: flex;
   justify-content: space-between;
   margin-top: 4px;
-  font-size: 10px;
+  font-size: var(--fs-small);
   font-weight: var(--fw-semibold);
   color: var(--text-muted);
 }
@@ -12074,7 +11530,7 @@ button.bars__btn:focus-visible {
 }
 
 .wmenu__hint {
-  font-size: 10px;
+  font-size: var(--fs-small);
   line-height: 1.3;
   color: var(--text-muted);
 }
@@ -12174,7 +11630,7 @@ button.bars__btn:focus-visible {
 }
 
 .svc__label {
-  font-size: 10px;
+  font-size: var(--fs-small);
   font-weight: var(--fw-semibold);
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -12401,6 +11857,11 @@ button.bars__btn:focus-visible {
   color: var(--text-primary);
 }
 
+.srvrow__back:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+
 .srvform__pills {
   display: inline-flex;
   gap: 4px;
@@ -12527,7 +11988,7 @@ button.bars__btn:focus-visible {
 .chours__ytick {
   fill: var(--text-muted);
   font-family: var(--font-sans);
-  font-size: 11px;
+  font-size: var(--fs-small);
   text-anchor: end;
   font-variant-numeric: tabular-nums;
 }
@@ -12535,7 +11996,7 @@ button.bars__btn:focus-visible {
 .chours__xtick {
   fill: var(--text-muted);
   font-family: var(--font-sans);
-  font-size: 11px;
+  font-size: var(--fs-small);
   text-anchor: middle;
   font-variant-numeric: tabular-nums;
 }
@@ -12702,14 +12163,14 @@ button.bars__btn:focus-visible {
   padding: 12px;
   border: 1px solid var(--border-hairline);
   border-radius: var(--r-control);
-  background: var(--surface-muted, var(--ink-050));
+  background: var(--surface-muted);
 }
 
 .dsimport__counts {
   display: flex;
   flex-wrap: wrap;
   gap: 14px;
-  font-size: 12px;
+  font-size: var(--fs-caption);
   color: var(--text-secondary);
 }
 
@@ -12719,7 +12180,7 @@ button.bars__btn:focus-visible {
 }
 
 .dsimport__count--muted {
-  color: var(--ink-300);
+  color: var(--text-muted);
 }
 
 /* Замечания к набору. Не ошибка и не предупреждение: часть строк могла не
@@ -12727,7 +12188,7 @@ button.bars__btn:focus-visible {
 .dsimport__problems {
   margin: 0;
   padding-left: 16px;
-  font-size: 11px;
+  font-size: var(--fs-small);
   line-height: 1.45;
   color: var(--text-secondary);
 }
@@ -12748,7 +12209,7 @@ button.bars__btn:focus-visible {
   border-radius: var(--r-pill);
   background: var(--surface-accent);
   color: var(--text-accent);
-  font-size: 10px;
+  font-size: var(--fs-small);
   letter-spacing: 0.02em;
 }
 
@@ -12876,25 +12337,25 @@ button.bars__btn:focus-visible {
   background: var(--ink-1000);
   color: var(--white);
   font-size: 13px;
-  font-weight: var(--fw-bold, 700);
+  font-weight: var(--fw-bold);
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.01em;
 }
 
 .crewpro__role {
-  font-size: 12px;
-  color: var(--ink-300);
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
 }
 
 .crewpro__name {
   margin: 0;
   font-size: 24px;
-  font-weight: var(--fw-bold, 700);
+  font-weight: var(--fw-bold);
   line-height: 1.15;
 }
 
 .crewpro__phone {
-  font-size: 12px;
+  font-size: var(--fs-caption);
   color: var(--text-secondary);
 }
 
@@ -12915,11 +12376,11 @@ button.bars__btn:focus-visible {
 
 .crewpro__transport-label {
   margin-right: 2px;
-  font-size: 11px;
+  font-size: var(--fs-small);
   font-weight: var(--fw-regular);
   letter-spacing: 0.02em;
   text-transform: uppercase;
-  color: var(--ink-300);
+  color: var(--text-muted);
 }
 
 .crewpro__actions {
@@ -12970,7 +12431,7 @@ button.bars__btn:focus-visible {
   align-items: baseline;
   gap: 3px;
   font-size: 20px;
-  font-weight: var(--fw-bold, 700);
+  font-weight: var(--fw-bold);
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
 }
@@ -12980,13 +12441,13 @@ button.bars__btn:focus-visible {
 }
 
 .crewpro__stat-unit {
-  font-size: 11px;
+  font-size: var(--fs-small);
   font-weight: var(--fw-regular);
-  color: var(--ink-300);
+  color: var(--text-muted);
 }
 
 .crewpro__stat-label {
-  font-size: 11px;
+  font-size: var(--fs-small);
   color: var(--text-secondary);
 }
 
@@ -13061,11 +12522,11 @@ button.bars__btn:focus-visible {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: var(--fs-small);
   font-weight: var(--fw-medium);
   letter-spacing: 0.02em;
   text-transform: uppercase;
-  color: var(--ink-300);
+  color: var(--text-muted);
 }
 
 /* Переключатель историй стоит на месте заголовка раздела: он и есть
@@ -13080,21 +12541,21 @@ button.bars__btn:focus-visible {
   padding: 1px 7px;
   border-radius: var(--r-pill);
   background: var(--ink-100);
-  font-size: 11px;
+  font-size: var(--fs-small);
   font-weight: var(--fw-medium);
   color: var(--text-secondary);
 }
 
 .crewpro__note {
   margin: 0;
-  font-size: 11px;
+  font-size: var(--fs-small);
   line-height: 1.45;
-  color: var(--ink-300);
+  color: var(--text-muted);
 }
 
 .crewpro__muted {
-  color: var(--ink-300);
-  font-size: 12px;
+  color: var(--text-muted);
+  font-size: var(--fs-caption);
 }
 
 .crewpro__big {
@@ -13118,7 +12579,7 @@ button.bars__btn:focus-visible {
   padding: 11px 13px;
   border: 1px solid var(--border-hairline);
   border-radius: var(--r-control);
-  font-size: 12px;
+  font-size: var(--fs-caption);
 }
 
 .crewpro__post-zone {
@@ -13143,7 +12604,7 @@ button.bars__btn:focus-visible {
   padding: 4px 9px;
   border: 1px solid var(--border-hairline);
   border-radius: var(--r-pill);
-  font-size: 11px;
+  font-size: var(--fs-small);
 }
 
 .crewpro__work-count {
@@ -13214,74 +12675,6 @@ button.bars__btn:focus-visible {
   text-overflow: ellipsis;
 }
 
-/* Полоса длительности — вместо лица и карты. Шкала общая на все карточки
-   справочника, и в этом весь смысл: «40–90 мин» само по себе не отвечает,
-   долгая это работа или короткая, а рядом с соседями отвечает сразу.
-   Полоса невысокая: это не картинка, ради которой открыли карточку, а
-   ответ на один вопрос. */
-.srvspan {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  margin: var(--sp-2) 0 var(--sp-3);
-}
-
-.srvspan__rail {
-  position: relative;
-  display: block;
-  height: 8px;
-  border-radius: var(--r-pill);
-  background: var(--ink-50);
-  overflow: hidden;
-}
-
-.srvspan__bar {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  min-width: 3px;
-  border-radius: var(--r-pill);
-  background: var(--ink-1000);
-}
-
-/* Хвост разброса: столько же работы плюс вот столько, когда не повезёт.
-   Светлее сплошной части — это не то же самое время, а его возможная
-   добавка. */
-.srvspan__tail {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  min-width: 3px;
-  border-radius: var(--r-pill);
-  background: var(--ink-300);
-}
-
-.srvspan__legend {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: 11px;
-}
-
-.srvspan__legend b {
-  font-weight: var(--fw-semibold);
-  font-variant-numeric: tabular-nums;
-}
-
-.srvspan__unit {
-  font-weight: var(--fw-regular);
-  color: var(--ink-300);
-}
-
-/* Разброс назван словом: полоса говорит о нём формой, но форму надо с чем-то
-   сравнить, а слово читается само по себе. */
-.srvspan__note {
-  color: var(--ink-300);
-  text-align: right;
-}
-
 /* Имя человека. Фамилия акцентная — ею человека называют и по ней его ищут
    в списке; отчество уходит второй строкой, где не мешает читать первую.
 
@@ -13313,7 +12706,7 @@ button.bars__btn:focus-visible {
    залита кнопка расчёта. Не `--text-accent`: тот затемнён под мелкий текст и
    рядом с фирменным читается как выцветший. */
 .pname__surname {
-  color: var(--accent-500);
+  color: var(--accent-700);
 }
 
 .pname__patronymic {
@@ -13343,7 +12736,7 @@ button.bars__btn:focus-visible {
   padding: 9px 11px;
   border-radius: var(--r-sm);
   background: var(--ink-50);
-  font-size: 11px;
+  font-size: var(--fs-small);
   color: var(--text-secondary);
 }
 
@@ -13354,13 +12747,13 @@ button.bars__btn:focus-visible {
 }
 
 .runedit__derived-key {
-  color: var(--ink-300);
+  color: var(--text-muted);
 }
 
 /* Что не так с полем. Мелким и тревожным, под самим полем: ответ должен
    стоять там же, где вопрос. */
 .runedit__wrong {
-  font-size: 11px;
+  font-size: var(--fs-small);
   color: var(--danger-600);
 }
 
@@ -13371,7 +12764,7 @@ button.bars__btn:focus-visible {
   /* Тем же приёмом, что и у бейджа id раньше на этом месте: прижат к верху,
      а не к середине двухстрочного имени. */
   align-self: flex-start;
-  font-size: 11px;
+  font-size: var(--fs-small);
   font-weight: var(--fw-semibold);
   font-variant-numeric: tabular-nums;
   color: var(--text-secondary);
@@ -13392,7 +12785,7 @@ button.bars__btn:focus-visible {
 }
 
 .engfacts__sub {
-  color: var(--ink-300);
+  color: var(--text-muted);
 }
 
 /* Табельный хвостом к имени: приписка, по которой человека сверяют, а не
@@ -13540,14 +12933,15 @@ button.bars__btn:focus-visible {
   }
 
   /* Ступень для тесной карточки: число мельче на три пункта, подпись — на
-     полтора. Так три подписи по девять букв («Инженеров», «Разложено»)
-     встают в свои трети целиком, а не обрываются на середине слова. */
+     один, до нижней границы кегля. Так три подписи по девять букв
+     («Инженеров», «Разложено») встают в свои трети целиком, а не обрываются
+     на середине слова. */
   .engquick__value {
     font-size: 17px;
   }
 
   .engquick__unit {
-    font-size: 12px;
+    font-size: var(--fs-caption);
   }
 
   /* Подпись, которой и этого не хватило, обрывается многоточием внутри своей
@@ -13556,7 +12950,7 @@ button.bars__btn:focus-visible {
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
-    font-size: 9.5px;
+    font-size: var(--fs-small);
   }
 }
 
@@ -13654,7 +13048,7 @@ button.bars__btn:focus-visible {
   border: 0;
   border-radius: 50%;
   background: transparent;
-  color: var(--ink-300);
+  color: var(--text-muted);
   cursor: help;
   vertical-align: middle;
   transition: color 120ms var(--ease-out-strong);
@@ -13682,7 +13076,7 @@ button.bars__btn:focus-visible {
   background: var(--ink-1000);
   box-shadow: var(--shadow-lg);
   color: var(--white);
-  font-size: 11px;
+  font-size: var(--fs-small);
   font-weight: var(--fw-regular);
   line-height: 1.4;
   letter-spacing: 0;
@@ -13731,7 +13125,7 @@ button.bars__btn:focus-visible {
   margin: 10px 0 0;
   padding-top: 10px;
   border-top: 1px solid var(--border-hairline);
-  font-size: 11px;
+  font-size: var(--fs-small);
   line-height: 1.45;
 }
 
@@ -13749,7 +13143,7 @@ button.bars__btn:focus-visible {
   display: flex;
   align-items: center;
   gap: 2px;
-  color: var(--ink-300);
+  color: var(--text-muted);
 }
 
 /* Значение, которое обязано уместиться в строку. */
@@ -13821,9 +13215,9 @@ button.bars__btn:focus-visible {
   border: 0;
   background: none;
   font-family: var(--font-sans);
-  font-size: 11px;
+  font-size: var(--fs-small);
   line-height: 1.45;
-  color: var(--ink-300);
+  color: var(--text-muted);
   text-align: left;
   cursor: pointer;
   transition: color 120ms var(--ease-out-strong);
@@ -13873,15 +13267,15 @@ button.bars__btn:focus-visible {
 }
 
 .engcard__runs-label {
-  font-size: 11px;
-  color: var(--ink-300);
+  font-size: var(--fs-small);
+  color: var(--text-muted);
 }
 
 .chip--sm {
   height: 22px;
   padding: 0 8px;
   gap: 4px;
-  font-size: 11px;
+  font-size: var(--fs-small);
 }
 
 /* Фотография на месте карты дня. Пропорция та же, что у карты в карточке
@@ -13924,7 +13318,7 @@ button.bars__btn:focus-visible {
   font-family: var(--font-display);
   font-size: 34px;
   font-weight: var(--fw-extrabold);
-  color: var(--ink-300);
+  color: var(--text-muted);
 }
 
 /* Лицо в шапке карточки инженера: крупнее, чем в списке, — здесь человека
@@ -14178,6 +13572,11 @@ button.bars__btn:focus-visible {
   color: var(--text-primary);
 }
 
+.srcexcel__template:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+
 .srcexcel__error {
   display: flex;
   align-items: flex-start;
@@ -14264,13 +13663,13 @@ button.bars__btn:focus-visible {
 }
 
 .srcexcel__where {
-  font-size: 11px;
+  font-size: var(--fs-small);
   color: var(--text-muted);
 }
 
 .srcexcel__more {
   padding-top: 6px;
-  font-size: 11px;
+  font-size: var(--fs-small);
   color: var(--text-muted);
 }
 
@@ -14574,8 +13973,8 @@ button.bars__btn:focus-visible {
   background: var(--danger-500);
   color: var(--white);
   font-family: var(--font-sans);
-  font-size: 12px;
-  font-weight: var(--fw-bold, 700);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-bold);
   letter-spacing: 0.01em;
   text-transform: uppercase;
 }
@@ -14631,7 +14030,7 @@ button.bars__btn:focus-visible {
   max-width: 100%;
   padding-left: 15px;
   overflow: hidden;
-  color: var(--ink-300);
+  color: var(--text-muted);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -14672,11 +14071,11 @@ button.bars__btn:focus-visible {
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  color: var(--ink-300);
+  color: var(--text-muted);
 }
 
 .clilogo__hint {
-  font-size: 10px;
+  font-size: var(--fs-small);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -14693,6 +14092,8 @@ button.bars__btn:focus-visible {
    в сто десять пикселей не встаёт и в четыре. */
 .clicard__ident {
   flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
 }
 
 /* Три числа клиента жмутся сильнее, чем у инженера: к «Обслужено» цепляется
@@ -14768,7 +14169,7 @@ button.bars__btn:focus-visible {
 
 .visits__sum b {
   font-size: 15px;
-  font-weight: var(--fw-bold, 700);
+  font-weight: var(--fw-bold);
   font-variant-numeric: tabular-nums;
   color: var(--text-primary);
 }
@@ -14782,7 +14183,7 @@ button.bars__btn:focus-visible {
 }
 
 .visits__muted {
-  color: var(--ink-300);
+  color: var(--text-muted);
 }
 
 /* Значок вида работ приклеен к названию, а не висит отдельной колонкой:
@@ -14801,7 +14202,7 @@ button.bars__btn:focus-visible {
   border: 1px solid var(--border-hairline);
   background: none;
   font: inherit;
-  font-size: 11px;
+  font-size: var(--fs-small);
   color: inherit;
   cursor: pointer;
   transition: border-color 120ms var(--ease-out-strong),
@@ -15186,7 +14587,7 @@ button.bars__btn:focus-visible {
   padding: 4px 10px;
   border-radius: var(--r-pill);
   background: var(--ink-50);
-  font-size: 11px;
+  font-size: var(--fs-small);
   color: var(--text-secondary);
 }
 
@@ -15225,13 +14626,13 @@ button.bars__btn:focus-visible {
   gap: 4px;
   margin: -6px 0 var(--sp-3);
   min-width: 0;
-  font-size: 11px;
+  font-size: var(--fs-small);
   color: var(--text-secondary);
 }
 
 .ordcard__where > svg {
   flex: none;
-  color: var(--ink-300);
+  color: var(--text-muted);
 }
 
 /* Срочность рядом с номером — насыщенным красным. Тот же знак и тот же цвет,
@@ -15246,8 +14647,8 @@ button.bars__btn:focus-visible {
   border-radius: var(--r-pill);
   background: var(--danger-500);
   color: var(--white);
-  font-size: 10px;
-  font-weight: var(--fw-bold, 700);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-bold);
   letter-spacing: 0.02em;
   text-transform: uppercase;
 }
@@ -15278,10 +14679,10 @@ button.bars__btn:focus-visible {
 /* Подпись стоит над значением, а не под ним: значения тут разной длины и
    разной высоты, и подпись снизу плавала бы по строке от плитки к плитке. */
 .ordquick__label {
-  font-size: 10px;
+  font-size: var(--fs-small);
   letter-spacing: 0.02em;
   text-transform: uppercase;
-  color: var(--ink-300);
+  color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -15350,10 +14751,10 @@ button.bars__btn:focus-visible {
   border-radius: var(--r-control);
   background: none;
   font: inherit;
-  font-size: 11px;
+  font-size: var(--fs-caption);
   line-height: 1.35;
   text-align: left;
-  color: var(--ink-300);
+  color: var(--text-muted);
   cursor: pointer;
   transition: border-color 120ms var(--ease-out-strong),
     background-color 120ms var(--ease-out-strong), color 120ms var(--ease-out-strong);
@@ -15406,7 +14807,7 @@ button.bars__btn:focus-visible {
   border-radius: var(--r-control);
   background: var(--white);
   font: inherit;
-  font-size: 11px;
+  font-size: var(--fs-caption);
   line-height: 1.35;
   color: var(--text-primary);
   resize: vertical;
@@ -15482,7 +14883,7 @@ button.bars__btn:focus-visible {
 }
 
 .geo--fill .geo__key {
-  font-size: 11px;
+  font-size: var(--fs-small);
 }
 
 .geo--fill .geo__layers {
@@ -15491,7 +14892,7 @@ button.bars__btn:focus-visible {
 
 .geo--fill .geo__layers .pl-switch {
   gap: 6px;
-  font-size: 11px;
+  font-size: var(--fs-small);
 }
 
 /* Обе группы идут по своей ширине и переносятся целиком: на узком экране
@@ -15650,12 +15051,12 @@ button.bars__btn:focus-visible {
    украшение: это единственная отметка на всём экране о том, что показанный
    план ещё не записан. */
 .mapstat__unfold--draft {
-  background: var(--warning-50, #FFF6E5);
-  color: var(--warning-800, #7A4E00);
+  background: var(--warning-50);
+  color: var(--warning-800);
 }
 
 .mapstat__unfold--draft:hover {
-  background: var(--warning-100, #FFE9C2);
+  background: var(--warning-100);
 }
 
 .mapstat__draft {
@@ -15665,12 +15066,12 @@ button.bars__btn:focus-visible {
   padding: var(--sp-3);
   border: 0;
   border-radius: var(--r-sm);
-  background: var(--warning-50, #FFF6E5);
+  background: var(--warning-50);
   font-family: var(--font-sans);
   font-size: var(--fs-caption);
   line-height: 1.45;
   text-align: left;
-  color: var(--warning-800, #7A4E00);
+  color: var(--warning-800);
   cursor: pointer;
 }
 
@@ -15699,7 +15100,7 @@ button.bars__btn:focus-visible {
 }
 
 .mapstat .cmetric__label {
-  font-size: 11px;
+  font-size: var(--fs-small);
 }
 
 .mapstat .cmetric__value {
@@ -15708,7 +15109,7 @@ button.bars__btn:focus-visible {
 
 .mapstat .cmetric__caption {
   grid-column: 1 / -1;
-  font-size: 10px;
+  font-size: var(--fs-small);
   line-height: 1.25;
 }
 
@@ -15823,7 +15224,7 @@ button.bars__btn:focus-visible {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 10px;
+  font-size: var(--fs-small);
   font-weight: var(--fw-regular);
   line-height: 1.3;
   color: var(--text-muted);
@@ -15849,12 +15250,12 @@ button.bars__btn:focus-visible {
 }
 
 .mpick__label {
-  font-size: 11px;
+  font-size: var(--fs-small);
   color: var(--text-muted);
 }
 
 .mpick__value {
-  font-size: 11px;
+  font-size: var(--fs-small);
   font-weight: var(--fw-semibold);
   color: var(--text-primary);
   text-align: right;
@@ -15949,7 +15350,7 @@ button.bars__btn:focus-visible {
    догружаются, в прорехах видно его, а не белую страницу: резкая прокрутка
    колесом больше не высвечивает пол-экрана. */
 .geo__plot .geo__map {
-  background: #2c2c2c;
+  background: var(--ink-800);
 }
 
 /* Колонку можно перетащить куда удобно: сдвиг едет переменными, а вёрстка
@@ -16055,9 +15456,9 @@ button.bars__btn:focus-visible {
   gap: 4px;
   padding-top: 8px;
   border-top: 1px solid var(--border-hairline);
-  font-size: 10px;
+  font-size: var(--fs-small);
   line-height: 1.25;
-  color: var(--warn-600, #B26A00);
+  color: var(--warning-600);
   cursor: help;
 }
 
@@ -16068,7 +15469,7 @@ button.bars__btn:focus-visible {
   right: 6px;
   bottom: 4px;
   z-index: 520;
-  font-size: 10px;
+  font-size: var(--fs-small);
   color: var(--white);
   opacity: 0.55;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
@@ -16085,7 +15486,7 @@ button.bars__btn:focus-visible {
 /* Прорехи между плитками на светлой подложке закрашены светлым: иначе при
    резкой прокрутке вместо карты мелькает тёмный провал. */
 .geo__plot--day .geo__map {
-  background: #EDEAE4;
+  background: var(--ink-150);
 }
 
 /* Клетка транспорта у того, чьё средство передвижения в выгрузке не
@@ -16108,7 +15509,7 @@ button.bars__btn:focus-visible {
 .leaflet-tooltip.geo__tt--quiet .gtip {
   padding: 2px 6px;
   gap: 4px;
-  font-size: 10px;
+  font-size: var(--fs-small);
   opacity: 0.92;
 }
 
@@ -16236,7 +15637,7 @@ button.bars__btn:focus-visible {
   border-radius: var(--r-sm);
   background: transparent;
   font-family: var(--font-sans);
-  font-size: 11px;
+  font-size: var(--fs-small);
   color: var(--text-primary);
   text-align: left;
   cursor: pointer;
@@ -16259,7 +15660,7 @@ button.bars__btn:focus-visible {
 
 .mpick__num {
   flex: 0 0 auto;
-  font-size: 10px;
+  font-size: var(--fs-small);
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }

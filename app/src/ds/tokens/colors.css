@@ -35,18 +35,32 @@
   --grad-brand-diag:linear-gradient(135deg,#FCA61F 0%,#F4D51D 100%); /* @kind other */
   --grad-brand-soft:linear-gradient(90deg,#FFF3E0 0%,#FDF9DC 100%); /* @kind other */
 
-  /* semantic status */
+  /* semantic status. Ступени 700 — для текста мелким кеглем на светлой
+     плашке 50: 600 на белом даёт 4,6:1, а на цветной подложке уже меньше. */
+  --success-700:#0B6438;
   --success-600:#0F7F47;
   --success-500:#15A05B;
   --success-100:#E4F5EB;
+  --success-50:#EEF8F2;
+  --danger-700:#9B211A;
   --danger-600:#C22C24;
   --danger-500:#E33B32;
   --danger-100:#FCEAE8;
+  --danger-50:#FDF1F0;
+  /* warning — тёплый янтарный ряд между акцентом и тревогой: «обрати
+     внимание», но ещё не «беда». 800 держит контраст текста на 50 и 100. */
+  --warning-800:#7A4E00;
+  --warning-600:#B26A00;
+  --warning-500:#E08A00;
+  --warning-100:#FFE9C2;
+  --warning-50:#FFF6E5;
 
   /* ——— semantic aliases: use these, not the ramps ——— */
   --text-primary:var(--ink-1000);
   --text-secondary:var(--ink-500);
-  --text-muted:var(--ink-400);
+  /* ink-500, а не ink-400: #9A9A9A на белом даёт 2,8:1, а приглушённый текст
+     всё равно читают — подписи, коды, даты. 6E6E6E держит 5,1:1. */
+  --text-muted:var(--ink-500);
   --text-inverse:var(--white);
   --text-accent:var(--accent-700);
   --text-link:var(--ink-1000);
@@ -58,9 +72,11 @@
   --surface-tile-hover:var(--ink-150);
   --surface-inverse:var(--ink-1000);
   --surface-accent:var(--accent-100);
+  --surface-muted:var(--ink-100);
   --surface-overlay:rgba(10,10,10,.44);
 
   --border-subtle:var(--ink-200);
+  --border-default:var(--border-subtle);
   --border-hairline:var(--ink-150);
   --border-strong:var(--ink-1000);
   --border-accent:var(--accent-500);
@@ -70,7 +86,7 @@
   --icon-inverse:var(--white);
 
   /* job / route status — product semantics */
-  --status-planned:var(--ink-400);
+  --status-planned:var(--ink-500);
   --status-active:var(--accent-500);
   --status-done:var(--success-500);
   --status-risk:var(--danger-500);

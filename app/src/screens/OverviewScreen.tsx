@@ -207,7 +207,7 @@ export function OverviewScreen({
     card?.kind === 'engineer'
       ? (registry?.engineers.find((one) => one.id === card.id) ?? null)
       : null;
-  /* Заявка ищется в своём расчёте: номера в прогонах повторяются, и без
+  /* Заявка ищется в своём расчёте: номера в расчётах повторяются, и без
      номера расчёта открылась бы чужая запись. */
   const orderCard =
     card?.kind === 'order'

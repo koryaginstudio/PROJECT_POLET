@@ -4,6 +4,7 @@ import './ds/styles.css';
 import './styles/app.css';
 import { attachEngine, BUILT_IN, createRun, RUNS } from './data/load.ts';
 import { engineDefaults } from './data/engine.ts';
+import { ErrorBoundary } from './app/ErrorBoundary.tsx';
 
 /* Движок ищем до первой отрисовки, а не после.
 
@@ -38,6 +39,10 @@ async function seedFirstRuns() {
   }
 }
 
+/* Пока всё это идёт, на странице стоит заглушка из `index.html` —
+   «Загружаем…». Первая отрисовка её и снимает: белого экрана между
+   запуском и планом больше нет. Само приложение обёрнуто в защиту: ошибка
+   в любом экране скажет, что случилось, а не оставит пустую страницу. */
 attachEngine()
   .catch(() => false)
   .then(seedFirstRuns)
@@ -45,7 +50,9 @@ attachEngine()
     const { App } = await import('./app/App.tsx');
     createRoot(document.getElementById('root')!).render(
       <React.StrictMode>
-        <App />
+        <ErrorBoundary>
+          <App />
+        </ErrorBoundary>
       </React.StrictMode>
     );
   });

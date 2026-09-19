@@ -15,7 +15,9 @@ import logo from '../ds/assets/logo/lockup-h.svg';
 interface Props {
   collapsed: boolean;
   onToggleNav: () => void;
-  view: DayView;
+  /** Открытый день. Пусто — расчёт ещё грузится или не загрузился; шапка
+      тогда стоит без колокольчика: предупреждать не о чем. */
+  view: DayView | null;
   onSelect: (selection: Selection) => void;
   /** Справочники — по ним ищет строка в шапке. Поиск живёт над расчётом:
       искать надо во всём, что есть, а не в том дне, который сейчас открыт. */
@@ -69,7 +71,7 @@ export function Header({
             настраивают вдумчиво и в своём разделе, а здесь то, как программа
             показывает посчитанное. */}
         <ServiceMenu onOpenAll={onOpenSettings} />
-        <Notifications view={view} onSelect={onSelect} />
+        {view && <Notifications view={view} onSelect={onSelect} />}
         <ProfileMenu />
       </div>
     </header>

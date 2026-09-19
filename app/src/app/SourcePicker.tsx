@@ -166,9 +166,16 @@ export function SourcePicker({ crew, orderCount, value, onChange }: Props) {
             ))}
           </div>
 
-          <div className="srcfields">
-            <Input label="Адрес портала" placeholder="https://company.bitrix24.ru" disabled />
-            <Input label="Вебхук" placeholder="Ключ входящего вебхука" disabled />
+          {/* Полей для адреса и ключа здесь нет: два погашенных поля без
+              объяснения читались как «заполни, но нельзя». Подключение —
+              работа администратора, и сказано это прямо. */}
+          <div className="solvefail">
+            <Icon name="info" size={16} />
+            <span>
+              <b>Подключение к порталу не настроено.</b> Обратитесь к администратору: адрес портала
+              и ключ доступа задаются один раз с его стороны. Пока день можно загрузить файлом
+              Excel или добавить заявки вручную.
+            </span>
           </div>
         </div>
       )}

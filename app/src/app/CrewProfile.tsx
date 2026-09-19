@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { Button } from '../ds/components/core/Button.jsx';
 import { Icon } from '../ds/components/core/Icon.jsx';
 import { Select } from '../ds/components/forms/Select.jsx';
@@ -15,6 +16,7 @@ import { NoteField } from './NoteField.tsx';
 import { VisitsDialog } from './VisitsDialog.tsx';
 import type { VisitsScope } from './VisitsDialog.tsx';
 import { WhyMark } from './WhyMark.tsx';
+import { useModalFocus } from './modal.ts';
 
 interface Place {
   zone: string;
@@ -39,7 +41,7 @@ interface Props {
   /** Уйти в расчёт заявки, открытой отсюда, и показать её на карте: те же
       две дороги, что ведут из базы заявок. */
   onOpenRun: (id: string) => void;
-  onOpenMap: (id: string) => void;
+  onOpenMap: (id: string, orderId?: string) => void;
 }
 
 /* Профиль инженера: всё, что мы о нём знаем, на одном экране — и то же окно,
@@ -105,6 +107,8 @@ export function CrewProfile({
   const [transport, setTransport] = useState('car');
   const [skills, setSkills] = useState<string[]>([]);
   const [confirming, setConfirming] = useState(false);
+  const card = useRef<HTMLDivElement>(null);
+  useModalFocus(crew !== null, card);
 
   useEffect(() => {
     if (crew) setTab('shifts');
@@ -201,6 +205,27 @@ export function CrewProfile({
   const idBusy = trimmedId !== crew.id && taken.includes(trimmedId);
   const valid = name.trim().length > 0 && trimmedId.length > 0 && !idBusy && skills.length > 0;
 
+  /* Строки трёх таблиц открываются и с клавиатуры: Tab доводит до строки,
+     Enter или пробел открывают — как кнопку. Отборы визитов собраны здесь,
+     а не в разметке, чтобы щелчок и клавиша вели в одно и то же место. */
+  const onRowKey = (event: ReactKeyboardEvent, open: () => void) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    open();
+  };
+  const openShift = (shift: (typeof shifts)[number]) =>
+    setVisits({
+      title: `Смена в расчёте ${shift.code}`,
+      lede: `${crew.name} — что делал в этом расчёте`,
+      orders: orders.filter((order) => order.run.id === shift.runId)
+    });
+  const openRoute = (route: (typeof routes)[number]) =>
+    setVisits({
+      title: `Маршрут ${route.code}`,
+      lede: `${crew.name}, расчёт ${route.run.code} — визиты по порядку объезда`,
+      orders: orders.filter((order) => order.run.id === route.run.id && order.seq !== null)
+    });
+
   const save = () => {
     if (!valid) return;
     onSave({
@@ -211,17 +236,25 @@ export function CrewProfile({
       skills,
       /* Участок задаёт и офис, и часы: выбрали другой — человек выезжает
          оттуда и работает в его рамках. Руками часы не правятся, иначе в
-         карточке стояла бы смена, которой участок не знает. */
+         карточке стояла бы смена, которой участок не знает.
+
+         Но только если участок действительно сменили. Раньше границы
+         участка подставлялись всегда — и правка телефона удлиняла смену
+         человека на три часа: у участка день с 07:00 до 22:00, а у него
+         своя смена короче. Участок тот же — смена остаётся его
+         собственной, как стоит в данных. */
       posts: Object.fromEntries(
         posts.map((post) => {
-          const place = places.find((one) => one.zone === post.zone);
+          const moved = post.zone !== post.source;
+          const place = moved ? places.find((one) => one.zone === post.zone) : undefined;
+          const was = crew.posts.find((one) => one.zone === post.source);
           return [
             post.source,
             {
               zone: post.zone,
-              home_address: place?.home ?? null,
-              shift_start: place?.from ?? crew.shiftStart,
-              shift_end: place?.to ?? crew.shiftEnd
+              home_address: place ? place.home : (was?.homeAddress ?? null),
+              shift_start: place ? place.from : (was?.shiftStart ?? crew.shiftStart),
+              shift_end: place ? place.to : (was?.shiftEnd ?? crew.shiftEnd)
             }
           ];
         })
@@ -234,7 +267,7 @@ export function CrewProfile({
     <div className="modal" role="dialog" aria-modal="true" aria-label={`Профиль: ${crew.name}`}>
       <button type="button" className="modal__veil" onClick={onClose} aria-label="Закрыть" />
 
-      <div className="modal__card crewpro">
+      <div className="modal__card crewpro" ref={card}>
         {/* Фото — портретом слева, во весь рост шапки: лицо здесь не значок
             для узнавания в ряду, а то, ради чего открыли профиль. Имя, цифры
             и действия стоят справа, вровень с фотографией по высоте. Само
@@ -325,6 +358,9 @@ export function CrewProfile({
                   >
                     Править
                   </Button>
+                  <span className="modal__esc">
+                    <kbd>Esc</kbd> — закрыть
+                  </span>
                   <button type="button" className="rpanel__x" onClick={onClose} aria-label="Закрыть">
                     <Icon name="x" size={16} />
                   </button>
@@ -611,13 +647,10 @@ export function CrewProfile({
                             className="tbl__row"
                             key={shift.runId}
                             title={`Визиты в расчёте ${shift.code}`}
-                            onClick={() =>
-                              setVisits({
-                                title: `Смена в расчёте ${shift.code}`,
-                                lede: `${crew.name} — что делал в этом расчёте`,
-                                orders: orders.filter((order) => order.run.id === shift.runId)
-                              })
-                            }
+                            tabIndex={0}
+                            role="button"
+                            onClick={() => openShift(shift)}
+                            onKeyDown={(event) => onRowKey(event, () => openShift(shift))}
                           >
                             <td>
                               <span className="tbl__strong">{shift.code}</span>
@@ -669,15 +702,10 @@ export function CrewProfile({
                             className="tbl__row"
                             key={route.key}
                             title={`Визиты маршрута ${route.code}`}
-                            onClick={() =>
-                              setVisits({
-                                title: `Маршрут ${route.code}`,
-                                lede: `${crew.name}, расчёт ${route.run.code} — визиты по порядку объезда`,
-                                orders: orders.filter(
-                                  (order) => order.run.id === route.run.id && order.seq !== null
-                                )
-                              })
-                            }
+                            tabIndex={0}
+                            role="button"
+                            onClick={() => openRoute(route)}
+                            onKeyDown={(event) => onRowKey(event, () => openRoute(route))}
                           >
                             <td>
                               <span className="tbl__strong">{route.code}</span>
@@ -723,7 +751,10 @@ export function CrewProfile({
                             className="tbl__row"
                             key={order.key}
                             title={`Карточка заявки ${order.id}`}
+                            tabIndex={0}
+                            role="button"
                             onClick={() => setOrder(order)}
+                            onKeyDown={(event) => onRowKey(event, () => setOrder(order))}
                           >
                             <td>
                               <span className="tbl__strong">{order.id}</span>
@@ -766,9 +797,9 @@ export function CrewProfile({
           setOrder(null);
           onOpenRun(id);
         }}
-        onOpenMap={(id) => {
+        onOpenMap={(id, orderId) => {
           setOrder(null);
-          onOpenMap(id);
+          onOpenMap(id, orderId);
         }}
       />
     </div>

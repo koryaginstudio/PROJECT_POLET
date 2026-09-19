@@ -1,18 +1,22 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '../ds/components/core/Button.jsx';
 import { Icon } from '../ds/components/core/Icon.jsx';
 import { Select } from '../ds/components/forms/Select.jsx';
 import type { DayView } from '../data/derive.ts';
 import { hhmm } from '../data/derive.ts';
 import type { IncidentKind, IncidentSpec, ReplanResult } from '../data/api.ts';
+import { useModalFocus } from './modal.ts';
 
 interface Props {
   open: boolean;
   view: DayView;
   runCode: string;
-  /** День у движка. Без него пересчитывать нечего: расчёт на фикстурах
-      живого дня за собой не имеет. */
+  /** День у движка. Без него пересчитывать нечего: расчёт, посчитанный
+      здесь, в браузере, дня у движка за собой не имеет. */
   day: number | null;
+  /** Запущен ли движок. Пересчёт по событию делает он, и без него окно
+      честно говорит, что кнопка не сработает. */
+  live: boolean;
   /** Момент, с которого пересобирается остаток. */
   cut: number;
   busy: boolean;
@@ -85,6 +89,7 @@ export function IncidentDialog({
   view,
   runCode,
   day,
+  live,
   cut,
   busy,
   failed,
@@ -101,6 +106,8 @@ export function IncidentDialog({
   const [minutes, setMinutes] = useState(40);
   const [urgent, setUrgent] = useState(2);
   const [at, setAt] = useState(cut);
+  const card = useRef<HTMLDivElement>(null);
+  useModalFocus(open, card);
 
   /* Момент открытия окна — момент, на котором стоит доска. Диспетчер
      подвинул ползунок к 13:40 и жмёт «внести правку»: пересчитывать надо
@@ -121,7 +128,7 @@ export function IncidentDialog({
   const crew = view.loads.filter((load) => load.route && load.route.stops.length > 0);
   const chosen = engineerId || crew[0]?.engineer.id || '';
   const needsEngineer = kind === 'disabled' || kind === 'delayed';
-  const ready = day !== null && (!needsEngineer || Boolean(chosen));
+  const ready = live && day !== null && (!needsEngineer || Boolean(chosen));
 
   const spec: IncidentSpec = {
     day: day ?? 1,
@@ -152,11 +159,16 @@ export function IncidentDialog({
         aria-label="Закрыть"
       />
 
-      <div className="modal__card incident__card">
+      <div className="modal__card incident__card" ref={card}>
         <div className="modal__head">
           <h3 className="engine__title">
             {result ? 'Что дал пересчёт' : 'Внести правку'} · {runCode}
           </h3>
+          {!busy && (
+            <span className="modal__esc">
+              <kbd>Esc</kbd> — закрыть
+            </span>
+          )}
           <button
             type="button"
             className="rpanel__x"
@@ -204,7 +216,7 @@ export function IncidentDialog({
                 {Math.round((replan.incident?.stability_others ?? replan.stability) * 100)}%
                 <span className="setrow__note">
                   {replan.incident
-                    ? ' визитов сохранили исполнителя — по тем, кого ЧП не касалось'
+                    ? ' визитов сохранили исполнителя — по тем, кого событие не касалось'
                     : ' визитов сохранили исполнителя'}
                 </span>
               </span>
@@ -376,13 +388,18 @@ export function IncidentDialog({
               )}
             </div>
 
-            {day === null && (
+            {/* Правду, а не обещание: пересчёт по событию делает движок, и
+                пока он не запущен, недоступен он у любого расчёта — новый,
+                заведённый кнопкой, считается здесь же, в браузере, и дня у
+                движка за собой не имеет. */}
+            {(!live || day === null) && (
               <div className="solvefail">
                 <Icon name="alert-triangle" size={16} />
                 <span>
-                  <b>Этот расчёт пересчитать нельзя.</b> Он открыт из записанных дней, а не
-                  посчитан движком: пересобирать нечего. Заведите расчёт кнопкой «Создать
-                  расчёт» — его пересчитать можно.
+                  <b>Пересчёт по событию сейчас недоступен.</b>{' '}
+                  {!live
+                    ? 'Его делает движок, а он не запущен. Как включить — в настройках, на вкладке «Данные». Пока можно пересобрать день другими переменными через «Ручное управление».'
+                    : 'Этот расчёт посчитан в браузере, а не движком, и дня у движка за собой не имеет — пересобирать ему нечего.'}
                 </span>
               </div>
             )}

@@ -44,7 +44,10 @@ import type {
   Verdict
 } from './contract.ts';
 import type { EngineParams } from './engine.ts';
-import { skillName, transportName } from './dictionary.ts';
+import { engineerOnShift, isUrgent, orderClosed, skillName, transportName } from './dictionary.ts';
+import { occupancyMean } from './derive.ts';
+import { riskThresholds } from './knobs.ts';
+import type { RiskThresholds } from './knobs.ts';
 import { roadLeg } from './roads.ts';
 import type { Roads } from './roads.ts';
 
@@ -144,6 +147,7 @@ function tryPlace(
   progress: Progress,
   order: Order,
   params: EngineParams,
+  risk: RiskThresholds,
   roads: Roads | null
 ): Attempt {
   const engineer = progress.engineer;
@@ -198,7 +202,10 @@ function tryPlace(
       travel_minutes: drive.minutes,
       wait_minutes: wait,
       slack_minutes: slack,
-      risk: slack >= 45 ? 'low' : slack >= 15 ? 'medium' : 'high',
+      /* Пороги — из каталога настроек, а не числа в коде: это те самые две
+         настройки из семи, которые до расчёта доезжают. На раскладку они не
+         влияют, только на подпись у визита. */
+      risk: slack >= risk.medium ? 'low' : slack >= risk.high ? 'medium' : 'high',
       /* Ломаная по улицам от предыдущей точки до этой — из `roads.json`,
          собранного по графу OSM. Сети нет (чужой набор, незнакомый адрес) —
          остаётся отрезок, и карта рисует перегон грубо. */
@@ -214,9 +221,9 @@ function tryPlace(
 const hhmm = (m: Minutes) =>
   `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 
-/** Инженер участвует в расчёте, если он сегодня на смене. */
-const onShift = (engineer: Engineer) =>
-  engineer.status !== 'unavailable' && engineer.status !== 'off_shift';
+/** Инженер участвует в расчёте, если он сегодня на смене. Правило общее со
+    сводками: кто вышел, решает справочник, а не каждый экран по-своему. */
+const onShift = (engineer: Engineer) => engineerOnShift(engineer);
 
 /* ─── причина отказа ────────────────────────────────────────────────────
 
@@ -344,6 +351,7 @@ function runBaseline(
   orders: Order[],
   engineers: Engineer[],
   params: EngineParams,
+  risk: RiskThresholds,
   roads: Roads | null
 ) {
   const crew = engineers.filter(onShift);
@@ -367,7 +375,7 @@ function runBaseline(
   for (const order of orders) {
     for (const engineer of crew) {
       const state = progress.get(engineer.id)!;
-      const attempt = tryPlace(state, order, params, roads);
+      const attempt = tryPlace(state, order, params, risk, roads);
       if (attempt.verdict === 'feasible' && attempt.stop) {
         commit(state, attempt.stop, order);
         assigned += 1;
@@ -417,7 +425,15 @@ export interface PlannedDay {
 
 /** Считает день: раскладывает заявки по инженерам и собирает четыре формы
     контракта. Расчёт детерминированный — одни и те же данные с одними и
-    теми же переменными дают один и тот же план, сколько ни повторяй. */
+    теми же переменными дают один и тот же план, сколько ни повторяй.
+
+    Раскладываются только открытые заявки. В выгрузке за прошедший день
+    больше половины нарядов уже выполнены или отменены, и до сих пор они
+    шли в очередь наравне с открытыми: план развозил инженеров по сделанной
+    работе, а покрытие считалось от числа, в котором две трети — вчерашний
+    день. Закрытые остаются в `orders` со своим статусом — базам данных они
+    нужны, — но исполнителя не ждут, в «без инженера» не попадают и в
+    итогах плана не считаются. Сколько их, говорит `meta.orders_closed`. */
 export function planDay(
   orders: Order[],
   engineers: Engineer[],
@@ -426,6 +442,8 @@ export function planDay(
   roads: Roads | null = null
 ): PlannedDay {
   const crew = engineers.filter(onShift);
+  const open = orders.filter((order) => !orderClosed(order));
+  const risk = riskThresholds();
 
   const progress = new Map<string, Progress>(
     crew.map((engineer) => [
@@ -444,10 +462,12 @@ export function planDay(
   );
 
   /* Срочные вперёд, дальше по началу окна: авария, поставленная в очередь
-     после обычного подключения, ждала бы места до вечера. */
-  const queue = [...orders].sort((a, b) => {
-    const urgentA = a.priority_class === 'urgent' || a.priority >= 2 ? 0 : 1;
-    const urgentB = b.priority_class === 'urgent' || b.priority >= 2 ? 0 : 1;
+     после обычного подключения, ждала бы места до вечера. Срочность — по
+     правилу справочника, тому же, что и на экранах: иначе планировщик
+     считал бы срочной заявку, которую список показывает обычной. */
+  const queue = [...open].sort((a, b) => {
+    const urgentA = isUrgent(a.priority_class, a.priority) ? 0 : 1;
+    const urgentB = isUrgent(b.priority_class, b.priority) ? 0 : 1;
     if (urgentA !== urgentB) return urgentA - urgentB;
     if (a.window_start !== b.window_start) return a.window_start - b.window_start;
     return a.id.localeCompare(b.id);
@@ -470,7 +490,7 @@ export function planDay(
 
     for (const engineer of pool) {
       const state = progress.get(engineer.id)!;
-      const attempt = tryPlace(state, order, params, roads);
+      const attempt = tryPlace(state, order, params, risk, roads);
       candidates.push({
         engineer_id: engineer.id,
         verdict: attempt.verdict,
@@ -556,10 +576,15 @@ export function planDay(
     unassigned_reason: unassignedReason.get(order.id) ?? null
   }));
 
-  const unassigned = plannedOrders.filter((order) => !order.assigned_to).map((order) => order.id);
-  const occupancies = crew.map(
-    (engineer) => routes.find((r) => r.engineer_id === engineer.id)?.totals.occupancy ?? 0
-  );
+  /* Без инженера — только открытая: закрытая до расчёта исполнителя не ждала. */
+  const unassigned = plannedOrders
+    .filter((order) => !order.assigned_to && !orderClosed(order))
+    .map((order) => order.id);
+  /* Равномерность считается по тем, кто получил маршрут. Нули за вышедших
+     без маршрута сюда не кладутся: с ними минимум всегда ноль, разрыв —
+     бесконечность, и «Разрыв загрузки» на пульте писал «60×» при загрузках
+     от трети до трёх четвертей. Простаивающих называет `idle_engineers`. */
+  const occupancies = routes.map((route) => route.totals.occupancy);
   const distanceTotal = routes.reduce((sum, route) => sum + (route.totals.distance_km ?? 0), 0);
 
   const plan: Plan = {
@@ -570,21 +595,20 @@ export function planDay(
       generated_at: Math.floor(Date.now() / 1000),
       time_format: 'minutes_from_midnight',
       solver: 'demo/greedy',
-      orders_total: orders.length,
+      orders_total: open.length,
       orders_assigned: placed.size,
+      orders_closed: orders.length - open.length,
       engineers_total: engineers.length,
       balance: {
         gini: Number(gini(occupancies).toFixed(3)),
         occupancy_min: Number((occupancies.length ? Math.min(...occupancies) : 0).toFixed(3)),
         occupancy_max: Number((occupancies.length ? Math.max(...occupancies) : 0).toFixed(3)),
-        occupancy_mean: Number(
-          (occupancies.reduce((sum, v) => sum + v, 0) / Math.max(1, occupancies.length)).toFixed(3)
-        ),
+        occupancy_mean: Number(occupancyMean(routes.map((route) => route.totals)).toFixed(3)),
         idle_engineers: crew.length - routes.length
       },
       engineers_used: routes.length,
       distance_km_total: Number(distanceTotal.toFixed(1)),
-      baseline: runBaseline(orders, engineers, params, roads)
+      baseline: runBaseline(open, engineers, params, risk, roads)
     },
     engineers,
     orders: plannedOrders,
@@ -609,14 +633,14 @@ export function planDay(
      Проценты, а не доли: контракт объявляет `coverage` и `execution_rate`
      в процентах, и число 0.61 на месте 61.4 показалось бы на экране
      покрытием в полпроцента. */
-  const covered = orders.length ? (placed.size / orders.length) * 100 : 0;
+  const covered = open.length ? (placed.size / open.length) * 100 : 0;
 
   const simulation: Simulation = {
     schema: SCHEMA,
     kind: 'simulation',
     meta: { date, runs: 0 },
     planned: placed.size,
-    orders_total: orders.length,
+    orders_total: open.length,
     done: {
       mean: placed.size,
       p10: placed.size,
@@ -632,12 +656,13 @@ export function planDay(
     fragile: []
   };
 
-  return { plan, explain, simulation, shifts: buildShifts(orders, crew, Number(covered.toFixed(1))) };
+  return { plan, explain, simulation, shifts: buildShifts(open, crew, Number(covered.toFixed(1))) };
 }
 
 /* График выхода: спрос по часам против того, кто в это время на смене.
    Рекомендация не считается — сдвигать смены мы не умеем, и выдавать
-   текущий график за рекомендованный честнее, чем сочинять другой. */
+   текущий график за рекомендованный честнее, чем сочинять другой. Спрос —
+   по открытым заявкам: закрытая инженера в своём окне не ждёт. */
 function buildShifts(orders: Order[], crew: Engineer[], coverage: number): Shifts {
   const profile: Record<string, number> = {};
   for (const engineer of crew) {
