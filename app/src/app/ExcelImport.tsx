@@ -30,6 +30,18 @@ interface Props {
   onAdd: (orders: ExtraOrder[]) => void;
 }
 
+/** Сводит снятые строки по причине: причина — номера строк с ней. Порядок
+    причин — тот, в котором они встретились, то есть сверху вниз по файлу. */
+function groupSkipped(skipped: { line: number; why: string }[]): Map<string, number[]> {
+  const map = new Map<string, number[]>();
+  for (const one of skipped) {
+    const lines = map.get(one.why) ?? [];
+    lines.push(one.line);
+    map.set(one.why, lines);
+  }
+  return map;
+}
+
 export function ExcelImport({ usedIds, onAdd }: Props) {
   const input = useRef<HTMLInputElement>(null);
   const [parsed, setParsed] = useState<Parsed | null>(null);
@@ -84,8 +96,16 @@ export function ExcelImport({ usedIds, onAdd }: Props) {
     <div className="srcexcel">
       <p className="clients__lede">
         Файл выгрузки с заявками дня: адрес, что делаем, окно приёма и сколько занимает работа.
-        Обязателен только адрес — остальное подставится по умолчанию и правится в списке ниже.
-        Столбцы ищутся по названиям в шапке, порядок значения не имеет.
+        Обязателен только адрес. Столбцы ищутся по названиям в шапке, порядок значения не имеет.
+      </p>
+      {/* Разница между «нет столбца» и «в столбце ерунда» для диспетчера
+          важнее, чем кажется: в первом случае мы подставляем своё и говорим
+          об этом, во втором — снимаем строку, потому что заявка с окном,
+          которого никто не называл, поедет в расчёт и займёт чужое время. */}
+      <p className="clients__lede">
+        Столбца нет вовсе — подставим окно 10:00–14:00 и час работ и скажем, что подставили.
+        Столбец есть, а значение в нём не читается — такую строку отложим и назовём причину:
+        подставлять за диспетчера время приезда нельзя.
       </p>
 
       <div className="srcexcel__actions">
@@ -168,11 +188,23 @@ export function ExcelImport({ usedIds, onAdd }: Props) {
           )}
 
           {parsed.skipped.length > 0 && (
-            <p className="srcexcel__note srcexcel__note--bad">
-              Снято строк: {parsed.skipped.length}. {parsed.skipped[0].why} — строка{' '}
-              {parsed.skipped[0].line}
-              {parsed.skipped.length > 1 && ' и другие'}.
-            </p>
+            /* Причины перечисляем все до одной, а не первую с припиской «и
+               другие». Снятые строки диспетчер идёт править в файл, и чинить
+               их надо по списку: пять снятых строк — это пять разных ошибок,
+               и знать про одну из них значит вернуться сюда ещё четыре раза.
+               Одинаковые причины при этом сводим в одну строку с номерами:
+               двадцать одинаковых «не разобралось начало окна» — это одна
+               беда в одном столбце, а не двадцать. */
+            <div className="srcexcel__note srcexcel__note--bad">
+              <p>Снято строк: {parsed.skipped.length}. Их придётся поправить в файле.</p>
+              <ul className="srcexcel__skipped">
+                {[...groupSkipped(parsed.skipped)].map(([why, lines]) => (
+                  <li key={why}>
+                    {why} — {lines.length > 1 ? 'строки' : 'строка'} {lines.join(', ')}
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
 
           <div className="srcexcel__confirm">

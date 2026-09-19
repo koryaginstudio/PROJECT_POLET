@@ -13675,6 +13675,21 @@ b.ccard__bad {
   color: var(--danger-600);
 }
 
+/* Перечень снятых строк: причина и номера. Список, а не сплошной текст, —
+   по нему идут и правят файл строку за строкой. */
+.srcexcel__skipped {
+  margin: var(--sp-1) 0 0;
+  padding-left: var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  list-style: disc;
+}
+
+.srcexcel__skipped li {
+  font-variant-numeric: tabular-nums;
+}
+
 /* Показываем первые строки разбора: проверяют по ним одно — что столбцы
    разошлись правильно. */
 .srcexcel__rows {

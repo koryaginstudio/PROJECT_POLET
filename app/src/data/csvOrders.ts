@@ -25,6 +25,14 @@ const COLUMNS = {
   urgent: ['авар', 'срочн', 'urgent']
 };
 
+/* Сколько времени на объекте бывает у одного визита. Те же границы, что у
+   поля в форме ручного ввода: выгрузка и рука должны заводить одинаковые
+   заявки. Число за этими границами — не длинный визит, а ошибка колонки:
+   «1 234,5» из русского Excel разбирается как тысяча двести тридцать пять
+   минут, то есть двадцать часов работы у одной двери. */
+const MINUTES_MIN = 5;
+const MINUTES_MAX = 480;
+
 /** Шаблон выгрузки: его скачивают, заполняют поверх примера и присылают. */
 export const CSV_TEMPLATE = [
   'Адрес;Что делаем;Окно с;Окно до;Работы, мин;Авария',
@@ -53,7 +61,7 @@ export function parseOrders(text: string, usedIds: Set<string>, fileName: string
   const head = lines[0];
   const sep = separatorOf(head);
 
-  const header = split(head, sep).map((cell) => cell.trim().toLowerCase());
+  const header = split(head, sep).cells.map((cell) => cell.trim().toLowerCase());
   const find = (names: string[]) =>
     header.findIndex((cell) => names.some((name) => cell.includes(name)));
 
@@ -77,7 +85,11 @@ export function parseOrders(text: string, usedIds: Set<string>, fileName: string
   if (at.address < 0) return { fileName, orders, skipped, missing };
 
   for (let index = 1; index < lines.length; index += 1) {
-    const cells = split(lines[index], sep);
+    const { cells, broken } = split(lines[index], sep);
+    if (broken) {
+      skipped.push({ line: index + 1, why: 'незакрытая кавычка: колонки не разделились' });
+      continue;
+    }
     const address = (cells[at.address] ?? '').trim();
     if (!address) {
       skipped.push({ line: index + 1, why: 'пустой адрес' });
@@ -111,6 +123,15 @@ export function parseOrders(text: string, usedIds: Set<string>, fileName: string
       skipped.push({
         line: index + 1,
         why: `не разобралась длительность работ «${cellText(cells[at.minutes])}»`
+      });
+      continue;
+    }
+    if (minutes !== null && (minutes < MINUTES_MIN || minutes > MINUTES_MAX)) {
+      skipped.push({
+        line: index + 1,
+        why:
+          `длительность работ «${cellText(cells[at.minutes])}» вне границ ` +
+          `${MINUTES_MIN}–${MINUTES_MAX} мин`
       });
       continue;
     }
@@ -161,8 +182,12 @@ function numberOf(raw: string | undefined): number | null {
   return Number.isFinite(value) ? value : null;
 }
 
-/** Разбор строки: кавычки держим, потому что в адресе бывает разделитель. */
-function split(line: string, sep: string): string[] {
+/** Разбор строки: кавычки держим, потому что в адресе бывает разделитель.
+
+    Незакрытую кавычку отмечаем: остаток строки она съедает целиком, и
+    вместо трёх колонок выходит одна длинная. Молча принять такую строку
+    нельзя — адрес в ней окажется склеенным со всем, что стояло дальше. */
+function split(line: string, sep: string): { cells: string[]; broken: boolean } {
   const cells: string[] = [];
   let cell = '';
   let quoted = false;
@@ -184,7 +209,7 @@ function split(line: string, sep: string): string[] {
     cell += char;
   }
   cells.push(cell);
-  return cells;
+  return { cells, broken: quoted };
 }
 
 /** «10:00», «10.00», «10» и «9:30» — всё это минуты от полуночи. Пустая
