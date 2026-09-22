@@ -255,6 +255,15 @@ function SelectedCard({ day, view, selection, onSelect, dispatcher }: Props) {
                 <span className="ministage__value">{hoursText(totals.travel_minutes)}</span>
                 <span className="ministage__label">Дорога</span>
               </div>
+              {/* Вторая обязательная метрика ТЗ — пробег по маршруту каждого
+                  исполнителя. Прежде на экране не было ни одного километра. Стоит
+                  сразу за «Дорогой»: время в пути и путь читают вместе. */}
+              {totals.distance_km != null && (
+                <div className="ministage">
+                  <span className="ministage__value">{dec(totals.distance_km, 1)}</span>
+                  <span className="ministage__label">Пробег, км</span>
+                </div>
+              )}
               <div className="ministage">
                 <span className="ministage__value">{hoursText(totals.idle_minutes)}</span>
                 <span className="ministage__label">Ожидание окон</span>
@@ -263,14 +272,6 @@ function SelectedCard({ day, view, selection, onSelect, dispatcher }: Props) {
                 <span className="ministage__value">{totals.overtime_minutes}</span>
                 <span className="ministage__label">Переработка, мин</span>
               </div>
-              {/* Вторая обязательная метрика ТЗ — пробег по маршруту каждого
-                  исполнителя. Прежде на экране не было ни одного километра. */}
-              {totals.distance_km != null && (
-                <div className="ministage">
-                  <span className="ministage__value">{dec(totals.distance_km, 1)}</span>
-                  <span className="ministage__label">Пробег, км</span>
-                </div>
-              )}
             </div>
           ) : (
             <p className="rmenu__empty">Маршрута на этот день нет — инженер не выезжал.</p>
