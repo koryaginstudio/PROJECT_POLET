@@ -24,6 +24,7 @@ from .shiftopt import SHIFT_LEN
 from .shiftopt import apply as with_shifts
 from .solvers import fast, greedy, improved
 from .core.domain import require_valid
+from .stats import ci95
 
 PROFILES: dict[str, list[int]] = {
     # Как сейчас: почти все утренние.
@@ -88,7 +89,7 @@ def grid():
         cg = statistics.mean(r[2] for r in g)
         ci = statistics.mean(r[3] for r in g)
         diffs = [r[3] - r[2] for r in g]
-        h = 1.96 * statistics.stdev(diffs) / len(diffs) ** 0.5
+        _, h = ci95(diffs)
         print(f"{name:<14}{cg:>9.1f}%{ci:>12.1f}%{statistics.mean(diffs):>+8.1f} ± {h:.1f}")
     print("─" * 48)
     print("\nВклад расписания при одном и том же планировщике:")
@@ -134,8 +135,7 @@ def main():
             continue
         deltas = [c - base_by_seed[s] for (n, _, _, c, _), s in
                   zip([r for r in rows if r[0] == name], seeds)]
-        m = statistics.mean(deltas)
-        h = 1.96 * statistics.stdev(deltas) / len(deltas) ** 0.5
+        m, h = ci95(deltas)
         print(f"  {name:<14}{m:+6.1f} ± {h:.1f} п.п.")
 
 

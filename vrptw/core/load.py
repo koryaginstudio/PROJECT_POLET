@@ -434,6 +434,18 @@ def _window(row: dict) -> tuple[int, int]:
     return max(ws, DAY_START), min(we, HARD_END)
 
 
+def адрес_для_показа(текст: str | None) -> str | None:
+    """«г.Город Москва, …» → «Город Москва, …», как у остальных адресов.
+
+    Выгрузка дублирует город у девяти адресов (восемь на востоке, один на
+    югоцентре), и экран писал «г.Город Москва». Правится только показ:
+    геокодер ищет по исходной строке выгрузки, она — ключ его кэша, и
+    координата берётся по ней раньше, чем заявка получит этот текст."""
+    if not текст:
+        return текст
+    return re.sub(r"^г\.\s*(?=Город\s)", "", текст, flags=re.I)
+
+
 def build_orders(rows: list[dict], geo: dict) -> tuple[list[Order], list[dict]]:
     """
     Собрать заявки. Возвращает годные и список пропущенных с причиной.
@@ -473,7 +485,7 @@ def build_orders(rows: list[dict], geo: dict) -> tuple[list[Order], list[dict]]:
             lat=point["lat"],
             lon=point["lon"],
             node=-1,                     # проставится, когда встанет сеть
-            address=row["address"],
+            address=адрес_для_показа(row["address"]),
             window_start=ws,
             window_end=we,
             # В этих данных обязательство перед абонентом — само окно:

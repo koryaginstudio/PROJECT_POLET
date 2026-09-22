@@ -34,6 +34,7 @@ from .core.generate import generate_day
 from .core.network import default_network
 from .core.simulate import simulate_once
 from .solvers import fast, improved
+from .stats import ci95
 from .core.domain import require_valid
 
 WEIGHTS = [1.0, 1.5, 2.0, 3.0, 5.0]
@@ -83,11 +84,7 @@ def _one(args) -> tuple:
             len(day.orders))
 
 
-def ci95(xs):
-    m = statistics.mean(xs)
-    if len(xs) < 2:
-        return m, 0.0
-    return m, 1.96 * statistics.stdev(xs) / len(xs) ** 0.5
+# Интервал — общий, по t (`vrptw/stats.py`): здесь стоял свой, по 1,96.
 
 
 def _table(rows, seeds, weights, title):

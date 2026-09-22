@@ -444,9 +444,15 @@ def build_explain(day: Day, plan: Plan, params: improved.Params | None = None) -
                     summary = "все подходящие инженеры заняты в это время"
             else:
                 summary = "не влезла: место занято более срочными заявками"
+        elif len(feasible) == 1:
+            # «Дешевле всех остальных из 1 подходящих» — сравнение не с кем.
+            summary = (f"назначен {by_engineer[holder].name}: единственный, кому "
+                       f"она подходит и влезает в маршрут")
         else:
+            n = len(feasible)
+            из = "подходящего" if n % 10 == 1 and n % 100 != 11 else "подходящих"
             summary = (f"назначен {by_engineer[holder].name}: дешевле всех остальных "
-                       f"из {len(feasible)} подходящих")
+                       f"из {n} {из}")
 
         out[order.id] = {
             "assigned_to": holder,

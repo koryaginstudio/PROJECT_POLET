@@ -30,6 +30,7 @@ from vrptw.core.network import default_network
 from vrptw.core.simulate import monte_carlo
 from vrptw.solvers import fast, greedy, improved
 from vrptw.core.domain import require_valid
+from vrptw.stats import ci95
 
 _NET = None
 
@@ -65,13 +66,6 @@ def _converge(args):
     secs = time.time() - t0
     mc = monte_carlo(day, plan, runs=200, seed=seed)
     return iters, plan.assigned_count, mc.coverage * 100, secs
-
-
-def ci95(xs):
-    m = statistics.mean(xs)
-    if len(xs) < 2:
-        return m, 0.0
-    return m, 1.96 * statistics.stdev(xs) / len(xs) ** 0.5
 
 
 def held_out():

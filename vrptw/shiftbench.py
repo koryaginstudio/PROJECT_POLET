@@ -22,6 +22,7 @@ from .shiftopt import allowed_starts, apply, demand_curve, optimize, undercovera
 from .shifts import PROFILES, with_shifts
 from .solvers import fast, improved
 from .core.domain import require_valid
+from .stats import ci95
 
 _NET = None
 
@@ -106,9 +107,7 @@ def main():
         print(f"{r['seed']:>4} │ {r['as_is']:>8.1f}% {r['manual']:>7.1f}% "
               f"{r['tuned']:>7.1f}% {r['refined']:>9.1f}%")
 
-    def ci(xs):
-        m = statistics.mean(xs)
-        return m, 1.96 * statistics.stdev(xs) / len(xs) ** 0.5
+    ci = ci95                          # по t: дней мало, 1,96 занижает
 
     print("─" * 50)
     for label, key in (("как есть", "as_is"), ("веер вручную", "manual"),

@@ -37,6 +37,7 @@ from .core.simulate import monte_carlo
 from .diagnose import balance
 from .shifts import PROFILES, with_shifts
 from .solvers import fast, improved
+from .stats import ci95
 from .core.domain import require_valid
 
 WEIGHTS = [0.0, 1.0, 4.0, 8.0, 16.0, 40.0]
@@ -86,10 +87,7 @@ def _paired(rows: list[dict], key: str, weight: float, base: float = 0.0):
     """Парная разница по дням против нулевого веса."""
     ref = {r["seed"]: r[key] for r in rows if r["weight"] == base}
     diffs = [r[key] - ref[r["seed"]] for r in rows if r["weight"] == weight]
-    if len(diffs) < 2:
-        return statistics.mean(diffs), 0.0
-    half = 1.96 * statistics.stdev(diffs) / len(diffs) ** 0.5
-    return statistics.mean(diffs), half
+    return ci95(diffs)                   # по t: дней восемь, а не бесконечность
 
 
 def weights(profile: str = "веер"):

@@ -35,6 +35,7 @@ from vrptw.core.network import default_network
 from vrptw.core.simulate import monte_carlo
 from vrptw.solvers import fast, greedy, improved
 from vrptw.core.domain import require_valid
+from vrptw.stats import ci95
 
 RUNS = 300
 
@@ -122,13 +123,6 @@ def main():
         print(f"{r['seed']:>4} │ {g['assigned']:>5} {i['assigned']:>6} │ "
               f"{g['done']:>6.1f} {i['done']:>7.1f} │ "
               f"{g['coverage']*100:>5.1f}% {i['coverage']*100:>6.1f}%")
-
-    def ci95(xs):
-        m = statistics.mean(xs)
-        if len(xs) < 2:
-            return m, 0.0
-        se = statistics.stdev(xs) / len(xs) ** 0.5
-        return m, 1.96 * se
 
     m_cov, h_cov = ci95(deltas_cov)
     m_done, h_done = ci95(deltas_done)
