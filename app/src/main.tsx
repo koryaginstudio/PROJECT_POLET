@@ -2,40 +2,60 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import './ds/styles.css';
 import './styles/app.css';
-import {
-  attachEngine,
-  BUILT_IN,
-  createRun,
-  engineReady,
-  hideLocalRuns,
-  pullArchive,
-  RUNS
-} from './data/load.ts';
-import { engineDefaults } from './data/engine.ts';
+import { attachEngine, engineDayTitle, seedRuns } from './data/load.ts';
 import { ErrorBoundary } from './app/ErrorBoundary.tsx';
 import { engineWarming } from './data/api.ts';
+import { humanLine } from './data/errors.ts';
+
+/* Заставка до первой отрисовки: класс `.boot` из index.html, как у
+   «Загружаем…». Заголовок и строка под ним, а не одна длинная фраза: главное
+   — «сколько готово» — должно читаться с первого взгляда. */
+function showBoot(title: string, line: string) {
+  const root = document.getElementById('root');
+  if (!root) return;
+  const box = document.createElement('div');
+  box.className = 'boot';
+  const text = document.createElement('div');
+  text.className = 'boot__text';
+  const head = document.createElement('p');
+  head.className = 'boot__title';
+  head.textContent = title;
+  const body = document.createElement('p');
+  body.textContent = line;
+  text.append(head, body);
+  box.append(text);
+  root.replaceChildren(box);
+}
+
+/* Сколько ждать прогрева, прежде чем открыть страницу всё равно. На новой
+   машине он около трёх минут; вдесятеро дольше — значит, что-то не так, и
+   держать человека перед заставкой без конца хуже, чем открыть интерфейс,
+   который сам скажет, что программа расчёта не отвечает. */
+const WARMUP_LIMIT = 10 * 60_000;
 
 /* Движок открывает порт сразу, а дни считает в фоне: на новой машине
    первый запуск — около трёх минут, дальше — секунды. Пока он считает,
    страница говорит это словами и ждёт, а не висит пустой и не сеет
-   расчёты в полусчитанный движок. Вид — та же заставка `.boot`, что и
-   «Загружаем…» в index.html. */
+   расчёты в полусчитанный движок. Слова — диспетчерские: «движок» и
+   секунды ему ни к чему, ему важно, сколько планов готово. */
 async function waitForWarmup() {
+  const started = Date.now();
   for (;;) {
     const warming = await engineWarming();
-    if (!warming) return;
-    const всего = warming.ready.length + warming.pending.length;
-    const root = document.getElementById('root');
-    if (root) {
-      const text = document.createElement('div');
-      text.className = 'boot';
-      text.textContent =
-        `Движок считает планы участков: готово ${warming.ready.length} из ${всего}` +
-        (warming.current ? `, сейчас — ${warming.current}` : '') +
-        `. При первом запуске на новой машине это около трёх минут, дальше — ` +
-        'секунды. Страница откроется сама.';
-      root.replaceChildren(text);
+    if (warming === null || Date.now() - started > WARMUP_LIMIT) return;
+    /* Не ответил вовремя — он, скорее всего, занят счётом: ждём дальше, не
+       снимая того, что уже на экране. */
+    if (warming === 'unknown') {
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      continue;
     }
+    const всего = warming.ready.length + warming.pending.length;
+    showBoot(
+      `Готовим планы на сегодня: готово ${warming.ready.length} из ${всего}` +
+        (warming.current ? `, сейчас — ${engineDayTitle(warming.current)}` : '') +
+        '…',
+      'Первый запуск на новом компьютере занимает около трёх минут. Страница откроется сама.'
+    );
     await new Promise((resolve) => setTimeout(resolve, 2000));
   }
 }
@@ -47,50 +67,12 @@ async function waitForWarmup() {
    расчёт. Проверка стоит секунду в худшем случае — движок либо рядом,
    либо его нет, — и это дешевле, чем экран, который моргает списком.
 
-   Не нашёлся — считаем сами. Это обычный режим работы, а не поломка. */
+   Не нашёлся — считаем сами. Это обычный режим работы, а не поломка.
 
-/* Первый запуск: истории нет, и считать день некому, кроме нас.
-
-   Считаются все три зоны выгрузки, по расчёту на каждую, и всё это до
-   первой отрисовки. Иначе программа встречает пустой формой, за которой
-   не видно ни карты, ни маршрутов, ни баз данных: базы собираются по всем
-   расчётам сразу, и на одном расчёте половина разделов пуста.
-
-   Это настоящие расчёты по настоящей выгрузке, а не записанные заранее
-   планы: каждый занимает доли секунды и повторяется одинаковым, сколько
-   его ни пересчитывай.
-
-   Дальше история уже своя: расчёты копятся от кнопки и переживают
-   перезагрузку. Второй раз сюда не заходят. */
-async function seedFirstRuns() {
-  /* С живым движком история приходит из его архива, а не считается заново:
-     он свои расчёты хранит сам и переживает перезагрузку браузера. Считать
-     поверх них свои значило бы выдать посчитанное здесь за посчитанное им —
-     ровно та подмена, ради которой всё и затевалось.
-
-     Архив подтягивается всегда, а не только на пустом списке. Прежде проверка
-     «история не пуста» стояла первой, и браузер, в котором уже были свои
-     расчёты, архива движка не видел вовсе: на экране оставались одни
-     браузерные планы. Их при живом движке прячем — см. `hideLocalRuns`. */
-  if (engineReady()) {
-    hideLocalRuns();
-    /* Архив не прочитался — не сеем: иначе каждый сбой `GET /runs`
-       дописывал бы в архив движка ещё три расчёта. Сеем, только если он
-       прочитан и пуст. */
-    const прочитан = await pullArchive().then(() => true, () => false);
-    if (!прочитан || RUNS.length > 0) return;
-  } else if (RUNS.length > 0) {
-    return;
-  }
-
-  for (const zone of BUILT_IN) {
-    try {
-      await createRun(engineDefaults(), zone);
-    } catch {
-      /* Данные зоны не прочитались — остальные от этого не страдают. */
-    }
-  }
-}
+   Первые расчёты заводит `seedRuns` (load.ts) — одна затравка на всё
+   приложение: с движком она подтягивает его архив и сеет, только если архив
+   прочитан и пуст; без движка — считает по расчёту на зону, если история
+   пуста. */
 
 /* Пока всё это идёт, на странице стоит заглушка из `index.html` —
    «Загружаем…». Первая отрисовка её и снимает: белого экрана между
@@ -99,7 +81,7 @@ async function seedFirstRuns() {
 attachEngine()
   .catch(() => false)
   .then(waitForWarmup)
-  .then(seedFirstRuns)
+  .then(seedRuns)
   .then(async () => {
     const { App } = await import('./app/App.tsx');
     createRoot(document.getElementById('root')!).render(
@@ -109,4 +91,10 @@ attachEngine()
         </ErrorBoundary>
       </React.StrictMode>
     );
+  })
+  /* Сюда доходит только то, что не поймали выше: сломанная сборка, не
+     загрузившийся модуль. Заставка «Загружаем…» без конца хуже, чем слова. */
+  .catch((failure: unknown) => {
+    console.error('Интерфейс не запустился', failure);
+    showBoot('Интерфейс не запустился', humanLine(failure));
   });

@@ -43,7 +43,8 @@
 
 .crash__body {
   margin: var(--sp-3) 0 0;
-  color: var(--text-secondary);
+  /* Главный текст окна — основным цветом: серым его читали с трудом. */
+  color: var(--text-primary);
   font-size: var(--fs-body-s);
   line-height: 1.5;
 }
@@ -51,7 +52,7 @@
 /* Причина — моноширинным и тише: это строка для того, кто будет чинить, а
    не для того, кто читает. */
 .crash__reason {
-  margin: var(--sp-3) 0 0;
+  margin: 0;
   padding: var(--sp-2) var(--sp-3);
   border-radius: var(--r-md);
   background: var(--ink-100);
@@ -99,6 +100,31 @@
   flex-direction: column;
   gap: var(--sp-3);
   max-width: 640px;
+}
+
+/* Что случилось и что делать — главное на экране, поэтому основным цветом,
+   а не серым, как у заглушки. */
+.dayfail > .stub__body {
+  color: var(--text-primary);
+}
+
+.dayfail .fold,
+.crash__card .fold {
+  width: 100%;
+  margin-top: var(--sp-3);
+}
+
+/* Ответ сервера — моноширинным, как у `.crash__reason`: строка для того, кто
+   будет чинить. */
+.dayfail__detail {
+  margin: 0 0 var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md);
+  background: var(--ink-100);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  word-break: break-word;
 }
 
 .dayfail__actions {
@@ -233,6 +259,24 @@
 
 .fold__body {
   padding-bottom: var(--sp-3);
+}
+
+/* ─── правка расчёта из архива программы расчёта ───────────────────────── */
+
+/* Номер и дата у такого расчёта только для чтения: поле остаётся, чтобы было
+   видно, о какой записи речь, но фон тише — править тут нечего. */
+input.runedit__input:read-only,
+.runedit__prefixed:has(.runedit__bare:read-only) {
+  background: var(--ink-100);
+  cursor: default;
+}
+
+/* Одна фраза вместо удаления — основным кеглем и цветом: это ответ на
+   вопрос «а где удалить?», его должны прочесть. */
+.runedit__archived {
+  font-size: var(--fs-body-s);
+  line-height: var(--lh-body-s);
+  color: var(--text-primary);
 }
 
 /* ─── подсказка под полем номера в правке записи ───────────────────────── */
