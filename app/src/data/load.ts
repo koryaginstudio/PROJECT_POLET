@@ -86,9 +86,10 @@ const ENGINE_TITLES: Record<string, string> = {
   югоцентр: 'Югоцентр'
 };
 
-/** Как участок движка («югоцентр») называется на экране. Неизвестный день —
-    синтетический номер — показывается как есть. */
-export const engineDayTitle = (day: string) => ENGINE_TITLES[day] ?? day;
+/** Как участок движка («югоцентр») называется на экране; синтетический
+    день — «день 7». Нужно и базам, и заставке прогрева в main.tsx. */
+export const engineDayTitle = (day: string) =>
+  ENGINE_TITLES[day] ?? (/^\d+$/.test(day) ? `день ${day}` : day);
 
 /** Как источник называется на экране. */
 export const zoneTitle = (zone: SourceId) =>
@@ -287,14 +288,6 @@ const ENGINE_ZONE: Record<string, string> = {
   southeast: 'юго-восток',
   center: 'югоцентр'
 };
-
-/** Как день движка называется на экране: «юго-восток» → «Юго-Восток».
-    Синтетический день — «день 7». Нужно заставке прогрева в main.tsx. */
-export function engineDayTitle(day: string): string {
-  const zone = Object.keys(ENGINE_ZONE).find((key) => ENGINE_ZONE[key] === day);
-  if (zone) return zoneTitle(zone);
-  return /^\d+$/.test(day) ? `день ${day}` : day;
-}
 
 /** Умеет ли движок считать по нашим данным. Да — см. `attachEngine`. */
 const engineTakesRealData = () => true;
