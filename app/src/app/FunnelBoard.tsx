@@ -29,6 +29,7 @@ const CREW_STAGES = new Set<Stage['key']>(['planned', 'enroute', 'working']);
 const DELTA_WORD: Partial<Record<StageKey, string>> = {
   done: 'закрыто',
   overdue: 'могут сорваться',
+  failed: 'сорвалось',
   enroute: 'выехали',
   working: 'начали'
 };
@@ -36,6 +37,7 @@ const DELTA_WORD: Partial<Record<StageKey, string>> = {
 const DELTA_ICON: Partial<Record<StageKey, string>> = {
   done: 'check-circle',
   overdue: 'x-circle',
+  failed: 'x-circle',
   enroute: 'truck',
   working: 'wrench'
 };
@@ -163,7 +165,10 @@ function badges(stage: Stage, delta: number, crew: number) {
   return list;
 }
 
-const PROGRESS_ORDER: StageKey[] = ['unassigned', 'planned', 'overdue', 'enroute', 'working', 'done'];
+/* «Сорвалось» — рядом с прогнозом срыва: обе доли красные, и в полосе они
+   читаются одним куском «плохо», факт первым. Этапа нет в воронке дня без
+   журнала — тогда он просто не попадёт в полосу. */
+const PROGRESS_ORDER: StageKey[] = ['unassigned', 'planned', 'failed', 'overdue', 'enroute', 'working', 'done'];
 
 export function FunnelBoard({ funnel, onCutChange, onPickStage, problems, onOpenProblems }: Props) {
   const total = Math.max(1, funnel.total);
@@ -217,7 +222,8 @@ export function FunnelBoard({ funnel, onCutChange, onPickStage, problems, onOpen
         <h2 className="funnel__title">Этапы</h2>
       </header>
 
-      <div className="funnel__rail">
+      {/* С журналом дня этапов на один больше — ряд из восьми клеток. */}
+      <div className={'funnel__rail' + (funnel.stages.length > 6 ? ' funnel__rail--wide' : '')}>
         <div className="stage stage--total">
           <span className="stage__bar stage__bar--total">
             <span className="stage__bar-fill" style={{ width: '100%' }} />

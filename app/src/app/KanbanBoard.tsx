@@ -19,6 +19,12 @@ interface Props {
    которым план выходит за крайний срок. Середина читается как конвейер. */
 const COLUMNS: StageKey[] = ['unassigned', 'planned', 'enroute', 'working', 'done', 'overdue'];
 
+/* «Сорвалось» — факт из журнала дня, и колонка для него появляется, только
+   когда журнал есть: у расчёта без журнала она всегда была бы пустой.
+   Стоит правее прогноза срыва: сначала то, что может сорваться, потом то,
+   что уже сорвалось. */
+const WITH_JOURNAL: StageKey[] = [...COLUMNS, 'failed'];
+
 /* Канбан смены. Та же воронка, что в сводке, но не числами, а карточками:
    сводка отвечает «сколько», канбан — «какие именно». Колонка — этап на
    текущем срезе, поэтому доска едет вместе с ползунком времени: сдвинул
@@ -32,8 +38,9 @@ export function KanbanBoard({
   onSelectEngineer
 }: Props) {
   const columns = useMemo(() => {
+    const keys = Object.keys(view.reported).length > 0 ? WITH_JOURNAL : COLUMNS;
     const buckets = new Map<StageKey, { ids: string[] }>();
-    for (const key of COLUMNS) buckets.set(key, { ids: [] });
+    for (const key of keys) buckets.set(key, { ids: [] });
 
     for (const order of view.orderById.values()) {
       const stage = stageOfOrder(view, order.id, cut);
@@ -50,7 +57,7 @@ export function KanbanBoard({
       });
     }
 
-    return COLUMNS.map((key) => ({ key, ...STAGE_META[key], ids: buckets.get(key)!.ids }));
+    return keys.map((key) => ({ key, ...STAGE_META[key], ids: buckets.get(key)!.ids }));
   }, [view, cut]);
 
   return (

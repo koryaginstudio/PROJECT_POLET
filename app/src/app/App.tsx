@@ -415,8 +415,9 @@ export function App() {
   const engineBase = engineDay ? runId : undefined;
   const [dayState, setDayState] = useState<DayState | null>(null);
   const [eventBusy, setEventBusy] = useState(false);
-  const [eventFailed, setEventFailed] = useState<string | null>(null);
-
+  /* Ошибка помнит, к какой заявке относится: иначе отказ по одной заявке
+     висел бы в карточке любой другой, открытой следом. */
+  const [eventFailed, setEventFailed] = useState<{ order: string; message: string } | null>(null);
   /* Порядковый номер запроса /state. Ползунок времени шлёт запрос на каждый
      шаг, ответы приходят вразнобой, и поздний ответ на 10:00 затирал бы уже
      показанное 14:00. Кладём только ответ на последний запрос — и только если
@@ -444,6 +445,11 @@ export function App() {
       });
   };
 
+  /* Смена основы — другой журнал: состояние прежнего расчёта до ответа
+     /api/state двигало бы канбан, воронку и мониторинг нового дня и давало
+     ложное «По журналу заявка у …». Эффект стоит до запроса и срабатывает
+     только на смену дня или базы, поэтому от ползунка статусы не мигают. */
+  useEffect(() => setDayState(null), [engineDay, engineBase]);
   useEffect(refreshDayState, [engineDay, engineBase, cut]);
 
   const sendEvent = async (event: JournalEvent) => {
@@ -475,17 +481,34 @@ export function App() {
       }
     } catch (failure) {
       if (ticket !== replanTicket.current) return;
-      setEventFailed(
-        humanLine(failure, { title: 'Событие не записалось', hint: 'Повторите ещё раз.' })
-      );
+      setEventFailed({
+        order: 'order' in event ? event.order : '',
+        message: humanLine(failure, { title: 'Событие не записалось', hint: 'Повторите ещё раз.' })
+      });
     } finally {
       if (ticket === replanTicket.current) setEventBusy(false);
     }
   };
 
+  /* У кого заявка по журналу: впереди в чьём-то списке (pending) или к ней
+     уже едут (underway). Без `underway` у заявок «в пути» держателя не
+     нашлось бы, и погасли бы «Выполнено» и «Сорвалось». Пока состояние дня
+     не пришло — null: «не знаем» не то же, что «ни у кого». */
+  const holders = useMemo(() => {
+    if (!dayState) return null;
+    const map: Record<string, string> = {};
+    for (const [engineer, ids] of Object.entries(dayState.pending ?? {})) {
+      for (const id of ids) map[id] = engineer;
+    }
+    return { ...map, ...dayState.underway };
+  }, [dayState]);
+
   const dispatcher: DispatcherActions | undefined = engineDay
     ? {
         statuses: dayState?.statuses ?? {},
+        holders,
+        cut,
+        dayStart: dayStart(),
         busy: eventBusy,
         failed: eventFailed,
         onEvent: sendEvent
@@ -650,9 +673,15 @@ export function App() {
     setCut((at) => (at < dayStart() || at > dayEnd() ? dayStart() : at));
   }, [runId, horizon, settings.dayStart, settings.dayEnd]);
 
+  /* Статусы журнала — на канбан, воронку и мониторинг. Состояние дня
+     приходит заново на каждом шаге ползунка, и почти всегда с теми же
+     статусами: сравниваем по содержимому, иначе весь день пересчитывался
+     бы на каждый ответ сервера. */
+  const reportedKey = JSON.stringify(dayState?.statuses ?? {});
+  const reported = useMemo(() => JSON.parse(reportedKey) as Record<string, string>, [reportedKey]);
   const dayView = useMemo(
-    () => (shownDay ? buildDayView(shownDay) : null),
-    [shownDay, horizon, settings.thresholds, settings.dayStart, settings.dayEnd]
+    () => (shownDay ? buildDayView(shownDay, reported) : null),
+    [shownDay, reported, horizon, settings.thresholds, settings.dayStart, settings.dayEnd]
   );
   /* Правая панель показывает список маршрутов вместо справочника там, где
      карта — основной способ смотреть на день: на вкладке «Карта» в
