@@ -1,0 +1,243 @@
+{
+ "schema": "1.2",
+ "kind": "engineers",
+ "meta": {
+  "date": "2026-08-17",
+  "zone": "Центр",
+  "time_format": "minutes_from_midnight",
+  "distance_units": "km",
+  "source": "выгрузка «Билайн Бизнес» за 17.08.2026"
+ },
+ "engineers": [
+  {
+   "id": "E024",
+   "name": "Бахарев Андрей Петрович",
+   "skills": [
+    "connect",
+    "local"
+   ],
+   "grade": 3,
+   "shift_start": 600,
+   "shift_end": 1320,
+   "home_address": "Москва, Симферопольский проезд, 7",
+   "home_lat": 55.664757,
+   "home_lon": 37.615839,
+   "transport": "walk",
+   "status": "on_shift",
+   "team": "Бахарев Андрей",
+   "zone": "Центр",
+   "phone": "+7 495 724-34-44",
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E025",
+   "name": "Брюзгин Ярослав Сергеевич",
+   "skills": [
+    "connect",
+    "local"
+   ],
+   "grade": 2,
+   "shift_start": 600,
+   "shift_end": 1320,
+   "home_address": "Москва, Симферопольский проезд, 7",
+   "home_lat": 55.664757,
+   "home_lon": 37.615839,
+   "transport": "car",
+   "status": "on_shift",
+   "team": "Брюзгин Ярослав",
+   "zone": "Центр",
+   "phone": "+7 495 725-35-45",
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E026",
+   "name": "Выговский Сергей Николаевич",
+   "skills": [
+    "connect",
+    "emergency",
+    "local"
+   ],
+   "grade": 2,
+   "shift_start": 780,
+   "shift_end": 1320,
+   "home_address": "Москва, Симферопольский проезд, 7",
+   "home_lat": 55.664757,
+   "home_lon": 37.615839,
+   "transport": "car",
+   "status": "on_shift",
+   "team": "Выговский Сергей",
+   "zone": "Центр",
+   "phone": "+7 495 726-36-46",
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E027",
+   "name": "Данилов Даниил Николаевич",
+   "skills": [
+    "connect"
+   ],
+   "grade": 1,
+   "shift_start": 600,
+   "shift_end": 1140,
+   "home_address": "Москва, Симферопольский проезд, 7",
+   "home_lat": 55.664757,
+   "home_lon": 37.615839,
+   "transport": "transit",
+   "status": "on_shift",
+   "team": "Данилов Даниил",
+   "zone": "Центр",
+   "phone": "+7 495 727-37-47",
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E028",
+   "name": "Ионов Геннадий Викторович",
+   "skills": [
+    "connect",
+    "local"
+   ],
+   "grade": 1,
+   "shift_start": 600,
+   "shift_end": 1320,
+   "home_address": "Москва, Симферопольский проезд, 7",
+   "home_lat": 55.664757,
+   "home_lon": 37.615839,
+   "transport": "car",
+   "status": "on_shift",
+   "team": "Ионов Геннадий",
+   "zone": "Центр",
+   "phone": "+7 495 728-38-48",
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E029",
+   "name": "Исхаков Денис Борисович",
+   "skills": [
+    "connect",
+    "local"
+   ],
+   "grade": 3,
+   "shift_start": 600,
+   "shift_end": 1200,
+   "home_address": "Москва, Симферопольский проезд, 7",
+   "home_lat": 55.664757,
+   "home_lon": 37.615839,
+   "transport": "bike",
+   "status": "on_shift",
+   "team": "Исхаков Денис",
+   "zone": "Центр",
+   "phone": "+7 495 729-39-49",
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E030",
+   "name": "Капитанчук Александр Сергеевич",
+   "skills": [
+    "connect",
+    "local"
+   ],
+   "grade": 2,
+   "shift_start": 600,
+   "shift_end": 1200,
+   "home_address": "Москва, Симферопольский проезд, 7",
+   "home_lat": 55.664757,
+   "home_lon": 37.615839,
+   "transport": "car",
+   "status": "on_shift",
+   "team": "Капитанчук Александр",
+   "zone": "Центр",
+   "phone": "+7 495 730-40-50",
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E031",
+   "name": "Переладов Алексей Андреевич",
+   "skills": [
+    "connect",
+    "local"
+   ],
+   "grade": 2,
+   "shift_start": 720,
+   "shift_end": 1320,
+   "home_address": "Москва, Симферопольский проезд, 7",
+   "home_lat": 55.664757,
+   "home_lon": 37.615839,
+   "transport": "car",
+   "status": "on_shift",
+   "team": "Переладов Алексей",
+   "zone": "Центр",
+   "phone": "+7 495 731-41-51",
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E032",
+   "name": "Прокопенко Вячеслав Игоревич",
+   "skills": [
+    "connect",
+    "local"
+   ],
+   "grade": 2,
+   "shift_start": 600,
+   "shift_end": 1200,
+   "home_address": "Москва, Симферопольский проезд, 7",
+   "home_lat": 55.664757,
+   "home_lon": 37.615839,
+   "transport": "car",
+   "status": "on_shift",
+   "team": "Прокопенко Вячеслав",
+   "zone": "Центр",
+   "phone": "+7 495 732-42-52",
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E033",
+   "name": "Рыбалкин Егор Юрьевич",
+   "skills": [
+    "connect",
+    "local"
+   ],
+   "grade": 2,
+   "shift_start": 600,
+   "shift_end": 1320,
+   "home_address": "Москва, Симферопольский проезд, 7",
+   "home_lat": 55.664757,
+   "home_lon": 37.615839,
+   "transport": "car",
+   "status": "on_shift",
+   "team": "Рыбалкин Егор",
+   "zone": "Центр",
+   "phone": "+7 495 733-43-53",
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E034",
+   "name": "Сакур Тимофей Михайлович",
+   "skills": [
+    "connect"
+   ],
+   "grade": 1,
+   "shift_start": 600,
+   "shift_end": 1140,
+   "home_address": "Москва, Симферопольский проезд, 7",
+   "home_lat": 55.664757,
+   "home_lon": 37.615839,
+   "transport": "walk",
+   "status": "on_shift",
+   "team": "Сакур Тимофей",
+   "zone": "Центр",
+   "phone": "+7 495 734-44-54",
+   "photo": null,
+   "position": null
+  }
+ ]
+}

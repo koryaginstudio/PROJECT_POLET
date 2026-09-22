@@ -1,0 +1,73 @@
+{
+ "schema": "1.5",
+ "kind": "simulation",
+ "meta": {
+  "day": "восток",
+  "date": "2026-08-17",
+  "runs": 300
+ },
+ "planned": 62,
+ "orders_total": 66,
+ "done": {
+  "mean": 55.23,
+  "p10": 52,
+  "p50": 55,
+  "p90": 58,
+  "sd": 2.31
+ },
+ "coverage": 83.7,
+ "execution_rate": 89.1,
+ "must_today": 66,
+ "breaches": 10.77,
+ "breach_rate": 16.3,
+ "reasons": {
+  "no_show": 3.81,
+  "missed_window": 1.89,
+  "no_access": 1.05,
+  "dropped": 0.02
+ },
+ "overtime_minutes": 55.1,
+ "idle_minutes": 1530.8,
+ "fragile": [
+  {
+   "order_id": "48227",
+   "failure_rate": 32.0
+  },
+  {
+   "order_id": "76082",
+   "failure_rate": 28.7
+  },
+  {
+   "order_id": "94409",
+   "failure_rate": 26.0
+  },
+  {
+   "order_id": "52405",
+   "failure_rate": 25.7
+  },
+  {
+   "order_id": "41077",
+   "failure_rate": 23.3
+  },
+  {
+   "order_id": "69967",
+   "failure_rate": 22.3
+  },
+  {
+   "order_id": "10135",
+   "failure_rate": 21.3
+  },
+  {
+   "order_id": "41962",
+   "failure_rate": 21.3
+  },
+  {
+   "order_id": "4893",
+   "failure_rate": 16.7
+  },
+  {
+   "order_id": "68476",
+   "failure_rate": 16.0
+  }
+ ]
+}

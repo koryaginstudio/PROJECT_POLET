@@ -1,0 +1,267 @@
+{
+ "schema": "1.2",
+ "kind": "engineers",
+ "meta": {
+  "date": "2026-08-17",
+  "zone": "Юго-Восток",
+  "time_format": "minutes_from_midnight",
+  "distance_units": "km",
+  "source": "выгрузка «Билайн Бизнес» за 17.08.2026"
+ },
+ "engineers": [
+  {
+   "id": "E013",
+   "name": "Андреев Григорий Игоревич",
+   "skills": [
+    "connect",
+    "local"
+   ],
+   "grade": 2,
+   "shift_start": 600,
+   "shift_end": 1320,
+   "home_address": "Москва, Бирюлёвская улица, 1с1",
+   "home_lat": 55.588927,
+   "home_lon": 37.664614,
+   "transport": "car",
+   "status": "on_shift",
+   "team": "Бригада Андреев",
+   "zone": "Юго-Восток",
+   "phone": "+7 495 713-23-33",
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E014",
+   "name": "Белоновский Константин Андреевич",
+   "skills": [
+    "connect",
+    "local"
+   ],
+   "grade": 3,
+   "shift_start": 600,
+   "shift_end": 1320,
+   "home_address": "Москва, Бирюлёвская улица, 1с1",
+   "home_lat": 55.588927,
+   "home_lon": 37.664614,
+   "transport": "walk",
+   "status": "on_shift",
+   "team": "Бригада Белоновский",
+   "zone": "Юго-Восток",
+   "phone": "+7 495 714-24-34",
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E015",
+   "name": "Бузань Артём Павлович",
+   "skills": [
+    "connect",
+    "local"
+   ],
+   "grade": 2,
+   "shift_start": 600,
+   "shift_end": 1200,
+   "home_address": "Москва, Бирюлёвская улица, 1с1",
+   "home_lat": 55.588927,
+   "home_lon": 37.664614,
+   "transport": "car",
+   "status": "on_shift",
+   "team": "Бригада Бузань",
+   "zone": "Юго-Восток",
+   "phone": "+7 495 715-25-35",
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E016",
+   "name": "Горбанев Григорий Михайлович",
+   "skills": [
+    "connect",
+    "emergency",
+    "local"
+   ],
+   "grade": 3,
+   "shift_start": 600,
+   "shift_end": 1320,
+   "home_address": "Москва, Бирюлёвская улица, 1с1",
+   "home_lat": 55.588927,
+   "home_lon": 37.664614,
+   "transport": "car",
+   "status": "on_shift",
+   "team": "Бригада Горбанев",
+   "zone": "Юго-Восток",
+   "phone": "+7 495 716-26-36",
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E017",
+   "name": "Демин Сергей Петрович",
+   "skills": [
+    "local"
+   ],
+   "grade": 1,
+   "shift_start": 720,
+   "shift_end": 1260,
+   "home_address": "Москва, Бирюлёвская улица, 1с1",
+   "home_lat": 55.588927,
+   "home_lon": 37.664614,
+   "transport": "transit",
+   "status": "on_shift",
+   "team": "Бригада Демин",
+   "zone": "Юго-Восток",
+   "phone": "+7 495 717-27-37",
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E005",
+   "name": "Каушнян Виктор Алексеевич",
+   "skills": [
+    "connect",
+    "emergency"
+   ],
+   "grade": 1,
+   "shift_start": 780,
+   "shift_end": 1320,
+   "home_address": "Москва, Бирюлёвская улица, 1с1",
+   "home_lat": 55.588927,
+   "home_lon": 37.664614,
+   "transport": "car",
+   "status": "on_shift",
+   "team": "Бригада Каушнян",
+   "zone": "Юго-Восток",
+   "phone": "+7 495 705-15-25",
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E018",
+   "name": "Козырь Артём Сергеевич",
+   "skills": [
+    "connect",
+    "emergency",
+    "local"
+   ],
+   "grade": 3,
+   "shift_start": 600,
+   "shift_end": 1320,
+   "home_address": "Москва, Бирюлёвская улица, 1с1",
+   "home_lat": 55.588927,
+   "home_lon": 37.664614,
+   "transport": "car",
+   "status": "on_shift",
+   "team": "Бригада Козырь",
+   "zone": "Юго-Восток",
+   "phone": "+7 495 718-28-38",
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E019",
+   "name": "Макаров Евгений Дмитриевич",
+   "skills": [
+    "connect",
+    "local"
+   ],
+   "grade": 2,
+   "shift_start": 600,
+   "shift_end": 1200,
+   "home_address": "Москва, Бирюлёвская улица, 1с1",
+   "home_lat": 55.588927,
+   "home_lon": 37.664614,
+   "transport": "bike",
+   "status": "on_shift",
+   "team": "Бригада Макаров",
+   "zone": "Юго-Восток",
+   "phone": "+7 495 719-29-39",
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E020",
+   "name": "Паршин Виктор Игоревич",
+   "skills": [
+    "connect",
+    "emergency",
+    "local"
+   ],
+   "grade": 3,
+   "shift_start": 600,
+   "shift_end": 1320,
+   "home_address": "Москва, Бирюлёвская улица, 1с1",
+   "home_lat": 55.588927,
+   "home_lon": 37.664614,
+   "transport": "car",
+   "status": "on_shift",
+   "team": "Бригада Паршин",
+   "zone": "Юго-Восток",
+   "phone": "+7 495 720-30-40",
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E021",
+   "name": "Рыбин Константин Викторович",
+   "skills": [
+    "connect",
+    "local"
+   ],
+   "grade": 3,
+   "shift_start": 600,
+   "shift_end": 1140,
+   "home_address": "Москва, Бирюлёвская улица, 1с1",
+   "home_lat": 55.588927,
+   "home_lon": 37.664614,
+   "transport": "car",
+   "status": "on_shift",
+   "team": "Бригада Рыбин",
+   "zone": "Юго-Восток",
+   "phone": "+7 495 721-31-41",
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E022",
+   "name": "Саламатин Андрей Алексеевич",
+   "skills": [
+    "connect",
+    "emergency",
+    "local"
+   ],
+   "grade": 3,
+   "shift_start": 600,
+   "shift_end": 1140,
+   "home_address": "Москва, Бирюлёвская улица, 1с1",
+   "home_lat": 55.588927,
+   "home_lon": 37.664614,
+   "transport": "car",
+   "status": "on_shift",
+   "team": "Бригада Саламатин",
+   "zone": "Юго-Восток",
+   "phone": "+7 495 722-32-42",
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E023",
+   "name": "Царьков Дмитрий Алексеевич",
+   "skills": [
+    "connect"
+   ],
+   "grade": 1,
+   "shift_start": 780,
+   "shift_end": 1320,
+   "home_address": "Москва, Бирюлёвская улица, 1с1",
+   "home_lat": 55.588927,
+   "home_lon": 37.664614,
+   "transport": "car",
+   "status": "on_shift",
+   "team": "Бригада Царьков",
+   "zone": "Юго-Восток",
+   "phone": "+7 495 723-33-43",
+   "photo": null,
+   "position": null
+  }
+ ]
+}

@@ -1,0 +1,7528 @@
+{
+ "schema": "1.5",
+ "kind": "plan",
+ "meta": {
+  "day": "2",
+  "date": "2026-09-15",
+  "generated_at": 1790009010,
+  "time_format": "minutes_from_midnight",
+  "hard_end": 1260,
+  "solver": "fast/regret+lns",
+  "orders_total": 80,
+  "orders_assigned": 60,
+  "engineers_total": 12,
+  "metrics": {
+   "engineers_used": 12,
+   "km_total": 450.95,
+   "km_per_engineer": 37.58,
+   "km_per_visit": 7.52
+  },
+  "baseline": {
+   "solver": "sequential — базовый вариант из ТЗ",
+   "note": "заявки по порядку поступления, первому по порядку доступному инженеру, порядок посещения равен порядку назначения, без оптимизации",
+   "assigned": 37,
+   "engineers_used": 12,
+   "km_total": 811.57,
+   "km_per_visit": 21.93,
+   "delta": {
+    "assigned": 23,
+    "engineers_used": 0,
+    "km_total": -360.62,
+    "km_per_visit": -14.41
+   }
+  },
+  "pinned": {},
+  "equipment": {
+   "titles": {
+    "router": "Роутер",
+    "stb": "ТВ-приставка",
+    "speaker": "Умная колонка"
+   },
+   "needed": {
+    "router": 27,
+    "stb": 4,
+    "speaker": 1
+   },
+   "stock": null
+  },
+  "balance": {
+   "gini": 0.065,
+   "occupancy_min": 0.513,
+   "occupancy_max": 0.785,
+   "occupancy_mean": 0.659,
+   "idle_engineers": 0
+  }
+ },
+ "engineers": [
+  {
+   "id": "E00",
+   "name": "Соколов",
+   "skills": [
+    "install"
+   ],
+   "grade": 1,
+   "shift_start": 480,
+   "shift_end": 1020,
+   "home_address": "улица Адмирала Макарова, 29",
+   "home_lat": 55.834098,
+   "home_lon": 37.489323,
+   "transport": "car",
+   "transport_title": "Автомобиль"
+  },
+  {
+   "id": "E01",
+   "name": "Кузнецов",
+   "skills": [
+    "install"
+   ],
+   "grade": 1,
+   "shift_start": 480,
+   "shift_end": 1020,
+   "home_address": "улица Верхние Поля, 13 к2",
+   "home_lat": 55.666742,
+   "home_lon": 37.748069,
+   "transport": "car",
+   "transport_title": "Автомобиль"
+  },
+  {
+   "id": "E02",
+   "name": "Морозов",
+   "skills": [
+    "install"
+   ],
+   "grade": 2,
+   "shift_start": 540,
+   "shift_end": 1080,
+   "home_address": "улица Маршала Катукова, 24 к5",
+   "home_lat": 55.803025,
+   "home_lon": 37.413109,
+   "transport": "car",
+   "transport_title": "Автомобиль"
+  },
+  {
+   "id": "E03",
+   "name": "Волков",
+   "skills": [
+    "install"
+   ],
+   "grade": 2,
+   "shift_start": 540,
+   "shift_end": 1080,
+   "home_address": "улица Волхонка, 15",
+   "home_lat": 55.744974,
+   "home_lon": 37.605807,
+   "transport": "car",
+   "transport_title": "Автомобиль"
+  },
+  {
+   "id": "E04",
+   "name": "Лебедев",
+   "skills": [
+    "install",
+    "repair"
+   ],
+   "grade": 2,
+   "shift_start": 540,
+   "shift_end": 1080,
+   "home_address": "Коломенская набережная, 6 к1",
+   "home_lat": 55.682462,
+   "home_lon": 37.708161,
+   "transport": "car",
+   "transport_title": "Автомобиль"
+  },
+  {
+   "id": "E05",
+   "name": "Новиков",
+   "skills": [
+    "install",
+    "repair"
+   ],
+   "grade": 2,
+   "shift_start": 540,
+   "shift_end": 1080,
+   "home_address": "Деловая улица, 21 с3",
+   "home_lat": 55.620762,
+   "home_lon": 37.635548,
+   "transport": "car",
+   "transport_title": "Автомобиль"
+  },
+  {
+   "id": "E06",
+   "name": "Козлов",
+   "skills": [
+    "repair"
+   ],
+   "grade": 2,
+   "shift_start": 540,
+   "shift_end": 1080,
+   "home_address": "улица Гришина, 12 к1",
+   "home_lat": 55.722205,
+   "home_lon": 37.41911,
+   "transport": "car",
+   "transport_title": "Автомобиль"
+  },
+  {
+   "id": "E07",
+   "name": "Егоров",
+   "skills": [
+    "repair"
+   ],
+   "grade": 3,
+   "shift_start": 540,
+   "shift_end": 1080,
+   "home_address": "Нижняя Сыромятническая улица, 10 с7",
+   "home_lat": 55.752192,
+   "home_lon": 37.668558,
+   "transport": "car",
+   "transport_title": "Автомобиль"
+  },
+  {
+   "id": "E08",
+   "name": "Павлов",
+   "skills": [
+    "line",
+    "repair"
+   ],
+   "grade": 3,
+   "shift_start": 600,
+   "shift_end": 1140,
+   "home_address": "Автозаводская улица, 12 к1 с1",
+   "home_lat": 55.704868,
+   "home_lon": 37.650236,
+   "transport": "car",
+   "transport_title": "Автомобиль"
+  },
+  {
+   "id": "E09",
+   "name": "Семёнов",
+   "skills": [
+    "install",
+    "line",
+    "repair"
+   ],
+   "grade": 3,
+   "shift_start": 480,
+   "shift_end": 1020,
+   "home_address": "Волоколамское шоссе, 89 с4",
+   "home_lat": 55.828674,
+   "home_lon": 37.411363,
+   "transport": "car",
+   "transport_title": "Автомобиль"
+  },
+  {
+   "id": "E10",
+   "name": "Голубев",
+   "skills": [
+    "install",
+    "line"
+   ],
+   "grade": 2,
+   "shift_start": 540,
+   "shift_end": 1080,
+   "home_address": "улица Академика Варги, 1",
+   "home_lat": 55.630549,
+   "home_lon": 37.480513,
+   "transport": "car",
+   "transport_title": "Автомобиль"
+  },
+  {
+   "id": "E11",
+   "name": "Виноградов",
+   "skills": [
+    "install",
+    "repair"
+   ],
+   "grade": 3,
+   "shift_start": 540,
+   "shift_end": 1080,
+   "home_address": "Камчатская улица, 5",
+   "home_lat": 55.824877,
+   "home_lon": 37.807164,
+   "transport": "car",
+   "transport_title": "Автомобиль"
+  }
+ ],
+ "orders": [
+  {
+   "id": "R0000",
+   "work_type": "install",
+   "work_title": "Подключение",
+   "skill": "install",
+   "district": "Тушино",
+   "address": "Химкинский бульвар, 16 к5",
+   "lat": 55.852914,
+   "lon": 37.440835,
+   "window_start": 540,
+   "window_end": 780,
+   "sla_deadline": 3660,
+   "priority": 0,
+   "est_minutes": 80,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {
+    "router": 1
+   },
+   "assigned_to": "E02"
+  },
+  {
+   "id": "R0001",
+   "work_type": "repair",
+   "work_title": "Ремонт",
+   "skill": "repair",
+   "district": "Бибирево",
+   "address": "Высоковольтный проезд, 13 с9",
+   "lat": 55.877851,
+   "lon": 37.604639,
+   "window_start": 540,
+   "window_end": 780,
+   "sla_deadline": 840,
+   "priority": 0,
+   "est_minutes": 45,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {},
+   "assigned_to": "E09"
+  },
+  {
+   "id": "R0002",
+   "work_type": "cpe",
+   "work_title": "Замена оборудования",
+   "skill": "install",
+   "district": "Новогиреево",
+   "address": "Челябинская улица, 24 к3",
+   "lat": 55.779014,
+   "lon": 37.836585,
+   "window_start": 780,
+   "window_end": 1020,
+   "sla_deadline": 2460,
+   "priority": 0,
+   "est_minutes": 35,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {
+    "stb": 2
+   },
+   "assigned_to": "E11"
+  },
+  {
+   "id": "R0003",
+   "work_type": "install",
+   "work_title": "Подключение",
+   "skill": "install",
+   "district": "Перово",
+   "address": "улица Плеханова, 35",
+   "lat": 55.740382,
+   "lon": 37.770282,
+   "window_start": 660,
+   "window_end": 780,
+   "sla_deadline": 2220,
+   "priority": 1,
+   "est_minutes": 65,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {
+    "router": 1
+   },
+   "assigned_to": "E00"
+  },
+  {
+   "id": "R0004",
+   "work_type": "line",
+   "work_title": "Работы на линии",
+   "skill": "line",
+   "district": "Кузьминки",
+   "address": "улица Маршала Чуйкова, 28 с3",
+   "lat": 55.696984,
+   "lon": 37.757484,
+   "window_start": 540,
+   "window_end": 780,
+   "sla_deadline": 2220,
+   "priority": 0,
+   "est_minutes": 60,
+   "needs_access": false,
+   "requires_transport": null,
+   "equipment": {},
+   "assigned_to": "E08"
+  },
+  {
+   "id": "R0005",
+   "work_type": "diag",
+   "work_title": "Диагностика",
+   "skill": "repair",
+   "district": "Даниловский",
+   "address": "5-й Донской проезд, 15",
+   "lat": 55.70743,
+   "lon": 37.598789,
+   "window_start": 780,
+   "window_end": 1020,
+   "sla_deadline": 2460,
+   "priority": 0,
+   "est_minutes": 40,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {},
+   "assigned_to": "E07"
+  },
+  {
+   "id": "R0006",
+   "work_type": "install",
+   "work_title": "Подключение",
+   "skill": "install",
+   "district": "Выхино",
+   "address": "Вешняковская улица, 6 к1",
+   "lat": 55.737148,
+   "lon": 37.821858,
+   "window_start": 780,
+   "window_end": 1020,
+   "sla_deadline": 2460,
+   "priority": 0,
+   "est_minutes": 75,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {
+    "router": 1
+   },
+   "assigned_to": "E11"
+  },
+  {
+   "id": "R0007",
+   "work_type": "install",
+   "work_title": "Подключение",
+   "skill": "install",
+   "district": "Новогиреево",
+   "address": "Саянская улица, 7",
+   "lat": 55.768359,
+   "lon": 37.83054,
+   "window_start": 1020,
+   "window_end": 1260,
+   "sla_deadline": 2700,
+   "priority": 0,
+   "est_minutes": 75,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {
+    "router": 1
+   },
+   "assigned_to": null
+  },
+  {
+   "id": "R0008",
+   "work_type": "cpe",
+   "work_title": "Замена оборудования",
+   "skill": "install",
+   "district": "Тушино",
+   "address": "Новопоселковая улица, 6 к216-1",
+   "lat": 55.837531,
+   "lon": 37.44565,
+   "window_start": 1020,
+   "window_end": 1260,
+   "sla_deadline": 2700,
+   "priority": 0,
+   "est_minutes": 30,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {
+    "router": 1
+   },
+   "assigned_to": "E05"
+  },
+  {
+   "id": "R0009",
+   "work_type": "cpe",
+   "work_title": "Замена оборудования",
+   "skill": "install",
+   "district": "Тушино",
+   "address": "Новопоселковая улица, 6 к216-1",
+   "lat": 55.837531,
+   "lon": 37.44565,
+   "window_start": 1020,
+   "window_end": 1260,
+   "sla_deadline": 4140,
+   "priority": 0,
+   "est_minutes": 30,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {
+    "router": 1
+   },
+   "assigned_to": "E02"
+  },
+  {
+   "id": "R0010",
+   "work_type": "repair",
+   "work_title": "Ремонт",
+   "skill": "repair",
+   "district": "Даниловский",
+   "address": "Автозаводская улица, 25 с14",
+   "lat": 55.702161,
+   "lon": 37.630013,
+   "window_start": 1020,
+   "window_end": 1260,
+   "sla_deadline": 1320,
+   "priority": 0,
+   "est_minutes": 50,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {},
+   "assigned_to": null
+  },
+  {
+   "id": "R0011",
+   "work_type": "line",
+   "work_title": "Работы на линии",
+   "skill": "line",
+   "district": "Митино",
+   "address": "Ангелов переулок, 9 к1",
+   "lat": 55.850828,
+   "lon": 37.34655,
+   "window_start": 1020,
+   "window_end": 1140,
+   "sla_deadline": 2580,
+   "priority": 0,
+   "est_minutes": 60,
+   "needs_access": false,
+   "requires_transport": null,
+   "equipment": {},
+   "assigned_to": null
+  },
+  {
+   "id": "R0012",
+   "work_type": "diag",
+   "work_title": "Диагностика",
+   "skill": "repair",
+   "district": "Чертаново",
+   "address": "Днепропетровский проезд, 4А",
+   "lat": 55.61955,
+   "lon": 37.614942,
+   "window_start": 780,
+   "window_end": 900,
+   "sla_deadline": 900,
+   "priority": 0,
+   "est_minutes": 40,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {},
+   "assigned_to": "E04"
+  },
+  {
+   "id": "R0013",
+   "work_type": "diag",
+   "work_title": "Диагностика",
+   "skill": "repair",
+   "district": "Красносельский",
+   "address": "улица Машкова, 16",
+   "lat": 55.763807,
+   "lon": 37.652316,
+   "window_start": 780,
+   "window_end": 900,
+   "sla_deadline": 900,
+   "priority": 0,
+   "est_minutes": 30,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {},
+   "assigned_to": "E09"
+  },
+  {
+   "id": "R0014",
+   "work_type": "install",
+   "work_title": "Подключение",
+   "skill": "install",
+   "district": "Тушино",
+   "address": "Химкинский бульвар, 16 к5",
+   "lat": 55.852914,
+   "lon": 37.440835,
+   "window_start": 780,
+   "window_end": 1020,
+   "sla_deadline": 1020,
+   "priority": 0,
+   "est_minutes": 75,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {
+    "router": 1
+   },
+   "assigned_to": "E02"
+  },
+  {
+   "id": "R0015",
+   "work_type": "install",
+   "work_title": "Подключение",
+   "skill": "install",
+   "district": "Люблино",
+   "address": "улица Верхние Поля, 1",
+   "lat": 55.664033,
+   "lon": 37.743757,
+   "window_start": 660,
+   "window_end": 780,
+   "sla_deadline": 780,
+   "priority": 0,
+   "est_minutes": 65,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {
+    "router": 1
+   },
+   "assigned_to": "E01"
+  },
+  {
+   "id": "R0016",
+   "work_type": "diag",
+   "work_title": "Диагностика",
+   "skill": "repair",
+   "district": "Тушино",
+   "address": "улица Фабрициуса, 19 к2",
+   "lat": 55.842888,
+   "lon": 37.435782,
+   "window_start": 780,
+   "window_end": 900,
+   "sla_deadline": 960,
+   "priority": 0,
+   "est_minutes": 35,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {},
+   "assigned_to": "E06"
+  },
+  {
+   "id": "R0017",
+   "work_type": "install",
+   "work_title": "Подключение",
+   "skill": "install",
+   "district": "Тёплый Стан",
+   "address": "Профсоюзная улица, 123 с2",
+   "lat": 55.623184,
+   "lon": 37.51476,
+   "window_start": 780,
+   "window_end": 1020,
+   "sla_deadline": 3900,
+   "priority": 0,
+   "est_minutes": 65,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {
+    "router": 1
+   },
+   "assigned_to": "E10"
+  },
+  {
+   "id": "R0018",
+   "work_type": "repair",
+   "work_title": "Ремонт",
+   "skill": "repair",
+   "district": "Тушино",
+   "address": "улица Василия Петушкова, 15",
+   "lat": 55.838533,
+   "lon": 37.400368,
+   "window_start": 540,
+   "window_end": 780,
+   "sla_deadline": 780,
+   "priority": 2,
+   "est_minutes": 45,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {},
+   "assigned_to": "E06"
+  },
+  {
+   "id": "R0019",
+   "work_type": "repair",
+   "work_title": "Ремонт",
+   "skill": "repair",
+   "district": "Тёплый Стан",
+   "address": "улица Академика Варги, 1",
+   "lat": 55.630549,
+   "lon": 37.480513,
+   "window_start": 780,
+   "window_end": 900,
+   "sla_deadline": 2340,
+   "priority": 0,
+   "est_minutes": 50,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {},
+   "assigned_to": "E05"
+  },
+  {
+   "id": "R0020",
+   "work_type": "repair",
+   "work_title": "Ремонт",
+   "skill": "repair",
+   "district": "Чертаново",
+   "address": "Каширский проезд, 27",
+   "lat": 55.65142,
+   "lon": 37.624885,
+   "window_start": 540,
+   "window_end": 780,
+   "sla_deadline": 780,
+   "priority": 2,
+   "est_minutes": 45,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {},
+   "assigned_to": "E04"
+  },
+  {
+   "id": "R0021",
+   "work_type": "line",
+   "work_title": "Работы на линии",
+   "skill": "line",
+   "district": "Тимирязевский",
+   "address": "Большая Академическая улица, вл33",
+   "lat": 55.830571,
+   "lon": 37.52822,
+   "window_start": 540,
+   "window_end": 780,
+   "sla_deadline": 780,
+   "priority": 0,
+   "est_minutes": 55,
+   "needs_access": false,
+   "requires_transport": null,
+   "equipment": {},
+   "assigned_to": "E09"
+  },
+  {
+   "id": "R0022",
+   "work_type": "diag",
+   "work_title": "Диагностика",
+   "skill": "repair",
+   "district": "Текстильщики",
+   "address": "Волгоградский проспект, 21 с16",
+   "lat": 55.727025,
+   "lon": 37.690962,
+   "window_start": 780,
+   "window_end": 1020,
+   "sla_deadline": 2460,
+   "priority": 0,
+   "est_minutes": 35,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {},
+   "assigned_to": "E08"
+  },
+  {
+   "id": "R0023",
+   "work_type": "install",
+   "work_title": "Подключение",
+   "skill": "install",
+   "district": "Ясенево",
+   "address": "проезд Карамзина, 1 к3",
+   "lat": 55.59449,
+   "lon": 37.538978,
+   "window_start": 540,
+   "window_end": 780,
+   "sla_deadline": 780,
+   "priority": 0,
+   "est_minutes": 65,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {
+    "router": 1
+   },
+   "assigned_to": "E10"
+  },
+  {
+   "id": "R0024",
+   "work_type": "diag",
+   "work_title": "Диагностика",
+   "skill": "repair",
+   "district": "Таганский",
+   "address": "Подсосенский переулок, 21",
+   "lat": 55.756094,
+   "lon": 37.653682,
+   "window_start": 540,
+   "window_end": 660,
+   "sla_deadline": 2100,
+   "priority": 0,
+   "est_minutes": 35,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {},
+   "assigned_to": "E07"
+  },
+  {
+   "id": "R0025",
+   "work_type": "install",
+   "work_title": "Подключение",
+   "skill": "install",
+   "district": "Люблино",
+   "address": "улица Заречье, 8 с7",
+   "lat": 55.690219,
+   "lon": 37.768685,
+   "window_start": 540,
+   "window_end": 780,
+   "sla_deadline": 2220,
+   "priority": 0,
+   "est_minutes": 70,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {
+    "router": 1
+   },
+   "assigned_to": "E01"
+  },
+  {
+   "id": "R0026",
+   "work_type": "install",
+   "work_title": "Подключение",
+   "skill": "install",
+   "district": "Басманный",
+   "address": "Красноказарменная набережная, 4А с1",
+   "lat": 55.759375,
+   "lon": 37.684162,
+   "window_start": 1020,
+   "window_end": 1260,
+   "sla_deadline": 1260,
+   "priority": 0,
+   "est_minutes": 75,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {
+    "router": 1
+   },
+   "assigned_to": null
+  },
+  {
+   "id": "R0027",
+   "work_type": "repair",
+   "work_title": "Ремонт",
+   "skill": "repair",
+   "district": "Выхино",
+   "address": "Сормовский проезд, вл8-66",
+   "lat": 55.706955,
+   "lon": 37.80087,
+   "window_start": 1020,
+   "window_end": 1260,
+   "sla_deadline": 1320,
+   "priority": 0,
+   "est_minutes": 45,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {},
+   "assigned_to": "E11"
+  },
+  {
+   "id": "R0028",
+   "work_type": "install",
+   "work_title": "Подключение",
+   "skill": "install",
+   "district": "Крылатское",
+   "address": "улица Академика Павлова, 2",
+   "lat": 55.736784,
+   "lon": 37.391173,
+   "window_start": 1020,
+   "window_end": 1260,
+   "sla_deadline": 2700,
+   "priority": 0,
+   "est_minutes": 65,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {
+    "router": 1
+   },
+   "assigned_to": null
+  },
+  {
+   "id": "R0029",
+   "work_type": "install",
+   "work_title": "Подключение",
+   "skill": "install",
+   "district": "Бирюлёво",
+   "address": "Ягодная улица, 8 с4",
+   "lat": 55.575716,
+   "lon": 37.674591,
+   "window_start": 540,
+   "window_end": 780,
+   "sla_deadline": 780,
+   "priority": 1,
+   "est_minutes": 70,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {
+    "router": 1
+   },
+   "assigned_to": "E05"
+  },
+  {
+   "id": "R0030",
+   "work_type": "install",
+   "work_title": "Подключение",
+   "skill": "install",
+   "district": "Тушино",
+   "address": "улица Василия Петушкова, 15",
+   "lat": 55.838533,
+   "lon": 37.400368,
+   "window_start": 540,
+   "window_end": 780,
+   "sla_deadline": 2220,
+   "priority": 0,
+   "est_minutes": 75,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {
+    "router": 1
+   },
+   "assigned_to": "E02"
+  },
+  {
+   "id": "R0031",
+   "work_type": "install",
+   "work_title": "Подключение",
+   "skill": "install",
+   "district": "Хамовники",
+   "address": "Оболенский переулок, 9 к8",
+   "lat": 55.730895,
+   "lon": 37.580604,
+   "window_start": 540,
+   "window_end": 660,
+   "sla_deadline": 3540,
+   "priority": 0,
+   "est_minutes": 80,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {
+    "router": 1
+   },
+   "assigned_to": "E03"
+  },
+  {
+   "id": "R0032",
+   "work_type": "repair",
+   "work_title": "Ремонт",
+   "skill": "repair",
+   "district": "Царицыно",
+   "address": "Каспийская улица, 22 к1 с5",
+   "lat": 55.624634,
+   "lon": 37.676127,
+   "window_start": 1140,
+   "window_end": 1260,
+   "sla_deadline": 2700,
+   "priority": 1,
+   "est_minutes": 45,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {},
+   "assigned_to": null
+  },
+  {
+   "id": "R0033",
+   "work_type": "diag",
+   "work_title": "Диагностика",
+   "skill": "repair",
+   "district": "Тушино",
+   "address": "улица Героев Панфиловцев, 1 к1",
+   "lat": 55.852414,
+   "lon": 37.437224,
+   "window_start": 1020,
+   "window_end": 1260,
+   "sla_deadline": 2700,
+   "priority": 0,
+   "est_minutes": 40,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {},
+   "assigned_to": null
+  },
+  {
+   "id": "R0034",
+   "work_type": "install",
+   "work_title": "Подключение",
+   "skill": "install",
+   "district": "Раменки",
+   "address": "Мичуринский проспект, 36А",
+   "lat": 55.697357,
+   "lon": 37.497179,
+   "window_start": 1020,
+   "window_end": 1140,
+   "sla_deadline": 2580,
+   "priority": 0,
+   "est_minutes": 75,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {
+    "router": 1
+   },
+   "assigned_to": null
+  },
+  {
+   "id": "R0035",
+   "work_type": "repair",
+   "work_title": "Ремонт",
+   "skill": "repair",
+   "district": "Чертаново",
+   "address": "Днепропетровский проезд, 4А",
+   "lat": 55.61955,
+   "lon": 37.614942,
+   "window_start": 540,
+   "window_end": 780,
+   "sla_deadline": 780,
+   "priority": 2,
+   "est_minutes": 50,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {},
+   "assigned_to": "E04"
+  },
+  {
+   "id": "R0036",
+   "work_type": "cpe",
+   "work_title": "Замена оборудования",
+   "skill": "install",
+   "district": "Хамовники",
+   "address": "Киевская улица, 3",
+   "lat": 55.737828,
+   "lon": 37.552473,
+   "window_start": 1020,
+   "window_end": 1260,
+   "sla_deadline": 4140,
+   "priority": 0,
+   "est_minutes": 25,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {
+    "speaker": 1
+   },
+   "assigned_to": "E10"
+  },
+  {
+   "id": "R0037",
+   "work_type": "install",
+   "work_title": "Подключение",
+   "skill": "install",
+   "district": "Щукино",
+   "address": "Авиационная улица, 57 с2",
+   "lat": 55.809095,
+   "lon": 37.458344,
+   "window_start": 1020,
+   "window_end": 1260,
+   "sla_deadline": 1260,
+   "priority": 0,
+   "est_minutes": 70,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {
+    "router": 1
+   },
+   "assigned_to": null
+  },
+  {
+   "id": "R0038",
+   "work_type": "line",
+   "work_title": "Работы на линии",
+   "skill": "line",
+   "district": "Таганский",
+   "address": "шоссе Энтузиастов, 2 с46",
+   "lat": 55.745953,
+   "lon": 37.68906,
+   "window_start": 780,
+   "window_end": 1020,
+   "sla_deadline": 3900,
+   "priority": 1,
+   "est_minutes": 55,
+   "needs_access": false,
+   "requires_transport": null,
+   "equipment": {},
+   "assigned_to": "E08"
+  },
+  {
+   "id": "R0039",
+   "work_type": "cpe",
+   "work_title": "Замена оборудования",
+   "skill": "install",
+   "district": "Люблино",
+   "address": "Тихорецкий бульвар, 1 с2А",
+   "lat": 55.678023,
+   "lon": 37.782232,
+   "window_start": 1020,
+   "window_end": 1260,
+   "sla_deadline": 2700,
+   "priority": 0,
+   "est_minutes": 35,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {
+    "stb": 2
+   },
+   "assigned_to": "E03"
+  },
+  {
+   "id": "R0040",
+   "work_type": "repair",
+   "work_title": "Ремонт",
+   "skill": "repair",
+   "district": "Марьино",
+   "address": "улица Верхние Поля, 13 к2",
+   "lat": 55.666742,
+   "lon": 37.748069,
+   "window_start": 1020,
+   "window_end": 1260,
+   "sla_deadline": 2700,
+   "priority": 0,
+   "est_minutes": 45,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {},
+   "assigned_to": "E08"
+  },
+  {
+   "id": "R0041",
+   "work_type": "install",
+   "work_title": "Подключение",
+   "skill": "install",
+   "district": "Выхино",
+   "address": "Волгоградский проспект (дублёр), 131 к1",
+   "lat": 55.705634,
+   "lon": 37.770849,
+   "window_start": 780,
+   "window_end": 1020,
+   "sla_deadline": 2460,
+   "priority": 0,
+   "est_minutes": 70,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {
+    "router": 1
+   },
+   "assigned_to": "E03"
+  },
+  {
+   "id": "R0042",
+   "work_type": "diag",
+   "work_title": "Диагностика",
+   "skill": "repair",
+   "district": "Марьино",
+   "address": "улица Перерва, 56 к1",
+   "lat": 55.65721,
+   "lon": 37.748462,
+   "window_start": 1020,
+   "window_end": 1260,
+   "sla_deadline": 1260,
+   "priority": 0,
+   "est_minutes": 35,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {},
+   "assigned_to": "E08"
+  },
+  {
+   "id": "R0043",
+   "work_type": "cpe",
+   "work_title": "Замена оборудования",
+   "skill": "install",
+   "district": "Чертаново",
+   "address": "Симферопольский бульвар, 20 к3",
+   "lat": 55.649929,
+   "lon": 37.604291,
+   "window_start": 1020,
+   "window_end": 1260,
+   "sla_deadline": 2700,
+   "priority": 0,
+   "est_minutes": 30,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {
+    "router": 1
+   },
+   "assigned_to": "E04"
+  },
+  {
+   "id": "R0044",
+   "work_type": "install",
+   "work_title": "Подключение",
+   "skill": "install",
+   "district": "Черёмушки",
+   "address": "Новочерёмушкинская улица, 59",
+   "lat": 55.669398,
+   "lon": 37.568403,
+   "window_start": 1020,
+   "window_end": 1140,
+   "sla_deadline": 1140,
+   "priority": 0,
+   "est_minutes": 80,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {
+    "router": 1
+   },
+   "assigned_to": null
+  },
+  {
+   "id": "R0045",
+   "work_type": "diag",
+   "work_title": "Диагностика",
+   "skill": "repair",
+   "district": "Таганский",
+   "address": "шоссе Энтузиастов, 2 с46",
+   "lat": 55.745953,
+   "lon": 37.68906,
+   "window_start": 1140,
+   "window_end": 1260,
+   "sla_deadline": 1260,
+   "priority": 0,
+   "est_minutes": 35,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {},
+   "assigned_to": null
+  },
+  {
+   "id": "R0046",
+   "work_type": "repair",
+   "work_title": "Ремонт",
+   "skill": "repair",
+   "district": "Бирюлёво",
+   "address": "Советская улица, 18",
+   "lat": 55.570562,
+   "lon": 37.6305,
+   "window_start": 780,
+   "window_end": 1020,
+   "sla_deadline": 1020,
+   "priority": 0,
+   "est_minutes": 50,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {},
+   "assigned_to": "E05"
+  },
+  {
+   "id": "R0047",
+   "work_type": "install",
+   "work_title": "Подключение",
+   "skill": "install",
+   "district": "Ясенево",
+   "address": "Новоясеневский проспект, 3В",
+   "lat": 55.612579,
+   "lon": 37.518388,
+   "window_start": 1020,
+   "window_end": 1260,
+   "sla_deadline": 4140,
+   "priority": 0,
+   "est_minutes": 70,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {
+    "router": 1
+   },
+   "assigned_to": null
+  },
+  {
+   "id": "R0048",
+   "work_type": "repair",
+   "work_title": "Ремонт",
+   "skill": "repair",
+   "district": "Чертаново",
+   "address": "Чертановская улица, 20 к2",
+   "lat": 55.625759,
+   "lon": 37.595026,
+   "window_start": 780,
+   "window_end": 1020,
+   "sla_deadline": 1020,
+   "priority": 2,
+   "est_minutes": 45,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {},
+   "assigned_to": "E04"
+  },
+  {
+   "id": "R0049",
+   "work_type": "install",
+   "work_title": "Подключение",
+   "skill": "install",
+   "district": "Богородское",
+   "address": "2-й Белокаменный проезд, 12",
+   "lat": 55.825035,
+   "lon": 37.702507,
+   "window_start": 1020,
+   "window_end": 1260,
+   "sla_deadline": 1260,
+   "priority": 0,
+   "est_minutes": 70,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {
+    "router": 1
+   },
+   "assigned_to": null
+  },
+  {
+   "id": "R0050",
+   "work_type": "install",
+   "work_title": "Подключение",
+   "skill": "install",
+   "district": "Солнцево",
+   "address": "Новопеределкинская улица, 4",
+   "lat": 55.640361,
+   "lon": 37.371865,
+   "window_start": 1020,
+   "window_end": 1140,
+   "sla_deadline": 1140,
+   "priority": 0,
+   "est_minutes": 70,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {
+    "router": 1
+   },
+   "assigned_to": null
+  },
+  {
+   "id": "R0051",
+   "work_type": "repair",
+   "work_title": "Ремонт",
+   "skill": "repair",
+   "district": "Люблино",
+   "address": "улица Заречье, 8 с7",
+   "lat": 55.690219,
+   "lon": 37.768685,
+   "window_start": 1140,
+   "window_end": 1260,
+   "sla_deadline": 2700,
+   "priority": 0,
+   "est_minutes": 50,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {},
+   "assigned_to": null
+  },
+  {
+   "id": "R0052",
+   "work_type": "install",
+   "work_title": "Подключение",
+   "skill": "install",
+   "district": "Нагатино",
+   "address": "Коломенский проезд, 16",
+   "lat": 55.665645,
+   "lon": 37.653622,
+   "window_start": 780,
+   "window_end": 1020,
+   "sla_deadline": 2460,
+   "priority": 0,
+   "est_minutes": 75,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {
+    "router": 1
+   },
+   "assigned_to": "E01"
+  },
+  {
+   "id": "R0053",
+   "work_type": "repair",
+   "work_title": "Ремонт",
+   "skill": "repair",
+   "district": "Измайлово",
+   "address": "Советская улица, 80 с4",
+   "lat": 55.795913,
+   "lon": 37.752845,
+   "window_start": 1020,
+   "window_end": 1140,
+   "sla_deadline": 1140,
+   "priority": 0,
+   "est_minutes": 45,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {},
+   "assigned_to": "E06"
+  },
+  {
+   "id": "R0054",
+   "work_type": "repair",
+   "work_title": "Ремонт",
+   "skill": "repair",
+   "district": "Хорошёвский",
+   "address": "1-й Хорошёвский проезд, 2/17",
+   "lat": 55.777819,
+   "lon": 37.549582,
+   "window_start": 540,
+   "window_end": 780,
+   "sla_deadline": 2220,
+   "priority": 1,
+   "est_minutes": 50,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {},
+   "assigned_to": "E07"
+  },
+  {
+   "id": "R0055",
+   "work_type": "install",
+   "work_title": "Подключение",
+   "skill": "install",
+   "district": "Головинский",
+   "address": "Смольная улица, 32А",
+   "lat": 55.862932,
+   "lon": 37.480665,
+   "window_start": 540,
+   "window_end": 780,
+   "sla_deadline": 2220,
+   "priority": 0,
+   "est_minutes": 70,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {
+    "router": 1
+   },
+   "assigned_to": "E00"
+  },
+  {
+   "id": "R0056",
+   "work_type": "repair",
+   "work_title": "Ремонт",
+   "skill": "repair",
+   "district": "Тверской",
+   "address": "Ермолаевский переулок, 18",
+   "lat": 55.765578,
+   "lon": 37.593029,
+   "window_start": 780,
+   "window_end": 1020,
+   "sla_deadline": 1020,
+   "priority": 1,
+   "est_minutes": 45,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {},
+   "assigned_to": "E07"
+  },
+  {
+   "id": "R0057",
+   "work_type": "install",
+   "work_title": "Подключение",
+   "skill": "install",
+   "district": "Ясенево",
+   "address": "Новоясеневский проспект, 3В",
+   "lat": 55.612579,
+   "lon": 37.518388,
+   "window_start": 660,
+   "window_end": 780,
+   "sla_deadline": 3660,
+   "priority": 0,
+   "est_minutes": 75,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {
+    "router": 1
+   },
+   "assigned_to": "E10"
+  },
+  {
+   "id": "R0058",
+   "work_type": "install",
+   "work_title": "Подключение",
+   "skill": "install",
+   "district": "Измайлово",
+   "address": "Борисовская улица, 11",
+   "lat": 55.787812,
+   "lon": 37.734357,
+   "window_start": 1020,
+   "window_end": 1260,
+   "sla_deadline": 4140,
+   "priority": 0,
+   "est_minutes": 75,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {
+    "router": 1
+   },
+   "assigned_to": null
+  },
+  {
+   "id": "R0059",
+   "work_type": "diag",
+   "work_title": "Диагностика",
+   "skill": "repair",
+   "district": "Медведково",
+   "address": "проезд Шокальского, 31 к2",
+   "lat": 55.882145,
+   "lon": 37.647215,
+   "window_start": 1020,
+   "window_end": 1260,
+   "sla_deadline": 1320,
+   "priority": 0,
+   "est_minutes": 35,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {},
+   "assigned_to": null
+  },
+  {
+   "id": "R0060",
+   "work_type": "install",
+   "work_title": "Подключение",
+   "skill": "install",
+   "district": "Бирюлёво",
+   "address": "Бирюлёвская улица, 47А",
+   "lat": 55.584529,
+   "lon": 37.669185,
+   "window_start": 540,
+   "window_end": 780,
+   "sla_deadline": 2220,
+   "priority": 0,
+   "est_minutes": 70,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {
+    "router": 1
+   },
+   "assigned_to": "E05"
+  },
+  {
+   "id": "R0061",
+   "work_type": "install",
+   "work_title": "Подключение",
+   "skill": "install",
+   "district": "Пресненский",
+   "address": "улица Грузинский Вал, 7",
+   "lat": 55.774246,
+   "lon": 37.577228,
+   "window_start": 540,
+   "window_end": 780,
+   "sla_deadline": 780,
+   "priority": 1,
+   "est_minutes": 70,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {
+    "router": 1
+   },
+   "assigned_to": "E00"
+  },
+  {
+   "id": "R0062",
+   "work_type": "diag",
+   "work_title": "Диагностика",
+   "skill": "repair",
+   "district": "Митино",
+   "address": "Митинская улица, 40",
+   "lat": 55.847761,
+   "lon": 37.360084,
+   "window_start": 1020,
+   "window_end": 1260,
+   "sla_deadline": 2700,
+   "priority": 0,
+   "est_minutes": 35,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {},
+   "assigned_to": null
+  },
+  {
+   "id": "R0063",
+   "work_type": "install",
+   "work_title": "Подключение",
+   "skill": "install",
+   "district": "Выхино",
+   "address": "Заозёрная улица, 15Б с6",
+   "lat": 55.720499,
+   "lon": 37.841961,
+   "window_start": 900,
+   "window_end": 1020,
+   "sla_deadline": 1020,
+   "priority": 1,
+   "est_minutes": 75,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {
+    "router": 1
+   },
+   "assigned_to": "E11"
+  },
+  {
+   "id": "R0064",
+   "work_type": "repair",
+   "work_title": "Ремонт",
+   "skill": "repair",
+   "district": "Марьина Роща",
+   "address": "проспект Мира, 118",
+   "lat": 55.81058,
+   "lon": 37.63829,
+   "window_start": 780,
+   "window_end": 1020,
+   "sla_deadline": 1020,
+   "priority": 0,
+   "est_minutes": 45,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {},
+   "assigned_to": "E09"
+  },
+  {
+   "id": "R0065",
+   "work_type": "install",
+   "work_title": "Подключение",
+   "skill": "install",
+   "district": "Гольяново",
+   "address": "Камчатская улица, 5",
+   "lat": 55.824877,
+   "lon": 37.807164,
+   "window_start": 540,
+   "window_end": 660,
+   "sla_deadline": 2100,
+   "priority": 0,
+   "est_minutes": 65,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {
+    "router": 1
+   },
+   "assigned_to": "E11"
+  },
+  {
+   "id": "R0066",
+   "work_type": "install",
+   "work_title": "Подключение",
+   "skill": "install",
+   "district": "Люблино",
+   "address": "Коломенская набережная, 6 к1",
+   "lat": 55.682462,
+   "lon": 37.708161,
+   "window_start": 1020,
+   "window_end": 1260,
+   "sla_deadline": 1260,
+   "priority": 0,
+   "est_minutes": 80,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {
+    "router": 1
+   },
+   "assigned_to": null
+  },
+  {
+   "id": "R0067",
+   "work_type": "repair",
+   "work_title": "Ремонт",
+   "skill": "repair",
+   "district": "Измайлово",
+   "address": "Первомайская улица, 1",
+   "lat": 55.790514,
+   "lon": 37.771175,
+   "window_start": 1020,
+   "window_end": 1260,
+   "sla_deadline": 2700,
+   "priority": 0,
+   "est_minutes": 50,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {},
+   "assigned_to": null
+  },
+  {
+   "id": "R0068",
+   "work_type": "install",
+   "work_title": "Подключение",
+   "skill": "install",
+   "district": "Раменки",
+   "address": "Давыдковская улица, 12 к1",
+   "lat": 55.721428,
+   "lon": 37.47005,
+   "window_start": 780,
+   "window_end": 1020,
+   "sla_deadline": 1020,
+   "priority": 1,
+   "est_minutes": 70,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {
+    "router": 1
+   },
+   "assigned_to": "E10"
+  },
+  {
+   "id": "R0069",
+   "work_type": "line",
+   "work_title": "Работы на линии",
+   "skill": "line",
+   "district": "Текстильщики",
+   "address": "Волгоградский проспект, 42 к23",
+   "lat": 55.710412,
+   "lon": 37.708192,
+   "window_start": 540,
+   "window_end": 780,
+   "sla_deadline": 2220,
+   "priority": 1,
+   "est_minutes": 55,
+   "needs_access": false,
+   "requires_transport": null,
+   "equipment": {},
+   "assigned_to": "E08"
+  },
+  {
+   "id": "R0070",
+   "work_type": "install",
+   "work_title": "Подключение",
+   "skill": "install",
+   "district": "Нагатино",
+   "address": "Коломенский проезд, 16",
+   "lat": 55.665645,
+   "lon": 37.653622,
+   "window_start": 540,
+   "window_end": 780,
+   "sla_deadline": 2220,
+   "priority": 1,
+   "est_minutes": 75,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {
+    "router": 1
+   },
+   "assigned_to": "E01"
+  },
+  {
+   "id": "R0071",
+   "work_type": "repair",
+   "work_title": "Ремонт",
+   "skill": "repair",
+   "district": "Пресненский",
+   "address": "улица Климашкина, 4",
+   "lat": 55.768038,
+   "lon": 37.577343,
+   "window_start": 780,
+   "window_end": 1020,
+   "sla_deadline": 1020,
+   "priority": 0,
+   "est_minutes": 40,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {},
+   "assigned_to": "E07"
+  },
+  {
+   "id": "R0072",
+   "work_type": "install",
+   "work_title": "Подключение",
+   "skill": "install",
+   "district": "Кузьминки",
+   "address": "улица Шкулёва, 4",
+   "lat": 55.692241,
+   "lon": 37.752393,
+   "window_start": 540,
+   "window_end": 780,
+   "sla_deadline": 3660,
+   "priority": 0,
+   "est_minutes": 70,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {
+    "router": 1
+   },
+   "assigned_to": "E03"
+  },
+  {
+   "id": "R0073",
+   "work_type": "install",
+   "work_title": "Подключение",
+   "skill": "install",
+   "district": "Люблино",
+   "address": "улица Шкулёва, 4",
+   "lat": 55.692241,
+   "lon": 37.752393,
+   "window_start": 540,
+   "window_end": 780,
+   "sla_deadline": 780,
+   "priority": 0,
+   "est_minutes": 65,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {
+    "router": 1
+   },
+   "assigned_to": "E03"
+  },
+  {
+   "id": "R0074",
+   "work_type": "repair",
+   "work_title": "Ремонт",
+   "skill": "repair",
+   "district": "Головинский",
+   "address": "Смольная улица, 19 к4",
+   "lat": 55.847087,
+   "lon": 37.49421,
+   "window_start": 780,
+   "window_end": 1020,
+   "sla_deadline": 1020,
+   "priority": 0,
+   "est_minutes": 45,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {},
+   "assigned_to": "E06"
+  },
+  {
+   "id": "R0075",
+   "work_type": "repair",
+   "work_title": "Ремонт",
+   "skill": "repair",
+   "district": "Обручевский",
+   "address": "Профсоюзная улица, 78",
+   "lat": 55.659527,
+   "lon": 37.539706,
+   "window_start": 900,
+   "window_end": 1020,
+   "sla_deadline": 1020,
+   "priority": 0,
+   "est_minutes": 45,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {},
+   "assigned_to": "E04"
+  },
+  {
+   "id": "R0076",
+   "work_type": "diag",
+   "work_title": "Диагностика",
+   "skill": "repair",
+   "district": "Измайлово",
+   "address": "3-я Прядильная улица, 18А",
+   "lat": 55.796541,
+   "lon": 37.779885,
+   "window_start": 780,
+   "window_end": 1020,
+   "sla_deadline": 2460,
+   "priority": 0,
+   "est_minutes": 40,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {},
+   "assigned_to": "E06"
+  },
+  {
+   "id": "R0077",
+   "work_type": "install",
+   "work_title": "Подключение",
+   "skill": "install",
+   "district": "Тимирязевский",
+   "address": "Большая Академическая улица, вл33",
+   "lat": 55.830571,
+   "lon": 37.52822,
+   "window_start": 540,
+   "window_end": 780,
+   "sla_deadline": 3660,
+   "priority": 1,
+   "est_minutes": 75,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {
+    "router": 1
+   },
+   "assigned_to": "E09"
+  },
+  {
+   "id": "R0078",
+   "work_type": "repair",
+   "work_title": "Ремонт",
+   "skill": "repair",
+   "district": "Головинский",
+   "address": "Петрозаводская улица, 3 к1",
+   "lat": 55.863514,
+   "lon": 37.500903,
+   "window_start": 1020,
+   "window_end": 1260,
+   "sla_deadline": 1320,
+   "priority": 2,
+   "est_minutes": 50,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {},
+   "assigned_to": "E07"
+  },
+  {
+   "id": "R0079",
+   "work_type": "diag",
+   "work_title": "Диагностика",
+   "skill": "repair",
+   "district": "Выхино",
+   "address": "Сормовский проезд, вл8-66",
+   "lat": 55.706955,
+   "lon": 37.80087,
+   "window_start": 540,
+   "window_end": 780,
+   "sla_deadline": 840,
+   "priority": 0,
+   "est_minutes": 30,
+   "needs_access": true,
+   "requires_transport": null,
+   "equipment": {},
+   "assigned_to": "E08"
+  }
+ ],
+ "routes": [
+  {
+   "engineer_id": "E00",
+   "stops": [
+    {
+     "seq": 0,
+     "order_id": "R0055",
+     "arrive": 495,
+     "start": 540,
+     "finish": 610,
+     "travel_minutes": 15,
+     "wait_minutes": 45,
+     "slack_minutes": 240,
+     "risk": "low",
+     "geometry": [
+      [
+       55.834414,
+       37.489094
+      ],
+      [
+       55.834415,
+       37.486938
+      ],
+      [
+       55.834064,
+       37.485629
+      ],
+      [
+       55.84302,
+       37.478855
+      ],
+      [
+       55.853587,
+       37.471688
+      ],
+      [
+       55.85397,
+       37.472109
+      ],
+      [
+       55.855038,
+       37.47625
+      ],
+      [
+       55.85822,
+       37.485447
+      ],
+      [
+       55.862858,
+       37.479856
+      ],
+      [
+       55.863078,
+       37.480509
+      ],
+      [
+       55.862932,
+       37.480665
+      ]
+     ]
+    },
+    {
+     "seq": 1,
+     "order_id": "R0061",
+     "arrive": 637,
+     "start": 637,
+     "finish": 707,
+     "travel_minutes": 27,
+     "wait_minutes": 0,
+     "slack_minutes": 143,
+     "risk": "low",
+     "geometry": [
+      [
+       55.863078,
+       37.480509
+      ],
+      [
+       55.862858,
+       37.479856
+      ],
+      [
+       55.866055,
+       37.476453
+      ],
+      [
+       55.863379,
+       37.470437
+      ],
+      [
+       55.862015,
+       37.463668
+      ],
+      [
+       55.860909,
+       37.46626
+      ],
+      [
+       55.835219,
+       37.484317
+      ],
+      [
+       55.807553,
+       37.507139
+      ],
+      [
+       55.806264,
+       37.509646
+      ],
+      [
+       55.800994,
+       37.529847
+      ],
+      [
+       55.799955,
+       37.532857
+      ],
+      [
+       55.778636,
+       37.580453
+      ],
+      [
+       55.776995,
+       37.583651
+      ],
+      [
+       55.776104,
+       37.582629
+      ],
+      [
+       55.775256,
+       37.583315
+      ],
+      [
+       55.773434,
+       37.57793
+      ],
+      [
+       55.773871,
+       37.577355
+      ],
+      [
+       55.774246,
+       37.577228
+      ]
+     ]
+    },
+    {
+     "seq": 2,
+     "order_id": "R0003",
+     "arrive": 737,
+     "start": 737,
+     "finish": 802,
+     "travel_minutes": 30,
+     "wait_minutes": 0,
+     "slack_minutes": 43,
+     "risk": "medium",
+     "geometry": [
+      [
+       55.773871,
+       37.577355
+      ],
+      [
+       55.773412,
+       37.577864
+      ],
+      [
+       55.775256,
+       37.583315
+      ],
+      [
+       55.776191,
+       37.582967
+      ],
+      [
+       55.777807,
+       37.585111
+      ],
+      [
+       55.791238,
+       37.588723
+      ],
+      [
+       55.791961,
+       37.589687
+      ],
+      [
+       55.793054,
+       37.615723
+      ],
+      [
+       55.79243,
+       37.627935
+      ],
+      [
+       55.791772,
+       37.633601
+      ],
+      [
+       55.792012,
+       37.638264
+      ],
+      [
+       55.793667,
+       37.646908
+      ],
+      [
+       55.793558,
+       37.650652
+      ],
+      [
+       55.79297,
+       37.652875
+      ],
+      [
+       55.792115,
+       37.654587
+      ],
+      [
+       55.782161,
+       37.667871
+      ],
+      [
+       55.779913,
+       37.672428
+      ],
+      [
+       55.776974,
+       37.680409
+      ],
+      [
+       55.773613,
+       37.68488
+      ],
+      [
+       55.773189,
+       37.686924
+      ],
+      [
+       55.772617,
+       37.686769
+      ],
+      [
+       55.766875,
+       37.69692
+      ],
+      [
+       55.766459,
+       37.698806
+      ],
+      [
+       55.763706,
+       37.704941
+      ],
+      [
+       55.763389,
+       37.706477
+      ],
+      [
+       55.759666,
+       37.716004
+      ],
+      [
+       55.754006,
+       37.715779
+      ],
+      [
+       55.75151,
+       37.717239
+      ],
+      [
+       55.75671,
+       37.743937
+      ],
+      [
+       55.757284,
+       37.748907
+      ],
+      [
+       55.758891,
+       37.756624
+      ],
+      [
+       55.740507,
+       37.768668
+      ],
+      [
+       55.740775,
+       37.769996
+      ],
+      [
+       55.74034,
+       37.770026
+      ],
+      [
+       55.740382,
+       37.770282
+      ]
+     ]
+    }
+   ],
+   "totals": {
+    "visits": 3,
+    "km": 36.81,
+    "travel_minutes": 72,
+    "work_minutes": 205,
+    "idle_minutes": 45,
+    "start": 480,
+    "end": 802,
+    "overtime_minutes": 0,
+    "occupancy": 0.513,
+    "equipment": {
+     "router": 3
+    }
+   }
+  },
+  {
+   "engineer_id": "E01",
+   "stops": [
+    {
+     "seq": 0,
+     "order_id": "R0025",
+     "arrive": 496,
+     "start": 540,
+     "finish": 610,
+     "travel_minutes": 16,
+     "wait_minutes": 44,
+     "slack_minutes": 240,
+     "risk": "low",
+     "geometry": [
+      [
+       55.666187,
+       37.748903
+      ],
+      [
+       55.66602,
+       37.748584
+      ],
+      [
+       55.665587,
+       37.749329
+      ],
+      [
+       55.666385,
+       37.751722
+      ],
+      [
+       55.667629,
+       37.75963
+      ],
+      [
+       55.668775,
+       37.763943
+      ],
+      [
+       55.671467,
+       37.760959
+      ],
+      [
+       55.672466,
+       37.760546
+      ],
+      [
+       55.686873,
+       37.765985
+      ],
+      [
+       55.687412,
+       37.766765
+      ],
+      [
+       55.688194,
+       37.76948
+      ],
+      [
+       55.688717,
+       37.768996
+      ],
+      [
+       55.690219,
+       37.768685
+      ]
+     ]
+    },
+    {
+     "seq": 1,
+     "order_id": "R0015",
+     "arrive": 622,
+     "start": 660,
+     "finish": 725,
+     "travel_minutes": 12,
+     "wait_minutes": 38,
+     "slack_minutes": 120,
+     "risk": "low",
+     "geometry": [
+      [
+       55.688717,
+       37.768996
+      ],
+      [
+       55.688194,
+       37.76948
+      ],
+      [
+       55.687412,
+       37.766765
+      ],
+      [
+       55.686873,
+       37.765985
+      ],
+      [
+       55.672466,
+       37.760546
+      ],
+      [
+       55.671753,
+       37.760711
+      ],
+      [
+       55.668854,
+       37.763605
+      ],
+      [
+       55.667629,
+       37.75963
+      ],
+      [
+       55.666162,
+       37.750769
+      ],
+      [
+       55.663607,
+       37.744854
+      ],
+      [
+       55.664134,
+       37.74396
+      ],
+      [
+       55.664033,
+       37.743757
+      ]
+     ]
+    },
+    {
+     "seq": 2,
+     "order_id": "R0070",
+     "arrive": 743,
+     "start": 743,
+     "finish": 818,
+     "travel_minutes": 18,
+     "wait_minutes": 0,
+     "slack_minutes": 37,
+     "risk": "medium",
+     "geometry": [
+      [
+       55.664134,
+       37.74396
+      ],
+      [
+       55.663607,
+       37.744854
+      ],
+      [
+       55.661799,
+       37.740136
+      ],
+      [
+       55.660241,
+       37.737698
+      ],
+      [
+       55.659194,
+       37.733877
+      ],
+      [
+       55.656475,
+       37.727303
+      ],
+      [
+       55.656643,
+       37.726513
+      ],
+      [
+       55.660321,
+       37.720373
+      ],
+      [
+       55.658256,
+       37.715457
+      ],
+      [
+       55.658184,
+       37.714443
+      ],
+      [
+       55.6586,
+       37.71279
+      ],
+      [
+       55.657639,
+       37.711428
+      ],
+      [
+       55.65779,
+       37.710668
+      ],
+      [
+       55.658746,
+       37.711231
+      ],
+      [
+       55.658834,
+       37.710269
+      ],
+      [
+       55.656076,
+       37.708015
+      ],
+      [
+       55.654133,
+       37.705797
+      ],
+      [
+       55.648998,
+       37.69899
+      ],
+      [
+       55.646619,
+       37.694551
+      ],
+      [
+       55.641852,
+       37.689354
+      ],
+      [
+       55.640319,
+       37.687064
+      ],
+      [
+       55.644789,
+       37.674351
+      ],
+      [
+       55.65179,
+       37.656236
+      ],
+      [
+       55.662552,
+       37.632711
+      ],
+      [
+       55.663052,
+       37.632759
+      ],
+      [
+       55.663323,
+       37.634652
+      ],
+      [
+       55.663923,
+       37.636142
+      ],
+      [
+       55.666419,
+       37.652115
+      ],
+      [
+       55.666485,
+       37.652756
+      ],
+      [
+       55.665839,
+       37.653161
+      ],
+      [
+       55.665645,
+       37.653622
+      ]
+     ]
+    },
+    {
+     "seq": 3,
+     "order_id": "R0052",
+     "arrive": 821,
+     "start": 821,
+     "finish": 896,
+     "travel_minutes": 3,
+     "wait_minutes": 0,
+     "slack_minutes": 199,
+     "risk": "low",
+     "geometry": [
+      [
+       55.665645,
+       37.653622
+      ],
+      [
+       55.665645,
+       37.653622
+      ]
+     ]
+    }
+   ],
+   "totals": {
+    "visits": 4,
+    "km": 18.66,
+    "travel_minutes": 49,
+    "work_minutes": 285,
+    "idle_minutes": 82,
+    "start": 480,
+    "end": 896,
+    "overtime_minutes": 0,
+    "occupancy": 0.619,
+    "equipment": {
+     "router": 4
+    }
+   }
+  },
+  {
+   "engineer_id": "E02",
+   "stops": [
+    {
+     "seq": 0,
+     "order_id": "R0030",
+     "arrive": 558,
+     "start": 558,
+     "finish": 633,
+     "travel_minutes": 18,
+     "wait_minutes": 0,
+     "slack_minutes": 222,
+     "risk": "low",
+     "geometry": [
+      [
+       55.802926,
+       37.413578
+      ],
+      [
+       55.803215,
+       37.413771
+      ],
+      [
+       55.803094,
+       37.414344
+      ],
+      [
+       55.804942,
+       37.416144
+      ],
+      [
+       55.805499,
+       37.412299
+      ],
+      [
+       55.806233,
+       37.410131
+      ],
+      [
+       55.811561,
+       37.402074
+      ],
+      [
+       55.813758,
+       37.392311
+      ],
+      [
+       55.815346,
+       37.390781
+      ],
+      [
+       55.830486,
+       37.395302
+      ],
+      [
+       55.831698,
+       37.398131
+      ],
+      [
+       55.83057,
+       37.404806
+      ],
+      [
+       55.831685,
+       37.405448
+      ],
+      [
+       55.832467,
+       37.406669
+      ],
+      [
+       55.832852,
+       37.406442
+      ],
+      [
+       55.833152,
+       37.405301
+      ],
+      [
+       55.835021,
+       37.405138
+      ],
+      [
+       55.836911,
+       37.405876
+      ],
+      [
+       55.837447,
+       37.401689
+      ],
+      [
+       55.83872,
+       37.399377
+      ],
+      [
+       55.83895,
+       37.399969
+      ],
+      [
+       55.838622,
+       37.400533
+      ],
+      [
+       55.838533,
+       37.400368
+      ]
+     ]
+    },
+    {
+     "seq": 1,
+     "order_id": "R0000",
+     "arrive": 646,
+     "start": 646,
+     "finish": 726,
+     "travel_minutes": 13,
+     "wait_minutes": 0,
+     "slack_minutes": 134,
+     "risk": "low",
+     "geometry": [
+      [
+       55.838622,
+       37.400533
+      ],
+      [
+       55.83895,
+       37.399969
+      ],
+      [
+       55.83872,
+       37.399377
+      ],
+      [
+       55.837406,
+       37.40182
+      ],
+      [
+       55.836759,
+       37.406425
+      ],
+      [
+       55.836835,
+       37.407496
+      ],
+      [
+       55.835757,
+       37.408702
+      ],
+      [
+       55.835566,
+       37.411927
+      ],
+      [
+       55.841851,
+       37.422441
+      ],
+      [
+       55.843253,
+       37.423839
+      ],
+      [
+       55.844422,
+       37.42462
+      ],
+      [
+       55.848641,
+       37.423139
+      ],
+      [
+       55.850382,
+       37.43912
+      ],
+      [
+       55.849427,
+       37.439454
+      ],
+      [
+       55.849438,
+       37.440587
+      ],
+      [
+       55.853509,
+       37.439204
+      ],
+      [
+       55.853678,
+       37.440809
+      ],
+      [
+       55.852941,
+       37.441077
+      ],
+      [
+       55.852914,
+       37.440835
+      ]
+     ]
+    },
+    {
+     "seq": 2,
+     "order_id": "R0014",
+     "arrive": 729,
+     "start": 780,
+     "finish": 855,
+     "travel_minutes": 3,
+     "wait_minutes": 51,
+     "slack_minutes": 240,
+     "risk": "low",
+     "geometry": [
+      [
+       55.852914,
+       37.440835
+      ],
+      [
+       55.852914,
+       37.440835
+      ]
+     ]
+    },
+    {
+     "seq": 3,
+     "order_id": "R0009",
+     "arrive": 864,
+     "start": 1020,
+     "finish": 1050,
+     "travel_minutes": 9,
+     "wait_minutes": 156,
+     "slack_minutes": 240,
+     "risk": "low",
+     "geometry": [
+      [
+       55.852941,
+       37.441077
+      ],
+      [
+       55.853678,
+       37.440809
+      ],
+      [
+       55.853509,
+       37.439204
+      ],
+      [
+       55.851428,
+       37.43991
+      ],
+      [
+       55.851228,
+       37.438847
+      ],
+      [
+       55.849427,
+       37.439454
+      ],
+      [
+       55.849162,
+       37.440127
+      ],
+      [
+       55.848472,
+       37.440305
+      ],
+      [
+       55.837679,
+       37.438071
+      ],
+      [
+       55.836943,
+       37.446898
+      ],
+      [
+       55.837486,
+       37.446215
+      ],
+      [
+       55.837531,
+       37.44565
+      ]
+     ]
+    }
+   ],
+   "totals": {
+    "visits": 4,
+    "km": 13.46,
+    "travel_minutes": 43,
+    "work_minutes": 260,
+    "idle_minutes": 207,
+    "start": 540,
+    "end": 1050,
+    "overtime_minutes": 0,
+    "occupancy": 0.561,
+    "equipment": {
+     "router": 4
+    }
+   }
+  },
+  {
+   "engineer_id": "E03",
+   "stops": [
+    {
+     "seq": 0,
+     "order_id": "R0031",
+     "arrive": 556,
+     "start": 556,
+     "finish": 636,
+     "travel_minutes": 16,
+     "wait_minutes": 0,
+     "slack_minutes": 104,
+     "risk": "low",
+     "geometry": [
+      [
+       55.74542,
+       37.60635
+      ],
+      [
+       55.745367,
+       37.608679
+      ],
+      [
+       55.74351,
+       37.607126
+      ],
+      [
+       55.742055,
+       37.606989
+      ],
+      [
+       55.738791,
+       37.60562
+      ],
+      [
+       55.734906,
+       37.598033
+      ],
+      [
+       55.731386,
+       37.594434
+      ],
+      [
+       55.732008,
+       37.59212
+      ],
+      [
+       55.731555,
+       37.591127
+      ],
+      [
+       55.733616,
+       37.587304
+      ],
+      [
+       55.731422,
+       37.579981
+      ],
+      [
+       55.730785,
+       37.580234
+      ],
+      [
+       55.730895,
+       37.580604
+      ]
+     ]
+    },
+    {
+     "seq": 1,
+     "order_id": "R0073",
+     "arrive": 670,
+     "start": 670,
+     "finish": 735,
+     "travel_minutes": 34,
+     "wait_minutes": 0,
+     "slack_minutes": 110,
+     "risk": "low",
+     "geometry": [
+      [
+       55.730785,
+       37.580234
+      ],
+      [
+       55.731422,
+       37.579981
+      ],
+      [
+       55.731012,
+       37.578512
+      ],
+      [
+       55.733687,
+       37.575433
+      ],
+      [
+       55.738508,
+       37.58612
+      ],
+      [
+       55.736413,
+       37.591295
+      ],
+      [
+       55.732512,
+       37.603357
+      ],
+      [
+       55.730155,
+       37.610828
+      ],
+      [
+       55.729675,
+       37.613677
+      ],
+      [
+       55.729756,
+       37.624814
+      ],
+      [
+       55.730904,
+       37.636007
+      ],
+      [
+       55.731582,
+       37.638715
+      ],
+      [
+       55.733211,
+       37.641547
+      ],
+      [
+       55.731822,
+       37.644915
+      ],
+      [
+       55.731097,
+       37.648446
+      ],
+      [
+       55.729379,
+       37.651557
+      ],
+      [
+       55.72854,
+       37.652833
+      ],
+      [
+       55.728134,
+       37.651849
+      ],
+      [
+       55.728203,
+       37.65091
+      ],
+      [
+       55.72772,
+       37.65055
+      ],
+      [
+       55.727489,
+       37.651009
+      ],
+      [
+       55.729571,
+       37.655951
+      ],
+      [
+       55.731776,
+       37.666784
+      ],
+      [
+       55.732167,
+       37.667499
+      ],
+      [
+       55.731324,
+       37.672083
+      ],
+      [
+       55.728606,
+       37.677828
+      ],
+      [
+       55.721474,
+       37.698444
+      ],
+      [
+       55.716206,
+       37.709402
+      ],
+      [
+       55.709413,
+       37.729627
+      ],
+      [
+       55.708664,
+       37.739414
+      ],
+      [
+       55.707896,
+       37.745168
+      ],
+      [
+       55.694218,
+       37.754294
+      ],
+      [
+       55.694146,
+       37.753414
+      ],
+      [
+       55.692477,
+       37.753696
+      ],
+      [
+       55.692539,
+       37.752061
+      ],
+      [
+       55.692222,
+       37.752132
+      ],
+      [
+       55.692241,
+       37.752393
+      ]
+     ]
+    },
+    {
+     "seq": 2,
+     "order_id": "R0072",
+     "arrive": 738,
+     "start": 738,
+     "finish": 808,
+     "travel_minutes": 3,
+     "wait_minutes": 0,
+     "slack_minutes": 42,
+     "risk": "medium",
+     "geometry": [
+      [
+       55.692222,
+       37.752132
+      ],
+      [
+       55.692222,
+       37.752132
+      ],
+      [
+       55.692241,
+       37.752393
+      ]
+     ]
+    },
+    {
+     "seq": 3,
+     "order_id": "R0041",
+     "arrive": 818,
+     "start": 818,
+     "finish": 888,
+     "travel_minutes": 10,
+     "wait_minutes": 0,
+     "slack_minutes": 202,
+     "risk": "low",
+     "geometry": [
+      [
+       55.692222,
+       37.752132
+      ],
+      [
+       55.693113,
+       37.751642
+      ],
+      [
+       55.693248,
+       37.753675
+      ],
+      [
+       55.694146,
+       37.753414
+      ],
+      [
+       55.69441,
+       37.75638
+      ],
+      [
+       55.695297,
+       37.759178
+      ],
+      [
+       55.700504,
+       37.762954
+      ],
+      [
+       55.700248,
+       37.76491
+      ],
+      [
+       55.707223,
+       37.767771
+      ],
+      [
+       55.706799,
+       37.771686
+      ],
+      [
+       55.705572,
+       37.771368
+      ],
+      [
+       55.705634,
+       37.770849
+      ]
+     ]
+    },
+    {
+     "seq": 4,
+     "order_id": "R0039",
+     "arrive": 902,
+     "start": 1020,
+     "finish": 1055,
+     "travel_minutes": 14,
+     "wait_minutes": 118,
+     "slack_minutes": 240,
+     "risk": "low",
+     "geometry": [
+      [
+       55.705572,
+       37.771368
+      ],
+      [
+       55.705006,
+       37.771148
+      ],
+      [
+       55.705869,
+       37.764692
+      ],
+      [
+       55.700313,
+       37.762874
+      ],
+      [
+       55.695297,
+       37.759178
+      ],
+      [
+       55.69441,
+       37.75638
+      ],
+      [
+       55.694218,
+       37.754294
+      ],
+      [
+       55.69122,
+       37.756011
+      ],
+      [
+       55.682665,
+       37.749535
+      ],
+      [
+       55.680894,
+       37.749387
+      ],
+      [
+       55.682203,
+       37.771155
+      ],
+      [
+       55.681799,
+       37.775321
+      ],
+      [
+       55.678893,
+       37.783011
+      ],
+      [
+       55.678114,
+       37.782472
+      ],
+      [
+       55.678023,
+       37.782232
+      ]
+     ]
+    }
+   ],
+   "totals": {
+    "visits": 5,
+    "km": 27.16,
+    "travel_minutes": 77,
+    "work_minutes": 320,
+    "idle_minutes": 118,
+    "start": 540,
+    "end": 1055,
+    "overtime_minutes": 0,
+    "occupancy": 0.735,
+    "equipment": {
+     "router": 4,
+     "stb": 2
+    }
+   }
+  },
+  {
+   "engineer_id": "E04",
+   "stops": [
+    {
+     "seq": 0,
+     "order_id": "R0020",
+     "arrive": 573,
+     "start": 573,
+     "finish": 618,
+     "travel_minutes": 33,
+     "wait_minutes": 0,
+     "slack_minutes": 207,
+     "risk": "low",
+     "geometry": [
+      [
+       55.682528,
+       37.708387
+      ],
+      [
+       55.681887,
+       37.707597
+      ],
+      [
+       55.680796,
+       37.707753
+      ],
+      [
+       55.678896,
+       37.705264
+      ],
+      [
+       55.678795,
+       37.703256
+      ],
+      [
+       55.680074,
+       37.699666
+      ],
+      [
+       55.679311,
+       37.698081
+      ],
+      [
+       55.676279,
+       37.687256
+      ],
+      [
+       55.682932,
+       37.681606
+      ],
+      [
+       55.678836,
+       37.666494
+      ],
+      [
+       55.677829,
+       37.665929
+      ],
+      [
+       55.67701,
+       37.666311
+      ],
+      [
+       55.677221,
+       37.663209
+      ],
+      [
+       55.668919,
+       37.66123
+      ],
+      [
+       55.659676,
+       37.654135
+      ],
+      [
+       55.653579,
+       37.645869
+      ],
+      [
+       55.650362,
+       37.636499
+      ],
+      [
+       55.652322,
+       37.634147
+      ],
+      [
+       55.651934,
+       37.633105
+      ],
+      [
+       55.652521,
+       37.629658
+      ],
+      [
+       55.652878,
+       37.629587
+      ],
+      [
+       55.65308,
+       37.627551
+      ],
+      [
+       55.652791,
+       37.627441
+      ],
+      [
+       55.652608,
+       37.623718
+      ],
+      [
+       55.6515,
+       37.623543
+      ],
+      [
+       55.65142,
+       37.624885
+      ]
+     ]
+    },
+    {
+     "seq": 1,
+     "order_id": "R0035",
+     "arrive": 636,
+     "start": 636,
+     "finish": 686,
+     "travel_minutes": 18,
+     "wait_minutes": 0,
+     "slack_minutes": 144,
+     "risk": "low",
+     "geometry": [
+      [
+       55.6515,
+       37.623543
+      ],
+      [
+       55.648296,
+       37.623833
+      ],
+      [
+       55.647662,
+       37.625086
+      ],
+      [
+       55.648098,
+       37.628502
+      ],
+      [
+       55.644057,
+       37.629821
+      ],
+      [
+       55.643041,
+       37.625003
+      ],
+      [
+       55.642084,
+       37.625505
+      ],
+      [
+       55.641679,
+       37.62761
+      ],
+      [
+       55.6411,
+       37.628116
+      ],
+      [
+       55.64077,
+       37.62784
+      ],
+      [
+       55.640764,
+       37.619219
+      ],
+      [
+       55.635292,
+       37.619764
+      ],
+      [
+       55.631894,
+       37.61933
+      ],
+      [
+       55.612653,
+       37.610157
+      ],
+      [
+       55.611834,
+       37.609182
+      ],
+      [
+       55.61028,
+       37.608442
+      ],
+      [
+       55.609967,
+       37.610233
+      ],
+      [
+       55.613293,
+       37.610741
+      ],
+      [
+       55.619681,
+       37.614157
+      ],
+      [
+       55.61955,
+       37.614942
+      ]
+     ]
+    },
+    {
+     "seq": 2,
+     "order_id": "R0012",
+     "arrive": 689,
+     "start": 780,
+     "finish": 820,
+     "travel_minutes": 3,
+     "wait_minutes": 91,
+     "slack_minutes": 120,
+     "risk": "low",
+     "geometry": [
+      [
+       55.61955,
+       37.614942
+      ],
+      [
+       55.61955,
+       37.614942
+      ]
+     ]
+    },
+    {
+     "seq": 3,
+     "order_id": "R0048",
+     "arrive": 826,
+     "start": 826,
+     "finish": 871,
+     "travel_minutes": 6,
+     "wait_minutes": 0,
+     "slack_minutes": 194,
+     "risk": "low",
+     "geometry": [
+      [
+       55.619681,
+       37.614157
+      ],
+      [
+       55.622143,
+       37.615452
+      ],
+      [
+       55.622959,
+       37.610114
+      ],
+      [
+       55.62343,
+       37.609306
+      ],
+      [
+       55.623309,
+       37.607982
+      ],
+      [
+       55.625258,
+       37.595197
+      ],
+      [
+       55.625692,
+       37.595431
+      ],
+      [
+       55.625759,
+       37.595026
+      ]
+     ]
+    },
+    {
+     "seq": 4,
+     "order_id": "R0075",
+     "arrive": 889,
+     "start": 900,
+     "finish": 945,
+     "travel_minutes": 18,
+     "wait_minutes": 11,
+     "slack_minutes": 120,
+     "risk": "low",
+     "geometry": [
+      [
+       55.625692,
+       37.595431
+      ],
+      [
+       55.625258,
+       37.595197
+      ],
+      [
+       55.625146,
+       37.59593
+      ],
+      [
+       55.623555,
+       37.595143
+      ],
+      [
+       55.623492,
+       37.595726
+      ],
+      [
+       55.626927,
+       37.597437
+      ],
+      [
+       55.634205,
+       37.603557
+      ],
+      [
+       55.637481,
+       37.605258
+      ],
+      [
+       55.641304,
+       37.605811
+      ],
+      [
+       55.642547,
+       37.589749
+      ],
+      [
+       55.646931,
+       37.57535
+      ],
+      [
+       55.649447,
+       37.564656
+      ],
+      [
+       55.65117,
+       37.552487
+      ],
+      [
+       55.652105,
+       37.548312
+      ],
+      [
+       55.655338,
+       37.54056
+      ],
+      [
+       55.656099,
+       37.53769
+      ],
+      [
+       55.659322,
+       37.538603
+      ],
+      [
+       55.660904,
+       37.535294
+      ],
+      [
+       55.662397,
+       37.538141
+      ],
+      [
+       55.66221,
+       37.539596
+      ],
+      [
+       55.65957,
+       37.538881
+      ],
+      [
+       55.659527,
+       37.539706
+      ]
+     ]
+    },
+    {
+     "seq": 5,
+     "order_id": "R0043",
+     "arrive": 960,
+     "start": 1020,
+     "finish": 1050,
+     "travel_minutes": 15,
+     "wait_minutes": 60,
+     "slack_minutes": 240,
+     "risk": "low",
+     "geometry": [
+      [
+       55.65957,
+       37.538881
+      ],
+      [
+       55.659322,
+       37.538603
+      ],
+      [
+       55.660904,
+       37.535294
+      ],
+      [
+       55.663219,
+       37.539694
+      ],
+      [
+       55.666642,
+       37.541603
+      ],
+      [
+       55.651988,
+       37.584491
+      ],
+      [
+       55.651547,
+       37.58723
+      ],
+      [
+       55.651541,
+       37.589553
+      ],
+      [
+       55.652997,
+       37.598419
+      ],
+      [
+       55.653075,
+       37.605311
+      ],
+      [
+       55.650066,
+       37.605373
+      ],
+      [
+       55.650049,
+       37.604285
+      ],
+      [
+       55.649929,
+       37.604291
+      ]
+     ]
+    }
+   ],
+   "totals": {
+    "visits": 6,
+    "km": 32.04,
+    "travel_minutes": 93,
+    "work_minutes": 255,
+    "idle_minutes": 162,
+    "start": 540,
+    "end": 1050,
+    "overtime_minutes": 0,
+    "occupancy": 0.644,
+    "equipment": {
+     "router": 1
+    }
+   }
+  },
+  {
+   "engineer_id": "E05",
+   "stops": [
+    {
+     "seq": 0,
+     "order_id": "R0060",
+     "arrive": 567,
+     "start": 567,
+     "finish": 637,
+     "travel_minutes": 27,
+     "wait_minutes": 0,
+     "slack_minutes": 213,
+     "risk": "low",
+     "geometry": [
+      [
+       55.620982,
+       37.634683
+      ],
+      [
+       55.624942,
+       37.638326
+      ],
+      [
+       55.62879,
+       37.639116
+      ],
+      [
+       55.627913,
+       37.651449
+      ],
+      [
+       55.627936,
+       37.656919
+      ],
+      [
+       55.620042,
+       37.656992
+      ],
+      [
+       55.617605,
+       37.657728
+      ],
+      [
+       55.604132,
+       37.669397
+      ],
+      [
+       55.603333,
+       37.665122
+      ],
+      [
+       55.602506,
+       37.663081
+      ],
+      [
+       55.597536,
+       37.662412
+      ],
+      [
+       55.586994,
+       37.664942
+      ],
+      [
+       55.586749,
+       37.665703
+      ],
+      [
+       55.584606,
+       37.668098
+      ],
+      [
+       55.58495,
+       37.669035
+      ],
+      [
+       55.584619,
+       37.669449
+      ],
+      [
+       55.584529,
+       37.669185
+      ]
+     ]
+    },
+    {
+     "seq": 1,
+     "order_id": "R0029",
+     "arrive": 647,
+     "start": 647,
+     "finish": 717,
+     "travel_minutes": 10,
+     "wait_minutes": 0,
+     "slack_minutes": 133,
+     "risk": "low",
+     "geometry": [
+      [
+       55.584619,
+       37.669449
+      ],
+      [
+       55.58495,
+       37.669035
+      ],
+      [
+       55.584606,
+       37.668098
+      ],
+      [
+       55.581272,
+       37.671719
+      ],
+      [
+       55.580828,
+       37.676615
+      ],
+      [
+       55.580559,
+       37.677191
+      ],
+      [
+       55.578141,
+       37.676111
+      ],
+      [
+       55.5763,
+       37.677178
+      ],
+      [
+       55.574227,
+       37.674935
+      ],
+      [
+       55.575648,
+       37.674349
+      ],
+      [
+       55.575716,
+       37.674591
+      ]
+     ]
+    },
+    {
+     "seq": 2,
+     "order_id": "R0046",
+     "arrive": 736,
+     "start": 780,
+     "finish": 830,
+     "travel_minutes": 19,
+     "wait_minutes": 44,
+     "slack_minutes": 240,
+     "risk": "low",
+     "geometry": [
+      [
+       55.575648,
+       37.674349
+      ],
+      [
+       55.576428,
+       37.673469
+      ],
+      [
+       55.576878,
+       37.673645
+      ],
+      [
+       55.577036,
+       37.675009
+      ],
+      [
+       55.578079,
+       37.6754
+      ],
+      [
+       55.578141,
+       37.676111
+      ],
+      [
+       55.580559,
+       37.677191
+      ],
+      [
+       55.580129,
+       37.678387
+      ],
+      [
+       55.580371,
+       37.682104
+      ],
+      [
+       55.582918,
+       37.679928
+      ],
+      [
+       55.583061,
+       37.680505
+      ],
+      [
+       55.577732,
+       37.685546
+      ],
+      [
+       55.575066,
+       37.684438
+      ],
+      [
+       55.574131,
+       37.682566
+      ],
+      [
+       55.572649,
+       37.67591
+      ],
+      [
+       55.572052,
+       37.667955
+      ],
+      [
+       55.572838,
+       37.654106
+      ],
+      [
+       55.573176,
+       37.653417
+      ],
+      [
+       55.5744,
+       37.652876
+      ],
+      [
+       55.572415,
+       37.652652
+      ],
+      [
+       55.571829,
+       37.650683
+      ],
+      [
+       55.564103,
+       37.644996
+      ],
+      [
+       55.564663,
+       37.643306
+      ],
+      [
+       55.568627,
+       37.635393
+      ],
+      [
+       55.569014,
+       37.632459
+      ],
+      [
+       55.573176,
+       37.635261
+      ],
+      [
+       55.572832,
+       37.633035
+      ],
+      [
+       55.572082,
+       37.631253
+      ],
+      [
+       55.570805,
+       37.629451
+      ],
+      [
+       55.570663,
+       37.630541
+      ],
+      [
+       55.570562,
+       37.6305
+      ]
+     ]
+    },
+    {
+     "seq": 3,
+     "order_id": "R0019",
+     "arrive": 852,
+     "start": 852,
+     "finish": 902,
+     "travel_minutes": 22,
+     "wait_minutes": 0,
+     "slack_minutes": 48,
+     "risk": "low",
+     "geometry": [
+      [
+       55.570663,
+       37.630541
+      ],
+      [
+       55.570805,
+       37.629451
+      ],
+      [
+       55.569414,
+       37.628717
+      ],
+      [
+       55.569014,
+       37.632459
+      ],
+      [
+       55.573514,
+       37.635758
+      ],
+      [
+       55.573217,
+       37.638388
+      ],
+      [
+       55.572052,
+       37.640791
+      ],
+      [
+       55.572944,
+       37.644659
+      ],
+      [
+       55.572672,
+       37.649554
+      ],
+      [
+       55.572163,
+       37.650948
+      ],
+      [
+       55.572179,
+       37.652173
+      ],
+      [
+       55.572519,
+       37.652725
+      ],
+      [
+       55.574398,
+       37.652967
+      ],
+      [
+       55.573206,
+       37.652248
+      ],
+      [
+       55.572991,
+       37.650524
+      ],
+      [
+       55.57612,
+       37.597144
+      ],
+      [
+       55.576561,
+       37.593025
+      ],
+      [
+       55.577354,
+       37.588702
+      ],
+      [
+       55.594255,
+       37.518115
+      ],
+      [
+       55.596055,
+       37.512492
+      ],
+      [
+       55.598496,
+       37.507524
+      ],
+      [
+       55.600421,
+       37.504768
+      ],
+      [
+       55.627486,
+       37.473169
+      ],
+      [
+       55.628951,
+       37.471886
+      ],
+      [
+       55.629274,
+       37.472154
+      ],
+      [
+       55.629562,
+       37.475128
+      ],
+      [
+       55.630789,
+       37.478273
+      ],
+      [
+       55.630336,
+       37.478897
+      ],
+      [
+       55.630755,
+       37.479879
+      ],
+      [
+       55.630456,
+       37.480312
+      ],
+      [
+       55.630549,
+       37.480513
+      ]
+     ]
+    },
+    {
+     "seq": 4,
+     "order_id": "R0008",
+     "arrive": 939,
+     "start": 1020,
+     "finish": 1050,
+     "travel_minutes": 37,
+     "wait_minutes": 81,
+     "slack_minutes": 240,
+     "risk": "low",
+     "geometry": [
+      [
+       55.630456,
+       37.480312
+      ],
+      [
+       55.630755,
+       37.479879
+      ],
+      [
+       55.630336,
+       37.478897
+      ],
+      [
+       55.630789,
+       37.478273
+      ],
+      [
+       55.629597,
+       37.47525
+      ],
+      [
+       55.629858,
+       37.473669
+      ],
+      [
+       55.629396,
+       37.473006
+      ],
+      [
+       55.629648,
+       37.471065
+      ],
+      [
+       55.658651,
+       37.43647
+      ],
+      [
+       55.662616,
+       37.432385
+      ],
+      [
+       55.682519,
+       37.41726
+      ],
+      [
+       55.688773,
+       37.414441
+      ],
+      [
+       55.691499,
+       37.412523
+      ],
+      [
+       55.693729,
+       37.410232
+      ],
+      [
+       55.708415,
+       37.390476
+      ],
+      [
+       55.711533,
+       37.387406
+      ],
+      [
+       55.744307,
+       37.370504
+      ],
+      [
+       55.748558,
+       37.369328
+      ],
+      [
+       55.780985,
+       37.369952
+      ],
+      [
+       55.785703,
+       37.370648
+      ],
+      [
+       55.78926,
+       37.372635
+      ],
+      [
+       55.801856,
+       37.38459
+      ],
+      [
+       55.806124,
+       37.387485
+      ],
+      [
+       55.830486,
+       37.395302
+      ],
+      [
+       55.831698,
+       37.398131
+      ],
+      [
+       55.83057,
+       37.404806
+      ],
+      [
+       55.831783,
+       37.405588
+      ],
+      [
+       55.835999,
+       37.41266
+      ],
+      [
+       55.838584,
+       37.427342
+      ],
+      [
+       55.838137,
+       37.428898
+      ],
+      [
+       55.837943,
+       37.435717
+      ],
+      [
+       55.836943,
+       37.446898
+      ],
+      [
+       55.837486,
+       37.446215
+      ],
+      [
+       55.837531,
+       37.44565
+      ]
+     ]
+    }
+   ],
+   "totals": {
+    "visits": 5,
+    "km": 63.18,
+    "travel_minutes": 115,
+    "work_minutes": 270,
+    "idle_minutes": 125,
+    "start": 540,
+    "end": 1050,
+    "overtime_minutes": 0,
+    "occupancy": 0.713,
+    "equipment": {
+     "router": 3
+    }
+   }
+  },
+  {
+   "engineer_id": "E06",
+   "stops": [
+    {
+     "seq": 0,
+     "order_id": "R0018",
+     "arrive": 574,
+     "start": 574,
+     "finish": 619,
+     "travel_minutes": 34,
+     "wait_minutes": 0,
+     "slack_minutes": 206,
+     "risk": "low",
+     "geometry": [
+      [
+       55.722296,
+       37.419006
+      ],
+      [
+       55.722449,
+       37.419429
+      ],
+      [
+       55.722144,
+       37.419846
+      ],
+      [
+       55.72184,
+       37.418752
+      ],
+      [
+       55.719776,
+       37.421166
+      ],
+      [
+       55.71483,
+       37.39382
+      ],
+      [
+       55.714356,
+       37.388954
+      ],
+      [
+       55.715152,
+       37.385996
+      ],
+      [
+       55.718122,
+       37.383808
+      ],
+      [
+       55.741084,
+       37.372083
+      ],
+      [
+       55.744307,
+       37.370504
+      ],
+      [
+       55.748558,
+       37.369328
+      ],
+      [
+       55.780985,
+       37.369952
+      ],
+      [
+       55.785703,
+       37.370648
+      ],
+      [
+       55.78926,
+       37.372635
+      ],
+      [
+       55.801856,
+       37.38459
+      ],
+      [
+       55.806124,
+       37.387485
+      ],
+      [
+       55.830486,
+       37.395302
+      ],
+      [
+       55.831698,
+       37.398131
+      ],
+      [
+       55.83057,
+       37.404806
+      ],
+      [
+       55.831685,
+       37.405448
+      ],
+      [
+       55.83241,
+       37.40664
+      ],
+      [
+       55.832852,
+       37.406442
+      ],
+      [
+       55.833152,
+       37.405301
+      ],
+      [
+       55.835021,
+       37.405138
+      ],
+      [
+       55.836911,
+       37.405876
+      ],
+      [
+       55.837447,
+       37.401689
+      ],
+      [
+       55.83872,
+       37.399377
+      ],
+      [
+       55.83895,
+       37.399969
+      ],
+      [
+       55.838622,
+       37.400533
+      ],
+      [
+       55.838533,
+       37.400368
+      ]
+     ]
+    },
+    {
+     "seq": 1,
+     "order_id": "R0016",
+     "arrive": 629,
+     "start": 780,
+     "finish": 815,
+     "travel_minutes": 10,
+     "wait_minutes": 151,
+     "slack_minutes": 120,
+     "risk": "low",
+     "geometry": [
+      [
+       55.838622,
+       37.400533
+      ],
+      [
+       55.83895,
+       37.399969
+      ],
+      [
+       55.83872,
+       37.399377
+      ],
+      [
+       55.837406,
+       37.40182
+      ],
+      [
+       55.836759,
+       37.406425
+      ],
+      [
+       55.836835,
+       37.407496
+      ],
+      [
+       55.835757,
+       37.408702
+      ],
+      [
+       55.835566,
+       37.411927
+      ],
+      [
+       55.841851,
+       37.422441
+      ],
+      [
+       55.844313,
+       37.424628
+      ],
+      [
+       55.843705,
+       37.435548
+      ],
+      [
+       55.84305,
+       37.435441
+      ],
+      [
+       55.843029,
+       37.435807
+      ],
+      [
+       55.842888,
+       37.435782
+      ]
+     ]
+    },
+    {
+     "seq": 2,
+     "order_id": "R0074",
+     "arrive": 838,
+     "start": 838,
+     "finish": 883,
+     "travel_minutes": 23,
+     "wait_minutes": 0,
+     "slack_minutes": 182,
+     "risk": "low",
+     "geometry": [
+      [
+       55.843029,
+       37.435807
+      ],
+      [
+       55.84305,
+       37.435441
+      ],
+      [
+       55.843705,
+       37.435548
+      ],
+      [
+       55.843482,
+       37.439282
+      ],
+      [
+       55.849438,
+       37.440587
+      ],
+      [
+       55.850737,
+       37.452607
+      ],
+      [
+       55.86772,
+       37.446581
+      ],
+      [
+       55.873754,
+       37.437458
+      ],
+      [
+       55.875795,
+       37.431082
+      ],
+      [
+       55.876462,
+       37.430806
+      ],
+      [
+       55.877102,
+       37.432722
+      ],
+      [
+       55.878268,
+       37.434081
+      ],
+      [
+       55.881559,
+       37.44553
+      ],
+      [
+       55.882376,
+       37.451672
+      ],
+      [
+       55.882979,
+       37.465556
+      ],
+      [
+       55.885662,
+       37.477814
+      ],
+      [
+       55.885428,
+       37.478977
+      ],
+      [
+       55.882065,
+       37.482459
+      ],
+      [
+       55.87978,
+       37.482631
+      ],
+      [
+       55.879379,
+       37.4819
+      ],
+      [
+       55.878741,
+       37.481712
+      ],
+      [
+       55.876391,
+       37.482112
+      ],
+      [
+       55.861233,
+       37.486838
+      ],
+      [
+       55.852439,
+       37.496576
+      ],
+      [
+       55.850894,
+       37.492211
+      ],
+      [
+       55.850396,
+       37.489459
+      ],
+      [
+       55.849876,
+       37.489966
+      ],
+      [
+       55.850136,
+       37.490689
+      ],
+      [
+       55.847245,
+       37.492931
+      ],
+      [
+       55.847182,
+       37.494137
+      ],
+      [
+       55.847087,
+       37.49421
+      ]
+     ]
+    },
+    {
+     "seq": 3,
+     "order_id": "R0076",
+     "arrive": 916,
+     "start": 916,
+     "finish": 956,
+     "travel_minutes": 33,
+     "wait_minutes": 0,
+     "slack_minutes": 104,
+     "risk": "low",
+     "geometry": [
+      [
+       55.847182,
+       37.494137
+      ],
+      [
+       55.847245,
+       37.492931
+      ],
+      [
+       55.850136,
+       37.490689
+      ],
+      [
+       55.857739,
+       37.511192
+      ],
+      [
+       55.862142,
+       37.505547
+      ],
+      [
+       55.864226,
+       37.509926
+      ],
+      [
+       55.86636,
+       37.513292
+      ],
+      [
+       55.863309,
+       37.521175
+      ],
+      [
+       55.859954,
+       37.527465
+      ],
+      [
+       55.857444,
+       37.53335
+      ],
+      [
+       55.853883,
+       37.544035
+      ],
+      [
+       55.850109,
+       37.550652
+      ],
+      [
+       55.849371,
+       37.553235
+      ],
+      [
+       55.849185,
+       37.555945
+      ],
+      [
+       55.849768,
+       37.560939
+      ],
+      [
+       55.849859,
+       37.566193
+      ],
+      [
+       55.84811,
+       37.579728
+      ],
+      [
+       55.847075,
+       37.617187
+      ],
+      [
+       55.847119,
+       37.624258
+      ],
+      [
+       55.844964,
+       37.6517
+      ],
+      [
+       55.843426,
+       37.657639
+      ],
+      [
+       55.841202,
+       37.663493
+      ],
+      [
+       55.834729,
+       37.688242
+      ],
+      [
+       55.828841,
+       37.706068
+      ],
+      [
+       55.826027,
+       37.713231
+      ],
+      [
+       55.81777,
+       37.736681
+      ],
+      [
+       55.813502,
+       37.744175
+      ],
+      [
+       55.810298,
+       37.747137
+      ],
+      [
+       55.807809,
+       37.747971
+      ],
+      [
+       55.801053,
+       37.74845
+      ],
+      [
+       55.799771,
+       37.748351
+      ],
+      [
+       55.7996,
+       37.747522
+      ],
+      [
+       55.801359,
+       37.747367
+      ],
+      [
+       55.803263,
+       37.75607
+      ],
+      [
+       55.802294,
+       37.757294
+      ],
+      [
+       55.8024,
+       37.767869
+      ],
+      [
+       55.801148,
+       37.768161
+      ],
+      [
+       55.800769,
+       37.769086
+      ],
+      [
+       55.794485,
+       37.769498
+      ],
+      [
+       55.795748,
+       37.77929
+      ],
+      [
+       55.796209,
+       37.779123
+      ],
+      [
+       55.796245,
+       37.779712
+      ],
+      [
+       55.796543,
+       37.779722
+      ],
+      [
+       55.796541,
+       37.779885
+      ]
+     ]
+    },
+    {
+     "seq": 4,
+     "order_id": "R0053",
+     "arrive": 969,
+     "start": 1020,
+     "finish": 1065,
+     "travel_minutes": 13,
+     "wait_minutes": 51,
+     "slack_minutes": 120,
+     "risk": "low",
+     "geometry": [
+      [
+       55.796543,
+       37.779722
+      ],
+      [
+       55.796245,
+       37.779712
+      ],
+      [
+       55.796209,
+       37.779123
+      ],
+      [
+       55.795748,
+       37.77929
+      ],
+      [
+       55.796222,
+       37.782484
+      ],
+      [
+       55.792914,
+       37.782976
+      ],
+      [
+       55.792044,
+       37.776876
+      ],
+      [
+       55.789202,
+       37.767307
+      ],
+      [
+       55.788372,
+       37.761855
+      ],
+      [
+       55.787969,
+       37.751385
+      ],
+      [
+       55.792979,
+       37.752557
+      ],
+      [
+       55.793779,
+       37.753015
+      ],
+      [
+       55.79444,
+       37.754325
+      ],
+      [
+       55.79517,
+       37.754122
+      ],
+      [
+       55.795415,
+       37.752429
+      ],
+      [
+       55.795913,
+       37.752845
+      ]
+     ]
+    }
+   ],
+   "totals": {
+    "visits": 5,
+    "km": 62.79,
+    "travel_minutes": 113,
+    "work_minutes": 210,
+    "idle_minutes": 202,
+    "start": 540,
+    "end": 1065,
+    "overtime_minutes": 0,
+    "occupancy": 0.598,
+    "equipment": {}
+   }
+  },
+  {
+   "engineer_id": "E07",
+   "stops": [
+    {
+     "seq": 0,
+     "order_id": "R0024",
+     "arrive": 554,
+     "start": 554,
+     "finish": 589,
+     "travel_minutes": 14,
+     "wait_minutes": 0,
+     "slack_minutes": 106,
+     "risk": "low",
+     "geometry": [
+      [
+       55.752728,
+       37.669553
+      ],
+      [
+       55.751895,
+       37.668807
+      ],
+      [
+       55.751137,
+       37.670322
+      ],
+      [
+       55.749291,
+       37.667528
+      ],
+      [
+       55.750597,
+       37.665821
+      ],
+      [
+       55.754023,
+       37.66317
+      ],
+      [
+       55.754954,
+       37.657366
+      ],
+      [
+       55.758316,
+       37.657886
+      ],
+      [
+       55.758312,
+       37.659385
+      ],
+      [
+       55.758407,
+       37.65761
+      ],
+      [
+       55.754752,
+       37.656873
+      ],
+      [
+       55.754374,
+       37.654353
+      ],
+      [
+       55.756049,
+       37.653416
+      ],
+      [
+       55.756094,
+       37.653682
+      ]
+     ]
+    },
+    {
+     "seq": 1,
+     "order_id": "R0054",
+     "arrive": 621,
+     "start": 621,
+     "finish": 671,
+     "travel_minutes": 32,
+     "wait_minutes": 0,
+     "slack_minutes": 159,
+     "risk": "low",
+     "geometry": [
+      [
+       55.756049,
+       37.653416
+      ],
+      [
+       55.756343,
+       37.653652
+      ],
+      [
+       55.758263,
+       37.652552
+      ],
+      [
+       55.759347,
+       37.657564
+      ],
+      [
+       55.758763,
+       37.65786
+      ],
+      [
+       55.761783,
+       37.657531
+      ],
+      [
+       55.764138,
+       37.656398
+      ],
+      [
+       55.768732,
+       37.649674
+      ],
+      [
+       55.772211,
+       37.637299
+      ],
+      [
+       55.773845,
+       37.62371
+      ],
+      [
+       55.773453,
+       37.609567
+      ],
+      [
+       55.772987,
+       37.604878
+      ],
+      [
+       55.771855,
+       37.600317
+      ],
+      [
+       55.77018,
+       37.595903
+      ],
+      [
+       55.779424,
+       37.579886
+      ],
+      [
+       55.785826,
+       37.566067
+      ],
+      [
+       55.78622,
+       37.565911
+      ],
+      [
+       55.787554,
+       37.567858
+      ],
+      [
+       55.787106,
+       37.567769
+      ],
+      [
+       55.780119,
+       37.55806
+      ],
+      [
+       55.776282,
+       37.554783
+      ],
+      [
+       55.777287,
+       37.551108
+      ],
+      [
+       55.778381,
+       37.549328
+      ],
+      [
+       55.77789,
+       37.548384
+      ],
+      [
+       55.77771,
+       37.54937
+      ],
+      [
+       55.777819,
+       37.549582
+      ]
+     ]
+    },
+    {
+     "seq": 2,
+     "order_id": "R0005",
+     "arrive": 691,
+     "start": 780,
+     "finish": 820,
+     "travel_minutes": 20,
+     "wait_minutes": 89,
+     "slack_minutes": 240,
+     "risk": "low",
+     "geometry": [
+      [
+       55.77771,
+       37.54937
+      ],
+      [
+       55.777097,
+       37.549747
+      ],
+      [
+       55.778332,
+       37.552135
+      ],
+      [
+       55.778926,
+       37.555772
+      ],
+      [
+       55.778674,
+       37.556787
+      ],
+      [
+       55.774935,
+       37.553577
+      ],
+      [
+       55.774212,
+       37.551733
+      ],
+      [
+       55.773674,
+       37.547317
+      ],
+      [
+       55.773099,
+       37.545529
+      ],
+      [
+       55.770318,
+       37.542241
+      ],
+      [
+       55.767636,
+       37.538222
+      ],
+      [
+       55.752653,
+       37.531398
+      ],
+      [
+       55.751547,
+       37.531247
+      ],
+      [
+       55.743481,
+       37.533663
+      ],
+      [
+       55.739627,
+       37.535647
+      ],
+      [
+       55.737461,
+       37.53787
+      ],
+      [
+       55.73458,
+       37.542303
+      ],
+      [
+       55.731148,
+       37.543936
+      ],
+      [
+       55.723773,
+       37.551435
+      ],
+      [
+       55.721951,
+       37.555175
+      ],
+      [
+       55.716847,
+       37.571463
+      ],
+      [
+       55.71504,
+       37.575636
+      ],
+      [
+       55.713277,
+       37.578054
+      ],
+      [
+       55.709567,
+       37.582445
+      ],
+      [
+       55.707369,
+       37.579522
+      ],
+      [
+       55.707306,
+       37.578745
+      ],
+      [
+       55.707715,
+       37.578492
+      ],
+      [
+       55.707857,
+       37.579301
+      ],
+      [
+       55.707032,
+       37.580663
+      ],
+      [
+       55.706435,
+       37.580634
+      ],
+      [
+       55.706358,
+       37.580021
+      ],
+      [
+       55.706922,
+       37.579091
+      ],
+      [
+       55.708541,
+       37.582991
+      ],
+      [
+       55.70597,
+       37.586848
+      ],
+      [
+       55.709821,
+       37.593746
+      ],
+      [
+       55.709952,
+       37.597402
+      ],
+      [
+       55.70898,
+       37.5979
+      ],
+      [
+       55.708508,
+       37.599385
+      ],
+      [
+       55.70754,
+       37.598435
+      ],
+      [
+       55.70743,
+       37.598789
+      ]
+     ]
+    },
+    {
+     "seq": 3,
+     "order_id": "R0056",
+     "arrive": 839,
+     "start": 839,
+     "finish": 884,
+     "travel_minutes": 19,
+     "wait_minutes": 0,
+     "slack_minutes": 181,
+     "risk": "low",
+     "geometry": [
+      [
+       55.70754,
+       37.598435
+      ],
+      [
+       55.709476,
+       37.600334
+      ],
+      [
+       55.709722,
+       37.601777
+      ],
+      [
+       55.715592,
+       37.599353
+      ],
+      [
+       55.716818,
+       37.603066
+      ],
+      [
+       55.724148,
+       37.607875
+      ],
+      [
+       55.724797,
+       37.605703
+      ],
+      [
+       55.728765,
+       37.612013
+      ],
+      [
+       55.729962,
+       37.612309
+      ],
+      [
+       55.736687,
+       37.591043
+      ],
+      [
+       55.738566,
+       37.586428
+      ],
+      [
+       55.739836,
+       37.585509
+      ],
+      [
+       55.747019,
+       37.582618
+      ],
+      [
+       55.758522,
+       37.584682
+      ],
+      [
+       55.763414,
+       37.587975
+      ],
+      [
+       55.761439,
+       37.592047
+      ],
+      [
+       55.763239,
+       37.596588
+      ],
+      [
+       55.765919,
+       37.593662
+      ],
+      [
+       55.765542,
+       37.592941
+      ],
+      [
+       55.765578,
+       37.593029
+      ]
+     ]
+    },
+    {
+     "seq": 4,
+     "order_id": "R0071",
+     "arrive": 893,
+     "start": 893,
+     "finish": 933,
+     "travel_minutes": 9,
+     "wait_minutes": 0,
+     "slack_minutes": 127,
+     "risk": "low",
+     "geometry": [
+      [
+       55.765542,
+       37.592941
+      ],
+      [
+       55.766202,
+       37.591309
+      ],
+      [
+       55.768948,
+       37.595622
+      ],
+      [
+       55.769221,
+       37.595309
+      ],
+      [
+       55.765991,
+       37.590582
+      ],
+      [
+       55.766411,
+       37.589379
+      ],
+      [
+       55.76942,
+       37.585566
+      ],
+      [
+       55.770789,
+       37.582872
+      ],
+      [
+       55.768702,
+       37.580421
+      ],
+      [
+       55.76906,
+       37.574673
+      ],
+      [
+       55.767866,
+       37.574728
+      ],
+      [
+       55.767687,
+       37.576175
+      ],
+      [
+       55.768038,
+       37.577343
+      ]
+     ]
+    },
+    {
+     "seq": 5,
+     "order_id": "R0078",
+     "arrive": 962,
+     "start": 1020,
+     "finish": 1070,
+     "travel_minutes": 29,
+     "wait_minutes": 58,
+     "slack_minutes": 240,
+     "risk": "low",
+     "geometry": [
+      [
+       55.767687,
+       37.576175
+      ],
+      [
+       55.767866,
+       37.574728
+      ],
+      [
+       55.769299,
+       37.574658
+      ],
+      [
+       55.77041,
+       37.575165
+      ],
+      [
+       55.770323,
+       37.57597
+      ],
+      [
+       55.772854,
+       37.576206
+      ],
+      [
+       55.775256,
+       37.583315
+      ],
+      [
+       55.776099,
+       37.582927
+      ],
+      [
+       55.777178,
+       37.583789
+      ],
+      [
+       55.786247,
+       37.564259
+      ],
+      [
+       55.800426,
+       37.53219
+      ],
+      [
+       55.807303,
+       37.508038
+      ],
+      [
+       55.809162,
+       37.506017
+      ],
+      [
+       55.836506,
+       37.483664
+      ],
+      [
+       55.853797,
+       37.471748
+      ],
+      [
+       55.858571,
+       37.486854
+      ],
+      [
+       55.86128,
+       37.501782
+      ],
+      [
+       55.862329,
+       37.500699
+      ],
+      [
+       55.863066,
+       37.50113
+      ],
+      [
+       55.863447,
+       37.500719
+      ],
+      [
+       55.863514,
+       37.500903
+      ]
+     ]
+    }
+   ],
+   "totals": {
+    "visits": 6,
+    "km": 53.37,
+    "travel_minutes": 123,
+    "work_minutes": 260,
+    "idle_minutes": 147,
+    "start": 540,
+    "end": 1070,
+    "overtime_minutes": 0,
+    "occupancy": 0.709,
+    "equipment": {}
+   }
+  },
+  {
+   "engineer_id": "E08",
+   "stops": [
+    {
+     "seq": 0,
+     "order_id": "R0069",
+     "arrive": 618,
+     "start": 618,
+     "finish": 673,
+     "travel_minutes": 18,
+     "wait_minutes": 0,
+     "slack_minutes": 162,
+     "risk": "low",
+     "geometry": [
+      [
+       55.704965,
+       37.649561
+      ],
+      [
+       55.705801,
+       37.650018
+      ],
+      [
+       55.705365,
+       37.652332
+      ],
+      [
+       55.705046,
+       37.652146
+      ],
+      [
+       55.704708,
+       37.652866
+      ],
+      [
+       55.703774,
+       37.651263
+      ],
+      [
+       55.703545,
+       37.651774
+      ],
+      [
+       55.710638,
+       37.665604
+      ],
+      [
+       55.709783,
+       37.666255
+      ],
+      [
+       55.706405,
+       37.667098
+      ],
+      [
+       55.707073,
+       37.666228
+      ],
+      [
+       55.70776,
+       37.666393
+      ],
+      [
+       55.712049,
+       37.674284
+      ],
+      [
+       55.713989,
+       37.680762
+      ],
+      [
+       55.715693,
+       37.685015
+      ],
+      [
+       55.719623,
+       37.700762
+      ],
+      [
+       55.71936,
+       37.702851
+      ],
+      [
+       55.715883,
+       37.710383
+      ],
+      [
+       55.713036,
+       37.703364
+      ],
+      [
+       55.712347,
+       37.702612
+      ],
+      [
+       55.710018,
+       37.703063
+      ],
+      [
+       55.709424,
+       37.707022
+      ],
+      [
+       55.710412,
+       37.708192
+      ]
+     ]
+    },
+    {
+     "seq": 1,
+     "order_id": "R0079",
+     "arrive": 690,
+     "start": 690,
+     "finish": 720,
+     "travel_minutes": 17,
+     "wait_minutes": 0,
+     "slack_minutes": 90,
+     "risk": "low",
+     "geometry": [
+      [
+       55.709424,
+       37.707022
+      ],
+      [
+       55.710018,
+       37.703063
+      ],
+      [
+       55.712347,
+       37.702612
+      ],
+      [
+       55.713036,
+       37.703364
+      ],
+      [
+       55.715883,
+       37.710383
+      ],
+      [
+       55.70929,
+       37.730131
+      ],
+      [
+       55.708904,
+       37.738938
+      ],
+      [
+       55.702551,
+       37.787091
+      ],
+      [
+       55.701339,
+       37.792699
+      ],
+      [
+       55.709081,
+       37.795064
+      ],
+      [
+       55.707074,
+       37.800999
+      ],
+      [
+       55.706955,
+       37.80087
+      ]
+     ]
+    },
+    {
+     "seq": 2,
+     "order_id": "R0004",
+     "arrive": 730,
+     "start": 730,
+     "finish": 790,
+     "travel_minutes": 10,
+     "wait_minutes": 0,
+     "slack_minutes": 50,
+     "risk": "low",
+     "geometry": [
+      [
+       55.707074,
+       37.800999
+      ],
+      [
+       55.709081,
+       37.795064
+      ],
+      [
+       55.696776,
+       37.791361
+      ],
+      [
+       55.700504,
+       37.762954
+      ],
+      [
+       55.696766,
+       37.760317
+      ],
+      [
+       55.697152,
+       37.757556
+      ],
+      [
+       55.696984,
+       37.757484
+      ]
+     ]
+    },
+    {
+     "seq": 3,
+     "order_id": "R0022",
+     "arrive": 806,
+     "start": 806,
+     "finish": 841,
+     "travel_minutes": 16,
+     "wait_minutes": 0,
+     "slack_minutes": 214,
+     "risk": "low",
+     "geometry": [
+      [
+       55.697152,
+       37.757556
+      ],
+      [
+       55.696766,
+       37.760317
+      ],
+      [
+       55.695209,
+       37.759054
+      ],
+      [
+       55.694541,
+       37.756712
+      ],
+      [
+       55.700773,
+       37.75262
+      ],
+      [
+       55.700612,
+       37.751108
+      ],
+      [
+       55.706869,
+       37.747033
+      ],
+      [
+       55.70813,
+       37.7474
+      ],
+      [
+       55.709378,
+       37.737255
+      ],
+      [
+       55.709546,
+       37.729618
+      ],
+      [
+       55.716304,
+       37.709509
+      ],
+      [
+       55.72147,
+       37.698917
+      ],
+      [
+       55.727443,
+       37.681511
+      ],
+      [
+       55.727638,
+       37.681589
+      ],
+      [
+       55.726071,
+       37.686336
+      ],
+      [
+       55.726388,
+       37.690588
+      ],
+      [
+       55.726792,
+       37.690968
+      ],
+      [
+       55.727025,
+       37.690962
+      ]
+     ]
+    },
+    {
+     "seq": 4,
+     "order_id": "R0038",
+     "arrive": 852,
+     "start": 852,
+     "finish": 907,
+     "travel_minutes": 11,
+     "wait_minutes": 0,
+     "slack_minutes": 168,
+     "risk": "low",
+     "geometry": [
+      [
+       55.726792,
+       37.690968
+      ],
+      [
+       55.726592,
+       37.693159
+      ],
+      [
+       55.727809,
+       37.693852
+      ],
+      [
+       55.729303,
+       37.6937
+      ],
+      [
+       55.72954,
+       37.692158
+      ],
+      [
+       55.733042,
+       37.685409
+      ],
+      [
+       55.73428,
+       37.683895
+      ],
+      [
+       55.73693,
+       37.676564
+      ],
+      [
+       55.738819,
+       37.673164
+      ],
+      [
+       55.746526,
+       37.68026
+      ],
+      [
+       55.747159,
+       37.689228
+      ],
+      [
+       55.746057,
+       37.689445
+      ],
+      [
+       55.745953,
+       37.68906
+      ]
+     ]
+    },
+    {
+     "seq": 5,
+     "order_id": "R0040",
+     "arrive": 933,
+     "start": 1020,
+     "finish": 1065,
+     "travel_minutes": 26,
+     "wait_minutes": 87,
+     "slack_minutes": 240,
+     "risk": "low",
+     "geometry": [
+      [
+       55.746057,
+       37.689445
+      ],
+      [
+       55.747159,
+       37.689228
+      ],
+      [
+       55.747695,
+       37.695608
+      ],
+      [
+       55.747612,
+       37.698503
+      ],
+      [
+       55.745474,
+       37.699122
+      ],
+      [
+       55.743025,
+       37.697779
+      ],
+      [
+       55.740713,
+       37.697187
+      ],
+      [
+       55.737203,
+       37.698088
+      ],
+      [
+       55.734439,
+       37.700638
+      ],
+      [
+       55.725641,
+       37.711216
+      ],
+      [
+       55.724501,
+       37.711173
+      ],
+      [
+       55.723512,
+       37.709978
+      ],
+      [
+       55.720961,
+       37.703371
+      ],
+      [
+       55.719938,
+       37.69972
+      ],
+      [
+       55.720045,
+       37.698898
+      ],
+      [
+       55.720392,
+       37.698903
+      ],
+      [
+       55.720745,
+       37.700029
+      ],
+      [
+       55.716206,
+       37.709402
+      ],
+      [
+       55.709166,
+       37.730063
+      ],
+      [
+       55.696135,
+       37.733611
+      ],
+      [
+       55.687424,
+       37.736888
+      ],
+      [
+       55.683699,
+       37.737631
+      ],
+      [
+       55.684051,
+       37.744414
+      ],
+      [
+       55.68062,
+       37.745163
+      ],
+      [
+       55.680894,
+       37.749387
+      ],
+      [
+       55.670817,
+       37.748768
+      ],
+      [
+       55.66798,
+       37.750495
+      ],
+      [
+       55.666433,
+       37.752001
+      ],
+      [
+       55.665587,
+       37.749329
+      ],
+      [
+       55.66602,
+       37.748584
+      ],
+      [
+       55.666187,
+       37.748903
+      ],
+      [
+       55.666742,
+       37.748069
+      ]
+     ]
+    },
+    {
+     "seq": 6,
+     "order_id": "R0042",
+     "arrive": 1076,
+     "start": 1076,
+     "finish": 1111,
+     "travel_minutes": 11,
+     "wait_minutes": 0,
+     "slack_minutes": 184,
+     "risk": "low",
+     "geometry": [
+      [
+       55.666187,
+       37.748903
+      ],
+      [
+       55.66602,
+       37.748584
+      ],
+      [
+       55.665587,
+       37.749329
+      ],
+      [
+       55.666433,
+       37.752001
+      ],
+      [
+       55.663272,
+       37.75454
+      ],
+      [
+       55.662036,
+       37.753153
+      ],
+      [
+       55.66035,
+       37.752817
+      ],
+      [
+       55.657813,
+       37.746235
+      ],
+      [
+       55.656996,
+       37.74738
+      ],
+      [
+       55.65723,
+       37.74823
+      ],
+      [
+       55.65721,
+       37.748462
+      ]
+     ]
+    }
+   ],
+   "totals": {
+    "visits": 7,
+    "km": 45.26,
+    "travel_minutes": 109,
+    "work_minutes": 315,
+    "idle_minutes": 87,
+    "start": 600,
+    "end": 1111,
+    "overtime_minutes": 0,
+    "occupancy": 0.785,
+    "equipment": {}
+   }
+  },
+  {
+   "engineer_id": "E09",
+   "stops": [
+    {
+     "seq": 0,
+     "order_id": "R0021",
+     "arrive": 515,
+     "start": 540,
+     "finish": 595,
+     "travel_minutes": 35,
+     "wait_minutes": 25,
+     "slack_minutes": 240,
+     "risk": "low",
+     "geometry": [
+      [
+       55.828638,
+       37.411651
+      ],
+      [
+       55.828558,
+       37.412127
+      ],
+      [
+       55.829049,
+       37.41245
+      ],
+      [
+       55.825011,
+       37.431294
+      ],
+      [
+       55.821147,
+       37.446383
+      ],
+      [
+       55.820089,
+       37.44922
+      ],
+      [
+       55.81892,
+       37.454264
+      ],
+      [
+       55.812936,
+       37.474947
+      ],
+      [
+       55.80951,
+       37.49184
+      ],
+      [
+       55.809157,
+       37.492211
+      ],
+      [
+       55.808771,
+       37.491454
+      ],
+      [
+       55.810076,
+       37.490042
+      ],
+      [
+       55.81093,
+       37.490364
+      ],
+      [
+       55.81204,
+       37.491529
+      ],
+      [
+       55.813605,
+       37.495765
+      ],
+      [
+       55.814431,
+       37.502058
+      ],
+      [
+       55.81266,
+       37.503594
+      ],
+      [
+       55.812652,
+       37.503166
+      ],
+      [
+       55.820928,
+       37.496482
+      ],
+      [
+       55.822757,
+       37.495753
+      ],
+      [
+       55.824438,
+       37.494352
+      ],
+      [
+       55.827941,
+       37.502564
+      ],
+      [
+       55.831175,
+       37.509025
+      ],
+      [
+       55.830329,
+       37.511004
+      ],
+      [
+       55.831627,
+       37.512816
+      ],
+      [
+       55.8334,
+       37.518007
+      ],
+      [
+       55.832901,
+       37.520017
+      ],
+      [
+       55.832512,
+       37.519823
+      ],
+      [
+       55.830311,
+       37.527999
+      ],
+      [
+       55.830571,
+       37.52822
+      ]
+     ]
+    },
+    {
+     "seq": 1,
+     "order_id": "R0077",
+     "arrive": 598,
+     "start": 598,
+     "finish": 673,
+     "travel_minutes": 3,
+     "wait_minutes": 0,
+     "slack_minutes": 182,
+     "risk": "low",
+     "geometry": [
+      [
+       55.830571,
+       37.52822
+      ],
+      [
+       55.830571,
+       37.52822
+      ]
+     ]
+    },
+    {
+     "seq": 2,
+     "order_id": "R0001",
+     "arrive": 693,
+     "start": 693,
+     "finish": 738,
+     "travel_minutes": 20,
+     "wait_minutes": 0,
+     "slack_minutes": 87,
+     "risk": "low",
+     "geometry": [
+      [
+       55.830311,
+       37.527999
+      ],
+      [
+       55.829512,
+       37.530863
+      ],
+      [
+       55.830967,
+       37.531489
+      ],
+      [
+       55.833431,
+       37.533564
+      ],
+      [
+       55.836239,
+       37.53837
+      ],
+      [
+       55.844906,
+       37.561253
+      ],
+      [
+       55.846873,
+       37.573293
+      ],
+      [
+       55.846671,
+       37.576137
+      ],
+      [
+       55.846824,
+       37.580422
+      ],
+      [
+       55.85054,
+       37.580893
+      ],
+      [
+       55.850186,
+       37.583774
+      ],
+      [
+       55.848433,
+       37.583887
+      ],
+      [
+       55.848301,
+       37.585565
+      ],
+      [
+       55.850455,
+       37.585639
+      ],
+      [
+       55.851235,
+       37.584954
+      ],
+      [
+       55.866163,
+       37.58442
+      ],
+      [
+       55.867142,
+       37.585299
+      ],
+      [
+       55.869227,
+       37.589241
+      ],
+      [
+       55.871765,
+       37.595604
+      ],
+      [
+       55.875592,
+       37.612726
+      ],
+      [
+       55.879274,
+       37.608205
+      ],
+      [
+       55.878448,
+       37.604235
+      ],
+      [
+       55.877851,
+       37.604639
+      ]
+     ]
+    },
+    {
+     "seq": 3,
+     "order_id": "R0064",
+     "arrive": 758,
+     "start": 780,
+     "finish": 825,
+     "travel_minutes": 20,
+     "wait_minutes": 22,
+     "slack_minutes": 240,
+     "risk": "low",
+     "geometry": [
+      [
+       55.878448,
+       37.604235
+      ],
+      [
+       55.879092,
+       37.607776
+      ],
+      [
+       55.864928,
+       37.627245
+      ],
+      [
+       55.862973,
+       37.628702
+      ],
+      [
+       55.861456,
+       37.629086
+      ],
+      [
+       55.860401,
+       37.628662
+      ],
+      [
+       55.858332,
+       37.626446
+      ],
+      [
+       55.857341,
+       37.62597
+      ],
+      [
+       55.848661,
+       37.62637
+      ],
+      [
+       55.844512,
+       37.626747
+      ],
+      [
+       55.840383,
+       37.629086
+      ],
+      [
+       55.839265,
+       37.630336
+      ],
+      [
+       55.837816,
+       37.636698
+      ],
+      [
+       55.833454,
+       37.637001
+      ],
+      [
+       55.829097,
+       37.649347
+      ],
+      [
+       55.826752,
+       37.64693
+      ],
+      [
+       55.825201,
+       37.651662
+      ],
+      [
+       55.821095,
+       37.647716
+      ],
+      [
+       55.816566,
+       37.646885
+      ],
+      [
+       55.816662,
+       37.645074
+      ],
+      [
+       55.816277,
+       37.645039
+      ],
+      [
+       55.816196,
+       37.646814
+      ],
+      [
+       55.810361,
+       37.645803
+      ],
+      [
+       55.809769,
+       37.642095
+      ],
+      [
+       55.810004,
+       37.63847
+      ],
+      [
+       55.810563,
+       37.638577
+      ],
+      [
+       55.81058,
+       37.63829
+      ]
+     ]
+    },
+    {
+     "seq": 4,
+     "order_id": "R0013",
+     "arrive": 841,
+     "start": 841,
+     "finish": 871,
+     "travel_minutes": 16,
+     "wait_minutes": 0,
+     "slack_minutes": 59,
+     "risk": "low",
+     "geometry": [
+      [
+       55.810563,
+       37.638577
+      ],
+      [
+       55.810004,
+       37.63847
+      ],
+      [
+       55.809639,
+       37.645692
+      ],
+      [
+       55.809372,
+       37.645657
+      ],
+      [
+       55.805018,
+       37.636688
+      ],
+      [
+       55.804345,
+       37.63608
+      ],
+      [
+       55.794298,
+       37.634283
+      ],
+      [
+       55.784831,
+       37.634863
+      ],
+      [
+       55.778104,
+       37.632491
+      ],
+      [
+       55.772688,
+       37.63229
+      ],
+      [
+       55.771933,
+       37.637889
+      ],
+      [
+       55.768334,
+       37.649997
+      ],
+      [
+       55.765635,
+       37.653866
+      ],
+      [
+       55.765027,
+       37.651584
+      ],
+      [
+       55.764527,
+       37.651995
+      ],
+      [
+       55.764081,
+       37.651549
+      ],
+      [
+       55.763774,
+       37.652176
+      ],
+      [
+       55.763807,
+       37.652316
+      ]
+     ]
+    }
+   ],
+   "totals": {
+    "visits": 5,
+    "km": 38.1,
+    "travel_minutes": 94,
+    "work_minutes": 250,
+    "idle_minutes": 47,
+    "start": 480,
+    "end": 871,
+    "overtime_minutes": 0,
+    "occupancy": 0.637,
+    "equipment": {
+     "router": 1
+    }
+   }
+  },
+  {
+   "engineer_id": "E10",
+   "stops": [
+    {
+     "seq": 0,
+     "order_id": "R0023",
+     "arrive": 563,
+     "start": 563,
+     "finish": 628,
+     "travel_minutes": 23,
+     "wait_minutes": 0,
+     "slack_minutes": 217,
+     "risk": "low",
+     "geometry": [
+      [
+       55.630456,
+       37.480312
+      ],
+      [
+       55.630242,
+       37.479934
+      ],
+      [
+       55.630001,
+       37.480271
+      ],
+      [
+       55.63088,
+       37.482304
+      ],
+      [
+       55.625907,
+       37.488221
+      ],
+      [
+       55.620422,
+       37.502683
+      ],
+      [
+       55.618888,
+       37.504322
+      ],
+      [
+       55.616276,
+       37.511355
+      ],
+      [
+       55.608755,
+       37.521888
+      ],
+      [
+       55.607765,
+       37.524749
+      ],
+      [
+       55.606134,
+       37.532364
+      ],
+      [
+       55.598644,
+       37.52735
+      ],
+      [
+       55.596223,
+       37.538711
+      ],
+      [
+       55.595897,
+       37.538503
+      ],
+      [
+       55.595218,
+       37.539297
+      ],
+      [
+       55.594487,
+       37.538418
+      ],
+      [
+       55.594372,
+       37.538887
+      ],
+      [
+       55.59449,
+       37.538978
+      ]
+     ]
+    },
+    {
+     "seq": 1,
+     "order_id": "R0057",
+     "arrive": 639,
+     "start": 660,
+     "finish": 735,
+     "travel_minutes": 11,
+     "wait_minutes": 21,
+     "slack_minutes": 120,
+     "risk": "low",
+     "geometry": [
+      [
+       55.594372,
+       37.538887
+      ],
+      [
+       55.594487,
+       37.538418
+      ],
+      [
+       55.595218,
+       37.539297
+      ],
+      [
+       55.595897,
+       37.538503
+      ],
+      [
+       55.596223,
+       37.538711
+      ],
+      [
+       55.598173,
+       37.529622
+      ],
+      [
+       55.605754,
+       37.534688
+      ],
+      [
+       55.608575,
+       37.52265
+      ],
+      [
+       55.611277,
+       37.518429
+      ],
+      [
+       55.611735,
+       37.518975
+      ],
+      [
+       55.612437,
+       37.51805
+      ],
+      [
+       55.612579,
+       37.518388
+      ]
+     ]
+    },
+    {
+     "seq": 2,
+     "order_id": "R0017",
+     "arrive": 744,
+     "start": 780,
+     "finish": 845,
+     "travel_minutes": 9,
+     "wait_minutes": 36,
+     "slack_minutes": 240,
+     "risk": "low",
+     "geometry": [
+      [
+       55.612437,
+       37.51805
+      ],
+      [
+       55.611735,
+       37.518975
+      ],
+      [
+       55.611277,
+       37.518429
+      ],
+      [
+       55.616312,
+       37.511639
+      ],
+      [
+       55.618886,
+       37.505073
+      ],
+      [
+       55.625741,
+       37.512751
+      ],
+      [
+       55.625414,
+       37.514219
+      ],
+      [
+       55.623661,
+       37.513291
+      ],
+      [
+       55.623339,
+       37.514711
+      ],
+      [
+       55.623184,
+       37.51476
+      ]
+     ]
+    },
+    {
+     "seq": 3,
+     "order_id": "R0068",
+     "arrive": 872,
+     "start": 872,
+     "finish": 942,
+     "travel_minutes": 27,
+     "wait_minutes": 0,
+     "slack_minutes": 148,
+     "risk": "low",
+     "geometry": [
+      [
+       55.623339,
+       37.514711
+      ],
+      [
+       55.623661,
+       37.513291
+      ],
+      [
+       55.625414,
+       37.514219
+      ],
+      [
+       55.625741,
+       37.512751
+      ],
+      [
+       55.63016,
+       37.517693
+      ],
+      [
+       55.642547,
+       37.526357
+      ],
+      [
+       55.656875,
+       37.49277
+      ],
+      [
+       55.658455,
+       37.489528
+      ],
+      [
+       55.660547,
+       37.486657
+      ],
+      [
+       55.663522,
+       37.483726
+      ],
+      [
+       55.665519,
+       37.48484
+      ],
+      [
+       55.666866,
+       37.48676
+      ],
+      [
+       55.668847,
+       37.491969
+      ],
+      [
+       55.670601,
+       37.495443
+      ],
+      [
+       55.672699,
+       37.489161
+      ],
+      [
+       55.674617,
+       37.486114
+      ],
+      [
+       55.676173,
+       37.484612
+      ],
+      [
+       55.684518,
+       37.479246
+      ],
+      [
+       55.697407,
+       37.462713
+      ],
+      [
+       55.70051,
+       37.459979
+      ],
+      [
+       55.705727,
+       37.456661
+      ],
+      [
+       55.711397,
+       37.454534
+      ],
+      [
+       55.711904,
+       37.457674
+      ],
+      [
+       55.715238,
+       37.463989
+      ],
+      [
+       55.716632,
+       37.46558
+      ],
+      [
+       55.720912,
+       37.468768
+      ],
+      [
+       55.721056,
+       37.469619
+      ],
+      [
+       55.721426,
+       37.469182
+      ],
+      [
+       55.721519,
+       37.470018
+      ],
+      [
+       55.721428,
+       37.47005
+      ]
+     ]
+    },
+    {
+     "seq": 4,
+     "order_id": "R0036",
+     "arrive": 967,
+     "start": 1020,
+     "finish": 1045,
+     "travel_minutes": 25,
+     "wait_minutes": 53,
+     "slack_minutes": 240,
+     "risk": "low",
+     "geometry": [
+      [
+       55.721519,
+       37.470018
+      ],
+      [
+       55.721426,
+       37.469182
+      ],
+      [
+       55.721056,
+       37.469619
+      ],
+      [
+       55.721656,
+       37.472952
+      ],
+      [
+       55.722843,
+       37.476972
+      ],
+      [
+       55.722911,
+       37.478737
+      ],
+      [
+       55.728577,
+       37.478815
+      ],
+      [
+       55.728938,
+       37.47931
+      ],
+      [
+       55.729979,
+       37.486185
+      ],
+      [
+       55.730432,
+       37.486117
+      ],
+      [
+       55.730767,
+       37.486716
+      ],
+      [
+       55.731175,
+       37.488883
+      ],
+      [
+       55.735263,
+       37.511466
+      ],
+      [
+       55.736352,
+       37.519101
+      ],
+      [
+       55.740208,
+       37.535822
+      ],
+      [
+       55.746069,
+       37.55198
+      ],
+      [
+       55.746305,
+       37.558338
+      ],
+      [
+       55.744968,
+       37.569396
+      ],
+      [
+       55.742779,
+       37.56835
+      ],
+      [
+       55.741827,
+       37.565129
+      ],
+      [
+       55.740587,
+       37.564748
+      ],
+      [
+       55.737304,
+       37.552859
+      ],
+      [
+       55.737689,
+       37.552004
+      ],
+      [
+       55.737828,
+       37.552473
+      ]
+     ]
+    }
+   ],
+   "totals": {
+    "visits": 5,
+    "km": 35.6,
+    "travel_minutes": 95,
+    "work_minutes": 300,
+    "idle_minutes": 110,
+    "start": 540,
+    "end": 1045,
+    "overtime_minutes": 0,
+    "occupancy": 0.731,
+    "equipment": {
+     "router": 4,
+     "speaker": 1
+    }
+   }
+  },
+  {
+   "engineer_id": "E11",
+   "stops": [
+    {
+     "seq": 0,
+     "order_id": "R0065",
+     "arrive": 543,
+     "start": 543,
+     "finish": 608,
+     "travel_minutes": 3,
+     "wait_minutes": 0,
+     "slack_minutes": 117,
+     "risk": "low",
+     "geometry": [
+      [
+       55.824877,
+       37.807164
+      ],
+      [
+       55.824877,
+       37.807164
+      ]
+     ]
+    },
+    {
+     "seq": 1,
+     "order_id": "R0002",
+     "arrive": 625,
+     "start": 780,
+     "finish": 815,
+     "travel_minutes": 17,
+     "wait_minutes": 155,
+     "slack_minutes": 240,
+     "risk": "low",
+     "geometry": [
+      [
+       55.825024,
+       37.80716
+      ],
+      [
+       55.825018,
+       37.80643
+      ],
+      [
+       55.825957,
+       37.806095
+      ],
+      [
+       55.82954,
+       37.812814
+      ],
+      [
+       55.82988,
+       37.823506
+      ],
+      [
+       55.829362,
+       37.824577
+      ],
+      [
+       55.827847,
+       37.82498
+      ],
+      [
+       55.828321,
+       37.825881
+      ],
+      [
+       55.829228,
+       37.824989
+      ],
+      [
+       55.829602,
+       37.825695
+      ],
+      [
+       55.828207,
+       37.828723
+      ],
+      [
+       55.827937,
+       37.830985
+      ],
+      [
+       55.825462,
+       37.834065
+      ],
+      [
+       55.822523,
+       37.836408
+      ],
+      [
+       55.819688,
+       37.837682
+      ],
+      [
+       55.815179,
+       37.83853
+      ],
+      [
+       55.780462,
+       37.842144
+      ],
+      [
+       55.779407,
+       37.841689
+      ],
+      [
+       55.776777,
+       37.839275
+      ],
+      [
+       55.77612,
+       37.838039
+      ],
+      [
+       55.775687,
+       37.836408
+      ],
+      [
+       55.776573,
+       37.835778
+      ],
+      [
+       55.77835,
+       37.838332
+      ],
+      [
+       55.779244,
+       37.838574
+      ],
+      [
+       55.778939,
+       37.836641
+      ],
+      [
+       55.779014,
+       37.836585
+      ]
+     ]
+    },
+    {
+     "seq": 2,
+     "order_id": "R0006",
+     "arrive": 828,
+     "start": 828,
+     "finish": 903,
+     "travel_minutes": 13,
+     "wait_minutes": 0,
+     "slack_minutes": 192,
+     "risk": "low",
+     "geometry": [
+      [
+       55.778939,
+       37.836641
+      ],
+      [
+       55.779244,
+       37.838574
+      ],
+      [
+       55.778939,
+       37.838611
+      ],
+      [
+       55.777116,
+       37.836961
+      ],
+      [
+       55.776573,
+       37.835778
+      ],
+      [
+       55.775687,
+       37.836408
+      ],
+      [
+       55.772861,
+       37.824923
+      ],
+      [
+       55.772021,
+       37.819986
+      ],
+      [
+       55.767036,
+       37.822167
+      ],
+      [
+       55.764255,
+       37.822399
+      ],
+      [
+       55.74559,
+       37.814436
+      ],
+      [
+       55.738854,
+       37.816965
+      ],
+      [
+       55.737902,
+       37.82146
+      ],
+      [
+       55.737218,
+       37.821059
+      ],
+      [
+       55.737281,
+       37.821824
+      ],
+      [
+       55.737148,
+       37.821858
+      ]
+     ]
+    },
+    {
+     "seq": 3,
+     "order_id": "R0063",
+     "arrive": 915,
+     "start": 915,
+     "finish": 990,
+     "travel_minutes": 12,
+     "wait_minutes": 0,
+     "slack_minutes": 105,
+     "risk": "low",
+     "geometry": [
+      [
+       55.737281,
+       37.821824
+      ],
+      [
+       55.737218,
+       37.821059
+      ],
+      [
+       55.737902,
+       37.82146
+      ],
+      [
+       55.737164,
+       37.82544
+      ],
+      [
+       55.736545,
+       37.82722
+      ],
+      [
+       55.73555,
+       37.8287
+      ],
+      [
+       55.7338,
+       37.829658
+      ],
+      [
+       55.72825,
+       37.829163
+      ],
+      [
+       55.726145,
+       37.828419
+      ],
+      [
+       55.724249,
+       37.82703
+      ],
+      [
+       55.722342,
+       37.82504
+      ],
+      [
+       55.721951,
+       37.823893
+      ],
+      [
+       55.721534,
+       37.823939
+      ],
+      [
+       55.721412,
+       37.825553
+      ],
+      [
+       55.719028,
+       37.832614
+      ],
+      [
+       55.718555,
+       37.840701
+      ],
+      [
+       55.717758,
+       37.843004
+      ],
+      [
+       55.718027,
+       37.843447
+      ],
+      [
+       55.718575,
+       37.842328
+      ],
+      [
+       55.720197,
+       37.842228
+      ],
+      [
+       55.720499,
+       37.841961
+      ]
+     ]
+    },
+    {
+     "seq": 4,
+     "order_id": "R0027",
+     "arrive": 1007,
+     "start": 1020,
+     "finish": 1065,
+     "travel_minutes": 17,
+     "wait_minutes": 13,
+     "slack_minutes": 240,
+     "risk": "low",
+     "geometry": [
+      [
+       55.720197,
+       37.842228
+      ],
+      [
+       55.718575,
+       37.842328
+      ],
+      [
+       55.718786,
+       37.837845
+      ],
+      [
+       55.71896,
+       37.837269
+      ],
+      [
+       55.719459,
+       37.837123
+      ],
+      [
+       55.71974,
+       37.838184
+      ],
+      [
+       55.719109,
+       37.838805
+      ],
+      [
+       55.714768,
+       37.838148
+      ],
+      [
+       55.70769,
+       37.834661
+      ],
+      [
+       55.707177,
+       37.833927
+      ],
+      [
+       55.707328,
+       37.832969
+      ],
+      [
+       55.708759,
+       37.832304
+      ],
+      [
+       55.709231,
+       37.832964
+      ],
+      [
+       55.709111,
+       37.834132
+      ],
+      [
+       55.708515,
+       37.834404
+      ],
+      [
+       55.708358,
+       37.833235
+      ],
+      [
+       55.709742,
+       37.826502
+      ],
+      [
+       55.711606,
+       37.819627
+      ],
+      [
+       55.706579,
+       37.817773
+      ],
+      [
+       55.70575,
+       37.817031
+      ],
+      [
+       55.70811,
+       37.809881
+      ],
+      [
+       55.705167,
+       37.806639
+      ],
+      [
+       55.707074,
+       37.800999
+      ],
+      [
+       55.706955,
+       37.80087
+      ]
+     ]
+    }
+   ],
+   "totals": {
+    "visits": 5,
+    "km": 24.52,
+    "travel_minutes": 62,
+    "work_minutes": 295,
+    "idle_minutes": 168,
+    "start": 540,
+    "end": 1065,
+    "overtime_minutes": 0,
+    "occupancy": 0.661,
+    "equipment": {
+     "router": 3,
+     "stb": 2
+    }
+   }
+  }
+ ],
+ "unassigned": [
+  "R0007",
+  "R0026",
+  "R0028",
+  "R0032",
+  "R0034",
+  "R0037",
+  "R0044",
+  "R0045",
+  "R0047",
+  "R0049",
+  "R0050",
+  "R0051",
+  "R0058",
+  "R0066",
+  "R0011",
+  "R0059",
+  "R0033",
+  "R0010",
+  "R0067",
+  "R0062"
+ ],
+ "unassigned_detail": [
+  {
+   "order_id": "R0007",
+   "reason": "подходящих инженеров 6, но у всех это время занято более срочными заявками"
+  },
+  {
+   "order_id": "R0026",
+   "reason": "подходящих инженеров 6, но у всех это время занято более срочными заявками"
+  },
+  {
+   "order_id": "R0028",
+   "reason": "подходящих инженеров 6, но у всех это время занято более срочными заявками"
+  },
+  {
+   "order_id": "R0032",
+   "reason": "окно 19:00–21:00 не пересекается ни с одной сменой подходящего инженера"
+  },
+  {
+   "order_id": "R0034",
+   "reason": "подходящих инженеров 6, но у всех это время занято более срочными заявками"
+  },
+  {
+   "order_id": "R0037",
+   "reason": "подходящих инженеров 6, но у всех это время занято более срочными заявками"
+  },
+  {
+   "order_id": "R0044",
+   "reason": "подходящих инженеров 6, но у всех это время занято более срочными заявками"
+  },
+  {
+   "order_id": "R0045",
+   "reason": "окно 19:00–21:00 не пересекается ни с одной сменой подходящего инженера"
+  },
+  {
+   "order_id": "R0047",
+   "reason": "подходящих инженеров 6, но у всех это время занято более срочными заявками"
+  },
+  {
+   "order_id": "R0049",
+   "reason": "подходящих инженеров 6, но у всех это время занято более срочными заявками"
+  },
+  {
+   "order_id": "R0050",
+   "reason": "подходящих инженеров 6, но у всех это время занято более срочными заявками"
+  },
+  {
+   "order_id": "R0051",
+   "reason": "окно 19:00–21:00 не пересекается ни с одной сменой подходящего инженера"
+  },
+  {
+   "order_id": "R0058",
+   "reason": "подходящих инженеров 6, но у всех это время занято более срочными заявками"
+  },
+  {
+   "order_id": "R0066",
+   "reason": "подходящих инженеров 6, но у всех это время занято более срочными заявками"
+  },
+  {
+   "order_id": "R0011",
+   "reason": "подходящих инженеров 2, но у всех это время занято более срочными заявками"
+  },
+  {
+   "order_id": "R0059",
+   "reason": "подходящих инженеров 6, но у всех это время занято более срочными заявками"
+  },
+  {
+   "order_id": "R0033",
+   "reason": "подходящих инженеров 6, но у всех это время занято более срочными заявками"
+  },
+  {
+   "order_id": "R0010",
+   "reason": "подходящих инженеров 6, но у всех это время занято более срочными заявками"
+  },
+  {
+   "order_id": "R0067",
+   "reason": "подходящих инженеров 6, но у всех это время занято более срочными заявками"
+  },
+  {
+   "order_id": "R0062",
+   "reason": "подходящих инженеров 6, но у всех это время занято более срочными заявками"
+  }
+ ]
+}

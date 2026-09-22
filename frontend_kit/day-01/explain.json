@@ -1,0 +1,6251 @@
+{
+ "schema": "1.5",
+ "kind": "explain",
+ "meta": {
+  "day": "1",
+  "date": "2026-09-15",
+  "cost_units": "минуты пути плюс штрафы за простой и риск"
+ },
+ "orders": {
+  "R0000": {
+   "assigned_to": "E03",
+   "summary": "назначен Волков: дешевле всех остальных из 3 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "chosen",
+     "cost": 127.4,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "feasible",
+     "cost": 190.2,
+     "note": "мог бы, но обошёлся бы дороже на 63"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "feasible",
+     "cost": 237.9,
+     "note": "мог бы, но обошёлся бы дороже на 110"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0001": {
+   "assigned_to": "E01",
+   "summary": "назначен Кузнецов: дешевле всех остальных из 1 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "chosen",
+     "cost": 199.7,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0002": {
+   "assigned_to": "E06",
+   "summary": "назначен Козлов: дешевле всех остальных из 3 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "feasible",
+     "cost": 145.9,
+     "note": "мог бы, но обошёлся бы дороже на 77"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "chosen",
+     "cost": 68.8,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "feasible",
+     "cost": 170.9,
+     "note": "мог бы, но обошёлся бы дороже на 102"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0003": {
+   "assigned_to": "E09",
+   "summary": "назначен Семёнов: дешевле всех остальных из 1 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "chosen",
+     "cost": 149.1,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0004": {
+   "assigned_to": "E04",
+   "summary": "назначен Лебедев: дешевле всех остальных из 2 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "feasible",
+     "cost": 156.1,
+     "note": "мог бы, но обошёлся бы дороже на 9"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "chosen",
+     "cost": 147.2,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0005": {
+   "assigned_to": null,
+   "summary": "в окно этой заявки никто не работает",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    }
+   ]
+  },
+  "R0006": {
+   "assigned_to": "E09",
+   "summary": "назначен Семёнов: дешевле всех остальных из 2 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "chosen",
+     "cost": 115.5,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "feasible",
+     "cost": 208.0,
+     "note": "мог бы, но обошёлся бы дороже на 92"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    }
+   ]
+  },
+  "R0007": {
+   "assigned_to": null,
+   "summary": "все подходящие инженеры заняты в это время",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0008": {
+   "assigned_to": null,
+   "summary": "все подходящие инженеры заняты в это время",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0009": {
+   "assigned_to": "E11",
+   "summary": "назначен Виноградов: дешевле всех остальных из 4 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "feasible",
+     "cost": 140.5,
+     "note": "мог бы, но обошёлся бы дороже на 30"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "feasible",
+     "cost": 154.4,
+     "note": "мог бы, но обошёлся бы дороже на 44"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "feasible",
+     "cost": 117.7,
+     "note": "мог бы, но обошёлся бы дороже на 7"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "chosen",
+     "cost": 110.7,
+     "note": "назначен"
+    }
+   ]
+  },
+  "R0010": {
+   "assigned_to": "E11",
+   "summary": "назначен Виноградов: дешевле всех остальных из 5 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "feasible",
+     "cost": 290.7,
+     "note": "мог бы, но обошёлся бы дороже на 53"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "feasible",
+     "cost": 327.3,
+     "note": "мог бы, но обошёлся бы дороже на 90"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "feasible",
+     "cost": 143.4,
+     "note": "мог бы с той же стоимостью"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "feasible",
+     "cost": 315.2,
+     "note": "мог бы, но обошёлся бы дороже на 78"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "chosen",
+     "cost": 237.4,
+     "note": "назначен"
+    }
+   ]
+  },
+  "R0011": {
+   "assigned_to": null,
+   "summary": "все подходящие инженеры заняты в это время",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0012": {
+   "assigned_to": "E02",
+   "summary": "назначен Морозов: дешевле всех остальных из 1 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "chosen",
+     "cost": 120.6,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0013": {
+   "assigned_to": "E09",
+   "summary": "назначен Семёнов: дешевле всех остальных из 2 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "chosen",
+     "cost": 142.7,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "feasible",
+     "cost": 299.7,
+     "note": "мог бы, но обошёлся бы дороже на 157"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    }
+   ]
+  },
+  "R0014": {
+   "assigned_to": null,
+   "summary": "все подходящие инженеры заняты в это время",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0015": {
+   "assigned_to": "E09",
+   "summary": "назначен Семёнов: дешевле всех остальных из 4 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "feasible",
+     "cost": 210.9,
+     "note": "мог бы, но обошёлся бы дороже на 134"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "feasible",
+     "cost": 37.5,
+     "note": "мог бы с той же стоимостью"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "feasible",
+     "cost": 233.4,
+     "note": "мог бы, но обошёлся бы дороже на 156"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "chosen",
+     "cost": 77.4,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0016": {
+   "assigned_to": "E02",
+   "summary": "назначен Морозов: дешевле всех остальных из 2 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "chosen",
+     "cost": 108.4,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "feasible",
+     "cost": 116.5,
+     "note": "мог бы, но обошёлся бы дороже на 8"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0017": {
+   "assigned_to": "E03",
+   "summary": "назначен Волков: дешевле всех остальных из 2 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "feasible",
+     "cost": 274.9,
+     "note": "мог бы, но обошёлся бы дороже на 196"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "chosen",
+     "cost": 79.4,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0018": {
+   "assigned_to": "E08",
+   "summary": "назначен Павлов: дешевле всех остальных из 4 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "feasible",
+     "cost": 133.7,
+     "note": "мог бы, но обошёлся бы дороже на 71"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "feasible",
+     "cost": 143.5,
+     "note": "мог бы, но обошёлся бы дороже на 81"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "feasible",
+     "cost": 143.8,
+     "note": "мог бы, но обошёлся бы дороже на 82"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "chosen",
+     "cost": 62.3,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0019": {
+   "assigned_to": "E05",
+   "summary": "назначен Новиков: дешевле всех остальных из 3 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "chosen",
+     "cost": 73.1,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "feasible",
+     "cost": 119.5,
+     "note": "мог бы, но обошёлся бы дороже на 46"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "feasible",
+     "cost": 143.2,
+     "note": "мог бы, но обошёлся бы дороже на 70"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0020": {
+   "assigned_to": "E05",
+   "summary": "назначен Новиков: дешевле всех остальных из 1 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "chosen",
+     "cost": 86.8,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0021": {
+   "assigned_to": null,
+   "summary": "в окно этой заявки никто не работает",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    }
+   ]
+  },
+  "R0022": {
+   "assigned_to": "E09",
+   "summary": "назначен Семёнов: дешевле всех остальных из 1 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "chosen",
+     "cost": 146.7,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0023": {
+   "assigned_to": "E02",
+   "summary": "назначен Морозов: дешевле всех остальных из 4 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "chosen",
+     "cost": 121.0,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "feasible",
+     "cost": 256.2,
+     "note": "мог бы, но обошёлся бы дороже на 135"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "feasible",
+     "cost": 370.9,
+     "note": "мог бы, но обошёлся бы дороже на 250"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "feasible",
+     "cost": 234.8,
+     "note": "мог бы, но обошёлся бы дороже на 114"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0024": {
+   "assigned_to": "E03",
+   "summary": "назначен Волков: дешевле всех остальных из 3 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "feasible",
+     "cost": 150.5,
+     "note": "мог бы, но обошёлся бы дороже на 103"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "chosen",
+     "cost": 47.6,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "feasible",
+     "cost": 187.6,
+     "note": "мог бы, но обошёлся бы дороже на 140"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0025": {
+   "assigned_to": "E08",
+   "summary": "назначен Павлов: дешевле всех остальных из 2 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "feasible",
+     "cost": 122.1,
+     "note": "мог бы, но обошёлся бы дороже на 77"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "chosen",
+     "cost": 45.2,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0026": {
+   "assigned_to": "E03",
+   "summary": "назначен Волков: дешевле всех остальных из 1 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "chosen",
+     "cost": 70.5,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0027": {
+   "assigned_to": null,
+   "summary": "все подходящие инженеры заняты в это время",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0028": {
+   "assigned_to": "E04",
+   "summary": "назначен Лебедев: дешевле всех остальных из 6 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "feasible",
+     "cost": 92.3,
+     "note": "мог бы, но обошёлся бы дороже на 34"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "feasible",
+     "cost": 161.9,
+     "note": "мог бы, но обошёлся бы дороже на 103"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "feasible",
+     "cost": 118.3,
+     "note": "мог бы, но обошёлся бы дороже на 60"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "chosen",
+     "cost": 58.7,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "feasible",
+     "cost": 112.5,
+     "note": "мог бы, но обошёлся бы дороже на 54"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "feasible",
+     "cost": 148.4,
+     "note": "мог бы, но обошёлся бы дороже на 90"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0029": {
+   "assigned_to": "E10",
+   "summary": "назначен Голубев: дешевле всех остальных из 2 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "feasible",
+     "cost": 243.2,
+     "note": "мог бы, но обошёлся бы дороже на 149"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "chosen",
+     "cost": 93.9,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0030": {
+   "assigned_to": "E04",
+   "summary": "назначен Лебедев: дешевле всех остальных из 4 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "chosen",
+     "cost": 87.8,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "feasible",
+     "cost": 162.3,
+     "note": "мог бы, но обошёлся бы дороже на 74"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "feasible",
+     "cost": 100.3,
+     "note": "мог бы, но обошёлся бы дороже на 12"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "feasible",
+     "cost": 181.3,
+     "note": "мог бы, но обошёлся бы дороже на 94"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0031": {
+   "assigned_to": "E02",
+   "summary": "назначен Морозов: дешевле всех остальных из 1 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "chosen",
+     "cost": 50.9,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0032": {
+   "assigned_to": null,
+   "summary": "все подходящие инженеры заняты в это время",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0033": {
+   "assigned_to": "E01",
+   "summary": "назначен Кузнецов: дешевле всех остальных из 4 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "chosen",
+     "cost": 129.0,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "feasible",
+     "cost": 220.3,
+     "note": "мог бы, но обошёлся бы дороже на 91"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "feasible",
+     "cost": 189.6,
+     "note": "мог бы, но обошёлся бы дороже на 61"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "feasible",
+     "cost": 315.1,
+     "note": "мог бы, но обошёлся бы дороже на 186"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0034": {
+   "assigned_to": null,
+   "summary": "в окно этой заявки никто не работает",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    }
+   ]
+  },
+  "R0035": {
+   "assigned_to": null,
+   "summary": "все подходящие инженеры заняты в это время",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0036": {
+   "assigned_to": "E08",
+   "summary": "назначен Павлов: дешевле всех остальных из 4 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "feasible",
+     "cost": 160.6,
+     "note": "мог бы, но обошёлся бы дороже на 56"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "feasible",
+     "cost": 140.9,
+     "note": "мог бы, но обошёлся бы дороже на 36"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "feasible",
+     "cost": 192.5,
+     "note": "мог бы, но обошёлся бы дороже на 88"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "chosen",
+     "cost": 104.9,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0037": {
+   "assigned_to": "E01",
+   "summary": "назначен Кузнецов: дешевле всех остальных из 1 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "chosen",
+     "cost": 107.9,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0038": {
+   "assigned_to": "E00",
+   "summary": "назначен Соколов: дешевле всех остальных из 4 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "chosen",
+     "cost": 133.2,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "feasible",
+     "cost": 245.2,
+     "note": "мог бы, но обошёлся бы дороже на 112"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "feasible",
+     "cost": 169.4,
+     "note": "мог бы, но обошёлся бы дороже на 36"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "feasible",
+     "cost": 266.5,
+     "note": "мог бы, но обошёлся бы дороже на 133"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0039": {
+   "assigned_to": null,
+   "summary": "все подходящие инженеры заняты в это время",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0040": {
+   "assigned_to": "E01",
+   "summary": "назначен Кузнецов: дешевле всех остальных из 4 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "chosen",
+     "cost": 122.6,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "feasible",
+     "cost": 213.6,
+     "note": "мог бы, но обошёлся бы дороже на 91"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "feasible",
+     "cost": 183.3,
+     "note": "мог бы, но обошёлся бы дороже на 61"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "feasible",
+     "cost": 307.4,
+     "note": "мог бы, но обошёлся бы дороже на 185"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0041": {
+   "assigned_to": "E08",
+   "summary": "назначен Павлов: дешевле всех остальных из 2 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "chosen",
+     "cost": 138.1,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "feasible",
+     "cost": 279.6,
+     "note": "мог бы, но обошёлся бы дороже на 142"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    }
+   ]
+  },
+  "R0042": {
+   "assigned_to": null,
+   "summary": "все подходящие инженеры заняты в это время",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0043": {
+   "assigned_to": "E00",
+   "summary": "назначен Соколов: дешевле всех остальных из 3 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "chosen",
+     "cost": 105.5,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "feasible",
+     "cost": 218.5,
+     "note": "мог бы, но обошёлся бы дороже на 113"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "feasible",
+     "cost": 260.7,
+     "note": "мог бы, но обошёлся бы дороже на 155"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0044": {
+   "assigned_to": "E06",
+   "summary": "назначен Козлов: дешевле всех остальных из 4 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "feasible",
+     "cost": 209.9,
+     "note": "мог бы, но обошёлся бы дороже на 173"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "chosen",
+     "cost": 36.5,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "feasible",
+     "cost": 82.2,
+     "note": "мог бы, но обошёлся бы дороже на 46"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "feasible",
+     "cost": 372.5,
+     "note": "мог бы, но обошёлся бы дороже на 336"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0045": {
+   "assigned_to": "E10",
+   "summary": "назначен Голубев: дешевле всех остальных из 2 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "feasible",
+     "cost": 143.7,
+     "note": "мог бы, но обошёлся бы дороже на 30"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "chosen",
+     "cost": 113.3,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0046": {
+   "assigned_to": "E01",
+   "summary": "назначен Кузнецов: дешевле всех остальных из 2 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "chosen",
+     "cost": 113.3,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "feasible",
+     "cost": 297.8,
+     "note": "мог бы, но обошёлся бы дороже на 184"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0047": {
+   "assigned_to": "E04",
+   "summary": "назначен Лебедев: дешевле всех остальных из 1 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "chosen",
+     "cost": 103.5,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0048": {
+   "assigned_to": "E05",
+   "summary": "назначен Новиков: дешевле всех остальных из 1 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "chosen",
+     "cost": 81.8,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0049": {
+   "assigned_to": null,
+   "summary": "все подходящие инженеры заняты в это время",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0050": {
+   "assigned_to": "E09",
+   "summary": "назначен Семёнов: дешевле всех остальных из 2 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "feasible",
+     "cost": 290.9,
+     "note": "мог бы, но обошёлся бы дороже на 197"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "chosen",
+     "cost": 93.9,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    }
+   ]
+  },
+  "R0051": {
+   "assigned_to": "E02",
+   "summary": "назначен Морозов: дешевле всех остальных из 4 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "chosen",
+     "cost": 110.8,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "feasible",
+     "cost": 209.4,
+     "note": "мог бы, но обошёлся бы дороже на 99"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "feasible",
+     "cost": 187.4,
+     "note": "мог бы, но обошёлся бы дороже на 76"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "feasible",
+     "cost": 310.1,
+     "note": "мог бы, но обошёлся бы дороже на 199"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0052": {
+   "assigned_to": null,
+   "summary": "все подходящие инженеры заняты в это время",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0053": {
+   "assigned_to": "E11",
+   "summary": "назначен Виноградов: дешевле всех остальных из 5 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "feasible",
+     "cost": 214.0,
+     "note": "мог бы, но обошёлся бы дороже на 164"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "feasible",
+     "cost": 127.2,
+     "note": "мог бы, но обошёлся бы дороже на 78"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "feasible",
+     "cost": 74.6,
+     "note": "мог бы, но обошёлся бы дороже на 25"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "feasible",
+     "cost": 284.5,
+     "note": "мог бы, но обошёлся бы дороже на 235"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "chosen",
+     "cost": 49.4,
+     "note": "назначен"
+    }
+   ]
+  },
+  "R0054": {
+   "assigned_to": "E06",
+   "summary": "назначен Козлов: дешевле всех остальных из 3 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "feasible",
+     "cost": 139.3,
+     "note": "мог бы, но обошёлся бы дороже на 66"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "chosen",
+     "cost": 73.0,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "feasible",
+     "cost": 168.4,
+     "note": "мог бы, но обошёлся бы дороже на 95"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0055": {
+   "assigned_to": null,
+   "summary": "все подходящие инженеры заняты в это время",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0056": {
+   "assigned_to": "E04",
+   "summary": "назначен Лебедев: дешевле всех остальных из 4 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "chosen",
+     "cost": 99.1,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "feasible",
+     "cost": 283.5,
+     "note": "мог бы, но обошёлся бы дороже на 184"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "feasible",
+     "cost": 161.8,
+     "note": "мог бы, но обошёлся бы дороже на 63"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "feasible",
+     "cost": 192.9,
+     "note": "мог бы, но обошёлся бы дороже на 94"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0057": {
+   "assigned_to": "E05",
+   "summary": "назначен Новиков: дешевле всех остальных из 1 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "chosen",
+     "cost": 76.8,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0058": {
+   "assigned_to": "E11",
+   "summary": "назначен Виноградов: дешевле всех остальных из 5 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "feasible",
+     "cost": 191.0,
+     "note": "мог бы, но обошёлся бы дороже на 124"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "feasible",
+     "cost": 181.8,
+     "note": "мог бы, но обошёлся бы дороже на 114"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "feasible",
+     "cost": 77.9,
+     "note": "мог бы, но обошёлся бы дороже на 10"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "feasible",
+     "cost": 220.2,
+     "note": "мог бы, но обошёлся бы дороже на 153"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "chosen",
+     "cost": 67.4,
+     "note": "назначен"
+    }
+   ]
+  },
+  "R0059": {
+   "assigned_to": "E10",
+   "summary": "назначен Голубев: дешевле всех остальных из 1 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "chosen",
+     "cost": 118.4,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    }
+   ]
+  },
+  "R0060": {
+   "assigned_to": null,
+   "summary": "все подходящие инженеры заняты в это время",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    }
+   ]
+  },
+  "R0061": {
+   "assigned_to": "E06",
+   "summary": "назначен Козлов: дешевле всех остальных из 2 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "chosen",
+     "cost": 30.6,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "feasible",
+     "cost": 120.0,
+     "note": "мог бы, но обошёлся бы дороже на 89"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0062": {
+   "assigned_to": "E04",
+   "summary": "назначен Лебедев: дешевле всех остальных из 4 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "feasible",
+     "cost": 150.3,
+     "note": "мог бы, но обошёлся бы дороже на 61"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "chosen",
+     "cost": 88.9,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "feasible",
+     "cost": 243.7,
+     "note": "мог бы, но обошёлся бы дороже на 155"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "feasible",
+     "cost": 145.5,
+     "note": "мог бы, но обошёлся бы дороже на 57"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0063": {
+   "assigned_to": "E01",
+   "summary": "назначен Кузнецов: дешевле всех остальных из 4 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "chosen",
+     "cost": 64.5,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "feasible",
+     "cost": 228.8,
+     "note": "мог бы, но обошёлся бы дороже на 164"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "feasible",
+     "cost": 324.4,
+     "note": "мог бы, но обошёлся бы дороже на 260"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "feasible",
+     "cost": 85.4,
+     "note": "мог бы, но обошёлся бы дороже на 21"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0064": {
+   "assigned_to": "E11",
+   "summary": "назначен Виноградов: дешевле всех остальных из 4 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "feasible",
+     "cost": 137.0,
+     "note": "мог бы, но обошёлся бы дороже на 47"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "feasible",
+     "cost": 103.4,
+     "note": "мог бы, но обошёлся бы дороже на 13"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "feasible",
+     "cost": 155.5,
+     "note": "мог бы, но обошёлся бы дороже на 65"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "chosen",
+     "cost": 90.4,
+     "note": "назначен"
+    }
+   ]
+  },
+  "R0065": {
+   "assigned_to": null,
+   "summary": "все подходящие инженеры заняты в это время",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0066": {
+   "assigned_to": null,
+   "summary": "все подходящие инженеры заняты в это время",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0067": {
+   "assigned_to": "E09",
+   "summary": "назначен Семёнов: дешевле всех остальных из 5 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "feasible",
+     "cost": 120.7,
+     "note": "мог бы, но обошёлся бы дороже на 43"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "feasible",
+     "cost": 138.5,
+     "note": "мог бы, но обошёлся бы дороже на 61"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "feasible",
+     "cost": 128.3,
+     "note": "мог бы, но обошёлся бы дороже на 51"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "chosen",
+     "cost": 77.5,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "feasible",
+     "cost": 140.0,
+     "note": "мог бы, но обошёлся бы дороже на 62"
+    }
+   ]
+  },
+  "R0068": {
+   "assigned_to": null,
+   "summary": "все подходящие инженеры заняты в это время",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0069": {
+   "assigned_to": null,
+   "summary": "все подходящие инженеры заняты в это время",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0070": {
+   "assigned_to": "E11",
+   "summary": "назначен Виноградов: дешевле всех остальных из 4 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "feasible",
+     "cost": 134.7,
+     "note": "мог бы, но обошёлся бы дороже на 26"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "feasible",
+     "cost": 114.5,
+     "note": "мог бы, но обошёлся бы дороже на 6"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "feasible",
+     "cost": 153.3,
+     "note": "мог бы, но обошёлся бы дороже на 45"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "chosen",
+     "cost": 108.2,
+     "note": "назначен"
+    }
+   ]
+  },
+  "R0071": {
+   "assigned_to": "E10",
+   "summary": "назначен Голубев: дешевле всех остальных из 2 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "feasible",
+     "cost": 177.6,
+     "note": "мог бы, но обошёлся бы дороже на 87"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "chosen",
+     "cost": 90.9,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «line»"
+    }
+   ]
+  },
+  "R0072": {
+   "assigned_to": "E08",
+   "summary": "назначен Павлов: дешевле всех остальных из 4 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "feasible",
+     "cost": 231.8,
+     "note": "мог бы, но обошёлся бы дороже на 172"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "feasible",
+     "cost": 279.8,
+     "note": "мог бы, но обошёлся бы дороже на 220"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "feasible",
+     "cost": 91.6,
+     "note": "мог бы, но обошёлся бы дороже на 32"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "chosen",
+     "cost": 59.3,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0073": {
+   "assigned_to": "E00",
+   "summary": "назначен Соколов: дешевле всех остальных из 4 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "chosen",
+     "cost": 128.0,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "feasible",
+     "cost": 188.1,
+     "note": "мог бы, но обошёлся бы дороже на 60"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "feasible",
+     "cost": 178.3,
+     "note": "мог бы, но обошёлся бы дороже на 50"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "feasible",
+     "cost": 236.7,
+     "note": "мог бы, но обошёлся бы дороже на 109"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0074": {
+   "assigned_to": null,
+   "summary": "все подходящие инженеры заняты в это время",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0075": {
+   "assigned_to": "E11",
+   "summary": "назначен Виноградов: дешевле всех остальных из 1 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "chosen",
+     "cost": 153.9,
+     "note": "назначен"
+    }
+   ]
+  },
+  "R0076": {
+   "assigned_to": "E00",
+   "summary": "назначен Соколов: дешевле всех остальных из 3 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "chosen",
+     "cost": 105.5,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "feasible",
+     "cost": 201.1,
+     "note": "мог бы, но обошёлся бы дороже на 96"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "feasible",
+     "cost": 228.8,
+     "note": "мог бы, но обошёлся бы дороже на 123"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0077": {
+   "assigned_to": null,
+   "summary": "в окно этой заявки никто не работает",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    }
+   ]
+  },
+  "R0078": {
+   "assigned_to": "E08",
+   "summary": "назначен Павлов: дешевле всех остальных из 3 подходящих",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "feasible",
+     "cost": 310.0,
+     "note": "мог бы, но обошёлся бы дороже на 240"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "feasible",
+     "cost": 174.1,
+     "note": "мог бы, но обошёлся бы дороже на 105"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "chosen",
+     "cost": 69.5,
+     "note": "назначен"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «repair»"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  },
+  "R0079": {
+   "assigned_to": null,
+   "summary": "все подходящие инженеры заняты в это время",
+   "candidates": [
+    {
+     "engineer_id": "E00",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E01",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E02",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E03",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E04",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E05",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E06",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E07",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E08",
+     "verdict": "no_skill",
+     "cost": null,
+     "note": "нет навыка «install»"
+    },
+    {
+     "engineer_id": "E09",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    },
+    {
+     "engineer_id": "E10",
+     "verdict": "shift_mismatch",
+     "cost": null,
+     "note": "окно заявки вне его смены"
+    },
+    {
+     "engineer_id": "E11",
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
+    }
+   ]
+  }
+ }
+}

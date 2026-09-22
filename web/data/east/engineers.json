@@ -1,0 +1,267 @@
+{
+ "schema": "1.2",
+ "kind": "engineers",
+ "meta": {
+  "date": "2026-08-17",
+  "zone": "Восток",
+  "time_format": "minutes_from_midnight",
+  "distance_units": "km",
+  "source": "выгрузка «Билайн Бизнес» за 17.08.2026"
+ },
+ "engineers": [
+  {
+   "id": "E001",
+   "name": "Арташкин Григорий Павлович",
+   "skills": [
+    "connect",
+    "local"
+   ],
+   "grade": 2,
+   "shift_start": 600,
+   "shift_end": 1140,
+   "home_address": "Москва, улица Юных Ленинцев, 83с4",
+   "home_lat": 55.70032,
+   "home_lon": 37.74794,
+   "transport": "car",
+   "status": "on_shift",
+   "team": "Бригада Арташкин",
+   "zone": "Восток",
+   "phone": "+7 495 701-11-21",
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E002",
+   "name": "Белузин Роман Николаевич",
+   "skills": [
+    "connect",
+    "emergency",
+    "local"
+   ],
+   "grade": 2,
+   "shift_start": 600,
+   "shift_end": 1320,
+   "home_address": "Москва, улица Юных Ленинцев, 83с4",
+   "home_lat": 55.70032,
+   "home_lon": 37.74794,
+   "transport": "car",
+   "status": "on_shift",
+   "team": "Бригада Белузин",
+   "zone": "Восток",
+   "phone": "+7 495 702-12-22",
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E003",
+   "name": "Гусаковский Роман Олегович",
+   "skills": [
+    "connect",
+    "local"
+   ],
+   "grade": 2,
+   "shift_start": 600,
+   "shift_end": 1200,
+   "home_address": "Москва, улица Юных Ленинцев, 83с4",
+   "home_lat": 55.70032,
+   "home_lon": 37.74794,
+   "transport": "car",
+   "status": "on_shift",
+   "team": "Бригада Гусаковский",
+   "zone": "Восток",
+   "phone": "+7 495 703-13-23",
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E004",
+   "name": "Зверев Максим Юрьевич",
+   "skills": [
+    "connect",
+    "local"
+   ],
+   "grade": 1,
+   "shift_start": 600,
+   "shift_end": 1140,
+   "home_address": "Москва, улица Юных Ленинцев, 83с4",
+   "home_lat": 55.70032,
+   "home_lon": 37.74794,
+   "transport": "walk",
+   "status": "on_shift",
+   "team": "Бригада Зверев",
+   "zone": "Восток",
+   "phone": "+7 495 704-14-24",
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E005",
+   "name": "Каушнян Виктор Алексеевич",
+   "skills": [
+    "connect",
+    "emergency"
+   ],
+   "grade": 2,
+   "shift_start": 600,
+   "shift_end": 1320,
+   "home_address": "Москва, улица Юных Ленинцев, 83с4",
+   "home_lat": 55.70032,
+   "home_lon": 37.74794,
+   "transport": "car",
+   "status": "on_shift",
+   "team": "Бригада Каушнян",
+   "zone": "Восток",
+   "phone": "+7 495 705-15-25",
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E006",
+   "name": "Комарь Евгений Иванович",
+   "skills": [
+    "connect",
+    "local"
+   ],
+   "grade": 2,
+   "shift_start": 600,
+   "shift_end": 1200,
+   "home_address": "Москва, улица Юных Ленинцев, 83с4",
+   "home_lat": 55.70032,
+   "home_lon": 37.74794,
+   "transport": "car",
+   "status": "on_shift",
+   "team": "Бригада Комарь",
+   "zone": "Восток",
+   "phone": "+7 495 706-16-26",
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E007",
+   "name": "Матвеев Алексей Дмитриевич",
+   "skills": [
+    "connect",
+    "local"
+   ],
+   "grade": 3,
+   "shift_start": 600,
+   "shift_end": 1320,
+   "home_address": "Москва, улица Юных Ленинцев, 83с4",
+   "home_lat": 55.70032,
+   "home_lon": 37.74794,
+   "transport": "transit",
+   "status": "on_shift",
+   "team": "Бригада Матвеев",
+   "zone": "Восток",
+   "phone": "+7 495 707-17-27",
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E008",
+   "name": "Мельников Максим Викторович",
+   "skills": [
+    "connect",
+    "local"
+   ],
+   "grade": 2,
+   "shift_start": 600,
+   "shift_end": 1200,
+   "home_address": "Москва, улица Юных Ленинцев, 83с4",
+   "home_lat": 55.70032,
+   "home_lon": 37.74794,
+   "transport": "car",
+   "status": "on_shift",
+   "team": "Бригада Мельников",
+   "zone": "Восток",
+   "phone": "+7 495 708-18-28",
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E009",
+   "name": "Перов Алексей Игоревич",
+   "skills": [
+    "connect",
+    "local"
+   ],
+   "grade": 2,
+   "shift_start": 600,
+   "shift_end": 1140,
+   "home_address": "Москва, улица Юных Ленинцев, 83с4",
+   "home_lat": 55.70032,
+   "home_lon": 37.74794,
+   "transport": "bike",
+   "status": "on_shift",
+   "team": "Бригада Перов",
+   "zone": "Восток",
+   "phone": "+7 495 709-19-29",
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E010",
+   "name": "Попов Олег Николаевич",
+   "skills": [
+    "connect",
+    "local"
+   ],
+   "grade": 2,
+   "shift_start": 600,
+   "shift_end": 1320,
+   "home_address": "Москва, улица Юных Ленинцев, 83с4",
+   "home_lat": 55.70032,
+   "home_lon": 37.74794,
+   "transport": "car",
+   "status": "on_shift",
+   "team": "Бригада Попов",
+   "zone": "Восток",
+   "phone": "+7 495 710-20-30",
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E011",
+   "name": "Свеженцев Олег Олегович",
+   "skills": [
+    "emergency",
+    "local"
+   ],
+   "grade": 2,
+   "shift_start": 600,
+   "shift_end": 1320,
+   "home_address": "Москва, улица Юных Ленинцев, 83с4",
+   "home_lat": 55.70032,
+   "home_lon": 37.74794,
+   "transport": "car",
+   "status": "on_shift",
+   "team": "Бригада Свеженцев",
+   "zone": "Восток",
+   "phone": "+7 495 711-21-31",
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E012",
+   "name": "Соколов Артём Павлович",
+   "skills": [
+    "connect",
+    "emergency",
+    "local"
+   ],
+   "grade": 2,
+   "shift_start": 600,
+   "shift_end": 1200,
+   "home_address": "Москва, улица Юных Ленинцев, 83с4",
+   "home_lat": 55.70032,
+   "home_lon": 37.74794,
+   "transport": "car",
+   "status": "on_shift",
+   "team": "Бригада Соколов",
+   "zone": "Восток",
+   "phone": "+7 495 712-22-32",
+   "photo": null,
+   "position": null
+  }
+ ]
+}

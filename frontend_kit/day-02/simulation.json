@@ -1,0 +1,73 @@
+{
+ "schema": "1.5",
+ "kind": "simulation",
+ "meta": {
+  "day": "2",
+  "date": "2026-09-15",
+  "runs": 300
+ },
+ "planned": 60,
+ "orders_total": 80,
+ "done": {
+  "mean": 53.51,
+  "p10": 51,
+  "p50": 54,
+  "p90": 56,
+  "sd": 2.36
+ },
+ "coverage": 66.9,
+ "execution_rate": 89.2,
+ "must_today": 33,
+ "breaches": 9.49,
+ "breach_rate": 28.8,
+ "reasons": {
+  "no_show": 3.99,
+  "missed_window": 1.25,
+  "no_access": 1.23,
+  "dropped": 0.02
+ },
+ "overtime_minutes": 38.5,
+ "idle_minutes": 1554.0,
+ "fragile": [
+  {
+   "order_id": "R0003",
+   "failure_rate": 36.3
+  },
+  {
+   "order_id": "R0070",
+   "failure_rate": 34.7
+  },
+  {
+   "order_id": "R0072",
+   "failure_rate": 26.7
+  },
+  {
+   "order_id": "R0019",
+   "failure_rate": 22.0
+  },
+  {
+   "order_id": "R0013",
+   "failure_rate": 16.3
+  },
+  {
+   "order_id": "R0073",
+   "failure_rate": 14.3
+  },
+  {
+   "order_id": "R0000",
+   "failure_rate": 13.7
+  },
+  {
+   "order_id": "R0025",
+   "failure_rate": 12.7
+  },
+  {
+   "order_id": "R0001",
+   "failure_rate": 12.7
+  },
+  {
+   "order_id": "R0055",
+   "failure_rate": 12.3
+  }
+ ]
+}
