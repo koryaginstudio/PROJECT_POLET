@@ -4,12 +4,12 @@ import type { DayView } from '../data/derive.ts';
 import { hhmm } from '../data/derive.ts';
 import type { Registry } from '../data/registry.ts';
 import { editCrew, removeCrew } from '../data/crew.ts';
-import { loadPlaces } from '../data/load.ts';
+import { engineReady, loadPlaces } from '../data/load.ts';
 import type { Place } from '../data/load.ts';
 import { MapBoard } from '../app/MapBoard.tsx';
 import { MapPick } from '../app/MapPick.tsx';
 import { MetricTile } from '../app/CalcBoard.tsx';
-import { CrewProfile } from '../app/CrewProfile.tsx';
+import { CREW_ENGINE_LOCK, CrewProfile } from '../app/CrewProfile.tsx';
 import { OrderProfile } from '../app/OrderProfile.tsx';
 
 interface Props {
@@ -203,9 +203,17 @@ export function OverviewScreen({
     };
   }, []);
 
+  /* Карта знает инженера по номеру в плане, справочник — по своему ключу:
+     у движка E00 есть на каждом участке, и это разные люди. Поэтому ищем
+     того, кто с этим номером работал в открытом расчёте, а уж потом —
+     по ключу как есть. */
   const crewCard =
     card?.kind === 'engineer'
-      ? (registry?.engineers.find((one) => one.id === card.id) ?? null)
+      ? (registry?.engineers.find(
+          (one) => one.code === card.id && one.byRun.some((shift) => shift.code === run)
+        ) ??
+        registry?.engineers.find((one) => one.id === card.id) ??
+        null)
       : null;
   /* Заявка ищется в своём расчёте: номера в расчётах повторяются, и без
      номера расчёта открылась бы чужая запись. */
@@ -388,6 +396,7 @@ export function OverviewScreen({
           setCard(null);
           onTrack(id);
         }}
+        locked={engineReady() ? CREW_ENGINE_LOCK : null}
         onSave={(patch) => {
           if (!crewCard) return;
           editCrew(crewCard.id, patch);

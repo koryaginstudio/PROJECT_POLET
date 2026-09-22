@@ -52,10 +52,14 @@ export function ServiceProfile({ service, registry, onClose, onOpenOrder, onOpen
 
   /* Кто эту работу выполнял — по факту плана, а не по записи в кадрах. */
   const crew = useMemo(() => {
-    const map = new Map<string, { id: string; name: string; visits: number; minutes: number }>();
+    const map = new Map<string, { key: string; id: string; name: string; visits: number; minutes: number }>();
     for (const order of orders) {
       if (!order.engineerId || !order.engineerName) continue;
-      const cell = map.get(order.engineerId) ?? {
+      /* Ключом справочника, а не номером плана: у движка E00 есть на каждом
+         участке, и это разные люди. */
+      const who = order.engineerKey ?? order.engineerId;
+      const cell = map.get(who) ?? {
+        key: who,
         id: order.engineerId,
         name: order.engineerName,
         visits: 0,
@@ -63,7 +67,7 @@ export function ServiceProfile({ service, registry, onClose, onOpenOrder, onOpen
       };
       cell.visits += 1;
       cell.minutes += order.estMinutes;
-      map.set(order.engineerId, cell);
+      map.set(who, cell);
     }
     return [...map.values()].sort((a, b) => b.visits - a.visits || a.name.localeCompare(b.name, 'ru'));
   }, [orders]);
@@ -252,7 +256,7 @@ export function ServiceProfile({ service, registry, onClose, onOpenOrder, onOpen
                 </thead>
                 <tbody>
                   {crew.map((one) => (
-                    <tr key={one.id}>
+                    <tr key={one.key}>
                       <td>
                         <span className="tbl__strong">{one.name}</span>
                       </td>

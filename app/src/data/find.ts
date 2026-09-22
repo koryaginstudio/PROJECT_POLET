@@ -166,7 +166,7 @@ const clientHit = (client: ClientRecord, found: Probe): Hit => ({
 const engineerHit = (engineer: EngineerRecord, found: Probe): Hit => ({
   kind: 'engineer',
   key: engineer.id,
-  code: engineer.id,
+  code: engineer.code,
   title: engineer.name,
   meta:
     `смена ${hhmm(engineer.shiftStart)}–${hhmm(engineer.shiftEnd)} · ` +
@@ -238,7 +238,7 @@ export function findAll(registry: Registry | null, raw: string): Hit[] {
   for (const engineer of registry.engineers) {
     const hit = phone
       ? probePhone(phone, [['телефон', engineer.phone]])
-      : probe(query, engineer.id, engineer.name, [
+      : probe(query, engineer.code, engineer.name, [
           ['бригада', engineer.team],
           ['участок', engineer.zone],
           ['выезжает из', engineer.homeAddress],

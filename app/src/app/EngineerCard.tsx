@@ -168,7 +168,7 @@ export function EngineerCard({
         {!dense && (
           <span className="engcard__idwrap">
             <span className="engcard__idlabel">id:</span>
-            <span className="crewpro__id engcard__idbadge">{row.id}</span>
+            <span className="crewpro__id engcard__idbadge">{row.code}</span>
           </span>
         )}
         {/* Значок и время — одна пара, а не три равноудалённых элемента:

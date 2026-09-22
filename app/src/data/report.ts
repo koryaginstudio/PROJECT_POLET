@@ -21,6 +21,7 @@
    ничего не выводит, а только группирует. */
 
 import type { Day, Order } from './contract.ts';
+import { engineDayTitle } from './load.ts';
 import type { RunEntry } from './load.ts';
 import { deadline, hhmm, isDeferrable, placeOf, homeOf } from './derive.ts';
 import {
@@ -95,7 +96,9 @@ export function buildReport(day: Day, run: RunEntry): Sheet[] {
     rows: [
       ['Расчёт', run.code],
       ['Заведён', run.created.replace('T', ' ')],
-      ['День', run.day ?? '—'],
+      /* Участок словами выгрузки («Югоцентр»), а не кодом движка: рядом
+         на экранах стоит то же слово, и в выгрузке оно обязано совпасть. */
+      ['Участок', run.day ? engineDayTitle(run.day) : '—'],
       ['Заметка', run.note ?? ''],
       [],
       ['Заявок в выгрузке', plan.orders.length],

@@ -4,12 +4,12 @@ import { Icon } from '../ds/components/core/Icon.jsx';
 import type { EngineParams } from '../data/engine.ts';
 import { engineDefaults, ENGINE_DEFAULTS } from '../data/engine.ts';
 import { EngineParamsForm } from '../app/EngineParamsForm.tsx';
-import { SourcePicker } from '../app/SourcePicker.tsx';
+import { EngineSourceNote, SourcePicker } from '../app/SourcePicker.tsx';
 import type { SourceChoice } from '../app/SourcePicker.tsx';
 import type { ShiftInput } from '../data/shift.ts';
 import { shiftSummary } from '../data/shift.ts';
 import type { SourceId } from '../data/load.ts';
-import { BUILT_IN, isBuiltIn, loadZone, sources, zoneTitle } from '../data/load.ts';
+import { BUILT_IN, engineReady, isBuiltIn, loadZone, sources, zoneSize, zoneTitle } from '../data/load.ts';
 import type { Engineer } from '../data/contract.ts';
 import { DatasetImport } from '../app/DatasetImport.tsx';
 import { plural } from '../data/derive.ts';
@@ -63,16 +63,28 @@ export function CreateRunScreen({
   const [sizes, setSizes] = useState<Record<string, { orders: number; engineers: number }>>({});
   /* Список источников меняется прямо на этом экране: загрузили набор — он
      встал в тот же ряд. Поэтому он в состоянии, а не считается на лету. */
-  const [list, setList] = useState<SourceId[]>(() => sources());
+  /* Программа расчёта считает только три участка выгрузки: загруженный
+     набор она не примет, и карточка его в ряду обещала бы расчёт, который
+     упадёт с ошибкой. */
+  const engine = engineReady();
+  const [list, setList] = useState<SourceId[]>(() => (engine ? [...BUILT_IN] : sources()));
 
+  /* Размеры участков — от того, кто будет считать: при программе расчёта
+     по её плану (своя бригада, 14 человек на участок), без неё — по файлам. */
   useEffect(() => {
     let cancelled = false;
-    Promise.all(list.map((key) => loadZone(key).catch(() => null)))
+    Promise.all(
+      list.map((key) =>
+        zoneSize(key)
+          .then((size) => [key, size] as const)
+          .catch(() => null)
+      )
+    )
       .then((zones) => {
         if (cancelled) return;
         const next: Record<string, { orders: number; engineers: number }> = {};
-        for (const data of zones) {
-          if (data) next[data.zone] = { orders: data.orders.length, engineers: data.engineers.length };
+        for (const one of zones) {
+          if (one) next[one[0]] = one[1];
         }
         setSizes((was) => ({ ...was, ...next }));
       })
@@ -87,6 +99,9 @@ export function CreateRunScreen({
      снять с работы людей, которых диспетчер не трогал. */
   const [crew, setCrew] = useState<Engineer[]>([]);
   useEffect(() => {
+    /* При программе расчёта состава смены на форме нет — вводные она не
+       принимает (см. EngineSourceNote), и читать файлы незачем. */
+    if (engine) return;
     let cancelled = false;
     loadZone(zone)
       .then((data) => {
@@ -105,7 +120,7 @@ export function CreateRunScreen({
     return () => {
       cancelled = true;
     };
-  }, [zone]);
+  }, [zone, engine]);
 
   /* Что из вводных доедет до расчёта. Полный состав смены — это не вводная,
      а отсутствие вводных: «в смене все» и «я никого не снимал» — одно и то
@@ -168,9 +183,12 @@ export function CreateRunScreen({
           </span>
         </div>
         <p className="clients__lede">
-          Встроенные зоны — это дни выгрузки «Билайн Бизнес»: свой офис, свои бригады и свой
-          район города у каждой. Расчёт идёт по одному дню. Свой набор можно загрузить файлом —
-          он встанет в этот же ряд.
+          {engine
+            ? 'Участки — это дни выгрузки «Билайн Бизнес»: свой офис, своя бригада и свой район ' +
+              'города у каждого. Расчёт идёт по одному участку.'
+            : 'Встроенные зоны — это дни выгрузки «Билайн Бизнес»: свой офис, свои бригады и свой ' +
+              'район города у каждой. Расчёт идёт по одному дню. Свой набор можно загрузить ' +
+              'файлом — он встанет в этот же ряд.'}
         </p>
 
         <div className="srcgrid">
@@ -201,17 +219,23 @@ export function CreateRunScreen({
 
         {/* Загрузка своего набора стоит здесь же, под рядом источников: это
             тот же вопрос — что считать, — а не отдельная настройка. */}
-        <div className="srcblock">
-          <div className="dash__section-head">
-            <h3 className="srcblock__title">Загрузить свой набор</h3>
+        {!engine && (
+          <div className="srcblock">
+            <div className="dash__section-head">
+              <h3 className="srcblock__title">Загрузить свой набор</h3>
+            </div>
+            <DatasetImport onLoaded={onLoaded} />
           </div>
-          <DatasetImport onLoaded={onLoaded} />
-        </div>
+        )}
       </section>
+
+      {engine && (
+        <EngineSourceNote orders={sizes[zone]?.orders} engineers={sizes[zone]?.engineers} />
+      )}
 
       {/* Состав смены и заявки поверх выгрузки. Отталкиваемся от выбранной
           зоны, а не от открытого расчёта: считают то, что выбрано здесь. */}
-      {crew.length > 0 && (
+      {!engine && crew.length > 0 && (
         <SourcePicker
           crew={crew}
           orderCount={sizes[zone]?.orders ?? 0}

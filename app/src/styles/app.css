@@ -12502,6 +12502,22 @@ b.ccard__bad {
   color: var(--text-muted);
 }
 
+.crewpro__locked {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  margin: var(--sp-2) 0 0;
+  max-width: 52ch;
+  font-size: var(--fs-body-s);
+  line-height: var(--lh-body-s);
+  color: var(--text-primary);
+}
+
+.crewpro__locked > svg {
+  flex: none;
+  margin-top: 3px;
+}
+
 .crewpro__actions {
   display: flex;
   align-items: center;
@@ -13650,6 +13666,35 @@ b.ccard__bad {
   font-size: var(--fs-body);
   font-weight: var(--fw-extrabold);
   color: var(--text-primary);
+}
+
+/* — вводные дня при программе расчёта: одна поясняющая панель вместо
+   «Кто сегодня в смене» и «Загрузить свой набор» — см. EngineSourceNote — */
+
+.srcengine {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  border-radius: var(--r-sm);
+  background: var(--surface-tile);
+  color: var(--text-primary);
+  font-size: var(--fs-body-s);
+  line-height: var(--lh-body-s);
+}
+
+.srcengine > svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.srcengine__text p {
+  margin: 0;
+  max-width: 78ch;
+}
+
+.srcengine__text p + p {
+  margin-top: var(--sp-2);
 }
 
 /* — импорт из Excel — */

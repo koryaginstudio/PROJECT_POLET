@@ -313,7 +313,7 @@ export function DbRoutesScreen({
     const risky = routes.reduce((sum, route) => sum + route.risky, 0);
     const occupancy =
       routes.reduce((sum, route) => sum + route.occupancy, 0) / Math.max(routes.length, 1);
-    const crewed = new Set(routes.map((route) => route.engineerId)).size;
+    const crewed = new Set(routes.map((route) => route.engineerKey)).size;
     /* Время в маршруте — одно целое на всю доску: работа на объектах, дорога
        между ними и ожидание открытия окна. Две плитки говорят «от времени в
        маршруте», и считать это от разных целых нельзя — доли перестали бы
@@ -903,7 +903,7 @@ export function DbRoutesScreen({
                 dense={dense}
                 day={route.run.date}
                 onOpen={() => onOpenRoute(route.run.id, route.engineerId)}
-                onOpenEngineer={() => setOpened(engineerOf(route.engineerId))}
+                onOpenEngineer={() => setOpened(engineerOf(route.engineerKey))}
                 onOpenOrder={(orderId) => {
                   const order = orderOf(route, orderId);
                   if (order) setOpenedOrder({ order, engineerId: route.engineerId });
@@ -972,12 +972,12 @@ export function DbRoutesScreen({
         onOpenRun={(id) => {
           setOpened(null);
           if (onOpenRun) onOpenRun(id as RunId);
-          else if (opened) onOpenRoute(id as RunId, opened.id);
+          else if (opened) onOpenRoute(id as RunId, opened.code);
         }}
         onOpenMap={(id) => {
           setOpened(null);
           if (onOpenMap) onOpenMap(id as RunId);
-          else if (opened) onOpenRoute(id as RunId, opened.id);
+          else if (opened) onOpenRoute(id as RunId, opened.code);
         }}
         onTrack={onTrack}
         onChanged={onChanged}

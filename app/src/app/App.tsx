@@ -24,7 +24,7 @@ import type { DayState, JournalEvent } from '../data/api.ts';
 import type { DispatcherActions } from './DispatcherBlock.tsx';
 import { изДвижка } from '../data/fromEngine.ts';
 import type { IncidentKind, IncidentSpec, ReplanResult } from '../data/api.ts';
-import { loadRegistry } from '../data/registry.ts';
+import { engineerInDay, loadRegistry } from '../data/registry.ts';
 import type { ShiftInput } from '../data/shift.ts';
 import type { Registry, RunRef } from '../data/registry.ts';
 import { buildDayView, dayStart, plural } from '../data/derive.ts';
@@ -54,7 +54,7 @@ import { StatsScreen } from '../screens/StatsScreen.tsx';
 import { CompareScreen } from '../screens/CompareScreen.tsx';
 import { SettingsScreen } from '../screens/SettingsScreen.tsx';
 import { OrderProfile } from './OrderProfile.tsx';
-import { CrewProfile } from './CrewProfile.tsx';
+import { CREW_ENGINE_LOCK, CrewProfile } from './CrewProfile.tsx';
 import { ClientProfile } from './ClientProfile.tsx';
 import { ServiceProfile } from './ServiceProfile.tsx';
 import type { Hit } from '../data/find.ts';
@@ -978,9 +978,12 @@ export function App() {
           onOpenMap={(id) => openRunMap(id as RunId)}
           onTrack={(id) => {
             nav({ section: 'monitor' });
-            if (dayView?.loads.some((load) => load.engineer.id === id)) {
-              pinRoute(id);
-              setSelection({ kind: 'engineer', id });
+            /* Карточка отдаёт ключ справочника («восток:E00»), план знает
+               номер: человек с тем же номером на другом участке — не он. */
+            const local = engineerInDay(id, day?.plan.meta.day);
+            if (local && dayView?.loads.some((load) => load.engineer.id === local)) {
+              pinRoute(local);
+              setSelection({ kind: 'engineer', id: local });
             }
           }}
           onChanged={refreshRuns}
@@ -1184,9 +1187,10 @@ export function App() {
                    нечего, но раздел тот. */
                 onTrack={(id) => {
                   nav({ section: 'monitor' });
-                  if (dayView?.loads.some((load) => load.engineer.id === id)) {
-                    pinRoute(id);
-                    setSelection({ kind: 'engineer', id });
+                  const local = engineerInDay(id, day?.plan.meta.day);
+                  if (local && dayView?.loads.some((load) => load.engineer.id === local)) {
+                    pinRoute(local);
+                    setSelection({ kind: 'engineer', id: local });
                   }
                 }}
               />
@@ -1365,7 +1369,8 @@ export function App() {
           onClose={() => setLookup(null)}
           onTrack={(id) => {
             setLookup(null);
-            setSelection({ kind: 'engineer', id });
+            const local = engineerInDay(id, day?.plan.meta.day);
+            if (local) setSelection({ kind: 'engineer', id: local });
             nav({ section: 'monitor', view: firstView('monitor') });
           }}
           onOpenRun={(id) => {
@@ -1381,6 +1386,7 @@ export function App() {
              пришли. Кадровые действия остаются в своей базе. */
           onSave={() => undefined}
           onDelete={() => undefined}
+          locked={engineReady() ? CREW_ENGINE_LOCK : null}
         />
       )}
     </div>

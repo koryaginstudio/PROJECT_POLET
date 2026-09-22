@@ -12,8 +12,8 @@
    сети и адрес приходит пустым, база молча возвращается к прежнему поведению.
    Ничего к контракту здесь не придумывается. */
 
-import { loadAllOrders, loadRoster, loadRunData, RUNS } from './load.ts';
-import type { RunId } from './load.ts';
+import { engineDayTitle, loadAllOrders, loadRoster, loadRunData, RUNS } from './load.ts';
+import type { RosterEngineer, RunId } from './load.ts';
 import type { Engineer, Order, Plan, Route, Simulation } from './contract.ts';
 import { occupancyMean, placeOf, roadPath } from './derive.ts';
 import { isUrgent, orderClosed } from './dictionary.ts';
@@ -30,6 +30,30 @@ export interface RunRef {
   created: string;
   /** Заметка человека к записи. Движок её не заполняет. */
   note?: string;
+  /** День движка («восток», «югоцентр»), по которому считали. Пусто у
+      расчёта браузера. Нужен ключу инженера: см. `engineerKey`. */
+  day?: string;
+}
+
+/** Ключ записи инженера в справочнике.
+
+    У движка номера E00…E13 одни и те же на каждом участке, а люди за ними
+    разные: E00 Востока и E00 Югоцентра — два человека с разными сменами и
+    офисами. Ключом по одному номеру справочник склеивал их в одну карточку
+    с суммой чужих часов (Антон ловил ту же беду в своей сборке набора).
+    Поэтому у инженера движка ключ — «участок:номер». У файлов вёрстки
+    номера сквозные на всю компанию, и там ключ — сам номер: человек,
+    приписанный к двум участкам, остаётся одним человеком. */
+export const engineerKey = (day: string | undefined | null, id: string) =>
+  day ? `${day}:${id}` : id;
+
+/** Номер инженера в плане дня по ключу справочника — или `null`, если ключ
+    про другой участок. Нужен переходам из карточки в открытый расчёт:
+    диспетчерская знает людей по номеру плана, справочник — по ключу. */
+export function engineerInDay(key: string, day: string | undefined | null): string | null {
+  const cut = key.indexOf(':');
+  if (cut < 0) return key;
+  return key.slice(0, cut) === day ? key.slice(cut + 1) : null;
 }
 
 /** Итог расчёта на карте: маршруты по порядку объезда и невзятые заявки.
@@ -166,8 +190,10 @@ export interface OrderRecord {
   priority: number;
   estMinutes: number;
   needsAccess: boolean;
-  /** Инженер, которому заявка досталась в этом расчёте. */
+  /** Инженер, которому заявка досталась в этом расчёте, — номер в плане. */
   engineerId: string | null;
+  /** Он же ключом справочника — по нему открывают карточку инженера. */
+  engineerKey: string | null;
   engineerName: string | null;
   /** Порядковый номер визита в маршруте, если заявка в него попала. */
   seq: number | null;
@@ -213,7 +239,10 @@ export interface RouteRecord {
   /** Тот же номер числом — им сортируют. */
   number: number;
   run: RunRef;
+  /** Номер инженера в плане: по нему маршрут открывают в диспетчерской. */
   engineerId: string;
+  /** Он же ключом справочника — по нему открывают карточку инженера. */
+  engineerKey: string;
   engineerName: string;
   visits: number;
   travelMinutes: number;
@@ -271,7 +300,10 @@ export interface EngineerShift {
 }
 
 export interface EngineerRecord {
+  /** Ключ записи: у инженера движка «участок:номер», см. `engineerKey`. */
   id: string;
+  /** Табельный номер, как его показывают: E00, E001. */
+  code: string;
   name: string;
   skills: string[];
   /** В скольких прогонах инженер числится в штате. */
@@ -554,6 +586,7 @@ function buildOrders(
         estMinutes: order.est_minutes,
         needsAccess: order.needs_access,
         engineerId: order.assigned_to,
+        engineerKey: order.assigned_to ? engineerKey(run.day, order.assigned_to) : null,
         engineerName: order.assigned_to ? nameById.get(order.assigned_to) ?? order.assigned_to : null,
         seq: stopByOrder.get(order.id)?.seq ?? null,
         unassignedWhy: order.assigned_to ? null : order.unassigned_reason?.text ?? null,
@@ -716,6 +749,7 @@ function buildRoutes(plans: { run: RunRef; plan: Plan }[]): RouteRecord[] {
         number,
         run,
         engineerId: route.engineer_id,
+        engineerKey: engineerKey(run.day, route.engineer_id),
         engineerName: nameById.get(route.engineer_id) ?? route.engineer_id,
         visits: route.totals.visits,
         travelMinutes: route.totals.travel_minutes,
@@ -747,11 +781,17 @@ type EngineerEntry = EngineerRecord & { skillSet: Set<string> };
 /** Заводит запись инженера, если её ещё нет, и возвращает её. Заводится она
     одинаково и для штата, и для расчёта: разница только в том, что у первого
     все счётчики так и остаются нулями. */
-function blank(map: Map<string, EngineerEntry>, engineer: Engineer): EngineerEntry {
-  const known = map.get(engineer.id);
+function blank(
+  map: Map<string, EngineerEntry>,
+  engineer: Engineer,
+  day: string | undefined
+): EngineerEntry {
+  const key = engineerKey(day, engineer.id);
+  const known = map.get(key);
   if (known) return known;
   const entry: EngineerEntry = {
-    id: engineer.id,
+    id: key,
+    code: engineer.id,
     name: engineer.name,
     skills: [],
     runs: 0,
@@ -774,7 +814,7 @@ function blank(map: Map<string, EngineerEntry>, engineer: Engineer): EngineerEnt
     byRun: [],
     skillSet: new Set<string>(engineer.skills)
   };
-  map.set(engineer.id, entry);
+  map.set(key, entry);
   return entry;
 }
 
@@ -868,19 +908,23 @@ function buildServices(orders: Order[], plans: { plan: Plan }[]): ServiceRecord[
 
 function buildEngineers(
   plans: { run: RunRef; plan: Plan }[],
-  roster: Engineer[]
+  roster: RosterEngineer[]
 ): EngineerRecord[] {
   const map = new Map<string, EngineerEntry>();
 
   /* Сначала весь штат, потом выработка. Порядок здесь смысловой: человек
      числится в компании независимо от того, попал ли он хоть в один расчёт,
      и база обязана показать его с нулями, а не спрятать. */
-  for (const engineer of roster) notePost(blank(map, engineer), engineer);
+  for (const engineer of roster) notePost(blank(map, engineer, engineer.day), engineer);
 
   for (const { run, plan } of plans) {
     const routeByEngineer = new Map(plan.routes.map((r) => [r.engineer_id, r]));
-    for (const engineer of plan.engineers) {
-      const entry = blank(map, engineer);
+    /* У инженера движка участка в плане нет — он один на весь день; без
+       него у человека в базе не было бы ни участка, ни офиса выезда. */
+    const dayTitle = run.day ? engineDayTitle(run.day) : null;
+    for (const planned of plan.engineers) {
+      const engineer = planned.zone || !dayTitle ? planned : { ...planned, zone: dayTitle };
+      const entry = blank(map, engineer, run.day);
       notePost(entry, engineer);
       entry.runs += 1;
       /* Смена берётся из последнего прогона: справочник показывает то,
@@ -926,6 +970,7 @@ function buildEngineers(
   return [...map.values()]
     .map((entry) => ({
       id: entry.id,
+      code: entry.code,
       name: entry.name,
       skills: [...entry.skillSet],
       runs: entry.runs,
@@ -1129,7 +1174,10 @@ export async function loadRegistry(): Promise<Registry> {
       code: entry.code,
       date: entry.date,
       created: entry.created,
-      note: entry.note
+      note: entry.note,
+      /* День движка — только у его расчётов: у расчёта браузера ключ
+         инженера остаётся его номером. */
+      day: entry.source === null ? entry.day : undefined
     } as RunRef,
     plan: data.get(entry.id)!.plan,
     simulation: data.get(entry.id)!.simulation

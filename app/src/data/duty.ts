@@ -35,9 +35,15 @@ const STORE_KEY = 'polet.duty.v1';
 /** День участка (`восток|2026-08-17`) → расчёт, который на нём работает. */
 export type DutyMap = Record<string, RunId>;
 
-/** Источник расчёта — участок или загруженный набор. Расчёт движка
-    источника не имеет, и его дни живут под своим именем. */
-const sourceOf = (id: RunId): string => RUNS.find((run) => run.id === id)?.source ?? 'engine';
+/** Источник расчёта — участок или загруженный набор. У расчёта движка
+    источника нет, и участок у него — день движка (`run.day`: «восток»,
+    «югоцентр»). Прежде все расчёты движка сходились под одним именем
+    `engine`: при одной дате у трёх зон взятый в работу Восток молча снимал
+    с работы Югоцентр — та самая беда, от которой ключ по участку и заведён. */
+const sourceOf = (id: RunId): string => {
+  const run = RUNS.find((one) => one.id === id);
+  return run?.source ?? (run?.day ? `engine:${run.day}` : 'engine');
+};
 
 /** Ключ дня участка для расчёта. */
 const dayKey = (id: RunId, date: string) => `${sourceOf(id)}|${date}`;
@@ -57,6 +63,15 @@ function read(): DutyMap {
     const clean: DutyMap = {};
     for (const [key, id] of Object.entries(saved)) {
       if (typeof key !== 'string' || typeof id !== 'string' || !key || !id) continue;
+      /* Запись под общим `engine|дата` — от версии, где расчёты движка не
+         различались по участку. Переводим на участок по самому расчёту, если
+         он уже в истории; архив движка приезжает позже чтения хранилища, и
+         тогда запись просто лежит без дела — «в работе» придётся нажать
+         заново, чужой участок она уже не снимет. */
+      if (key.startsWith('engine|') && RUNS.some((run) => run.id === id)) {
+        clean[dayKey(id, key.slice('engine|'.length))] = id;
+        continue;
+      }
       if (key.includes('|')) {
         clean[key] = id;
         continue;
