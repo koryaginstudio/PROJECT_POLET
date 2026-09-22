@@ -21,6 +21,8 @@ import type { PeriodKey, WidgetDef } from '../../app/DbWidgets.tsx';
 import { service } from '../../data/service.ts';
 import { DbHead } from './DbHead.tsx';
 import { DbList } from './DbList.tsx';
+import { DbBar, ChipKey, DbEmpty } from './DbBar.tsx';
+import type { DbChip } from './DbBar.tsx';
 
 interface Props {
   registry: Registry;
@@ -258,10 +260,22 @@ export function DbServicesScreen({ registry, mode, onOpenRun }: Props) {
     /* eslint-disable-next-line react-hooks/exhaustive-deps */
   }, [all, desc, filter, picks, query, sort, period, sliceBy]);
 
+  /* Повторный щелчок по выбранному правилу переворачивает порядок — так же,
+     как в остальных пяти базах. Раньше он молча возвращался, и один и тот же
+     жест давал разный итог в соседних разделах. */
   const pickSort = (value: Sort) => {
-    if (value === sort) return;
+    if (value === sort) {
+      setDesc((prev) => !prev);
+      return;
+    }
     setSort(value);
     setDesc(SORTS.find((item) => item.value === value)?.desc ?? true);
+  };
+
+  const reset = () => {
+    setFilter('all');
+    setPicks([]);
+    setQuery('');
   };
 
   /* Группировка по навыку: она и есть ответ на вопрос, как услуги ложатся на
@@ -566,6 +580,54 @@ export function DbServicesScreen({ registry, mode, onOpenRun }: Props) {
     </div>
   );
 
+  /* Активные отборы — чипами наверху. Каждый снимается своим крестиком. */
+  const chips: DbChip[] = [];
+  if (filter !== 'all') {
+    chips.push({
+      key: 'filter',
+      label: FILTERS.find((item) => item.value === filter)?.label ?? filter,
+      onRemove: () => setFilter('all')
+    });
+  }
+  for (const key of picks) {
+    chips.push({
+      key: 'skill-' + key,
+      label: (
+        <>
+          <ChipKey>Навык</ChipKey>
+          {skillName(key)}
+        </>
+      ),
+      onRemove: () => setPicks((was) => was.filter((one) => one !== key))
+    });
+  }
+
+  /* Итог выборки — над списком: это ответ на «что дал отбор», и внизу, за
+     прокруткой, его никто не читает. */
+  const summary = (
+    <>
+      <b>{plural(rows.length, 'услуга', 'услуги', 'услуг')}</b> в выборке
+      {rows.length !== all.length && ` из ${all.length}`}
+      {rows.length > 0 && (
+        <>
+          {` · ${plural(
+            rows.reduce((sum, row) => sum + sliceOf(row).orders, 0),
+            'заявка',
+            'заявки',
+            'заявок'
+          )} по ним`}
+          {` · ${dec(
+            rows.reduce((sum, row) => sum + sliceOf(row).orders * row.minutesTo, 0) / 60
+          )} ч работы`}
+          {` · разложено ${percent(
+            rows.reduce((sum, row) => sum + sliceOf(row).assigned, 0) /
+              Math.max(rows.reduce((sum, row) => sum + sliceOf(row).planned, 0), 1)
+          )}`}
+        </>
+      )}
+    </>
+  );
+
   return (
     <div className="dash enter">
       {/* Полоса управления выборкой стоит в шапке базы, под её заголовком, и
@@ -573,22 +635,64 @@ export function DbServicesScreen({ registry, mode, onOpenRun }: Props) {
           заявок и инженеров. Наверху — поиск и плотность: это не отбор, а то,
           с какой стороны на список смотрят. */}
       <DbHead title="База услуг" board={board.node}>
-        <div className="filters filters--runs">
-          <div className="filters__top">
-            <label className="dbsearch">
-              <Icon name="search" size={14} />
-              <input
-                className="dbsearch__input"
-                value={query}
-                placeholder="Название услуги, код вида работ, навык или оборудование"
-                onChange={(event) => setQuery(event.currentTarget.value)}
+        <DbBar
+          query={query}
+          onQuery={setQuery}
+          placeholder="Название услуги, код вида работ, навык или оборудование"
+          chips={chips}
+          onReset={reset}
+          sort={
+            <SortMenu
+              rules={SORTS}
+              value={sort}
+              desc={desc}
+              onPick={(value: string) => pickSort(value as Sort)}
+              onOrder={setDesc}
+            />
+          }
+          summary={summary}
+        >
+          <div className="filters filters--runs">
+            <div className="filters__group">
+              <span className="filters__label">Отбор</span>
+              <SegmentedControl
+                size="sm"
+                items={FILTERS}
+                value={filter}
+                onChange={(value: string) => setFilter(value as Filter)}
               />
-              {query && (
-                <button type="button" className="dbsearch__clear" onClick={() => setQuery('')}>
-                  <Icon name="x" size={12} />
-                </button>
-              )}
-            </label>
+            </div>
+
+            {/* Навыков три, и отметки складываются по «или»: навык у услуги
+                один, и «то и это» через «и» дало бы пустой список. Отбор
+                здесь тот же, что подсвечен чипом в карточке. */}
+            <div className="filters__group filters__group--wide">
+              <span className="filters__label">Навык</span>
+              <span className="filters__types">
+                {skills.map((key) => (
+                  <button
+                    key={key}
+                    type="button"
+                    className={'chip' + (picks.includes(key) ? ' chip--on' : '')}
+                    onClick={() =>
+                      setPicks((was) =>
+                        was.includes(key) ? was.filter((one) => one !== key) : [...was, key]
+                      )
+                    }
+                    aria-pressed={picks.includes(key)}
+                    title={
+                      picks.includes(key)
+                        ? `Снять «${skillName(key)}»`
+                        : `Оставить услуги навыка «${skillName(key)}»`
+                    }
+                  >
+                    <Icon name={skillIcon(key)} size={12} />
+                    {skillName(key)}
+                    {picks.includes(key) && <Icon name="x" size={12} />}
+                  </button>
+                ))}
+              </span>
+            </div>
 
             {/* Плотность строки — только у карточек: в таблице и в списке
                 строка одна и в строке она одна. */}
@@ -599,68 +703,17 @@ export function DbServicesScreen({ registry, mode, onOpenRun }: Props) {
               </div>
             )}
           </div>
-
-          <div className="filters__group">
-            <span className="filters__label">Отбор</span>
-            <SegmentedControl
-              size="sm"
-              items={FILTERS}
-              value={filter}
-              onChange={(value: string) => setFilter(value as Filter)}
-            />
-          </div>
-
-          {/* Навыков три, и отметки складываются по «или»: навык у услуги
-              один, и «то и это» через «и» дало бы пустой список. Отбор здесь
-              тот же, что подсвечен чипом в карточке. */}
-          <div className="filters__group filters__group--wide">
-            <span className="filters__label">Навык</span>
-            <span className="filters__types">
-              {skills.map((key) => (
-                <button
-                  key={key}
-                  type="button"
-                  className={'chip' + (picks.includes(key) ? ' chip--on' : '')}
-                  onClick={() =>
-                    setPicks((was) =>
-                      was.includes(key) ? was.filter((one) => one !== key) : [...was, key]
-                    )
-                  }
-                  aria-pressed={picks.includes(key)}
-                  title={
-                    picks.includes(key)
-                      ? `Снять «${skillName(key)}»`
-                      : `Оставить услуги навыка «${skillName(key)}»`
-                  }
-                >
-                  <Icon name={skillIcon(key)} size={12} />
-                  {skillName(key)}
-                  {picks.includes(key) && <Icon name="x" size={12} />}
-                </button>
-              ))}
-            </span>
-          </div>
-
-          <div className="filters__group" role="group" aria-label="Сортировка">
-            <span className="filters__label">Сортировка</span>
-            <SortMenu
-              rules={SORTS}
-              value={sort}
-              desc={desc}
-              onPick={(value: string) => pickSort(value as Sort)}
-              onOrder={setDesc}
-            />
-          </div>
-        </div>
+        </DbBar>
       </DbHead>
 
       {rows.length === 0 ? (
-        <section className="panel">
-          <p className="clients__lede">
-            Под этот отбор не подошла ни одна услуга. Снимите отбор, сбросьте навык или очистите
-            поиск.
-          </p>
-        </section>
+        <DbEmpty
+          miss="Под этот отбор не подошла ни одна услуга."
+          blank="Услуг в справочнике пока нет: они собираются из видов работ, пришедших с заявками."
+          query={query.trim() !== ''}
+          filtered={filter !== 'all' || picks.length > 0}
+          onReset={reset}
+        />
       ) : mode === 'skills' ? (
         groups.map(([key, list]) => (
           <section className="panel" key={key}>
@@ -687,6 +740,7 @@ export function DbServicesScreen({ registry, mode, onOpenRun }: Props) {
            собирает услуги в группы, здесь он стоит у каждой строки, и
            восемнадцать услуг читаются подряд, в выбранном порядке. */
         <DbList
+          lead="Услуга"
           rows={rows.map((row) => {
             const slice = sliceOf(row);
             return {
@@ -828,25 +882,6 @@ export function DbServicesScreen({ registry, mode, onOpenRun }: Props) {
         cards(rows)
       )}
 
-      {rows.length > 0 && (
-        <p className="filters__note filters__note--under">
-          {plural(rows.length, 'услуга', 'услуги', 'услуг')} в выборке
-          {rows.length !== all.length && ` из ${all.length}`}
-          {` · ${plural(
-            rows.reduce((sum, row) => sum + sliceOf(row).orders, 0),
-            'заявка',
-            'заявки',
-            'заявок'
-          )} по ним`}
-          {` · ${dec(
-            rows.reduce((sum, row) => sum + sliceOf(row).orders * row.minutesTo, 0) / 60
-          )} ч работы`}
-          {` · разложено ${percent(
-            rows.reduce((sum, row) => sum + sliceOf(row).assigned, 0) /
-              Math.max(rows.reduce((sum, row) => sum + sliceOf(row).planned, 0), 1)
-          )}`}
-        </p>
-      )}
 
       <ServiceProfile
         service={opened}

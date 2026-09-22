@@ -1,16 +1,19 @@
 import { useMemo, useState } from 'react';
 import { Icon } from '../../ds/components/core/Icon.jsx';
 import { SegmentedControl } from '../../ds/components/forms/SegmentedControl.jsx';
-import type { Registry, RouteRecord } from '../../data/registry.ts';
+import type { EngineerRecord, OrderRecord, Registry, RouteRecord } from '../../data/registry.ts';
 import type { RunId } from '../../data/load.ts';
 import { dec, hhmm, hoursText, plural, visits as pluralVisits } from '../../data/derive.ts';
 import { RouteCard } from '../../app/RouteCard.tsx';
 import { SortMenu } from '../../app/SortMenu.tsx';
 import type { SortRule } from '../../app/SortMenu.tsx';
+import { OrderProfile } from '../../app/OrderProfile.tsx';
 import { useWidgetBoard, WidgetPeriod, withinPeriod } from '../../app/DbWidgets.tsx';
 import type { PeriodKey, WidgetDef } from '../../app/DbWidgets.tsx';
-import { service } from '../../data/service.ts';
-import { DbHead } from './DbHead.tsx';
+import { DbHead, DENSITY, occupancyTiers, usePerRow, useShares } from './DbHead.tsx';
+import { DbBar, ChipKey, DbEmpty, DbMore, usePaging } from './DbBar.tsx';
+import type { DbChip } from './DbBar.tsx';
+import { DbCrewProfile } from './DbCrew.tsx';
 import { DbList } from './DbList.tsx';
 
 interface Props {
@@ -19,6 +22,15 @@ interface Props {
   /** Открыть маршрут на большой карте его расчёта и закрепить там. Своего
       экрана у маршрута нет, и место, где его смотрят целиком, — карта дня. */
   onOpenRoute: (runId: RunId, engineerId: string) => void;
+  /** Дороги из карточки заявки, открытой с карточки маршрута: в расчёт и на
+      карту. Пока их не дали, обе ведут на карту расчёта с закреплённым
+      маршрутом — туда же, куда ведёт сама карточка. */
+  onOpenRun?: (runId: RunId) => void;
+  onOpenMap?: (runId: RunId) => void;
+  /** «Отследить» из профиля инженера, открытого с карточки маршрута. */
+  onTrack?: (id: string) => void;
+  /** Данные штата поправили в профиле — справочник надо собрать заново. */
+  onChanged?: () => void;
 }
 
 /* Сколько карточек отдаём в разметку за раз. Маршрутов в архиве из двух
@@ -27,28 +39,17 @@ interface Props {
    собирает целиком и потом на них же спотыкается при прокрутке. */
 const PAGE = 60;
 
-/* Плотность ряда — та же настройка, что в базах расчётов и инженеров:
-   «разглядеть» или «охватить». По две и по четыре карточка живёт целиком: с
-   картой, цифрами и номерами заявок. По шесть она сжимается до строки справочника —
-   чей маршрут, сколько визитов и сколько наездили; карту в такой ширине всё
-   равно не разобрать, и её там нет. */
-const DENSITY = [
-  { value: '2', label: '2' },
-  { value: '4', label: '4' },
-  { value: '6', label: '6' }
-];
-
 const percent = (share: number) => `${Math.round(share * 100)}%`;
 
 /* По чему упорядочены маршруты. Первым — номер: он сквозной на всю базу, и
    по нему маршрут находят, когда пришли с ним на руках.
 
    Правил восемь, и рядом переключателей они заняли бы две строки полосы,
-   хотя действует всегда одно. Поэтому здесь тот же список под кнопкой, что
-   и в базе заявок: на полосе стоит то, что и вправду действует, — правило и
-   сторона, — а выбор раскрывается по нажатию. Стороны названы по-своему у
-   каждого правила: «сначала с переработкой» диспетчер понимает сразу, а
-   «по убыванию» ему пришлось бы переводить на маршруты. */
+   хотя действует всегда одно. Поэтому здесь список под кнопкой, как во всех
+   базах: на полосе стоит то, что и вправду действует, — правило и сторона,
+   — а выбор раскрывается по нажатию. Стороны названы по-своему у каждого
+   правила: «сначала с переработкой» диспетчер понимает сразу, а «по
+   убыванию» ему пришлось бы переводить на маршруты. */
 type Sort = 'number' | 'visits' | 'occupancy' | 'travel' | 'idle' | 'overtime' | 'risky' | 'run';
 
 const SORTS: (SortRule & { value: Sort; desc: boolean })[] = [
@@ -120,15 +121,16 @@ const SORTS: (SortRule & { value: Sort; desc: boolean })[] = [
 
 /* Отбор по тому, как маршрут сложился: не вылез ли он за смену, успевает ли
    инженер и не гоняем ли мы человека вполпустого. Это те вопросы, ради
-   которых в базу маршрутов и заглядывают. */
+   которых в базу маршрутов и заглядывают. Подписи порогов считаются от
+   настроек сервиса, а не написаны руками. */
 type Filter = 'all' | 'overtime' | 'risky' | 'busy' | 'loose' | 'idle';
 
-const FILTERS: { value: Filter; label: string }[] = [
+const filtersFor = (busy: number, loose: number): { value: Filter; label: string }[] => [
   { value: 'all', label: 'Все' },
   { value: 'overtime', label: 'С переработкой' },
   { value: 'risky', label: 'С риском' },
-  { value: 'busy', label: 'Занятость выше 75 %' },
-  { value: 'loose', label: 'Занятость ниже 60 %' },
+  { value: 'busy', label: `Занятость выше ${Math.round(busy * 100)} %` },
+  { value: 'loose', label: `Занятость ниже ${Math.round(loose * 100)} %` },
   { value: 'idle', label: 'С простоем' }
 ];
 
@@ -136,19 +138,40 @@ const FILTERS: { value: Filter; label: string }[] = [
    отвечает на «как мы вообще ездим», поэтому запись всегда подписана номером
    расчёта — без него маршруты разных прогонов слиплись бы в один.
 
-   Устроена как базы расчётов и инженеров — доска виджетов со сроком сверху,
-   полоса отбора, карточки или таблица, — и это осознанное повторение:
-   справочники об одном хозяйстве, и переучивать диспетчера на четвёртом
+   Устроена как остальные базы — доска виджетов со сроком сверху, полоса
+   отбора, список, карточки или таблица, — и это осознанное повторение:
+   справочники об одном хозяйстве, и переучивать диспетчера на каждом
    незачем. */
-export function DbRoutesScreen({ registry, mode, onOpenRoute }: Props) {
-  const [perRow, setPerRow] = useState(() => service().perRow as string);
+export function DbRoutesScreen({
+  registry,
+  mode,
+  onOpenRoute,
+  onOpenRun,
+  onOpenMap,
+  onTrack,
+  onChanged
+}: Props) {
+  const [perRow, setPerRow] = usePerRow();
   const [sort, setSort] = useState<Sort>('number');
   const [desc, setDesc] = useState(false);
   const [filter, setFilter] = useState<Filter>('all');
   const [run, setRun] = useState<string | null>(null);
   const [query, setQuery] = useState('');
-  const [limit, setLimit] = useState(PAGE);
+  const paging = usePaging(PAGE);
   const dense = perRow === '6';
+  /* Пороги перегруза и недогруза — из настроек сервиса, одни на все базы. */
+  const { busy, loose } = useShares();
+  const FILTERS = filtersFor(busy, loose);
+
+  /* Что открыто поверх базы с карточки маршрута: профиль инженера — по его
+     имени, заявка — по чипу с её номером. Окно одно на всю базу: двух сразу
+     не читают. Заявка помнит, с какого маршрута её открыли: дороги «в
+     расчёт» и «на карту» без своих переходов ведут на карту этого
+     маршрута. */
+  const [opened, setOpened] = useState<EngineerRecord | null>(null);
+  const [openedOrder, setOpenedOrder] = useState<{ order: OrderRecord; engineerId: string } | null>(
+    null
+  );
 
   const all = registry.routes;
 
@@ -173,8 +196,8 @@ export function DbRoutesScreen({ registry, mode, onOpenRoute }: Props) {
       if (run && route.run.id !== run) return false;
       if (filter === 'overtime' && route.overtimeMinutes === 0) return false;
       if (filter === 'risky' && route.risky === 0) return false;
-      if (filter === 'busy' && route.occupancy < 0.75) return false;
-      if (filter === 'loose' && route.occupancy >= 0.6) return false;
+      if (filter === 'busy' && route.occupancy < busy) return false;
+      if (filter === 'loose' && route.occupancy >= loose) return false;
       if (filter === 'idle' && route.idleMinutes === 0) return false;
       if (!needle) return true;
       /* Ищем и по району словом, и по номеру заявки: район набирают чаще,
@@ -223,22 +246,37 @@ export function DbRoutesScreen({ registry, mode, onOpenRoute }: Props) {
       const diff = rank(a) - rank(b);
       return side * (diff !== 0 ? diff : tie(a, b));
     });
-  }, [all, desc, filter, query, run, sort]);
+  }, [all, busy, desc, filter, loose, query, run, sort]);
 
-  /* Смена правила заодно ставит сторону, с которой его читают чаще: у номера
-     это начало истории, у переработки — те, кто вылез за смену. */
-  const pickSort = (value: Sort) => {
-    if (value === sort) return;
-    setSort(value);
-    setDesc(SORTS.find((item) => item.value === value)?.desc ?? false);
-    setLimit(PAGE);
-  };
-
-  /* Сменили отбор или порядок — счётчик показанного начинается заново: иначе
-     после сужения выборки кнопка обещала бы карточки, которых уже нет. */
+  /* Сменили отбор или порядок — счётчик показанного начинается заново. */
   const narrow = <T,>(set: (value: T) => void) => (value: T) => {
     set(value);
-    setLimit(PAGE);
+    paging.reset();
+  };
+
+  /* Снятие чипа значения не выбирает — оно возвращает отбор к «всем», и
+     потому берёт действие целиком, а не значение. Счётчик показанного при
+     этом начинается заново, как и при обычной смене отбора. */
+  const clear = (run: () => void) => () => {
+    run();
+    paging.reset();
+  };
+
+  /* Смена правила заодно ставит сторону, с которой его читают чаще: у номера
+     это начало истории, у переработки — те, кто вылез за смену. Повторное
+     нажатие на выбранное правило переворачивает сторону — это делает само
+     меню. */
+  const pickSort = (value: Sort) => {
+    setSort(value);
+    setDesc(SORTS.find((item) => item.value === value)?.desc ?? false);
+    paging.reset();
+  };
+
+  const reset = () => {
+    setFilter('all');
+    setRun(null);
+    setQuery('');
+    paging.reset();
   };
 
   /* Срок, за который считает доска. Отдельно от отбора списка: список
@@ -279,7 +317,7 @@ export function DbRoutesScreen({ registry, mode, onOpenRoute }: Props) {
     /* Время в маршруте — одно целое на всю доску: работа на объектах, дорога
        между ними и ожидание открытия окна. Две плитки говорят «от времени в
        маршруте», и считать это от разных целых нельзя — доли перестали бы
-       складываться. */
+       складываться. Той же базой считает и база инженеров. */
     const inRoute = Math.max(work + travel + idle, 1);
 
     const perRun = (value: number) => value / Math.max(runs.length, 1);
@@ -328,12 +366,8 @@ export function DbRoutesScreen({ registry, mode, onOpenRoute }: Props) {
 
     /* Занятость раскладываем на три ступени: «сколько в среднем» отвечает на
        вопрос наполовину — маршрут под завязку и маршрут вполпустого дают ту
-       же среднюю, что два ровных. */
-    const tiers = [
-      { key: 'tight', label: 'Выше 75 %', tone: 'bad' as const, has: (o: number) => o >= 0.75 },
-      { key: 'even', label: '60–75 %', tone: 'ok' as const, has: (o: number) => o >= 0.6 && o < 0.75 },
-      { key: 'loose', label: 'Ниже 60 %', tone: 'warn' as const, has: (o: number) => o < 0.6 }
-    ];
+       же среднюю, что два ровных. Границы ступеней — пороги из настроек. */
+    const tiers = occupancyTiers(busy, loose);
 
     return [
       {
@@ -374,11 +408,12 @@ export function DbRoutesScreen({ registry, mode, onOpenRoute }: Props) {
         note: 'Сколько наездили и какая доля смены ушла на переезды',
         shape: 'number',
         data: {
-          value: dec(travel / 60),
-          unit: 'ч',
+          /* Часы — через `hoursText`: формат часов выбран в настройках
+             сервиса, и плитка обязана его слушать. */
+          value: hoursText(travel),
           caption: 'по всем маршрутам',
           facts: [
-            `${dec(travel / 60 / Math.max(routes.length, 1))} ч на маршрут`,
+            `${hoursText(travel / Math.max(routes.length, 1))} на маршрут`,
             `${percent(travel / inRoute)} от времени в маршруте`
           ],
           /* Время в маршруте — это все три его части, а не работа с дорогой:
@@ -401,10 +436,9 @@ export function DbRoutesScreen({ registry, mode, onOpenRoute }: Props) {
         note: 'Сколько часов инженеры провели на объектах',
         shape: 'number',
         data: {
-          value: dec(work / 60),
-          unit: 'ч',
+          value: hoursText(work),
           caption: 'на объектах',
-          facts: [`${dec(work / 60 / Math.max(routes.length, 1))} ч на маршрут`],
+          facts: [`${hoursText(work / Math.max(routes.length, 1))} на маршрут`],
           legend: 'часов работы'
         }
       },
@@ -417,7 +451,7 @@ export function DbRoutesScreen({ registry, mode, onOpenRoute }: Props) {
           value: String(Math.round(occupancy * 100)),
           unit: '%',
           caption: 'рабочего времени в маршруте',
-          tone: occupancy >= 0.75 ? 'bad' : 'neutral',
+          tone: occupancy >= busy ? 'bad' : 'neutral',
           facts: [`по ${routes.length} маршрутам`],
           whole: true,
           parts: tiers.map((tier) => ({
@@ -435,8 +469,7 @@ export function DbRoutesScreen({ registry, mode, onOpenRoute }: Props) {
         note: 'Сколько наработали за границей смены и на каких маршрутах',
         shape: 'number',
         data: {
-          value: dec(overtime / 60),
-          unit: 'ч',
+          value: hoursText(overtime),
           caption: 'сверх графика',
           tone: overtime > 0 ? 'bad' : 'ok',
           facts: [`${plural(overtimeRoutes.length, 'маршрут', 'маршрута', 'маршрутов')} с переработкой`],
@@ -447,9 +480,9 @@ export function DbRoutesScreen({ registry, mode, onOpenRoute }: Props) {
             text: `${route.overtimeMinutes} мин`,
             tone: 'bad' as const
           })),
-          /* Ряд — в тех же часах, что и итог плитки: наведение на столбец
-             подставляет его величину на место итога, вместе с единицей «ч»,
-             и минуты вместо часов читались бы как рост в шестьдесят раз. */
+          /* Ряд — в часах, как и итог плитки: наведение на столбец
+             подставляет его величину на место итога, и минуты вместо часов
+             читались бы как рост в шестьдесят раз. */
           series: series((cell) => Math.round(cell.overtime / 6) / 10),
           legend: overtimeRoutes.length > 0 ? 'минут сверх смены' : 'переработки нет'
         }
@@ -460,8 +493,7 @@ export function DbRoutesScreen({ registry, mode, onOpenRoute }: Props) {
         note: 'Сколько прождали открытия окна: приехали, а принимать ещё некому',
         shape: 'number',
         data: {
-          value: dec(idle / 60),
-          unit: 'ч',
+          value: hoursText(idle),
           caption: 'ожидания в маршрутах',
           tone: idle > 0 ? 'warn' : 'ok',
           facts: [`${percent(idle / inRoute)} от времени в маршруте`],
@@ -559,7 +591,7 @@ export function DbRoutesScreen({ registry, mode, onOpenRoute }: Props) {
         }
       }
     ];
-  }, [scope, registry]);
+  }, [scope, registry, busy, loose]);
 
   const board = useWidgetBoard({
     storeKey: 'db-routes',
@@ -570,14 +602,15 @@ export function DbRoutesScreen({ registry, mode, onOpenRoute }: Props) {
     )
   });
 
-  /* Разбивка по расчётам для вкладки «По расчётам»: там расчёт — заголовок
+  /* Разбивка по расчётам для вида «По расчётам»: там расчёт — заголовок
      секции, и сводка под ним отвечает на «каким вышел этот день целиком».
 
-     Раскладывается та же выборка, что и в двух других видах, а не весь
-     реестр: полоса отбора стоит в шапке базы и над этим видом тоже, и
-     список, который её не слушается, читался бы как поломка. Расчёт, из
-     которого под отбор не подошло ничего, секцией не рисуется — пустой
-     заголовок с нулём обещал бы, что там что-то есть. */
+     Раскладывается вся выборка, а не показанная её часть: итоги в заголовке
+     секции — это итоги расчёта под этим отбором, и считать их по первой
+     странице значило бы, что они растут от каждого «Показать ещё». Режется
+     только отрисовка — см. `byRunShown`; правило то же, что и в базе
+     заявок. Расчёт, из которого под отбор не подошло ничего, секцией не
+     рисуется — пустой заголовок с нулём обещал бы, что там что-то есть. */
   const byRun = useMemo(() => {
     const picked = new Map<string, RouteRecord[]>();
     for (const route of rows) {
@@ -602,6 +635,26 @@ export function DbRoutesScreen({ registry, mode, onOpenRoute }: Props) {
         };
       });
   }, [registry, rows]);
+
+  /* Что из разбивки рисуем сейчас: секции идут подряд, первая страница —
+     первые PAGE маршрутов по всем секциям вместе. */
+  const byRunShown = useMemo(() => {
+    let left = paging.limit;
+    const out: (typeof byRun[number] & { shown: RouteRecord[] })[] = [];
+    for (const entry of byRun) {
+      if (left <= 0) break;
+      const list = entry.routes.slice(0, left);
+      left -= list.length;
+      out.push({ ...entry, shown: list });
+    }
+    return out;
+  }, [byRun, paging.limit]);
+
+  /* Заявка по номеру — для перехода с чипа на карточке маршрута. */
+  const orderOf = (route: RouteRecord, orderId: string) =>
+    registry.orders.find((one) => one.id === orderId && one.run.id === route.run.id) ?? null;
+
+  const engineerOf = (id: string) => registry.engineers.find((one) => one.id === id) ?? null;
 
   /* В разбивке по расчётам номер расчёта уже стоит в заголовке секции, и
      колонка с ним повторяла бы его в каждой строке. Собственный номер
@@ -630,9 +683,17 @@ export function DbRoutesScreen({ registry, mode, onOpenRoute }: Props) {
             <tr
               key={route.key}
               className="tbl__row tbl__row--open"
+              tabIndex={0}
+              role="button"
               onClick={(event) => {
                 if ((event.target as HTMLElement).closest('button, textarea')) return;
                 onOpenRoute(route.run.id, route.engineerId);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  onOpenRoute(route.run.id, route.engineerId);
+                }
               }}
             >
               <td>
@@ -656,7 +717,7 @@ export function DbRoutesScreen({ registry, mode, onOpenRoute }: Props) {
               <td className="tbl__num">{hoursText(route.workMinutes)}</td>
               <td className="tbl__num">{hoursText(route.idleMinutes)}</td>
               <td>
-                <span className={'pill pill--' + (route.occupancy < 0.6 ? 'idle' : 'success')}>
+                <span className={'pill pill--' + (route.occupancy < loose ? 'idle' : 'success')}>
                   {percent(route.occupancy)}
                 </span>
               </td>
@@ -680,89 +741,55 @@ export function DbRoutesScreen({ registry, mode, onOpenRoute }: Props) {
     </div>
   );
 
-  const shown = rows.slice(0, limit);
+  const shown = rows.slice(0, paging.limit);
   const hidden = rows.length - shown.length;
+
+  /* Активные отборы — чипами наверху. */
+  const chips: DbChip[] = [];
+  if (filter !== 'all') {
+    chips.push({
+      key: 'filter',
+      label: FILTERS.find((item) => item.value === filter)?.label ?? filter,
+      onRemove: clear(() => setFilter('all'))
+    });
+  }
+  if (run) {
+    chips.push({
+      key: 'run',
+      label: (
+        <>
+          <ChipKey>Расчёт</ChipKey>
+          {registry.runs.find((ref) => ref.id === run)?.code ?? run}
+        </>
+      ),
+      onRemove: clear(() => setRun(null))
+    });
+  }
+
+  /* Итог выборки — над списком, во всех видах: и в разбивке по расчётам
+     тоже, там он отвечает на «сколько всего под этим отбором», чего
+     заголовки секций по одному не скажут. */
+  const summary = (
+    <>
+      <b>{plural(rows.length, 'маршрут', 'маршрута', 'маршрутов')}</b> в выборке
+      {rows.length !== all.length && ` из ${all.length}`}
+      {rows.length > 0 &&
+        ` · ${pluralVisits(rows.reduce((sum, one) => sum + one.visits, 0))} · ${hoursText(
+          rows.reduce((sum, one) => sum + one.travelMinutes, 0)
+        )} в дороге`}
+    </>
+  );
 
   return (
     <div className="dash enter">
-      {/* Полоса управления выборкой стоит в шапке базы, под её заголовком, и
-          разложена столбиком «подпись — орган» — так же, как в базах расчётов,
-          заявок и инженеров. Порядок по смыслу: сперва всё, что сужает выборку,
-          потом то, как её показать. Наверху — поиск и плотность: это не отбор,
-          а то, с какой стороны на список смотрят. */}
       <DbHead title="База маршрутов" board={board.node}>
-        <div className="filters filters--runs">
-          <div className="filters__top">
-            <label className="dbsearch">
-              <Icon name="search" size={14} />
-              <input
-                className="dbsearch__input"
-                value={query}
-                placeholder="Номер маршрута или заявки, инженер, табельный, расчёт, район"
-                onChange={(event) => {
-                  setQuery(event.currentTarget.value);
-                  setLimit(PAGE);
-                }}
-              />
-              {query && (
-                <button
-                  type="button"
-                  className="dbsearch__clear"
-                  onClick={() => {
-                    setQuery('');
-                    setLimit(PAGE);
-                  }}
-                >
-                  <Icon name="x" size={12} />
-                </button>
-              )}
-            </label>
-
-            {/* Плотность строки — только у карточек: в таблице строка одна и в
-                строке она одна. */}
-            {mode === 'cards' && (
-              <div className="filters__group filters__group--tight">
-                <span className="filters__label">Карточек в строке</span>
-                <SegmentedControl size="sm" items={DENSITY} value={perRow} onChange={setPerRow} />
-              </div>
-            )}
-          </div>
-
-          <div className="filters__group">
-            <span className="filters__label">Отбор</span>
-            <SegmentedControl
-              size="sm"
-              items={FILTERS}
-              value={filter}
-              onChange={narrow((value: string) => setFilter(value as Filter))}
-            />
-          </div>
-
-          {registry.runs.length > 1 && (
-            <div className="filters__group filters__group--wide">
-              <span className="filters__label">Расчёт</span>
-              <span className="filters__types">
-                {registry.runs.map((ref) => (
-                  <button
-                    key={ref.id}
-                    type="button"
-                    className={'chip' + (run === ref.id ? ' chip--on' : '')}
-                    onClick={() => {
-                      setRun(run === ref.id ? null : ref.id);
-                      setLimit(PAGE);
-                    }}
-                    aria-pressed={run === ref.id}
-                  >
-                    {ref.code}
-                    {run === ref.id && <Icon name="x" size={12} />}
-                  </button>
-                ))}
-              </span>
-            </div>
-          )}
-
-          <div className="filters__group" role="group" aria-label="Сортировка">
-            <span className="filters__label">Сортировка</span>
+        <DbBar
+          query={query}
+          onQuery={narrow(setQuery)}
+          placeholder="Номер маршрута или заявки, инженер, табельный, расчёт, район"
+          chips={chips}
+          onReset={reset}
+          sort={
             <SortMenu
               rules={SORTS}
               value={sort}
@@ -770,20 +797,63 @@ export function DbRoutesScreen({ registry, mode, onOpenRoute }: Props) {
               onPick={(value: string) => pickSort(value as Sort)}
               onOrder={narrow(setDesc)}
             />
+          }
+          summary={summary}
+        >
+          <div className="filters filters--runs">
+            <div className="filters__group">
+              <span className="filters__label">Отбор</span>
+              <SegmentedControl
+                size="sm"
+                items={FILTERS}
+                value={filter}
+                onChange={narrow((value: string) => setFilter(value as Filter))}
+              />
+            </div>
+
+            {registry.runs.length > 1 && (
+              <div className="filters__group filters__group--wide">
+                <span className="filters__label">Расчёт</span>
+                <span className="filters__types">
+                  {registry.runs.map((ref) => (
+                    <button
+                      key={ref.id}
+                      type="button"
+                      className={'chip' + (run === ref.id ? ' chip--on' : '')}
+                      onClick={narrow(() => setRun(run === ref.id ? null : ref.id))}
+                      aria-pressed={run === ref.id}
+                    >
+                      {ref.code}
+                      {run === ref.id && <Icon name="x" size={12} />}
+                    </button>
+                  ))}
+                </span>
+              </div>
+            )}
+
+            {/* Плотность ряда — только у карточек: в таблице и списке строка
+                одна и в строке она одна. */}
+            {mode === 'cards' && (
+              <div className="filters__group">
+                <span className="filters__label">Карточек в строке</span>
+                <SegmentedControl size="sm" items={DENSITY} value={perRow} onChange={setPerRow} />
+              </div>
+            )}
           </div>
-        </div>
+        </DbBar>
       </DbHead>
 
       {rows.length === 0 ? (
-        <section className="panel">
-          <p className="clients__lede">
-            Под этот отбор не подошёл ни один маршрут. Снимите отбор, сбросьте расчёт или очистите
-            поиск.
-          </p>
-        </section>
+        <DbEmpty
+          miss="Под этот отбор не подошёл ни один маршрут."
+          blank="Маршрутов в базе пока нет: их строит движок, и до первого сохранённого расчёта база пуста."
+          query={query.trim() !== ''}
+          filtered={filter !== 'all' || run !== null}
+          onReset={reset}
+        />
       ) : mode === 'runs' ? (
         <>
-          {byRun.map((entry) => (
+          {byRunShown.map((entry) => (
             <section key={entry.ref.id} className="panel">
               <div className="dash__section-head">
                 <h2 className="dash__section-title">
@@ -797,19 +867,62 @@ export function DbRoutesScreen({ registry, mode, onOpenRoute }: Props) {
                   {entry.risky > 0
                     ? ` · ${plural(entry.risky, 'рискованная остановка', 'рискованные остановки', 'рискованных остановок')}`
                     : ''}
+                  {entry.shown.length < entry.routes.length
+                    ? ` · показано ${entry.shown.length}`
+                    : ''}
                 </span>
               </div>
-              {table(entry.routes, false)}
+              {table(entry.shown, false)}
             </section>
           ))}
+
+          <DbMore hidden={hidden} page={PAGE} onMore={paging.more} />
         </>
-      ) : mode === 'list' ? (
+      ) : mode === 'table' ? (
+        <section className="panel">
+          {table(shown)}
+
+          <DbMore hidden={hidden} page={PAGE} onMore={paging.more} />
+        </section>
+      ) : mode === 'cards' ? (
         <>
-          {/* Список: маршрут — строка, названием стоит инженер. Маршрут без
-              человека — это набор чисел, неотличимый от соседнего; «чей он»
-              и есть то, по чему его узнают. Карты в строке нет — за ней идут
-              к карточке или на большую карту, куда строка и уводит. */}
+          <div
+            className={'runs__grid' + (dense ? ' runs__grid--dense' : '')}
+            style={{ '--per-row': perRow } as React.CSSProperties}
+          >
+            {shown.map((route, index) => (
+              <RouteCard
+                key={route.key}
+                row={route}
+                seat={index + 1}
+                /* Соседи по расчёту — тихой подложкой под своей линией: без
+                   них «выделенный» маршрут не из чего выделять. */
+                others={(byRunId.get(route.run.id) ?? [])
+                  .filter((one) => one.key !== route.key)
+                  .map((one) => one.path)}
+                dense={dense}
+                day={route.run.date}
+                onOpen={() => onOpenRoute(route.run.id, route.engineerId)}
+                onOpenEngineer={() => setOpened(engineerOf(route.engineerId))}
+                onOpenOrder={(orderId) => {
+                  const order = orderOf(route, orderId);
+                  if (order) setOpenedOrder({ order, engineerId: route.engineerId });
+                }}
+              />
+            ))}
+          </div>
+
+          <DbMore hidden={hidden} page={PAGE} onMore={paging.more} />
+        </>
+      ) : (
+        <>
+          {/* Список — вид по умолчанию: маршрут — строка, названием стоит
+              инженер. Маршрут без человека — это набор чисел, неотличимый
+              от соседнего; «чей он» и есть то, по чему его узнают. Карты в
+              строке нет — за ней идут к карточке или на большую карту, куда
+              строка и уводит. */}
           <DbList
+          lead="Маршрут"
             rows={shown.map((route) => ({
               key: route.key,
               lead: <Icon name="path" size={15} />,
@@ -829,7 +942,7 @@ export function DbRoutesScreen({ registry, mode, onOpenRoute }: Props) {
                 {
                   label: 'Занятость',
                   value: percent(route.occupancy),
-                  tone: route.occupancy < 0.6 ? ('warn' as const) : undefined
+                  tone: route.occupancy < loose ? ('warn' as const) : undefined
                 },
                 {
                   label: 'Сверх смены',
@@ -846,66 +959,48 @@ export function DbRoutesScreen({ registry, mode, onOpenRoute }: Props) {
             }))}
           />
 
-          {hidden > 0 && (
-            <button type="button" className="tblmore" onClick={() => setLimit((n) => n + PAGE)}>
-              Показать ещё {Math.min(PAGE, hidden)}
-              <span className="tblmore__rest">осталось {hidden}</span>
-            </button>
-          )}
-        </>
-      ) : mode === 'table' ? (
-        <section className="panel">
-          {table(shown)}
-
-          {hidden > 0 && (
-            <button type="button" className="tblmore" onClick={() => setLimit((n) => n + PAGE)}>
-              Показать ещё {Math.min(PAGE, hidden)}
-              <span className="tblmore__rest">осталось {hidden}</span>
-            </button>
-          )}
-        </section>
-      ) : (
-        <>
-          <div
-            className={'runs__grid' + (dense ? ' runs__grid--dense' : '')}
-            style={{ '--per-row': perRow } as React.CSSProperties}
-          >
-            {shown.map((route, index) => (
-              <RouteCard
-                key={route.key}
-                row={route}
-                seat={index + 1}
-                /* Соседи по расчёту — тихой подложкой под своей линией: без
-                   них «выделенный» маршрут не из чего выделять. */
-                others={(byRunId.get(route.run.id) ?? [])
-                  .filter((one) => one.key !== route.key)
-                  .map((one) => one.path)}
-                dense={dense}
-                day={route.run.date}
-                onOpen={() => onOpenRoute(route.run.id, route.engineerId)}
-              />
-            ))}
-          </div>
-
-          {hidden > 0 && (
-            <button type="button" className="tblmore" onClick={() => setLimit((n) => n + PAGE)}>
-              Показать ещё {Math.min(PAGE, hidden)}
-              <span className="tblmore__rest">осталось {hidden}</span>
-            </button>
-          )}
+          <DbMore hidden={hidden} page={PAGE} onMore={paging.more} />
         </>
       )}
 
-      {mode !== 'runs' && (
-        <p className="filters__note filters__note--under">
-          {plural(rows.length, 'маршрут', 'маршрута', 'маршрутов')} в выборке
-          {rows.length !== all.length && ` из ${all.length}`}
-          {rows.length > 0 &&
-            ` · ${pluralVisits(rows.reduce((sum, one) => sum + one.visits, 0))} · ${hoursText(
-              rows.reduce((sum, one) => sum + one.travelMinutes, 0)
-            )} в дороге`}
-        </p>
-      )}
+      {/* Профиль инженера — по имени на карточке маршрута. То же окно, что
+          в базе инженеров: заводить второе ради другой двери незачем. */}
+      <DbCrewProfile
+        crew={opened}
+        registry={registry}
+        onClose={() => setOpened(null)}
+        onOpenRun={(id) => {
+          setOpened(null);
+          if (onOpenRun) onOpenRun(id as RunId);
+          else if (opened) onOpenRoute(id as RunId, opened.id);
+        }}
+        onOpenMap={(id) => {
+          setOpened(null);
+          if (onOpenMap) onOpenMap(id as RunId);
+          else if (opened) onOpenRoute(id as RunId, opened.id);
+        }}
+        onTrack={onTrack}
+        onChanged={onChanged}
+      />
+
+      {/* Заявка — по чипу с её номером на карточке маршрута. */}
+      <OrderProfile
+        order={openedOrder?.order ?? null}
+        registry={registry}
+        onClose={() => setOpenedOrder(null)}
+        onOpenRun={(id) => {
+          const from = openedOrder;
+          setOpenedOrder(null);
+          if (onOpenRun) onOpenRun(id as RunId);
+          else if (from) onOpenRoute(id as RunId, from.engineerId);
+        }}
+        onOpenMap={(id) => {
+          const from = openedOrder;
+          setOpenedOrder(null);
+          if (onOpenMap) onOpenMap(id as RunId);
+          else if (from) onOpenRoute(id as RunId, from.engineerId);
+        }}
+      />
     </div>
   );
 }

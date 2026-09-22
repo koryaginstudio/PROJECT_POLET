@@ -1,0 +1,243 @@
+/* Стили экранов, заведённых после основной сборки: защита от падения,
+   подсказки в окнах, статистика по всем расчётам. Классы — по БЭМ, как в
+   `app.css`; переменные оттуда же. */
+
+/* ─── экран не открылся ─────────────────────────────────────────────────
+   Показывается вместо всего дерева, поэтому не может опираться ни на
+   оболочку, ни на её сетку: своя середина экрана, своя карточка. */
+
+.crash {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-6);
+  background: var(--surface-page);
+}
+
+.crash__card {
+  width: min(520px, 100%);
+  padding: var(--sp-6);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  background: var(--white);
+}
+
+.crash__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: var(--danger-500);
+  background: var(--danger-100);
+}
+
+.crash__title {
+  margin: var(--sp-4) 0 0;
+  font-size: var(--fs-h2);
+  font-weight: var(--fw-semibold);
+  letter-spacing: -0.01em;
+}
+
+.crash__body {
+  margin: var(--sp-3) 0 0;
+  color: var(--text-secondary);
+  font-size: var(--fs-body-s);
+  line-height: 1.5;
+}
+
+/* Причина — моноширинным и тише: это строка для того, кто будет чинить, а
+   не для того, кто читает. */
+.crash__reason {
+  margin: var(--sp-3) 0 0;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md);
+  background: var(--ink-100);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  word-break: break-word;
+}
+
+.crash__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-top: var(--sp-5);
+}
+
+/* ─── подсказка «Esc — закрыть» в заголовке окна ───────────────────────
+   Стоит справа перед крестиком, мелко и серо: напоминание, а не кнопка. */
+
+.modal__esc {
+  align-self: center;
+  margin-left: auto;
+  padding-right: var(--sp-2);
+  color: var(--text-muted);
+  font-size: var(--fs-caption);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.modal__esc kbd {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+/* Крестик после подсказки прижат к правому краю сам, поэтому заголовку
+   растягиваться незачем. */
+.modal__head > .modal__esc + .rpanel__x {
+  margin-left: 0;
+}
+
+/* ─── ошибка загрузки расчёта внутри оболочки ──────────────────────────── */
+
+.dayfail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  max-width: 640px;
+}
+
+.dayfail__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+}
+
+/* ─── пустые состояния списков ─────────────────────────────────────────── */
+
+.emptynote {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding: var(--sp-4) 0 var(--sp-2);
+  color: var(--text-secondary);
+  font-size: var(--fs-body-s);
+}
+
+.emptynote__title {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-semibold);
+}
+
+/* ─── статистика по всем расчётам ──────────────────────────────────────── */
+
+.statsrun {
+  display: grid;
+  grid-template-columns: 76px minmax(120px, 1fr) 72px minmax(120px, 1fr) 72px;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.statsrun:last-child {
+  border-bottom: 0;
+}
+
+.statsrun--head {
+  padding-bottom: var(--sp-1);
+  color: var(--text-secondary);
+  font-size: var(--fs-caption);
+}
+
+.statsrun--active .statsrun__code {
+  color: var(--accent-600);
+}
+
+.statsrun__code {
+  display: flex;
+  flex-direction: column;
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.statsrun__mark {
+  color: var(--text-secondary);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-regular);
+}
+
+.statsrun__track {
+  position: relative;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--ink-100);
+  overflow: hidden;
+}
+
+.statsrun__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 4px;
+  background: var(--series-1);
+}
+
+.statsrun__fill--load {
+  background: var(--series-2);
+}
+
+.statsrun__value {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.statsrun__facts {
+  grid-column: 1 / -1;
+  margin-top: calc(-1 * var(--sp-1));
+  color: var(--text-secondary);
+  font-size: var(--fs-caption);
+}
+
+.statsgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--sp-5);
+}
+
+/* ─── сворачиваемый блок для администратора ────────────────────────────── */
+
+.fold {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  padding: 0 var(--sp-3);
+}
+
+.fold__summary {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-3) 0;
+  cursor: pointer;
+  list-style: none;
+  color: var(--text-secondary);
+  font-size: var(--fs-body-s);
+  font-weight: var(--fw-semibold);
+}
+
+.fold__summary::-webkit-details-marker {
+  display: none;
+}
+
+.fold[open] .fold__summary {
+  color: var(--text-primary);
+}
+
+.fold__body {
+  padding-bottom: var(--sp-3);
+}
+
+/* ─── подсказка под полем номера в правке записи ───────────────────────── */
+
+.runedit__hint {
+  font-size: 11px;
+  color: var(--text-secondary);
+}

@@ -1,0 +1,82 @@
+import { Component } from 'react';
+import type { ErrorInfo, ReactNode } from 'react';
+import { Button } from '../ds/components/core/Button.jsx';
+import { Icon } from '../ds/components/core/Icon.jsx';
+
+interface Props {
+  children: ReactNode;
+}
+
+interface State {
+  /** Чем упал экран. Пусто — всё в порядке, показываем детей. */
+  failure: Error | null;
+}
+
+/* Последний рубеж: ошибка в любом экране ловится здесь, а не роняет страницу
+   в белое.
+
+   До этого любое исключение при отрисовке — неожиданное поле в данных,
+   опечатка в новом экране — оставляло диспетчера перед пустым белым окном
+   без единого слова. Пустой экран читается как «программа сломалась
+   совсем», и человек лезет перезагружать компьютер. Здесь вместо этого
+   сказано, что случилось, и даны две дороги: перезагрузить страницу или
+   уйти на дашборд.
+
+   Классовый компонент — не привычка, а требование: ловить ошибки отрисовки
+   умеет только он, хуков для этого в React нет.
+
+   «На дашборд» сбрасывает адрес на главную и снимает ошибку: экран, который
+   упал, чаще всего упал на конкретном разделе или расчёте, и главная
+   открывается заново уже без него. Если упадёт и она — снова окажемся
+   здесь, и тогда останется перезагрузка. */
+export class ErrorBoundary extends Component<Props, State> {
+  state: State = { failure: null };
+
+  static getDerivedStateFromError(failure: Error): State {
+    return { failure };
+  }
+
+  componentDidCatch(failure: Error, info: ErrorInfo) {
+    /* В консоль — для того, кто будет разбираться; на экране причина стоит
+       короткой строкой, и стека там не место. */
+    console.error('Экран не открылся', failure, info.componentStack);
+  }
+
+  private reload = () => {
+    window.location.reload();
+  };
+
+  private home = () => {
+    window.location.hash = '#/home';
+    this.setState({ failure: null });
+  };
+
+  render() {
+    const { failure } = this.state;
+    if (!failure) return this.props.children;
+
+    return (
+      <div className="crash" role="alert">
+        <div className="crash__card">
+          <span className="crash__icon">
+            <Icon name="alert-triangle" size={22} />
+          </span>
+          <h1 className="crash__title">Экран не открылся</h1>
+          <p className="crash__body">
+            Программа наткнулась на ошибку и не смогла нарисовать этот экран. Данные при этом не
+            потеряны: расчёты и правки лежат там же, где лежали.
+          </p>
+          <p className="crash__reason">{failure.message || String(failure)}</p>
+          <div className="crash__actions">
+            <Button variant="primary" size="sm" onClick={this.reload}>
+              Перезагрузить страницу
+            </Button>
+            <Button variant="secondary" size="sm" onClick={this.home} iconLeft={<Icon name="house" size={14} />}>
+              На дашборд
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+}

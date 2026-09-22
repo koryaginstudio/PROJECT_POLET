@@ -224,8 +224,14 @@ export interface Plan {
     generated_at: number;
     time_format: string;
     solver: string;
+    /** Заявок в раскладке — открытых. Закрытые до расчёта сюда не входят:
+        они лежат в `orders` со своим статусом, но исполнителя не ждут. */
     orders_total: number;
     orders_assigned: number;
+    /** Заявок, закрытых до расчёта: выполненных и отменённых в учётной
+        системе. Необязательное: движок 1.1 статусов не знает и закрытых не
+        считает — пустое поле читается как ноль. */
+    orders_closed?: number | null;
     engineers_total: number;
     balance: {
       gini: number;

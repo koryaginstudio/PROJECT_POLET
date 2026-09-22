@@ -60,6 +60,9 @@ interface Props {
   onClose: () => void;
   /** Открывает окно правки: ЧП и пересчёт остатка дня. */
   onEdit: () => void;
+  /** Запущен ли движок: без него правка по событию недоступна, и пульт
+      гасит кнопку сам. */
+  engineLive: boolean;
   /** Несохранённый пересчёт, показанный на экране. */
   draft: { at: number; gain: number; what: string } | null;
   saving: boolean;
@@ -154,6 +157,7 @@ export function DashboardScreen({
   onManual,
   onClose,
   onEdit,
+  engineLive,
   draft,
   saving,
   saveFailed,
@@ -215,6 +219,7 @@ export function DashboardScreen({
         onExport={onExport}
         onManual={onManual}
         onEdit={onEdit}
+        engineLive={engineLive}
         draft={draft}
         saving={saving}
         saveFailed={saveFailed}

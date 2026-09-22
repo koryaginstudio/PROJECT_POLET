@@ -29,6 +29,14 @@ const CANDIDATES = ['/api', 'http://localhost:8000/api'];
    секунды хватает с запасом, а дольше держать пустой экран нечестно. */
 const PROBE_TIMEOUT = 1000;
 
+/* Сколько ждём обычного ответа. Без предела зависший обмен держал бы экран
+   в «загружаем» до закрытия вкладки; пятнадцати секунд хватает на любой
+   ответ из архива с запасом. Счёт — дело другое: план движок думает около
+   восьми секунд, пересчёт полторы, и рвать это на пятнадцатой было бы
+   рано, — ему минута. */
+const CALL_TIMEOUT = 15_000;
+const SOLVE_TIMEOUT = 60_000;
+
 /** Расчёт так, как его отдаёт движок. Числа в `summary` посчитаны им же,
     интерфейс их не пересчитывает: одна метрика — один источник. */
 export interface EngineRun {
@@ -106,12 +114,18 @@ export class EngineError extends Error {
   }
 }
 
-async function call<T>(path: string, init?: RequestInit): Promise<T> {
+async function call<T>(path: string, init?: RequestInit, timeout = CALL_TIMEOUT): Promise<T> {
   if (!base) throw new EngineError('Движок не запущен');
   let response: Response;
   try {
-    response = await fetch(`${base}${path}`, init);
-  } catch {
+    response = await fetch(`${base}${path}`, { ...init, signal: AbortSignal.timeout(timeout) });
+  } catch (error) {
+    /* Истёкший срок и упавшая сеть — разные ответы: первый значит, что
+       движок есть, но занят или завис, и «проверьте, что запущен» здесь
+       посылает искать не там. */
+    if ((error as { name?: string })?.name === 'TimeoutError') {
+      throw new EngineError(`Движок не ответил за ${Math.round(timeout / 1000)} с`);
+    }
     throw new EngineError('Движок не отвечает — проверьте, что он запущен');
   }
   let body: unknown;
@@ -135,11 +149,15 @@ export const listRuns = () =>
     результат к себе в архив. Занимает около восьми секунд — это работа
     планировщика, а не задержка сети. */
 export const createEngineRun = (day: number, params: EngineParams, note = '') =>
-  call<EngineRun>('/runs', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ day, params, note })
-  });
+  call<EngineRun>(
+    '/runs',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ day, params, note })
+    },
+    SOLVE_TIMEOUT
+  );
 
 /** Все четыре формы одного расчёта. */
 export const loadEngineForms = (id: string) =>
@@ -247,7 +265,9 @@ export interface ReplanMeta {
 
 export type ReplanResult = Plan & { meta: Plan['meta'] & { replan: ReplanMeta } };
 
-/** Собирает строку запроса из события так, как её ждёт движок. */
+/** Собирает строку запроса из события так, как её ждёт движок. Табельные
+    номера приходят из данных и экранируются: номер с пробелом или знаком
+    «&» иначе разрезал бы запрос на два. */
 function incidentQuery(spec: IncidentSpec): string {
   const parts = [`day=${spec.day}`, `at=${spec.at}`];
   /* Аварии передаются числом, и ноль — законное значение: при ЧП с
@@ -255,11 +275,13 @@ function incidentQuery(spec: IncidentSpec): string {
      мерить два события сразу. */
   parts.push(`urgent=${spec.kind === 'urgent' ? spec.urgent ?? 2 : 0}`);
   if (spec.kind === 'urgent' && spec.urgentNear) {
-    parts.push(`urgent_near=${spec.urgentNear}`);
+    parts.push(`urgent_near=${encodeURIComponent(spec.urgentNear)}`);
   }
-  if (spec.kind === 'disabled' && spec.engineerId) parts.push(`disabled=${spec.engineerId}`);
+  if (spec.kind === 'disabled' && spec.engineerId) {
+    parts.push(`disabled=${encodeURIComponent(spec.engineerId)}`);
+  }
   if (spec.kind === 'delayed' && spec.engineerId) {
-    parts.push(`delayed=${spec.engineerId}:${spec.minutes ?? 40}`);
+    parts.push(`delayed=${encodeURIComponent(`${spec.engineerId}:${spec.minutes ?? 40}`)}`);
   }
   return parts.join('&');
 }
@@ -267,7 +289,7 @@ function incidentQuery(spec: IncidentSpec): string {
 /** Пересчитывает остаток дня. Занимает около полутора секунд — это работа
     планировщика, и прятать её не нужно. */
 export const replanDay = (spec: IncidentSpec) =>
-  call<ReplanResult>(`/replan?${incidentQuery(spec)}`);
+  call<ReplanResult>(`/replan?${incidentQuery(spec)}`, undefined, SOLVE_TIMEOUT);
 
 /** Кладёт результат пересчёта в архив. Движок не считает заново: результат
     у него уже есть, он только сохраняет его отдельной записью. */
@@ -344,4 +366,4 @@ export const saveCompare = (runs: SavedCompareRun[], note = '') =>
 
 /** Убирает сравнение из архива. Расчёты при этом не трогаются. */
 export const deleteCompare = (id: string) =>
-  call<{ deleted: string }>(`/compares/${id}`, { method: 'DELETE' });
+  call<{ deleted: string }>(`/compares/${encodeURIComponent(id)}`, { method: 'DELETE' });

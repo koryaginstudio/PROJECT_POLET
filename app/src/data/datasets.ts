@@ -98,33 +98,85 @@ export interface ReadResult {
   problems: string[];
 }
 
-const isOrder = (value: unknown): value is Order => {
-  const one = value as Order;
-  return Boolean(
-    one &&
-      typeof one.id === 'string' &&
-      typeof one.lat === 'number' &&
-      typeof one.lon === 'number' &&
-      typeof one.window_start === 'number' &&
-      typeof one.window_end === 'number' &&
-      typeof one.est_minutes === 'number' &&
-      typeof one.skill === 'string'
-  );
+/* Проверка записи возвращает не «да/нет», а название первого поля, которое
+   не так, — или пусто, если запись годна. Раньше проверялось меньше, и
+   заявка без крайнего срока проходила: планировщик считал её переносимой
+   на «NaN», а экран писал «NaN:NaN». Проверяется всё, без чего запись не
+   разложить и не показать: число обязано быть конечным — `NaN` и `Infinity`
+   в JSON не бывает, но `null` на месте числа бывает сплошь и рядом. */
+
+const finite = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
+
+const text = (value: unknown): value is string => typeof value === 'string' && value.trim() !== '';
+
+function orderFault(value: unknown): string | null {
+  const one = value as Partial<Order> | null;
+  if (!one || typeof one !== 'object') return 'запись не объект';
+  if (!text(one.id)) return 'нет номера (id)';
+  if (!text(one.skill)) return 'нет навыка (skill)';
+  if (!text(one.district)) return 'нет района (district)';
+  if (!finite(one.lat) || !finite(one.lon)) return 'нет координат (lat, lon)';
+  if (!finite(one.window_start) || !finite(one.window_end)) {
+    return 'нет окна приёма (window_start, window_end)';
+  }
+  if (!finite(one.sla_deadline)) return 'нет крайнего срока (sla_deadline)';
+  if (!finite(one.priority)) return 'нет приоритета (priority)';
+  if (!finite(one.est_minutes)) return 'нет длительности работ (est_minutes)';
+  return null;
+}
+
+function engineerFault(value: unknown): string | null {
+  const one = value as Partial<Engineer> | null;
+  if (!one || typeof one !== 'object') return 'запись не объект';
+  if (!text(one.id)) return 'нет табельного номера (id)';
+  if (!text(one.name)) return 'нет имени (name)';
+  if (!Array.isArray(one.skills)) return 'нет навыков (skills)';
+  if (!finite(one.shift_start) || !finite(one.shift_end)) {
+    return 'нет смены (shift_start, shift_end)';
+  }
+  if (!finite(one.home_lat) || !finite(one.home_lon)) {
+    return 'нет координат точки выезда (home_lat, home_lon)';
+  }
+  return null;
+}
+
+/** Как назвать запись в сообщении: по номеру, если он есть, иначе по месту. */
+const recordName = (value: unknown, index: number, what: string) => {
+  const id = (value as { id?: unknown } | null)?.id;
+  return typeof id === 'string' && id ? `${what} ${id}` : `${what} №${index + 1}`;
 };
 
-const isEngineer = (value: unknown): value is Engineer => {
-  const one = value as Engineer;
-  return Boolean(
-    one &&
-      typeof one.id === 'string' &&
-      typeof one.name === 'string' &&
-      Array.isArray(one.skills) &&
-      typeof one.shift_start === 'number' &&
-      typeof one.shift_end === 'number' &&
-      typeof one.home_lat === 'number' &&
-      typeof one.home_lon === 'number'
-  );
-};
+/** Сколько плохих записей называть поимённо. Дальше — числом: список на
+    двести строк никто не прочтёт, а первые пять говорят, что чинить. */
+const NAMED_FAULTS = 5;
+
+/** Проверяет список записей и описывает, что в них не так. Пусто — все
+    годны. */
+function faultsOf(
+  list: unknown[],
+  what: string,
+  faultOf: (value: unknown) => string | null
+): string[] {
+  const faults: string[] = [];
+  let more = 0;
+  list.forEach((value, index) => {
+    const fault = faultOf(value);
+    if (!fault) return;
+    if (faults.length < NAMED_FAULTS) faults.push(`${recordName(value, index, what)}: ${fault}`);
+    else more += 1;
+  });
+  if (more > 0) faults.push(`и ещё ${more} с теми же недостатками`);
+  return faults;
+}
+
+/** Сегодняшняя дата по местным часам, как пишет её история расчётов.
+    `toISOString` дал бы Гринвич — и вечером в Москве набор датировался бы
+    ещё вчерашним днём. */
+const pad = (value: number) => String(value).padStart(2, '0');
+const localDate = (date: Date) =>
+  `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+const localStamp = (date: Date) =>
+  `${localDate(date)}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 
 /** Разбирает принесённые файлы в набор. Ничего не сохраняет. */
 export async function readDataset(files: File[]): Promise<ReadResult> {
@@ -162,27 +214,28 @@ export async function readDataset(files: File[]): Promise<ReadResult> {
     date = body.meta?.date || date;
     title = body.meta?.zone || title;
 
-    const gotOrders = Array.isArray(body.orders) ? body.orders.filter(isOrder) : [];
-    const gotEngineers = Array.isArray(body.engineers) ? body.engineers.filter(isEngineer) : [];
+    const rawOrders = Array.isArray(body.orders) ? (body.orders as unknown[]) : [];
+    const rawEngineers = Array.isArray(body.engineers) ? (body.engineers as unknown[]) : [];
 
-    if (Array.isArray(body.orders) && gotOrders.length < body.orders.length) {
-      problems.push(
-        `«${file.name}»: ${body.orders.length - gotOrders.length} заявок без обязательных полей ` +
-          '(номер, координаты, окно приёма, длительность, навык) — они пропущены.'
-      );
+    /* Файл с негодной записью отклоняется целиком, а не прореживается:
+       пропущенная молча заявка — это заявка, по которой никто не поедет, и
+       узнать об этом диспетчер мог бы только сверив список с исходником.
+       Сообщение называет поле и запись — то, что нужно, чтобы поправить
+       файл и принести снова. */
+    const orderFaults = faultsOf(rawOrders, 'заявка', orderFault);
+    const engineerFaults = faultsOf(rawEngineers, 'инженер', engineerFault);
+    for (const fault of [...orderFaults, ...engineerFaults]) problems.push(`«${file.name}»: ${fault}.`);
+    if (orderFaults.length > 0 || engineerFaults.length > 0) {
+      problems.push(`«${file.name}» отклонён: поправьте записи выше и загрузите файл снова.`);
+      continue;
     }
-    if (Array.isArray(body.engineers) && gotEngineers.length < body.engineers.length) {
-      problems.push(
-        `«${file.name}»: ${body.engineers.length - gotEngineers.length} инженеров без обязательных ` +
-          'полей (номер, имя, навыки, смена, точка выезда) — они пропущены.'
-      );
-    }
-    if (gotOrders.length === 0 && gotEngineers.length === 0) {
+
+    if (rawOrders.length === 0 && rawEngineers.length === 0) {
       problems.push(`«${file.name}»: ни заявок, ни инженеров не нашлось.`);
     }
 
-    orders.push(...gotOrders);
-    engineers.push(...gotEngineers);
+    orders.push(...(rawOrders as Order[]));
+    engineers.push(...(rawEngineers as Engineer[]));
   }
 
   if (orders.length === 0) problems.push('В наборе нет ни одной заявки — считать нечего.');
@@ -190,7 +243,7 @@ export async function readDataset(files: File[]): Promise<ReadResult> {
     problems.push('В наборе нет ни одного инженера — раскладывать заявки некому.');
   }
 
-  return { orders, engineers, date: date || new Date().toISOString().slice(0, 10), title, problems };
+  return { orders, engineers, date: date || localDate(new Date()), title, problems };
 }
 
 /** Сохраняет разобранный набор и возвращает его. Ключ выдаётся здесь: он
@@ -200,7 +253,9 @@ export function saveDataset(read: ReadResult, title: string): Dataset {
     key: `set-${Date.now().toString(36)}`,
     title: title.trim() || read.title || 'Загруженный набор',
     date: read.date,
-    added: new Date().toISOString(),
+    /* Местное время, как у записи расчёта в истории: рядом с ней это и
+       показывают, и по Гринвичу набор «загружался» бы на три часа раньше. */
+    added: localStamp(new Date()),
     orders: read.orders,
     engineers: read.engineers
   };

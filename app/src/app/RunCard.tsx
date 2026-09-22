@@ -51,6 +51,12 @@ interface Props {
   onGo: (id: RunId) => void;
   onCompare: (id: RunId) => void;
   onEdit?: (run: RunRef) => void;
+  /** Открыть профиль инженера из чипа в списке занятых. Нет — чипы не
+      нажимаются. */
+  onOpenEngineer?: (engineerId: string) => void;
+  /** Открыть маршрут на карте расчёта, закрепив его там. Нет — чип
+      маршрута ведёт на карту расчёта без закрепления, через `onOpenMap`. */
+  onOpenRoute?: (runId: RunId, engineerId: string) => void;
 }
 
 const percent = (share: number) => `${Math.round(share * 100)}%`;
@@ -97,6 +103,8 @@ export function RunCard({
   onGo,
   onCompare,
   onEdit,
+  onOpenEngineer,
+  onOpenRoute,
 }: Props) {
   /* Свёрнуты оба списка, пока их не открыли. Развёрнутый список инженеров
      это шесть строк чипов, маршрутов — четыре, и в свёрнутом виде карточка
@@ -376,7 +384,12 @@ export function RunCard({
           «Инженеры 11», — и в ряду карточек она читается как ещё одна цифра
           свода. Развёрнуто — фамилии чипами, а не полные имена: в чипе
           шириной в два слова помещается только фамилия, и узнают человека по
-          ней же. Полное имя и номер его маршрута — в подсказке. */}
+          ней же. Полное имя и номер его маршрута — в подсказке.
+
+          Чип нажимается и открывает профиль человека: фамилия в списке — это
+          ссылка, а не подпись, и искать её руками в базе инженеров — лишний
+          ход. Щелчок по чипу до карточки не доходит: иначе открывался бы ещё
+          и расчёт. */}
       {!dense && crew.length > 0 && (
         <div className="runcard__list">
           <button
@@ -392,15 +405,27 @@ export function RunCard({
           </button>
           {crewOpen && (
             <div className="runcard__chips">
-              {crew.map((route) => (
-                <span
-                  key={route.engineerId}
-                  className="chip chip--sm"
-                  title={`${route.engineerName} — маршрут ${route.code}`}
-                >
-                  {surnameOf(route.engineerName)}
-                </span>
-              ))}
+              {crew.map((route) =>
+                onOpenEngineer ? (
+                  <button
+                    key={route.engineerId}
+                    type="button"
+                    className="chip chip--sm"
+                    title={`${route.engineerName} — маршрут ${route.code}. Открыть профиль`}
+                    onClick={() => onOpenEngineer(route.engineerId)}
+                  >
+                    {surnameOf(route.engineerName)}
+                  </button>
+                ) : (
+                  <span
+                    key={route.engineerId}
+                    className="chip chip--sm"
+                    title={`${route.engineerName} — маршрут ${route.code}`}
+                  >
+                    {surnameOf(route.engineerName)}
+                  </span>
+                ),
+              )}
             </div>
           )}
         </div>
@@ -409,7 +434,11 @@ export function RunCard({
       {/* Маршруты расчёта своими номерами: они сквозные на всю базу, и по
           номеру маршрут находят в базе маршрутов. Строка идёт второй, под
           инженерами: маршрут без человека не бывает, и порядок «кто — что»
-          читается естественнее обратного. */}
+          читается естественнее обратного.
+
+          Чип ведёт на карту расчёта с закреплённым на ней маршрутом — туда
+          же, куда ведёт карточка маршрута в его базе: своего экрана у
+          маршрута нет, и смотрят его целиком на карте дня. */}
       {!dense && routes.length > 0 && (
         <div className="runcard__list">
           <button
@@ -426,13 +455,17 @@ export function RunCard({
           {routesOpen && (
             <div className="runcard__chips">
               {routes.map((route) => (
-                <span
+                <button
                   key={route.key}
+                  type="button"
                   className="chip chip--sm"
-                  title={`${route.code} — ${route.engineerName}, ${route.visits} визитов`}
+                  title={`${route.code} — ${route.engineerName}, ${route.visits} визитов. Показать на карте расчёта`}
+                  onClick={() =>
+                    onOpenRoute ? onOpenRoute(row.run.id, route.engineerId) : onOpenMap(row.run.id)
+                  }
                 >
                   {route.code}
-                </span>
+                </button>
               ))}
             </div>
           )}

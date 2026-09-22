@@ -1,8 +1,8 @@
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Icon } from '../ds/components/core/Icon.jsx';
 import type { DayView, Segment } from '../data/derive.ts';
-import { engineerTimeline, hhmm, placeOf, visits } from '../data/derive.ts';
-import { hours, isLabelled, pct, timeAt } from './scale.ts';
+import { dayEnd, dayStart, engineerTimeline, hhmm, placeOf, visits } from '../data/derive.ts';
+import { isLabelled } from './scale.ts';
 
 interface Props {
   view: DayView;
@@ -13,11 +13,44 @@ interface Props {
   onSelectEngineer: (id: string) => void;
 }
 
-/** Доля внутри смены инженера: куски ленты считаются от её начала. */
-const inShift = (m: number, engineer: { shift_start: number; shift_end: number }) => {
-  const span = Math.max(1, engineer.shift_end - engineer.shift_start);
-  return ((Math.min(engineer.shift_end, Math.max(engineer.shift_start, m)) - engineer.shift_start) / span) * 100;
-};
+/* Шкала ганта. Одна на полосы инженеров, куски внутри них и окна невзятых
+   заявок — и это главное. Раньше полоса стояла по шкале дня, а куски внутри
+   неё считались долей от смены человека: у смены до 22:00 визит в 20:00
+   вставал под 19:10. Теперь всё меряется одной линейкой.
+
+   Верх шкалы — настройка конца дня или фактический конец данных, что позже:
+   окна приёма в выгрузке доходят до 22:00, а день по настройке кончается в
+   21:00, и вечер иначе просто отрезало. */
+interface Scale {
+  start: number;
+  top: number;
+  /** Доля времени на шкале, в процентах. */
+  at: (m: number) => number;
+  /** Отметки часов. */
+  marks: number[];
+  /** Время под курсором по доле ширины, с шагом в пять минут. */
+  timeAt: (ratio: number) => number;
+}
+
+function buildScale(view: DayView): Scale {
+  const start = dayStart();
+  let top = dayEnd();
+  for (const load of view.loads) {
+    top = Math.max(top, load.engineer.shift_end, load.route?.totals.end ?? 0);
+  }
+  for (const order of view.unassigned) top = Math.max(top, order.window_end);
+  top = Math.min(24 * 60, top);
+  const span = Math.max(1, top - start);
+  const marks: number[] = [];
+  for (let h = Math.ceil(start / 60) * 60; h <= top; h += 60) marks.push(h);
+  return {
+    start,
+    top,
+    at: (m) => ((Math.min(top, Math.max(start, m)) - start) / span) * 100,
+    marks,
+    timeAt: (ratio) => Math.round((start + Math.min(1, Math.max(0, ratio)) * span) / 5) * 5
+  };
+}
 
 /* Цвет — главный индикатор на этой линии, поэтому он один на всю систему:
    зелёный делает, красный горит, жёлтый ждёт, тёмно-серый едет, серый обед. */
@@ -89,13 +122,13 @@ type WaitSortKey = (typeof WAIT_SORTS)[number]['key'];
 /* Шкала часов под сортировкой блока. Стоит в каждом блоке своя, потому что
    строки разнесены заголовками: одна линейка наверху заставляла бы вести
    взгляд через полстраницы, чтобы понять, к какому времени относится кусок. */
-function HourScale() {
+function HourScale({ scale }: { scale: Scale }) {
   return (
     <div className="shiftplan__row shiftplan__hours">
       <span className="shiftplan__side" />
       <div className="shiftplan__cell shiftplan__hours-cell">
-        {hours().map((h) => {
-          const at = pct(h);
+        {scale.marks.map((h) => {
+          const at = scale.at(h);
           const edge = at <= 0.5 ? 'start' : at >= 99.5 ? 'end' : null;
           /* Отметка стоит у каждого часа, подпись — у каждого второго:
              между 15:00 и 17:00 половину дороги теперь видно, а не
@@ -132,6 +165,8 @@ export function GanttBoard({ view, hotHour, onSelectOrder, onSelectEngineer }: P
   const [desc, setDesc] = useState(false);
   const [waitSort, setWaitSort] = useState<WaitSortKey>('time');
   const [waitDesc, setWaitDesc] = useState(false);
+  const scale = useMemo(() => buildScale(view), [view]);
+  const { at } = scale;
 
   const show = (event: { currentTarget: EventTarget | null }, lines: string[], warm?: Hot) => {
     if (warm) setHot(warm);
@@ -165,7 +200,7 @@ export function GanttBoard({ view, hotHour, onSelectOrder, onSelectEngineer }: P
     /* Часы стоят под курсором: подсказка отрезка раскрывается вверх, и над
        курсором они прятались бы под ней. У нижнего края прижимаем к дну. */
     const y = event.clientY - host.top;
-    setProbe({ at: timeAt(ratio), y: Math.min(y + 14, Math.max(0, host.height - 22)) });
+    setProbe({ at: scale.timeAt(ratio), y: Math.min(y + 14, Math.max(0, host.height - 22)) });
   };
 
   /* Порядок строк задаёт диспетчер: по началу смены видно лесенку выходов,
@@ -266,7 +301,7 @@ export function GanttBoard({ view, hotHour, onSelectOrder, onSelectEngineer }: P
           </div>
         </div>
 
-        <HourScale />
+        <HourScale scale={scale} />
 
         {crew.map((load) => {
           const { engineer, route } = load;
@@ -291,12 +326,12 @@ export function GanttBoard({ view, hotHour, onSelectOrder, onSelectEngineer }: P
                 <span
                   className="shiftplan__line"
                   style={{
-                    left: `${pct(engineer.shift_start)}%`,
-                    width: `${pct(engineer.shift_end) - pct(engineer.shift_start)}%`
+                    left: `${at(engineer.shift_start)}%`,
+                    width: `${at(engineer.shift_end) - at(engineer.shift_start)}%`
                   }}
                 >
                 {segments.map((segment, index) => {
-                  const width = pct(segment.to) - pct(segment.from);
+                  const width = at(segment.to) - at(segment.from);
                   if (width <= 0 || segment.kind === 'idle') return null;
 
                   /* Дорога и ожидание сами по себе безымянны: смысл им даёт
@@ -323,9 +358,13 @@ export function GanttBoard({ view, hotHour, onSelectOrder, onSelectEngineer }: P
                   if (trouble) lines.push(trouble);
 
                   const tone = segment.kind === 'work' && trouble ? 'problem' : segment.kind;
+                  /* Кусок лежит внутри полосы смены, поэтому его место
+                     считается от её левого края, но той же линейкой: доля
+                     от ширины полосы — это разность долей на общей шкале. */
+                  const lineWidth = Math.max(0.01, at(engineer.shift_end) - at(engineer.shift_start));
                   const style = {
-                    left: `${inShift(segment.from, engineer)}%`,
-                    width: `${inShift(segment.to, engineer) - inShift(segment.from, engineer)}%`
+                    left: `${((at(segment.from) - at(engineer.shift_start)) / lineWidth) * 100}%`,
+                    width: `${(width / lineWidth) * 100}%`
                   };
                   const key = `${engineer.id}:${index}`;
                   const warm: Hot = { key, tone };
@@ -391,7 +430,7 @@ export function GanttBoard({ view, hotHour, onSelectOrder, onSelectEngineer }: P
           </div>
         )}
 
-        {waiting.length > 0 && <HourScale />}
+        {waiting.length > 0 && <HourScale scale={scale} />}
 
         {waiting.map((order) => (
           <div className="shiftplan__row" key={order.id}>
@@ -421,8 +460,8 @@ export function GanttBoard({ view, hotHour, onSelectOrder, onSelectEngineer }: P
                       : '')
                   }
                   style={{
-                    left: `${pct(order.window_start)}%`,
-                    width: `${Math.max(pct(order.window_end) - pct(order.window_start), 0.6)}%`
+                    left: `${at(order.window_start)}%`,
+                    width: `${Math.max(at(order.window_end) - at(order.window_start), 0.6)}%`
                   }}
                   onClick={() => onSelectOrder(order.id)}
                   onMouseEnter={(e) =>
@@ -463,21 +502,21 @@ export function GanttBoard({ view, hotHour, onSelectOrder, onSelectEngineer }: P
           {hotHour !== null && (
             <span
               className="shiftplan__hourband"
-              style={{ left: `${pct(hotHour)}%`, width: `${pct(hotHour + 60) - pct(hotHour)}%` }}
+              style={{ left: `${at(hotHour)}%`, width: `${at(hotHour + 60) - at(hotHour)}%` }}
             />
           )}
-          {hours().map((h) => (
+          {scale.marks.map((h) => (
             <span
               key={h}
               className={'shiftplan__gridline' + (isLabelled(h) ? ' shiftplan__gridline--hour' : '')}
-              style={{ left: `${pct(h)}%` }}
+              style={{ left: `${at(h)}%` }}
             />
           ))}
         </div>
 
         {probe && (
           <div className="shiftplan__axis shiftplan__axis--probe" aria-hidden="true">
-            <span className="shiftplan__probe" style={{ left: `${pct(probe.at)}%` }}>
+            <span className="shiftplan__probe" style={{ left: `${at(probe.at)}%` }}>
               <b className="shiftplan__probe-time" style={{ top: probe.y }}>
                 {hhmm(probe.at)}
               </b>
