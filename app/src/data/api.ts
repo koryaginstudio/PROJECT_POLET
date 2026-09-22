@@ -235,6 +235,14 @@ export const loadEngineForms = (id: string) =>
 export const loadEngineDay = (day: string) =>
   call<Omit<EngineForms, 'run'>>(`/day?day=${encodeURIComponent(day)}`, undefined, SOLVE_TIMEOUT);
 
+/** План целого дня движка — GET /api/plan?day=<зона>. Из него при живом
+    движке базы данных берут штат, участки и заявки участка: номера
+    инженеров и заявок в нём те же, что в расчётах, и база не смешивает две
+    разные бригады. Первый запрос по непосчитанной зоне запускает расчёт,
+    поэтому срок — как у расчёта, а не как у обычного запроса. */
+export const loadDayPlan = (day: string) =>
+  call<Plan>(`/plan?day=${encodeURIComponent(day)}`, undefined, SOLVE_TIMEOUT);
+
 /** Одна форма. Базам данных нужен только план, и тянуть ради них
     объяснение на полтораста килобайт незачем. */
 /* Срок — как у `loadEngineForms`: форма может пересчитываться на лету. */

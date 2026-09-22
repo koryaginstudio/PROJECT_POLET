@@ -26,7 +26,7 @@ interface Props {
   /** Данные штата поправили: справочник надо собрать заново. */
   onChanged: () => void;
   /** «Отследить» из профиля: увести в мониторинг за конкретным инженером. */
-  onTrack: (id: string) => void;
+  onTrack: (id: string) => string | void;
   /** Уйти в расчёт заявки, открытой из профиля, и показать её на карте. */
   onOpenRun: (id: RunId) => void;
   onOpenMap: (id: RunId) => void;
@@ -193,17 +193,17 @@ export function DbEngineersScreen({
        подсказка сказать обязана. */
     const clientCodeByKey = new Map(registry.clients.map((client) => [client.key, client.code]));
     for (const order of registry.orders) {
-      put(order.id, 'order', order.engineerId);
+      put(order.id, 'order', order.engineerKey);
       const clientKey = order.address ?? `${order.district} · ${order.lat},${order.lon}`;
-      put(clientCodeByKey.get(clientKey) ?? '', 'client', order.engineerId);
+      put(clientCodeByKey.get(clientKey) ?? '', 'client', order.engineerKey);
     }
     for (const client of registry.clients) put(client.code, 'client', null);
     for (const route of registry.routes) {
-      put(route.code, 'route', route.engineerId);
+      put(route.code, 'route', route.engineerKey);
       /* Расчёт — это все, кто получил в нём маршрут. Вышедшие на смену, но
          оставшиеся без работы, сюда не идут: по номеру расчёта ищут тех, кто
          в нём ездил. */
-      put(route.run.code, 'run', route.engineerId);
+      put(route.run.code, 'run', route.engineerKey);
     }
     for (const run of registry.runs) put(run.code, 'run', null);
     return { index, kinds };
@@ -862,6 +862,22 @@ export function DbEngineersScreen({
         </DbBar>
       </DbHead>
 
+      {/* План участка не пришёл от программы расчёта — его людей в базе нет.
+          Молча показанный неполный штат читался бы как «людей стало меньше». */}
+      {registry.missingZones.length > 0 && (
+        <div className="srcengine" role="status">
+          <Icon name="alert-triangle" size={16} />
+          <div className="srcengine__text">
+            <p>
+              {registry.missingZones.length === 1
+                ? `Штат участка ${registry.missingZones[0]} не загрузился`
+                : `Штат участков ${registry.missingZones.join(', ')} не загрузился`}
+              {' '}— его инженеров в списке нет. Обновите страницу.
+            </p>
+          </div>
+        </div>
+      )}
+
       {rows.length === 0 ? (
         <DbEmpty
           miss="Под этот отбор не подошёл ни один инженер."
@@ -924,7 +940,7 @@ export function DbEngineersScreen({
                             <span className="tbl__strong">
                               <PersonName name={engineer.name} stacked={false} />
                             </span>
-                            <span className="tbl__sub">{engineer.id}</span>
+                            <span className="tbl__sub">{engineer.code}</span>
                           </span>
                         </span>
                       </td>
@@ -1042,7 +1058,7 @@ export function DbEngineersScreen({
             return {
               key: engineer.id,
               lead: <img src={photos.get(engineer.id)} alt="" loading="lazy" />,
-              code: engineer.id,
+              code: engineer.code,
               title: (
                 <>
                   <PersonName name={engineer.name} stacked={false} />
@@ -1095,8 +1111,10 @@ export function DbEngineersScreen({
           onOpenMap(id as RunId);
         }}
         onTrack={(id) => {
-          setOpened(null);
-          onTrack(id);
+          /* Следить некуда — карточка остаётся и объясняет почему. */
+          const miss = onTrack(id);
+          if (typeof miss !== 'string') setOpened(null);
+          return miss;
         }}
         onChanged={onChanged}
       />

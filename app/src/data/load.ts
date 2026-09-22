@@ -40,6 +40,7 @@ import {
   createEngineRun,
   engineAlive,
   loadCatalogue,
+  loadDayPlan,
   loadEngineDay,
   loadEngineForm,
   loadEngineForms,
@@ -75,9 +76,26 @@ const BUILT_IN_TITLES: Record<string, string> = {
 /** Все источники: встроенные зоны и загруженные наборы. */
 export const sources = (): SourceId[] => [...BUILT_IN, ...datasets().map((one) => one.key)];
 
+/* Участки движка так, как их называет выгрузка заказчика. У вёрстки третий
+   участок звался «Центр», у выгрузки — «югоцентр», и пока диспетчер видел
+   оба имени, это читалось как два разных участка. При живом движке экраны
+   говорят словами выгрузки: считает он её, а не набор дизайнера. */
+const ENGINE_TITLES: Record<string, string> = {
+  восток: 'Восток',
+  'юго-восток': 'Юго-восток',
+  югоцентр: 'Югоцентр'
+};
+
+/** Как участок движка («югоцентр») называется на экране. Неизвестный день —
+    синтетический номер — показывается как есть. */
+export const engineDayTitle = (day: string) => ENGINE_TITLES[day] ?? day;
+
 /** Как источник называется на экране. */
 export const zoneTitle = (zone: SourceId) =>
-  BUILT_IN_TITLES[zone] ?? datasetByKey(zone)?.title ?? zone;
+  (engineOn && ENGINE_ZONE[zone] ? engineDayTitle(ENGINE_ZONE[zone]) : null) ??
+  BUILT_IN_TITLES[zone] ??
+  datasetByKey(zone)?.title ??
+  zone;
 
 /** Встроенный ли это источник. Загруженный можно удалить, встроенный нет. */
 export const isBuiltIn = (zone: SourceId) => (BUILT_IN as readonly string[]).includes(zone);
@@ -254,12 +272,15 @@ function nextCode(): string {
     `plan.meta.hard_end`. Условие снято, архив читается. */
 export async function attachEngine(): Promise<boolean> {
   engineOn = await probeEngine();
+  forgetEnginePlans();
   return engineOn;
 }
 
-/* Имена зон у движка. У вёрстки они свои с самого начала, и это не
-   расхождение подписей, а разные наборы данных: `center` — это «Центр» из
-   набора дизайнера, `югоцентр` — участок из выгрузки заказчика. Переводим
+/* Имена зон у движка. Заявки те же, что в файлах вёрстки, строка в строку
+   (сверено по адресам и координатам): у движка просто свои имена участков —
+   `center` у вёрстки и `югоцентр` у выгрузки заказчика. А вот бригада у
+   движка своя, 14 человек по шаблону на участок, поэтому при живом движке
+   штат берётся из его плана, а не из файлов (см. `loadRoster`). Переводим
    в одном месте, чтобы остальной код про это не знал. */
 const ENGINE_ZONE: Record<string, string> = {
   east: 'восток',
@@ -425,6 +446,14 @@ export async function createRun(
     main.tsx, и две расходились: одна сеяла при движке, другая нет.
 
     Возвращает, завела ли что-нибудь. */
+/* Прочитан ли архив программы расчёта при запуске. После этого можно
+   переводить старые отметки «в работе» на расчёты из архива
+   (`migrateEngineDuty` в duty.ts): до чтения их не на что перевести, и
+   перевод стёр бы их. Флагом, а не вызовом отсюда: duty.ts сам читает
+   load.ts, и встречный импорт замкнул бы кольцо. */
+let архивПрочитан = false;
+export const archiveRead = () => архивПрочитан;
+
 export async function seedRuns(): Promise<boolean> {
   if (engineOn && engineTakesRealData()) {
     /* С живым движком история приходит из его архива, а не считается
@@ -439,6 +468,7 @@ export async function seedRuns(): Promise<boolean> {
        дописывал бы в архив движка ещё три расчёта. Сеем, только если он
        прочитан и пуст. */
     const прочитан = await pullArchive().then(() => true, () => false);
+    архивПрочитан = прочитан;
     if (!прочитан || RUNS.length > 0) return false;
   } else if (RUNS.length > 0) {
     return false;
@@ -902,7 +932,100 @@ export function loadZone(zone: SourceId): Promise<ZoneData> {
     двух разных офисов. Сведи его тут — и одна из точек выезда потеряется.
     Сводит их справочник, и он же складывает то, что у человека одно, с тем,
     что у него своё на каждом участке. */
-export async function loadRoster(): Promise<Engineer[]> {
+/** Запись штата. У инженера движка к ней приписан его день (`восток`):
+    номера E00…E13 у движка повторяются на каждом участке, и справочник
+    различает людей по паре «участок + номер». У записи из файлов дня нет. */
+export type RosterEngineer = Engineer & { day?: string };
+
+/* Планы участков движка — источник штата, участков и заявок для баз данных
+   при живом движке (решение владельца, вариант Б из разбора бригады).
+   Файлы вёрстки при этом не читаются: в них другая бригада — 34 человека
+   Антона против 14 на участок у движка, — и база, смешавшая обе, показывала
+   48 инженеров, из которых 34 «ни разу не выезжали», а каждую услугу дважды
+   (у движка вид работ назван кодом, у файла — словами). План читается раз за
+   сеанс; отказ из кеша убирается, чтобы следующий заход попробовал снова. */
+const enginePlanCache = new Map<string, Promise<Plan>>();
+
+/* Участки, чей план при последнем чтении не отдался. Базы молча теряли
+   такой участок из штата — «инженеров в штате» становилось меньше без
+   объяснения. Теперь справочник забирает этот список и говорит о нём. */
+const engineMisses = new Set<string>();
+
+/** Подписи участков движка, чей план не прочитался при последнем заходе. */
+export const missingEngineZones = (): string[] => [...engineMisses];
+
+/** Забыть прочитанные планы участков: следующий заход прочитает их у движка
+    заново. Зовётся при повторном поиске движка — за это время в нём могли
+    поменяться правила расчёта, а с ними и план. */
+export function forgetEnginePlans(): void {
+  enginePlanCache.clear();
+  engineMisses.clear();
+}
+
+function enginePlanOf(day: string): Promise<Plan> {
+  const cached = enginePlanCache.get(day);
+  if (cached) return cached;
+  const reading = loadDayPlan(day).then((plan) => изДвижка(plan));
+  enginePlanCache.set(day, reading);
+  reading.catch(() => enginePlanCache.delete(day));
+  return reading;
+}
+
+/** План участка движка по ключу встроенной зоны, с подписью участка у
+    каждого инженера. `null` — движка нет, зона не встроенная или план не
+    отдался. */
+async function engineZone(zone: SourceId): Promise<{ day: string; title: string; plan: Plan } | null> {
+  const day = ENGINE_ZONE[zone];
+  if (!engineOn || !day) return null;
+  const title = engineDayTitle(day);
+  const plan = await enginePlanOf(day).catch((error: unknown) => {
+    /* Молча выпадать нельзя: в базе просто стало бы меньше людей. */
+    console.warn(`[polet] план участка «${title}» не прочитался у программы расчёта:`, error);
+    return null;
+  });
+  if (!plan) {
+    engineMisses.add(title);
+    return null;
+  }
+  engineMisses.delete(title);
+  return {
+    day,
+    title,
+    plan: {
+      ...plan,
+      /* У инженеров движка участка приписки нет: он один на весь план. Без
+         него у человека в базе не было бы ни участка, ни офиса выезда. */
+      engineers: plan.engineers.map((one) => ({ ...one, zone: one.zone ?? title }))
+    }
+  };
+}
+
+/** Участки движка — все три встроенные зоны. */
+const engineZones = () => Promise.all(BUILT_IN.map((zone) => engineZone(zone)));
+
+/** Размер участка для карточки выбора: сколько в нём заявок и инженеров.
+    При живом движке — по его плану: считать он будет на своей бригаде, и
+    «56 заявок, 11 инженеров» из файла обещали бы не тот расчёт. */
+export async function zoneSize(zone: SourceId): Promise<{ orders: number; engineers: number }> {
+  const engine = await engineZone(zone);
+  if (engine) return { orders: engine.plan.orders.length, engineers: engine.plan.engineers.length };
+  /* План не пришёл — к файлам не откатываемся: их размеры обещали бы чужую
+     бригаду. Отказ уходит наружу, и карточка честно говорит, что не знает. */
+  const engineDay = ENGINE_ZONE[zone];
+  if (engineOn && engineDay) {
+    throw new Error(`план участка «${engineDayTitle(engineDay)}» не пришёл от программы расчёта`);
+  }
+  const data = await loadZone(zone);
+  return { orders: data.orders.length, engineers: data.engineers.length };
+}
+
+export async function loadRoster(): Promise<RosterEngineer[]> {
+  if (engineOn) {
+    const zones = await engineZones();
+    return zones.flatMap((one) =>
+      one ? one.plan.engineers.map((engineer) => ({ ...engineer, day: one.day })) : []
+    );
+  }
   const zones = await Promise.all(sources().map((zone) => loadZone(zone).catch(() => null)));
   return zones.flatMap((data) => data?.engineers ?? []);
 }
@@ -923,7 +1046,11 @@ export interface Place {
 }
 
 export async function loadPlaces(): Promise<Place[]> {
-  const zones = await Promise.all(sources().map((zone) => loadZone(zone).catch(() => null)));
+  const zones = engineOn
+    ? (await engineZones()).map((one) =>
+        one ? { title: one.title, orders: one.plan.orders, engineers: one.plan.engineers } : null
+      )
+    : await Promise.all(sources().map((zone) => loadZone(zone).catch(() => null)));
   const byTitle = new Map<string, Place>();
 
   for (const data of zones) {
@@ -946,6 +1073,10 @@ export async function loadPlaces(): Promise<Place[]> {
 /** Все заявки всех источников. Нужны справочнику услуг: услуга числится в
     каталоге независимо от того, посчитали её сегодня или нет. */
 export async function loadAllOrders(): Promise<Order[]> {
+  if (engineOn) {
+    const zones = await engineZones();
+    return zones.flatMap((one) => one?.plan.orders ?? []);
+  }
   const zones = await Promise.all(sources().map((zone) => loadZone(zone).catch(() => null)));
   return zones.flatMap((data) => data?.orders ?? []);
 }

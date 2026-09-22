@@ -31,13 +31,18 @@ interface Props {
   registry: Registry;
   onClose: () => void;
   /** «Отследить»: увести туда, где видно, где человек сейчас и что делает.
-      Своего экрана слежения пока нет — ведёт в мониторинг. */
-  onTrack: (id: string) => void;
+      Своего экрана слежения пока нет — ведёт в мониторинг. Строка в ответ —
+      следить некуда (расчёта его участка нет), и это объяснение: карточка
+      остаётся открытой и показывает его у кнопки. */
+  onTrack: (id: string) => string | void;
   /** Участки со своими офисами и рамками дня — из них выбирают при правке
       участка, и они же задают человеку адрес выезда и часы. */
   places: Place[];
   onSave: (patch: CrewPatch) => void;
   onDelete: () => void;
+  /** Почему карточку править нельзя. Задано — кнопки «Править» нет, а на
+      её месте стоит эта причина словами. */
+  locked?: string | null;
   /** Уйти в расчёт заявки, открытой отсюда, и показать её на карте: те же
       две дороги, что ведут из базы заявок. */
   onOpenRun: (id: string) => void;
@@ -79,7 +84,8 @@ export function CrewProfile({
   onSave,
   onDelete,
   onOpenRun,
-  onOpenMap
+  onOpenMap,
+  locked = null
 }: Props) {
   /* Какая из трёх историй открыта. Сбрасывается на сменах, когда открывают
      другого человека: вкладка, оставшаяся от предыдущего профиля, показала
@@ -107,6 +113,8 @@ export function CrewProfile({
   const [transport, setTransport] = useState('car');
   const [skills, setSkills] = useState<string[]>([]);
   const [confirming, setConfirming] = useState(false);
+  /* Почему «Отследить» никуда не увело — словами у кнопки, а не молча. */
+  const [trackMiss, setTrackMiss] = useState<string | null>(null);
   const card = useRef<HTMLDivElement>(null);
   useModalFocus(crew !== null, card);
 
@@ -114,6 +122,7 @@ export function CrewProfile({
     if (crew) setTab('shifts');
     setEditing(false);
     setConfirming(false);
+    setTrackMiss(null);
     /* Открыли другого человека — чужой отбор визитов закрывается: он про
        предыдущего, и остаться поверх нового профиля не может. */
     setVisits(null);
@@ -155,12 +164,12 @@ export function CrewProfile({
   }, [crew, editing, onClose, visits, order]);
 
   const routes = useMemo(
-    () => (crew ? registry.routes.filter((route) => route.engineerId === crew.id) : []),
+    () => (crew ? registry.routes.filter((route) => route.engineerKey === crew.id) : []),
     [crew, registry]
   );
 
   const orders = useMemo(
-    () => (crew ? registry.orders.filter((order) => order.engineerId === crew.id) : []),
+    () => (crew ? registry.orders.filter((order) => order.engineerKey === crew.id) : []),
     [crew, registry]
   );
 
@@ -327,9 +336,14 @@ export function CrewProfile({
                       Должность рядом отвечает на «кто он» тому, кто открыл
                       профиль впервые и табельных ещё не читает. */}
                   <div className="crewpro__idrow">
-                    <span className="crewpro__id">{crew.id}</span>
+                    <span className="crewpro__id">{crew.code}</span>
                     <span className="crewpro__role">
                       Инженер
+                      {/* У программы расчёта номер повторяется на каждом
+                          участке — без участка карточки не различить. */}
+                      {crew.id.includes(':') && (crew.zone ?? crew.posts[0]?.zone)
+                        ? ` · участок ${crew.zone ?? crew.posts[0]?.zone}`
+                        : ''}
                       {crew.team ? ` · бригада ${teamName(crew.team)}` : ''}
                     </span>
                   </div>
@@ -337,6 +351,24 @@ export function CrewProfile({
                     <PersonName name={crew.name} />
                   </h2>
                   {crew.phone && <span className="crewpro__phone">{crew.phone}</span>}
+                  {/* Причина — словами на месте кнопки, а не подсказкой при
+                      наведении: пропавшая «Править» без объяснения читается
+                      как поломка, а подсказку никто не наводит. */}
+                  {locked && (
+                    <p className="crewpro__locked">
+                      <Icon name="info" size={14} />
+                      <span>{locked}</span>
+                    </p>
+                  )}
+                  {/* «Отследить» не увело: человек с другого участка, а
+                      расчёта его участка нет. Объяснение — там же, где и
+                      причина закрытой правки. */}
+                  {trackMiss && (
+                    <p className="crewpro__locked" role="status">
+                      <Icon name="info" size={14} />
+                      <span>{trackMiss}</span>
+                    </p>
+                  )}
                 </div>
                 <div className="crewpro__actions">
                   {/* Куда он сейчас едет и что делает — свой экран слежения
@@ -345,19 +377,24 @@ export function CrewProfile({
                   <Button
                     variant="secondary"
                     size="sm"
-                    onClick={() => onTrack(crew.id)}
+                    onClick={() => {
+                      const miss = onTrack(crew.id);
+                      setTrackMiss(typeof miss === 'string' ? miss : null);
+                    }}
                     iconLeft={<Icon name="navigation-arrow" size={13} />}
                   >
                     Отследить
                   </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={startEdit}
-                    iconLeft={<Icon name="pencil" size={13} />}
-                  >
-                    Править
-                  </Button>
+                  {!locked && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={startEdit}
+                      iconLeft={<Icon name="pencil" size={13} />}
+                    >
+                      Править
+                    </Button>
+                  )}
                   <span className="modal__esc">
                     <kbd>Esc</kbd> — закрыть
                   </span>
@@ -827,3 +864,11 @@ function Stat({
     </div>
   );
 }
+
+/** Почему штат не правится при живой программе расчёта. Бригаду она берёт
+    из своей выгрузки, ручки для правки штата у неё нет, а правка в браузере
+    ложилась только на файлы вёрстки: «сохранено» — и ни план, ни база не
+    менялись. Один текст на все двери в карточку. */
+export const CREW_ENGINE_LOCK =
+  'Только просмотр: бригаду задаёт программа расчёта по выгрузке заказчика, ' +
+  'и правка здесь не попала бы в её планы.';

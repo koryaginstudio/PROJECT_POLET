@@ -302,7 +302,7 @@ export function DbRunsScreen({
     const types = [...typeCount.entries()].sort((a, b) => b[1] - a[1]);
 
     const skills = top([...registry.stats.bySkill].sort((a, b) => b.count - a.count), 6);
-    const crewed = new Set(routes.map((route) => route.engineerId)).size;
+    const crewed = new Set(routes.map((route) => route.engineerKey)).size;
 
     /* Занятость раскладываем на три ступени: «сколько в среднем» отвечает на
        вопрос наполовину — маршрут под завязку и маршрут вполпустого дают ту

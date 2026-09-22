@@ -168,7 +168,12 @@ export function EngineerCard({
         {!dense && (
           <span className="engcard__idwrap">
             <span className="engcard__idlabel">id:</span>
-            <span className="crewpro__id engcard__idbadge">{row.id}</span>
+            <span className="crewpro__id engcard__idbadge">{row.code}</span>
+            {/* Номер программы расчёта повторяется на каждом участке: рядом
+                с ним — участок, иначе три карточки E00 не различить. */}
+            {row.id.includes(':') && row.zone && (
+              <span className="engcard__idlabel">{row.zone}</span>
+            )}
           </span>
         )}
         {/* Значок и время — одна пара, а не три равноудалённых элемента:

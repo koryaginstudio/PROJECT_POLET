@@ -35,9 +35,15 @@ const STORE_KEY = 'polet.duty.v1';
 /** День участка (`восток|2026-08-17`) → расчёт, который на нём работает. */
 export type DutyMap = Record<string, RunId>;
 
-/** Источник расчёта — участок или загруженный набор. Расчёт движка
-    источника не имеет, и его дни живут под своим именем. */
-const sourceOf = (id: RunId): string => RUNS.find((run) => run.id === id)?.source ?? 'engine';
+/** Источник расчёта — участок или загруженный набор. У расчёта движка
+    источника нет, и участок у него — день движка (`run.day`: «восток»,
+    «югоцентр»). Прежде все расчёты движка сходились под одним именем
+    `engine`: при одной дате у трёх зон взятый в работу Восток молча снимал
+    с работы Югоцентр — та самая беда, от которой ключ по участку и заведён. */
+const sourceOf = (id: RunId): string => {
+  const run = RUNS.find((one) => one.id === id);
+  return run?.source ?? (run?.day ? `engine:${run.day}` : 'engine');
+};
 
 /** Ключ дня участка для расчёта. */
 const dayKey = (id: RunId, date: string) => `${sourceOf(id)}|${date}`;
@@ -57,6 +63,15 @@ function read(): DutyMap {
     const clean: DutyMap = {};
     for (const [key, id] of Object.entries(saved)) {
       if (typeof key !== 'string' || typeof id !== 'string' || !key || !id) continue;
+      /* Запись под общим `engine|дата` — от версии, где расчёты движка не
+         различались по участку. Переводим на участок по самому расчёту, если
+         он уже в истории. Обычно архив движка приезжает позже чтения
+         хранилища — тогда запись лежит до `migrateEngineDuty`, которую зовут
+         после подтягивания архива. */
+      if (key.startsWith('engine|') && RUNS.some((run) => run.id === id)) {
+        clean[dayKey(id, key.slice('engine|'.length))] = id;
+        continue;
+      }
       if (key.includes('|')) {
         clean[key] = id;
         continue;
@@ -70,6 +85,26 @@ function read(): DutyMap {
 }
 
 let current = read();
+
+/** Переводит отметки старого вида `engine|дата` на день участка — после
+    того как архив движка попал в историю. При чтении хранилища архива ещё
+    нет, и без этого шага у всех расчётов движка молча пропадало «в работе»,
+    а сами отметки навсегда оставались сиротами. Расчёта в истории нет —
+    отметка стирается: взять её не на что. Свежая отметка дня участка важнее
+    переведённой старой и не перезаписывается. */
+export function migrateEngineDuty(): void {
+  const stale = Object.keys(current).filter((key) => key.startsWith('engine|'));
+  if (stale.length === 0) return;
+  const next: DutyMap = { ...current };
+  for (const key of stale) {
+    const id = next[key];
+    delete next[key];
+    if (!id || !RUNS.some((run) => run.id === id)) continue;
+    const fresh = dayKey(id, key.slice('engine|'.length));
+    if (!(fresh in next)) next[fresh] = id;
+  }
+  save(next);
+}
 const watchers = new Set<() => void>();
 
 function save(next: DutyMap): void {

@@ -2,8 +2,9 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import './ds/styles.css';
 import './styles/app.css';
-import { attachEngine, engineDayTitle, seedRuns } from './data/load.ts';
+import { archiveRead, attachEngine, engineDayTitle, seedRuns } from './data/load.ts';
 import { ErrorBoundary } from './app/ErrorBoundary.tsx';
+import { migrateEngineDuty } from './data/duty.ts';
 import { engineWarming } from './data/api.ts';
 import { humanLine } from './data/errors.ts';
 
@@ -82,6 +83,11 @@ attachEngine()
   .catch(() => false)
   .then(waitForWarmup)
   .then(seedRuns)
+  .then(() => {
+    /* Архив в истории — теперь старые отметки «в работе» есть на что
+       перевести. */
+    if (archiveRead()) migrateEngineDuty();
+  })
   .then(async () => {
     const { App } = await import('./app/App.tsx');
     createRoot(document.getElementById('root')!).render(

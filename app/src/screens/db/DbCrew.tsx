@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import type { EngineerRecord, Registry } from '../../data/registry.ts';
 import { editCrew, removeCrew } from '../../data/crew.ts';
-import { loadPlaces } from '../../data/load.ts';
+import { engineReady, loadPlaces } from '../../data/load.ts';
 import type { Place } from '../../data/load.ts';
-import { CrewProfile } from '../../app/CrewProfile.tsx';
+import { CREW_ENGINE_LOCK, CrewProfile } from '../../app/CrewProfile.tsx';
 
 /* Профиль инженера, открытый из базы.
 
@@ -21,7 +21,7 @@ interface Props {
   onOpenMap: (id: string) => void;
   /** «Отследить» из профиля — увести в мониторинг. Базы маршрутов и расчётов
       этой дороги пока не получают: там кнопка молчит. */
-  onTrack?: (id: string) => void;
+  onTrack?: (id: string) => string | void;
   /** Данные штата поправили — справочник надо собрать заново. Без этого
       правка ложится в запись, а на экране проявится при следующей сборке. */
   onChanged?: () => void;
@@ -51,6 +51,7 @@ export function DbCrewProfile({ crew, registry, onClose, onOpenRun, onOpenMap, o
       onOpenRun={onOpenRun}
       onOpenMap={onOpenMap}
       onTrack={(id) => onTrack?.(id)}
+      locked={engineReady() ? CREW_ENGINE_LOCK : null}
       onSave={(patch) => {
         if (!crew) return;
         editCrew(crew.id, patch);
