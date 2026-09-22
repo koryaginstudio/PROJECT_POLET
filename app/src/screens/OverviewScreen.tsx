@@ -298,6 +298,7 @@ export function OverviewScreen({
         }}
         onOpenEngineer={(id) => registry && setCard({ kind: 'engineer', id })}
         onOpenOrder={(id) => registry && setCard({ kind: 'order', id })}
+        onExplain={onOpenSummary}
       />
     ) : (
       stats

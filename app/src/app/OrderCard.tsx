@@ -3,7 +3,7 @@ import type { OrderRecord } from '../data/registry.ts';
 import { dec, deadline, hhmm } from '../data/derive.ts';
 import { requiredTransportWhy } from '../data/rationale.ts';
 import {
-  equipmentName,
+  equipmentList,
   isUrgent,
   orderClassName,
   priorityClassName,
@@ -339,7 +339,7 @@ export function OrderCard({ row, seat, onOpen, dense = false, workType = [], run
           {row.requiredEquipment.length > 0 && (
             <div className="engfacts__row">
               <dt>Везти</dt>
-              <dd>{row.requiredEquipment.map(equipmentName).join(', ')}</dd>
+              <dd>{equipmentList(row.requiredEquipment)}</dd>
             </div>
           )}
           {row.requiredTransport && (

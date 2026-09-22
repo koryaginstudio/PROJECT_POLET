@@ -136,6 +136,81 @@ function metricShape(groupId: string, view: DayView, day: Day): Shape | null {
       };
     }
 
+    /* Две обязательные метрики ТЗ. Разбор — против базового варианта ТЗ:
+       без него число задействованных людей и километры ни с чем не
+       сравнить, а сравнение ТЗ требует прямо. */
+    case 'metric:engineers': {
+      const plan = day.plan;
+      const base = plan.meta.baseline ?? null;
+      const withRoute = view.loads.filter((load) => load.route && load.route.stops.length > 0);
+      return {
+        eyebrow: 'Метрика ТЗ',
+        title: 'Исполнителей задействовано',
+        facts: [
+          { key: 'used', label: 'В этом плане', value: String(withRoute.length) },
+          { key: 'base', label: 'Базовый вариант ТЗ', value: base ? String(base.engineers_used) : '—' },
+          { key: 'staff', label: 'В штате', value: String(plan.meta.engineers_total) },
+          {
+            key: 'assigned',
+            label: 'Разложено заявок',
+            value: base
+              ? `${plan.meta.orders_assigned} · базовый ${base.orders_assigned}`
+              : String(plan.meta.orders_assigned)
+          }
+        ],
+        sections: [
+          { key: 'used', label: 'С маршрутом', engineerIds: withRoute.map((load) => load.engineer.id) },
+          {
+            key: 'free',
+            label: 'Без визитов за день',
+            engineerIds: view.loads.filter((load) => load.idle).map((load) => load.engineer.id)
+          }
+        ]
+      };
+    }
+
+    case 'metric:km': {
+      const plan = day.plan;
+      const base = plan.meta.baseline ?? null;
+      const withKm = view.loads
+        .filter((load) => load.route && load.route.totals.distance_km != null)
+        .sort((a, b) => (b.route!.totals.distance_km ?? 0) - (a.route!.totals.distance_km ?? 0));
+      const total = plan.meta.distance_km_total ?? null;
+      const perVisit = total !== null && plan.meta.orders_assigned > 0 ? total / plan.meta.orders_assigned : null;
+      const basePerVisit =
+        base && base.distance_km_total != null && base.orders_assigned > 0
+          ? base.distance_km_total / base.orders_assigned
+          : null;
+      return {
+        eyebrow: 'Метрика ТЗ',
+        title: 'Пробег',
+        facts: [
+          { key: 'total', label: 'Всего по плану', value: total === null ? '—' : `${dec(total, 0)} км` },
+          { key: 'visit', label: 'На назначенный визит', value: perVisit === null ? '—' : `${dec(perVisit, 2)} км` },
+          {
+            key: 'engineer',
+            label: 'На исполнителя',
+            value: total === null || withKm.length === 0 ? '—' : `${dec(total / withKm.length, 1)} км`
+          },
+          {
+            key: 'base',
+            label: 'Базовый вариант ТЗ',
+            value:
+              base && base.distance_km_total != null
+                ? `${dec(base.distance_km_total, 0)} км · ${basePerVisit === null ? '—' : dec(basePerVisit, 2)} на визит`
+                : '—'
+          }
+        ],
+        sections: [
+          {
+            key: 'routes',
+            label: 'Маршруты, от длинного к короткому',
+            engineerIds: withKm.map((load) => load.engineer.id)
+          }
+        ]
+      };
+    }
+
     case 'metric:spread':
     case 'metric:gini': {
       const balance = day.plan.meta.balance;

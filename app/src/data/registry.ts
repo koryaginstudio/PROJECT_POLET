@@ -156,6 +156,9 @@ export interface OrderRecord {
   engineerName: string | null;
   /** Порядковый номер визита в маршруте, если заявка в него попала. */
   seq: number | null;
+  /** Почему в маршрут не попала — словами движка (ТЗ 2.5). Пусто у
+      назначенной и у плана без объяснения. */
+  unassignedWhy: string | null;
   /** Когда инженер начинает и кончает работу на объекте по плану, минуты от
       полуночи. Пусто у заявки, которая в маршрут не попала: у невзятой
       работы времени нет — есть только окно, когда её были готовы принять. */
@@ -514,6 +517,7 @@ function buildOrders(
         engineerId: order.assigned_to,
         engineerName: order.assigned_to ? nameById.get(order.assigned_to) ?? order.assigned_to : null,
         seq: stopByOrder.get(order.id)?.seq ?? null,
+        unassignedWhy: order.assigned_to ? null : order.unassigned_reason?.text ?? null,
         visitStart: stopByOrder.get(order.id)?.start ?? null,
         visitEnd: stopByOrder.get(order.id)?.finish ?? null,
         routeCode: order.assigned_to

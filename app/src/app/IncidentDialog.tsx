@@ -5,6 +5,7 @@ import { Select } from '../ds/components/forms/Select.jsx';
 import type { DayView } from '../data/derive.ts';
 import { hhmm } from '../data/derive.ts';
 import type { IncidentKind, IncidentSpec, ReplanResult } from '../data/api.ts';
+import { loadEngineSettings } from '../data/api.ts';
 
 interface Props {
   open: boolean;
@@ -12,7 +13,7 @@ interface Props {
   runCode: string;
   /** День у движка. Без него пересчитывать нечего: расчёт на фикстурах
       живого дня за собой не имеет. */
-  day: number | null;
+  day: string | null;
   /** Момент, с которого пересобирается остаток. */
   cut: number;
   busy: boolean;
@@ -23,14 +24,19 @@ interface Props {
   onRun: (spec: IncidentSpec) => void;
   /** Оставить пересчёт: он станет несохранённым состоянием на экране. */
   onKeep: () => void;
+  /** Каким событием открыть окно. Экран «Воздействия» открывает его уже
+      на выбранном событии: диспетчер нажал «Инженер выбыл» — окно про
+      выбытие, а не про то, что было выбрано в прошлый раз. */
+  initialKind?: IncidentKind;
 }
 
 /* Внести правку: день пошёл не так, как посчитали.
 
-   Событий три, и это не удобство, а вывод из замеров. Выбытие инженера
-   стоит дню 5,2 визита, и пересчёт возвращает 4,4 — жать обязательно.
-   Задержка на сорок минут стоит 0,4–0,5, и пересчёт возвращает 0,1–0,7:
-   буферы съедают её сами. Система, которая перетасовывает бригаду из-за
+   Событий четыре, и это не удобство, а вывод из замеров на зонах
+   (`замеры-21-09/`). Выбытие инженера утром стоит дню 4,6 визита, и
+   пересчёт возвращает 3,2 — жать обязательно. Задержка на сорок минут
+   стоит 0,2–0,3, и пересчёт из неё не возвращает ничего: буферы съедают
+   её сами. Система, которая перетасовывает бригаду из-за
    прокола колеса, хуже той, что не делает ничего — людям уже позвонили и
    сказали ехать.
 
@@ -75,6 +81,16 @@ const KINDS: {
     what: 'Прокол, пробка, затянувшийся визит — выйдет на маршрут позже.',
     verdict: 'skip',
     verdictText: 'Чаще не стоит'
+  },
+  {
+    /* Третье событие пересчёта из ТЗ. Тип в вёрстке был, а кнопки не было:
+       отмена не попадала в запрос вовсе. */
+    value: 'cancel',
+    icon: 'x-circle',
+    title: 'Абонент отказался',
+    what: 'Заявку сняли: освободилось время, и в него может влезть то, что не влезало.',
+    verdict: 'press',
+    verdictText: 'Пересчитывать'
   }
 ];
 
@@ -91,9 +107,18 @@ export function IncidentDialog({
   result,
   onClose,
   onRun,
-  onKeep
+  onKeep,
+  initialKind
 }: Props) {
   const [kind, setKind] = useState<IncidentKind>('disabled');
+  /* Какую заявку сняли. Пусто — `auto`: движок снимет ту, отказ от которой
+     освободит больше всего времени. */
+  const [orderId, setOrderId] = useState('');
+  /* Штраф за смену исполнителя — живой контрол окна правки. Встаёт туда, где
+     стоит настройка компании у движка; `null`, пока не прочитали, — тогда
+     в запрос не уходит, и движок берёт свою. */
+  const [churn, setChurn] = useState<number | null>(null);
+  const [churnMax, setChurnMax] = useState(200);
   const [engineerId, setEngineerId] = useState('');
   /* У кого на участке авария. Пусто — «по городу»: так считалось раньше,
      и как ответ на вопрос «а вообще?» это по-прежнему законно. */
@@ -110,6 +135,28 @@ export function IncidentDialog({
   }, [open, cut]);
 
   useEffect(() => {
+    if (open && initialKind) setKind(initialKind);
+  }, [open, initialKind]);
+
+  useEffect(() => {
+    if (!open) return;
+    let alive = true;
+    loadEngineSettings()
+      .then(({ settings }) => {
+        const setting = settings.churn_penalty;
+        if (!alive || !setting) return;
+        setChurn(setting.value);
+        /* Верхний предел у движка — тысяча, но ползунку столько не нужно:
+           различимая часть шкалы — первые пара сотен. */
+        setChurnMax(Math.max(200, Math.min(setting.max, setting.value * 4)));
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [open]);
+
+  useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && !busy && onClose();
     document.addEventListener('keydown', onKey);
@@ -118,23 +165,45 @@ export function IncidentDialog({
 
   if (!open) return null;
 
-  const crew = view.loads.filter((load) => load.route && load.route.stops.length > 0);
-  const chosen = engineerId || crew[0]?.engineer.id || '';
+  /* Выбыть или задержаться может только тот, у кого после момента правки
+     ещё есть работа. Не выбран никто — «самый занятой сейчас», `auto`:
+     движок сам возьмёт того, у кого впереди больше всего. */
+  const crew = view.loads.filter(
+    (load) => load.route && load.route.stops.some((stop) => stop.start >= at)
+  );
+  const chosen = engineerId || 'auto';
   const needsEngineer = kind === 'disabled' || kind === 'delayed';
   const ready = day !== null && (!needsEngineer || Boolean(chosen));
 
+  /* Что ещё можно снять: визиты, к которым по плану не выехали до момента
+     правки. Начатое и сделанное отменять нечего, а к визиту, куда инженер
+     уже едет, движок его и доигрывает («в пути») и на отмену отвечает 400. */
+  const cancellable = view.loads
+    .flatMap((load) => (load.route ? load.route.stops : []))
+    .filter((stop) => stop.arrive - stop.travel_minutes >= at)
+    .sort((a, b) => a.start - b.start);
+
   const spec: IncidentSpec = {
-    day: day ?? 1,
+    /* Пустая строка, а не синтетический день 1: `ready` всё равно не даст
+       отправить без дня, а подстановка чужого дня — это молчаливый чужой
+       расчёт под видом нашего. */
+    day: day ?? '',
     at,
     kind,
     urgent,
     urgentNear: kind === 'urgent' && nearId ? nearId : undefined,
     engineerId: needsEngineer ? chosen : undefined,
-    minutes
+    minutes,
+    orderId: kind === 'cancel' && orderId ? orderId : undefined,
+    churnPenalty: churn ?? undefined
   };
 
   const replan = result?.meta.replan;
   const gain = replan ? replan.assigned_now - replan.assigned_as_is : 0;
+  /* Разбор события: у ЧП с инженером — судьба его визитов, у отмены — что
+     купила освободившаяся ёмкость. Формы разные, поэтому и ветки две. */
+  const fates = replan?.incident && replan.incident.kind !== 'cancelled' ? replan.incident : null;
+  const cancelled = replan?.incident && replan.incident.kind === 'cancelled' ? replan.incident : null;
 
   /* Чей участок накрыло — на экране именем, а не кодом: код инженера
      диспетчер держать в голове не обязан. */
@@ -172,8 +241,10 @@ export function IncidentDialog({
           <>
             <p className="engine__lede">
               Движок пересобрал остаток дня от {hhmm(replan.at)} за {replan.solve_seconds} с.
-              Ниже — чего это стоило. Пересчёт пока нигде не сохранён: он живёт на экране, пока
-              вы не нажмёте «Сохранить».
+              Ниже — чего это стоило.{' '}
+              {replan.adopt_token
+                ? 'Это пересчёт от событий дня: журнал не тронут, пока вы не нажмёте «Принять», — тогда он станет назначением дня. «Сохранить» потом положит его в архив.'
+                : 'Пересчёт пока нигде не сохранён: он живёт на экране, пока вы не нажмёте «Сохранить».'}
             </p>
 
             {/* Цена воздействия. Первое число — то, ради чего сюда и
@@ -227,7 +298,29 @@ export function IncidentDialog({
 
             {/* Судьба визитов выбывшего. Три исхода в сумме дают ровно то,
                 что было у него впереди — ничего не теряется по дороге. */}
-            {replan.incident && (
+            {cancelled && (
+              <>
+                <div className="setrow">
+                  <span className="setrow__key">Сняли</span>
+                  <span className="setrow__val">
+                    {cancelled.order_ids.join(', ')}
+                    <span className="setrow__note">
+                      {` · освободилось ${cancelled.freed_minutes} мин работы по нормативу`}
+                    </span>
+                  </span>
+                </div>
+                <div className="setrow">
+                  <span className="setrow__key">Влезло взамен</span>
+                  <span className="setrow__val">
+                    {cancelled.picked_up_count > 0
+                      ? `${cancelled.picked_up_count}: ${cancelled.picked_up.join(', ')}`
+                      : 'ничего — освободившееся время заполнить нечем'}
+                  </span>
+                </div>
+              </>
+            )}
+
+            {fates && (
               <div className="incident__fates">
                 {(
                   [
@@ -236,7 +329,7 @@ export function IncidentDialog({
                     ['lost', 'Не влезли никуда', 'bad']
                   ] as const
                 ).map(([key, label, tone]) => {
-                  const ids = replan.incident![key];
+                  const ids = fates[key];
                   return (
                     <div key={key} className={'incident__fate incident__fate--' + tone}>
                       <span className="incident__fate-value">{ids.length}</span>
@@ -252,7 +345,9 @@ export function IncidentDialog({
 
             <div className="manual__foot">
               <span className="manual__note">
-                Из {replan.incident?.pending_was.length ?? 0} визитов, что были у него впереди.
+                {fates
+                  ? `Из ${fates.pending_was.length} визитов, что были у него впереди.`
+                  : `Штраф за смену исполнителя — ${replan.churn_penalty ?? '—'}.`}
               </span>
               <span className="manual__actions">
                 <Button variant="secondary" size="sm" onClick={onClose}>
@@ -319,10 +414,13 @@ export function IncidentDialog({
                     size="sm"
                     value={chosen}
                     onChange={(e) => setEngineerId(e.target.value)}
-                    options={crew.map((load) => ({
-                      value: load.engineer.id,
-                      label: `${load.engineer.name} · ${load.visits} визитов`
-                    }))}
+                    options={[
+                      { value: 'auto', label: 'Самый занятой сейчас' },
+                      ...crew.map((load) => ({
+                        value: load.engineer.id,
+                        label: `${load.engineer.name} · ${load.visits} визитов`
+                      }))
+                    ]}
                   />
                 </label>
               )}
@@ -335,6 +433,24 @@ export function IncidentDialog({
                     value={String(minutes)}
                     onChange={(e) => setMinutes(Number(e.target.value))}
                     options={DELAYS.map((d) => ({ value: String(d), label: `${d} мин` }))}
+                  />
+                </label>
+              )}
+
+              {kind === 'cancel' && (
+                <label className="incident__field">
+                  <span className="incident__field-label">Какую заявку</span>
+                  <Select
+                    size="sm"
+                    value={orderId}
+                    onChange={(e) => setOrderId(e.target.value)}
+                    options={[
+                      { value: '', label: 'Ту, что освободит больше всего времени' },
+                      ...cancellable.map((stop) => ({
+                        value: stop.order_id,
+                        label: `${stop.order_id} · ${hhmm(stop.start)}`
+                      }))
+                    ]}
                   />
                 </label>
               )}
@@ -375,6 +491,27 @@ export function IncidentDialog({
                 </>
               )}
             </div>
+
+            {/* Живой контрол окна правки — одна из семи договорённых
+                настроек: насколько пересчёт держится за то, кому уже сказали
+                ехать. Ноль — перетасует свободно, больше — меньше перемен.
+                Встаёт на настройку компании у движка. */}
+            {churn !== null && (
+              <label className="incident__field incident__field--wide">
+                <span className="incident__field-label">
+                  Держаться за назначенных: штраф за смену исполнителя {churn}
+                </span>
+                <input
+                  className="incident__range"
+                  type="range"
+                  min={0}
+                  max={churnMax}
+                  step={10}
+                  value={churn}
+                  onChange={(e) => setChurn(Number(e.currentTarget.value))}
+                />
+              </label>
+            )}
 
             {day === null && (
               <div className="solvefail">

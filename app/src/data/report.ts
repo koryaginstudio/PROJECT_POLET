@@ -191,7 +191,7 @@ export function buildReport(day: Day, run: RunEntry): Sheet[] {
           hhmm(order.window_start),
           hhmm(order.window_end),
           deadline(order.sla_deadline),
-          order.sla_deadline > dayEnd() ? 'да' : 'нет',
+          order.sla_deadline > (day.plan.meta.hard_end ?? dayEnd()) ? 'да' : 'нет',
           PRIORITY[order.priority] ?? String(order.priority),
           order.est_minutes,
           order.needs_access ? 'да' : 'нет',

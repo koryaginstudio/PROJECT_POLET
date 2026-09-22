@@ -36,6 +36,9 @@ interface Props {
   /** Открыть карточку из базы поверх карты. */
   onOpenEngineer: (id: string) => void;
   onOpenOrder: (id: string) => void;
+  /** «Почему этот исполнитель» — в сводку, где у выбранной заявки стоят
+      кандидаты и объяснение движка. Шаг сценария ТЗ «карта → почему». */
+  onExplain: () => void;
 }
 
 /** Минуты словами: «3 ч 40 мин». */
@@ -45,7 +48,15 @@ const spell = (minutes: number) => {
   return h > 0 ? `${h} ч ${m} мин` : `${m} мин`;
 };
 
-export function MapPick({ view, pinned, selectedOrder, onClose, onOpenEngineer, onOpenOrder }: Props) {
+export function MapPick({
+  view,
+  pinned,
+  selectedOrder,
+  onClose,
+  onOpenEngineer,
+  onOpenOrder,
+  onExplain
+}: Props) {
   const colorOf = (engineerId: string) =>
     routeColor(view.loads.findIndex((item) => item.engineer.id === engineerId));
 
@@ -106,8 +117,20 @@ export function MapPick({ view, pinned, selectedOrder, onClose, onOpenEngineer, 
               <span className="mpick__none">Не нашёлся</span>
             )
           )}
+          {/* Почему не нашёлся — ТЗ 2.5, словами движка. */}
+          {!mine &&
+            order.unassigned_reason &&
+            row(
+              'Почему',
+              order.unassigned_reason.text.charAt(0).toUpperCase() +
+                order.unassigned_reason.text.slice(1)
+            )}
         </div>
 
+        <button type="button" className="mapstat__go" onClick={onExplain}>
+          {mine ? 'Почему этот исполнитель' : 'Почему не назначена'}
+          <Icon name="arrow-right" size={13} />
+        </button>
         <button type="button" className="mapstat__go" onClick={() => onOpenOrder(order.id)}>
           Открыть карточку заявки
           <Icon name="arrow-right" size={13} />

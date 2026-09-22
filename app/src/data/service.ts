@@ -179,17 +179,30 @@ export function useService(): ServiceSettings {
 
 /* ─── производные величины ────────────────────────────────────────────── */
 
+/* Граница суток открытого плана. Настройка `dayEnd` задаёт ось по вкусу
+   диспетчера, но ось не вправе кончаться раньше, чем кончается день: у
+   выгрузки заказчика граница 22:00, заводская ось — 21:00, и визиты после
+   девяти вечера выпадали с таймлайна, а ползунок момента не доходил до
+   последнего часа. Ставит её тот, кто открывает план. */
+let горизонтПлана = 0;
+
+export function setPlanHorizon(hardEnd: Minutes | undefined): void {
+  горизонтПлана = hardEnd ?? 0;
+}
+
+const конецОси = (): Minutes => Math.max(current.dayEnd, горизонтПлана);
+
 export const dayStart = (): Minutes => current.dayStart;
-export const dayEnd = (): Minutes => current.dayEnd;
-export const daySpan = (): number => current.dayEnd - current.dayStart;
+export const dayEnd = (): Minutes => конецОси();
+export const daySpan = (): number => конецОси() - current.dayStart;
 
 /** Прижимает момент к границам смены. */
 export const clampDay = (minutes: Minutes): Minutes =>
-  Math.min(current.dayEnd, Math.max(current.dayStart, minutes));
+  Math.min(конецОси(), Math.max(current.dayStart, minutes));
 
 /** Часы гребёнки: целые часы внутри смены. */
 export function dayHours(step = 60): Minutes[] {
   const list: Minutes[] = [];
-  for (let m = Math.ceil(current.dayStart / 60) * 60; m <= current.dayEnd; m += step) list.push(m);
+  for (let m = Math.ceil(current.dayStart / 60) * 60; m <= конецОси(); m += step) list.push(m);
   return list;
 }

@@ -35,12 +35,16 @@ import type { PlannedDay } from './planner.ts';
 import {
   createEngineRun,
   engineAlive,
+  loadCatalogue,
+  loadEngineDay,
   loadEngineForm,
   loadEngineForms,
   listRuns,
   noteEngineRun,
   probeEngine
 } from './api.ts';
+import type { EngineCatalogue, EngineRun } from './api.ts';
+import { изДвижка } from './fromEngine.ts';
 
 /* Источник данных — это день, который раскладывают. Их два рода, и в
    интерфейсе они неотличимы:
@@ -90,8 +94,15 @@ export interface RunEntry {
   /** Откуда брать формы: имя файла-фикстуры либо `null` — тогда расчёт
       лежит в архиве движка и забирается оттуда по своему номеру. */
   source: SourceId | null;
-  /** Номер дня у движка, 1…30. Есть только у настоящих расчётов. */
-  day?: number;
+  /** День у движка: зона выгрузки либо номер синтетического дня строкой.
+      Есть только у расчётов движка. */
+  day?: string;
+  /** Какие формы у записи есть — со слов движка. Раньше здесь стояла
+      догадка «есть поле replan — значит пересчёт», и на записи, которую
+      сохранила старая версия движка, догадка давала неверный ответ:
+      запись считалась обычным расчётом, её план не отдавался, и карточка
+      молча исчезала с экрана. */
+  forms?: string[];
   /** Сколько солвер думал над этим планом, секунды. Только у настоящих. */
   solveSeconds?: number;
   /** С какими переменными движка его считали. */
@@ -147,12 +158,20 @@ function readStored(): RunEntry[] {
 
 export const RUNS: RunEntry[] = readStored();
 
+/* Расчёты, посчитанные в браузере, пока движок запущен, не показываются —
+   см. `hideLocalRuns`. Из хранилища они при этом не стираются: движок
+   погасят — и они вернутся на место. */
+const LOCAL_HIDDEN: RunEntry[] = [];
+
 function saveRuns() {
   if (typeof localStorage === 'undefined') return;
   try {
     /* Расчёты движка живут в его архиве и записываются туда им самим —
        дублировать их в браузере незачем. */
-    localStorage.setItem(STORE_KEY, JSON.stringify(RUNS.filter((run) => run.source !== null)));
+    localStorage.setItem(
+      STORE_KEY,
+      JSON.stringify([...LOCAL_HIDDEN, ...RUNS.filter((run) => run.source !== null)])
+    );
   } catch {
     /* Хранилище может быть закрыто настройками браузера. Запись тогда живёт
        до перезагрузки — это хуже, чем ничего не делать, но не ошибка. */
@@ -160,6 +179,23 @@ function saveRuns() {
 }
 
 const RUN_BY_ID = new Map(RUNS.map((run) => [run.id, run]));
+
+/** Убирает из списка расчёты, посчитанные в браузере. Зовётся, когда движок
+    нашёлся.
+
+    Прежде они оставались в одном списке с расчётами движка и открывались
+    браузерным планировщиком — базовым вариантом ТЗ — даже при живом
+    движке: щелчок по старой записи показывал на защите чужой план под
+    видом нашего. С движком план считает движок, и точка. */
+export function hideLocalRuns(): void {
+  for (let i = RUNS.length - 1; i >= 0; i -= 1) {
+    const run = RUNS[i];
+    if (run.source === null) continue;
+    LOCAL_HIDDEN.unshift(run);
+    RUN_BY_ID.delete(run.id);
+    RUNS.splice(i, 1);
+  }
+}
 
 /* ─── живой движок ───────────────────────────────────────────────────────
 
@@ -185,26 +221,84 @@ const codeAt = (index: number) => 'R' + String(index + 1).padStart(3, '0');
 
 /** Ищет движок. Вызывается один раз при старте.
 
-    Архив движка в историю сейчас не подтягивается, и это не оплошность.
-    Движок считает свои собственные синтетические дни: реальную выгрузку он
-    принимать пока не умеет, транспорта как ограничения в его модели нет, а
-    день он обрывает в 21:00, тогда как окна приёма в выгрузке доходят до
-    22:00. Показывать его расчёты рядом с расчётами по настоящим данным
-    значило бы смешать два разных дня в одном списке.
+    Здесь стояло «архив движка в историю не подтягивается, и это не
+    оплошность» с тремя причинами: движок не принимает реальную выгрузку,
+    транспорта как ограничения в его модели нет, день обрывается в 21:00
+    при окнах приёма до 22:00.
 
-    Как только движок начнёт принимать зоны выгрузки, отсюда возвращается
-    чтение архива, а `createRun` снова пойдёт считать к нему. */
+    Все три закрыты 15 сентября. Движок принимает зоны выгрузки
+    (`/api/days` отдаёт `zones`), транспорт стал третьей обязательной
+    группой ограничений с предельной дальностью перегона, а граница дня
+    стала полем дня и у настоящих данных равна 22:00 — она приходит в
+    `plan.meta.hard_end`. Условие снято, архив читается. */
 export async function attachEngine(): Promise<boolean> {
   engineOn = await probeEngine();
   return engineOn;
 }
 
-/** Умеет ли движок считать по нашим данным. Пока нет — см. `attachEngine`. */
-const engineTakesRealData = () => false;
+/* Имена зон у движка. У вёрстки они свои с самого начала, и это не
+   расхождение подписей, а разные наборы данных: `center` — это «Центр» из
+   набора дизайнера, `югоцентр` — участок из выгрузки заказчика. Переводим
+   в одном месте, чтобы остальной код про это не знал. */
+const ENGINE_ZONE: Record<string, string> = {
+  east: 'восток',
+  southeast: 'юго-восток',
+  center: 'югоцентр'
+};
 
-/** Архив движка. Сейчас не используется: ждёт, когда движок примет выгрузку. */
+/** Умеет ли движок считать по нашим данным. Да — см. `attachEngine`. */
+const engineTakesRealData = () => true;
+
+/** Архив движка. */
 export async function engineArchive() {
   return listRuns();
+}
+
+/** Дописывает архив движка в историю — то, что описано в комментарии к
+    `RUN_BY_ID` выше, но до сих пор нигде не звалось.
+
+    Номера расчётов пересчитываются по месту в истории: движок ведёт свою
+    нумерацию с R001, и без этого в списке стояли бы два R001.
+
+    Возвращает, сколько записей прибавилось: звавшему надо знать, надо ли
+    заводить первый расчёт самому. */
+export async function pullArchive(): Promise<number> {
+  if (!engineOn || !engineTakesRealData()) return 0;
+  const записи = await engineArchive();
+  let добавлено = 0;
+  for (const record of записи) {
+    if (RUN_BY_ID.has(record.id)) continue;
+    adoptEngineRun(record);
+    добавлено += 1;
+  }
+  return добавлено;
+}
+
+/** Запись архива движка — в историю, если её там ещё нет. Одна дорога для
+    архива, нового расчёта и сохранённого пересчёта: прежде сохранённый
+    пересчёт в историю не попадал, и `runEntry` подменял его последней
+    записью — открывался чужой расчёт. */
+export function adoptEngineRun(record: EngineRun): RunEntry {
+  const known = RUN_BY_ID.get(record.id);
+  if (known) return known;
+  const entry: RunEntry = {
+    id: record.id,
+    /* Номер движка, а не место в списке: расчёты браузера при живом
+       движке спрятаны, и повторов нет, а «R003» на экране обязано быть
+       тем же R003, что в архиве движка и в заметке «Правка расчёта R003». */
+    code: record.code || codeAt(RUNS.length),
+    date: record.date,
+    created: record.created,
+    note: record.note,
+    source: null,
+    day: record.day,
+    forms: record.forms,
+    solveSeconds: record.summary.solve_seconds,
+    params: record.params
+  };
+  RUNS.push(entry);
+  RUN_BY_ID.set(entry.id, entry);
+  return entry;
 }
 
 /** Открытый по умолчанию расчёт — самый свежий из оставшихся.
@@ -215,7 +309,15 @@ export async function engineArchive() {
     Читается как функция, а не как константа: архив движка приезжает после
     того, как модуль разобран, и константа навсегда запомнила бы то, что
     было до него. */
-export const latestRun = (): RunId => RUNS[RUNS.length - 1]?.id ?? '';
+export const latestRun = (): RunId => {
+  /* Сохранённый пересчёт — остаток дня, а не день: открывать с него
+     диспетчерскую нельзя. У записей браузера `forms` нет. */
+  for (let i = RUNS.length - 1; i >= 0; i -= 1) {
+    const forms = RUNS[i].forms;
+    if (forms === undefined || forms.includes('simulation')) return RUNS[i].id;
+  }
+  return '';
+};
 
 /** Заводит расчёт по выбранной зоне.
 
@@ -228,26 +330,22 @@ export const latestRun = (): RunId => RUNS[RUNS.length - 1]?.id ?? '';
 export async function createRun(
   params: EngineParams,
   zone: SourceId = BUILT_IN[0],
-  day?: number
+  day?: string
 ): Promise<RunEntry> {
   const index = RUNS.length;
   const now = new Date();
 
   if (engineOn && engineTakesRealData()) {
-    const record = await createEngineRun(day ?? 1, params);
-    const entry: RunEntry = {
-      id: record.id,
-      code: codeAt(index),
-      date: record.date,
-      created: record.created,
-      source: null,
-      day: record.day,
-      solveSeconds: record.summary.solve_seconds,
-      params: record.params
-    };
-    RUNS.push(entry);
-    RUN_BY_ID.set(entry.id, entry);
-    return entry;
+    /* Зона выгрузки, а не синтетический день. `day ?? 1` здесь оставался
+       единственным путём, и он уводил на синтетический день 1 — то есть на
+       80 выдуманных заявок вместо 56 настоящих. */
+    /* День, если его назвали, важнее зоны: «Ручное управление» у расчёта
+       движка зовёт сюда без зоны и с днём, а умолчание зоны — «восток», и
+       прежде любой расчёт пересчитывался по востоку. Не назвали ни то, ни
+       другое — отказ, а не синтетический день 1. */
+    const target = day ?? ENGINE_ZONE[zone];
+    if (!target) throw new Error(`не знаю, какой день считать для «${zone}»`);
+    return adoptEngineRun(await createEngineRun(target, params));
   }
 
   const started = performance.now();
@@ -333,6 +431,7 @@ export const runEditCount = () => RUNS.filter((run) => run.source !== null).leng
     и к истории отношения не имеют. */
 export function clearRunEdits(): void {
   RUNS.length = 0;
+  LOCAL_HIDDEN.length = 0;
   RUN_BY_ID.clear();
   saveRuns();
 }
@@ -671,9 +770,40 @@ let dictionaries: Promise<Dictionaries | null> | null = null;
 
 /** Подписи ко всем кодам. Формы может не быть — тогда работаем на встроенном
     словаре, и ни один экран от этого не ломается. */
+/* Справочники движка в форму словарей контракта.
+
+   Слой подписей у интерфейса и так двухэтажный — встроенный снизу,
+   пришедший с данными сверху, — и движку в нём место сверху: он знает
+   про справочники больше нас. Русские названия навыков лежали у него в
+   коде и наружу не отдавались ни одной ручкой; мы показывали голые
+   `install` и `emergency`, а список видов работ собирали по тому, что
+   случилось в открытом дне, отчего фильтр на разных зонах выходил
+   разным. */
+function словариИзСправочника(справочник: EngineCatalogue): Dictionaries {
+  const свести = <T extends { code: string; title: string }>(список: T[]) =>
+    Object.fromEntries(список.map((one) => [one.code, one.title]));
+  return {
+    schema: справочник.schema,
+    kind: 'dictionaries',
+    skills: свести(справочник.skills),
+    work_types: свести(справочник.work_types),
+    transports: свести(справочник.transport),
+    equipment: свести(справочник.equipment ?? [])
+  };
+}
+
 export function loadDictionaries(): Promise<Dictionaries | null> {
   if (!dictionaries) {
     dictionaries = (async () => {
+      /* С живым движком справочники его: он их и составляет. Не
+         отозвался — падаем на файл рядом с данными, как было. */
+      if (engineOn) {
+        try {
+          return словариИзСправочника(await loadCatalogue());
+        } catch {
+          /* Ручки может не быть у движка постарше — тогда файл. */
+        }
+      }
       try {
         const response = await fetch('/data/dictionaries.json');
         if (!response.ok) return null;
@@ -719,15 +849,37 @@ export async function loadDay(id: RunId): Promise<Day> {
      рядом, и четыре запроса вместо одного ничего бы не ускорили. */
   if (entry.source === null) {
     const forms = await loadEngineForms(id);
+    /* Сохранённый пересчёт: план остатка дня (`kind: "replan"`), а три
+       остальные формы — дня, от которого он отпочковался, как у черновика
+       правки. Панели объяснения это знают: чужое объяснение они не
+       показывают, если исполнитель в пересчёте другой. */
+    if ((forms.plan.kind as string) === 'replan' || !forms.explain) {
+      const plan = { ...forms.plan, kind: 'plan' } as Plan;
+      checkForm(plan, 'plan');
+      const whole = await loadEngineDay(entry.day ?? forms.run.day);
+      checkForm(whole.explain!, 'explain');
+      checkForm(whole.simulation!, 'simulation');
+      checkForm(whole.shifts!, 'shifts');
+      return {
+        id,
+        plan: изДвижка(plan),
+        explain: whole.explain!,
+        simulation: whole.simulation!,
+        shifts: whole.shifts!,
+        dictionaries: await loadDictionaries()
+      };
+    }
     for (const kind of ['plan', 'explain', 'simulation', 'shifts'] as const) {
-      checkForm(forms[kind], kind);
+      checkForm(forms[kind]!, kind);
     }
     return {
       id,
-      plan: forms.plan,
-      explain: forms.explain,
-      simulation: forms.simulation,
-      shifts: forms.shifts,
+      /* На языке вёрстки: иначе у планов движка пустели километры,
+         сравнение с базовым, транспорт и закрепления — см. `fromEngine.ts`. */
+      plan: изДвижка(forms.plan),
+      explain: forms.explain!,
+      simulation: forms.simulation!,
+      shifts: forms.shifts!,
       dictionaries: await loadDictionaries()
     };
   }
@@ -766,19 +918,45 @@ export interface DaySummary {
     данных, ходит сюда — иначе один раздел однажды окажется собран по своим
     расчётам, а соседний по чужим. */
 export async function loadRunData(): Promise<Map<RunId, { plan: Plan; simulation: Simulation }>> {
-  const remote = RUNS.filter((run) => run.source === null);
+  /* Сохранённые пересчёты в список не идут: у них нет ни симуляции, ни
+     покрытия — это план остатка дня, а не план дня. Раньше мы просили у них
+     `simulation`, получали 400, и `Promise.all` ронял весь список: одна
+     запись, которой не может быть формы, оставляла диспетчерскую на
+     «Собираем расчёты…».
+
+     Спрашиваем у движка полем `forms`, а не угадываем. Угадывать здесь
+     пробовали дважды, и оба раза мимо: по `kind` — это подпись человека
+     («срочные заявки в 13:40»), она стоит и у обычных расчётов; по
+     наличию `replan` — а у записи, сохранённой старой версией движка,
+     пометка есть, а замысла нет, и она молча пропадала из списка.
+
+     Записи без поля (архив старее движка) считаем полными, как было. */
+  const умеет = (run: RunEntry, форма: string) =>
+    run.forms === undefined || run.forms.includes(форма);
+  const remote = RUNS.filter((run) => run.source === null
+                                      && умеет(run, 'plan')
+                                      && умеет(run, 'simulation'));
   const fetched = await Promise.all(
     remote.map(async (run) => {
-      const [plan, simulation] = await Promise.all([
-        loadEngineForm<Plan>(run.id, 'plan'),
-        loadEngineForm<Simulation>(run.id, 'simulation')
-      ]);
-      checkForm(plan, 'plan');
-      checkForm(simulation, 'simulation');
-      return [run.id, { plan, simulation }] as const;
+      try {
+        const [plan, simulation] = await Promise.all([
+          loadEngineForm<Plan>(run.id, 'plan'),
+          loadEngineForm<Simulation>(run.id, 'simulation')
+        ]);
+        checkForm(plan, 'plan');
+        checkForm(simulation, 'simulation');
+        return [run.id, { plan: изДвижка(plan), simulation }] as const;
+      } catch (error) {
+        /* Один расчёт не прочитался — остальные от этого не страдают.
+           Молчать нельзя: в списке он просто не появится, и без следа в
+           консоли это выглядит как «расчёт пропал», а не «форма не
+           отдалась». */
+        console.warn(`[polet] расчёт ${run.code} не прочитался у движка:`, error);
+        return null;
+      }
     })
   );
-  const byRun = new Map(fetched);
+  const byRun = new Map(fetched.filter((pair): pair is NonNullable<typeof pair> => pair !== null));
 
   const own = RUNS.filter((run) => run.source !== null);
   const computed = await Promise.all(

@@ -5028,9 +5028,11 @@ button.bsq:focus-visible {
 /* Итоги расчёта — плитки внутри пульта: их меняет та же кнопка, что стоит
    в шапке блока, и разносить их по экрану было незачем. Плитки намеренно
    тихие: это часть пульта, а не заголовок экрана. */
+/* Плиток семь: пять прежних и две обязательные метрики ТЗ — исполнители и
+   пробег. Сетка на пять клала их рядами «пять плюс две». */
 .calc__metrics {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: var(--sp-2);
   padding-top: var(--sp-4);
   border-top: 1px solid var(--border-hairline);
@@ -5142,7 +5144,7 @@ button.bsq:focus-visible {
 
 @media (max-width: 1400px) {
   .calc__metrics {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
@@ -9470,6 +9472,25 @@ button.bars__btn:focus-visible {
   background: var(--white);
 }
 
+/* Карточка события — кнопка: открывает окно правки на этом событии. */
+.actcard--button {
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.actcard--button:hover:not(:disabled) {
+  border-color: var(--accent-500);
+  box-shadow: 0 0 0 1px var(--accent-500);
+}
+
+.actcard--button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
 .actcard__top {
   display: flex;
   align-items: center;
@@ -10296,6 +10317,18 @@ button.bars__btn:focus-visible {
 .incident__field-label {
   font-size: 11px;
   color: var(--text-muted);
+}
+
+/* Ползунок штрафа за смену исполнителя: во всю ширину окна, под полями
+   события — это не часть события, а то, как на него отвечать. */
+.incident__field--wide {
+  margin-top: var(--sp-3);
+  width: 100%;
+}
+
+.incident__range {
+  width: 100%;
+  accent-color: var(--accent-500);
 }
 
 /* Цена пересчёта. Одно число крупно — то, ради чего окно и открывали. */
@@ -15889,4 +15922,40 @@ button.bars__btn:focus-visible {
 .mapstat:not(.mpick) .mapstat__draft {
   flex: 0 0 auto;
   max-width: 220px;
+}
+
+/* Распоряжение диспетчера в карточке заявки: статусы и ручное
+   закрепление. Кнопки в ряд с переносом — панель узкая. */
+.dispatch__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+}
+
+.dispatch__fail {
+  display: inline-flex;
+  gap: var(--sp-2);
+  align-items: center;
+}
+
+.dispatch__pin {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: var(--sp-3);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--border-hairline);
+}
+
+.dispatch__pin-label {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.dispatch__pin-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  align-items: center;
 }

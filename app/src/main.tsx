@@ -2,8 +2,41 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import './ds/styles.css';
 import './styles/app.css';
-import { attachEngine, BUILT_IN, createRun, RUNS } from './data/load.ts';
+import {
+  attachEngine,
+  BUILT_IN,
+  createRun,
+  engineReady,
+  hideLocalRuns,
+  pullArchive,
+  RUNS
+} from './data/load.ts';
 import { engineDefaults } from './data/engine.ts';
+import { engineWarming } from './data/api.ts';
+
+/* Движок открывает порт сразу, а дни считает в фоне: на новой машине
+   первый запуск — около трёх минут, дальше — секунды. Пока он считает,
+   страница говорит это словами и ждёт, а не висит пустой и не сеет
+   расчёты в полусчитанный движок. */
+async function waitForWarmup() {
+  for (;;) {
+    const warming = await engineWarming();
+    if (!warming) return;
+    const всего = warming.ready.length + warming.pending.length;
+    const root = document.getElementById('root');
+    if (root) {
+      const text = document.createElement('p');
+      text.style.cssText = 'padding:48px;font-family:sans-serif;color:#667;max-width:640px';
+      text.textContent =
+        `Движок считает планы участков: готово ${warming.ready.length} из ${всего}` +
+        (warming.current ? `, сейчас — ${warming.current}` : '') +
+        `, идёт ${warming.seconds} с. При первом запуске на новой машине это около ` +
+        'трёх минут, дальше — секунды. Страница откроется сама.';
+      root.replaceChildren(text);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+  }
+}
 
 /* Движок ищем до первой отрисовки, а не после.
 
@@ -28,7 +61,26 @@ import { engineDefaults } from './data/engine.ts';
    Дальше история уже своя: расчёты копятся от кнопки и переживают
    перезагрузку. Второй раз сюда не заходят. */
 async function seedFirstRuns() {
-  if (RUNS.length > 0) return;
+  /* С живым движком история приходит из его архива, а не считается заново:
+     он свои расчёты хранит сам и переживает перезагрузку браузера. Считать
+     поверх них свои значило бы выдать посчитанное здесь за посчитанное им —
+     ровно та подмена, ради которой всё и затевалось.
+
+     Архив подтягивается всегда, а не только на пустом списке. Прежде проверка
+     «история не пуста» стояла первой, и браузер, в котором уже были свои
+     расчёты, архива движка не видел вовсе: на экране оставались одни
+     браузерные планы. Их при живом движке прячем — см. `hideLocalRuns`. */
+  if (engineReady()) {
+    hideLocalRuns();
+    /* Архив не прочитался — не сеем: иначе каждый сбой `GET /runs`
+       дописывал бы в архив движка ещё три расчёта. Сеем, только если он
+       прочитан и пуст. */
+    const прочитан = await pullArchive().then(() => true, () => false);
+    if (!прочитан || RUNS.length > 0) return;
+  } else if (RUNS.length > 0) {
+    return;
+  }
+
   for (const zone of BUILT_IN) {
     try {
       await createRun(engineDefaults(), zone);
@@ -40,6 +92,7 @@ async function seedFirstRuns() {
 
 attachEngine()
   .catch(() => false)
+  .then(waitForWarmup)
   .then(seedFirstRuns)
   .then(async () => {
     const { App } = await import('./app/App.tsx');

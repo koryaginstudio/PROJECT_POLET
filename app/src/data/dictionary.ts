@@ -218,10 +218,22 @@ const EQUIPMENT_NAMES: Record<string, string> = {
   stb: 'ТВ-приставка',
   ont: 'Оптический терминал',
   cable: 'Кабель',
-  splitter: 'Сплиттер'
+  splitter: 'Сплиттер',
+  speaker: 'Умная колонка'
 };
 
 export const equipmentName = (key: string) => label('equipment', key, EQUIPMENT_NAMES);
+
+/** Список приборов словами, одинаковые — счётом: «Роутер × 2, ТВ-приставка».
+    Движок отдаёт оборудование штуками, и два роутера на одну заявку
+    читались бы «Роутер, Роутер». */
+export function equipmentList(items: string[]): string {
+  const counts = new Map<string, number>();
+  for (const item of items) counts.set(item, (counts.get(item) ?? 0) + 1);
+  return [...counts.entries()]
+    .map(([key, count]) => (count > 1 ? `${equipmentName(key)} × ${count}` : equipmentName(key)))
+    .join(', ');
+}
 
 /* Технологию в выгрузке пишут аббревиатурой, и расшифровывать её незачем:
    FMC и FTTB на планёрке произносят именно так. Словарь здесь нужен только

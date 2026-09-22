@@ -34,8 +34,10 @@ const PROBE_TIMEOUT = 1000;
 export interface EngineRun {
   id: string;
   code: string;
-  /** Номер дня, по которому считали: 1…30. */
-  day: number;
+  /** День, по которому считали: зона выгрузки («восток», «юго-восток»,
+      «югоцентр») либо номер синтетического дня строкой, «1»…«30».
+      Строка с 15 сентября: до этого дни были только синтетическими. */
+  day: string;
   date: string;
   created: string;
   note: string;
@@ -47,6 +49,29 @@ export interface EngineRun {
       Движок говорит об этом сам, чтобы интерфейс не выдавал чужую форму
       за часть расчёта. */
   shifts_from_day: boolean;
+  /** Пометка человека о том, чем был расчёт: «срочные заявки в 13:40».
+      Это подпись, а не вид записи — по ней различать нельзя. */
+  kind?: string;
+  /** Какие формы у записи можно попросить. Движок отвечает этим сам, и
+      угадывать больше не надо: у обычного расчёта все четыре, у
+      сохранённого пересчёта только `plan`, а у записи, сохранённой
+      старой версией движка, — пустой список: по ней есть только сводка
+      на карточке. Попросить неназванную форму — получить 400. */
+  forms?: string[];
+  /** Замысел сохранённого пересчёта: день, момент и что случилось. Есть
+      только у пересчётов, и это единственный надёжный признак того, что
+      перед нами план остатка дня, а не план дня. У пересчёта нет ни
+      симуляции, ни объяснения: попросишь — движок ответит 400. */
+  replan?: {
+    day: string;
+    at: number;
+    urgent?: number | null;
+    cancelled?: string | null;
+    disabled?: string | null;
+    delayed?: string | null;
+    source?: string;
+    run?: number;
+  } | null;
   summary: {
     orders_total: number;
     orders_assigned: number;
@@ -66,9 +91,11 @@ export interface EngineRun {
 export interface EngineForms {
   run: EngineRun;
   plan: Plan;
-  explain: Explain;
-  simulation: Simulation;
-  shifts: Shifts;
+  /* У сохранённого пересчёта своих трёх форм нет (server.py, run_forms):
+     только план остатка дня, `kind: "replan"`. */
+  explain?: Explain;
+  simulation?: Simulation;
+  shifts?: Shifts;
 }
 
 /** Адрес движка, если он нашёлся. `null` — работаем на фикстурах. */
@@ -97,6 +124,26 @@ export async function probeEngine(): Promise<boolean> {
   }
   base = null;
   return false;
+}
+
+/** Прогрев движка: он открывает порт сразу, а дни считает в фоне. */
+export interface EngineWarming {
+  ready: string[];
+  pending: string[];
+  current: string | null;
+  seconds: number;
+}
+
+/** Что движок ещё считает. `null` — всё готово (или движка нет). */
+export async function engineWarming(): Promise<EngineWarming | null> {
+  if (base === null) return null;
+  try {
+    const response = await fetch(`${base}/health`);
+    const body = (await response.json()) as { warming?: EngineWarming | null };
+    return body.warming ?? null;
+  } catch {
+    return null;
+  }
 }
 
 export class EngineError extends Error {
@@ -134,7 +181,7 @@ export const listRuns = () =>
 /** Заводит расчёт: движок считает день с этими переменными и кладёт
     результат к себе в архив. Занимает около восьми секунд — это работа
     планировщика, а не задержка сети. */
-export const createEngineRun = (day: number, params: EngineParams, note = '') =>
+export const createEngineRun = (day: string, params: EngineParams, note = '') =>
   call<EngineRun>('/runs', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -144,6 +191,11 @@ export const createEngineRun = (day: number, params: EngineParams, note = '') =>
 /** Все четыре формы одного расчёта. */
 export const loadEngineForms = (id: string) =>
   call<EngineForms>(`/runs/${encodeURIComponent(id)}`);
+
+/** Четыре формы целого дня — GET /api/day. Нужны пересчёту из архива:
+    объяснение, сводка и график — дня, от которого он отпочковался. */
+export const loadEngineDay = (day: string) =>
+  call<Omit<EngineForms, 'run'>>(`/day?day=${encodeURIComponent(day)}`);
 
 /** Одна форма. Базам данных нужен только план, и тянуть ради них
     объяснение на полтораста килобайт незачем. */
@@ -158,9 +210,48 @@ export const noteEngineRun = (id: string, note: string) =>
     body: JSON.stringify({ note })
   });
 
+/** Справочники движка: навыки, виды работ, типы транспорта.
+
+    До этой ручки русские названия навыков нам взять было негде —
+    приходили голые `install` и `emergency`, а список видов работ
+    собирался по тому, что случилось в открытом дне, и на разных зонах
+    выходил разным. */
+export interface EngineCatalogue {
+  schema: string;
+  kind: 'catalogue';
+  skills: { code: string; title: string }[];
+  work_types: {
+    code: string; title: string; skill: string;
+    est_minutes: number; needs_access: boolean;
+    requires_transport: string | null;
+  }[];
+  transport: { code: string; title: string; max_km: number | null }[];
+  /** Приборы, которые везут на заявку, и сколько каждого выдают утром
+      сверх маршрута. Необязательное: у движка до схемы 1.5 его нет. */
+  equipment?: { code: string; title: string; reserve: number }[];
+}
+
+export const loadCatalogue = () => call<EngineCatalogue>('/catalogue');
+
+/** Одна настройка движка: значение, заводское и пределы. */
+export interface EngineSetting {
+  value: number;
+  default: number;
+  min: number;
+  max: number;
+  about: string;
+}
+
+/** Семь настроек движка. Окну правки нужна одна — штраф за смену
+    исполнителя: ползунок встаёт туда, где стоит настройка компании, а не
+    на заводской ноль вёрстки. Иначе пересчёт с экрана молча считался бы
+    с другим штрафом, чем тот, что в настройках. */
+export const loadEngineSettings = () =>
+  call<{ settings: Record<string, EngineSetting>; fingerprint: string }>('/settings');
+
 /** Какие дни движок умеет считать и какие уже посчитаны. */
 export const listDays = () =>
-  call<{ ready: number[]; available: number[] }>('/days');
+  call<{ ready: string[]; available: string[] }>('/days');
 
 /* ─── пересчёт внутри дня ────────────────────────────────────────────────
 
@@ -175,8 +266,8 @@ export const listDays = () =>
 export type IncidentKind = 'urgent' | 'cancel' | 'disabled' | 'delayed';
 
 export interface IncidentSpec {
-  /** Номер дня у движка. */
-  day: number;
+  /** День у движка: зона выгрузки либо номер синтетического дня строкой. */
+  day: string;
   /** Момент, от которого пересобирается остаток, минуты от полуночи. */
   at: number;
   kind: IncidentKind;
@@ -193,6 +284,31 @@ export interface IncidentSpec {
   engineerId?: string;
   /** На сколько задержится, минуты. Только для `delayed`. */
   minutes?: number;
+  /** Штраф за смену исполнителя — живой контрол окна правки: насколько
+      пересчёт держится за то, кому уже сказали ехать. Пусто — настройка
+      компании. */
+  churnPenalty?: number;
+  /** Ярлык принятого пересчёта от журнала: сохранение берёт журнал на
+      момент показа, а не уже принятый. */
+  adoptToken?: string;
+  /** Открытый расчёт дня: пересчёт идёт от его плана и переменных, а не от
+      плана компании. Пусто — от плана компании. */
+  base?: string;
+  /** От чего считать остаток: `sim` — день разыгран движком, `journal` — от
+      того, о чём отчитался диспетчер. Пусто — `sim`. */
+  source?: 'sim' | 'journal';
+}
+
+/** Разбор отмены: что купила освободившаяся ёмкость. */
+export interface ReplanCancel {
+  kind: 'cancelled';
+  order_ids: string[];
+  /** Сколько минут работы освободилось, по нормативу. */
+  freed_minutes: number;
+  /** Заявки, которых исходный план не брал, а теперь берёт. */
+  picked_up: string[];
+  picked_up_count: number;
+  stability_others: number;
 }
 
 /** Разбор ЧП с инженером: куда делись визиты, которые были у него впереди. */
@@ -228,6 +344,8 @@ export interface ReplanEvent {
 
 /** Что вернул пересчёт: план на остаток дня плюс его цена. */
 export interface ReplanMeta {
+  /** Только у пересчёта от журнала: его передают в «Принять». */
+  adopt_token?: string;
   at: number;
   solve_seconds: number;
   stability: number;
@@ -240,7 +358,11 @@ export interface ReplanMeta {
   /** Сколько визитов в новом плане и сколько было бы без пересчёта. */
   assigned_now: number;
   assigned_as_is: number;
-  incident?: ReplanIncident;
+  incident?: ReplanIncident | ReplanCancel;
+  /** Штраф за смену исполнителя, с которым считали. */
+  churn_penalty?: number;
+  /** Заявки, к которым исполнитель уже едет: в пересчёте их нет, они его. */
+  underway?: Record<string, string>;
   /** 1.2: пусто — движок ещё на 1.1, событие выводится из заполненных полей. */
   event?: ReplanEvent | null;
 }
@@ -249,7 +371,10 @@ export type ReplanResult = Plan & { meta: Plan['meta'] & { replan: ReplanMeta } 
 
 /** Собирает строку запроса из события так, как её ждёт движок. */
 function incidentQuery(spec: IncidentSpec): string {
-  const parts = [`day=${spec.day}`, `at=${spec.at}`];
+  /* Имена зон кириллические: браузер закодировал бы их и сам, но строка
+     запроса собирается здесь, и кодировать её — наша работа. */
+  const parts = [`day=${encodeURIComponent(spec.day)}`, `at=${spec.at}`];
+  if (spec.base) parts.push(`base=${encodeURIComponent(spec.base)}`);
   /* Аварии передаются числом, и ноль — законное значение: при ЧП с
      инженером никаких аварий не приходит, и просить их заодно значило бы
      мерить два события сразу. */
@@ -261,6 +386,12 @@ function incidentQuery(spec: IncidentSpec): string {
   if (spec.kind === 'delayed' && spec.engineerId) {
     parts.push(`delayed=${spec.engineerId}:${spec.minutes ?? 40}`);
   }
+  /* Отмена — третье событие пересчёта из ТЗ. Тип был, а в запрос она не
+     попадала: движок считал обычный пересчёт без отмены. `auto` — заявка,
+     отказ от которой освободит больше всего времени. */
+  if (spec.kind === 'cancel') parts.push(`cancelled=${encodeURIComponent(spec.orderId ?? 'auto')}`);
+  if (spec.churnPenalty !== undefined) parts.push(`churn_penalty=${spec.churnPenalty}`);
+  if (spec.source) parts.push(`source=${spec.source}`);
   return parts.join('&');
 }
 
@@ -270,22 +401,31 @@ export const replanDay = (spec: IncidentSpec) =>
   call<ReplanResult>(`/replan?${incidentQuery(spec)}`);
 
 /** Кладёт результат пересчёта в архив. Движок не считает заново: результат
-    у него уже есть, он только сохраняет его отдельной записью. */
-export const saveReplan = (spec: IncidentSpec, source: string, note = '') =>
+    у него уже есть, он только сохраняет его отдельной записью.
+
+    `source` здесь — источник состояния дня (`sim` или `journal`), как его
+    понимает движок. Сюда прежде уходил номер родительского расчёта, и
+    движок отвечал 400 на каждое сохранение: «Сохранить» не работало ни
+    разу. Номер родителя едет в заметке — это подпись человеку. */
+export const saveReplan = (spec: IncidentSpec, note = '') =>
   call<EngineRun>('/runs', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      source,
+      source: spec.source ?? 'sim',
       note,
       replan: {
         day: spec.day,
         at: spec.at,
         urgent: spec.kind === 'urgent' ? spec.urgent ?? 2 : 0,
         urgent_near: spec.kind === 'urgent' ? spec.urgentNear : undefined,
+        cancelled: spec.kind === 'cancel' ? spec.orderId ?? 'auto' : undefined,
         disabled: spec.kind === 'disabled' ? spec.engineerId : undefined,
         delayed:
-          spec.kind === 'delayed' ? `${spec.engineerId}:${spec.minutes ?? 40}` : undefined
+          spec.kind === 'delayed' ? `${spec.engineerId}:${spec.minutes ?? 40}` : undefined,
+        churn_penalty: spec.churnPenalty,
+        adopt_token: spec.adoptToken,
+        base: spec.base
       }
     })
   });
@@ -305,7 +445,7 @@ export interface SavedCompareRun {
   id: string;
   code: string;
   created: string;
-  day?: number;
+  day?: string;
   source?: string | null;
   note?: string;
   orders: number;
@@ -345,3 +485,99 @@ export const saveCompare = (runs: SavedCompareRun[], note = '') =>
 /** Убирает сравнение из архива. Расчёты при этом не трогаются. */
 export const deleteCompare = (id: string) =>
   call<{ deleted: string }>(`/compares/${id}`, { method: 'DELETE' });
+
+/* ─── журнал диспетчера ──────────────────────────────────────────────────
+
+   То, что случилось на самом деле, сообщает диспетчер, и пересчёт идёт от
+   этого (`source=journal`), а не от дня, разыгранного движком. Ручек у
+   движка было много, а клиента в вёрстке не было ни одного: ни ручного
+   переназначения — единственного «необходимо заложить» с сессии вопросов,
+   — ни статусов «отправлено» и «в пути», о которых просила обратная связь
+   организаторов. */
+
+/** Событие дня. Время — минуты от полуночи, как везде в контракте. */
+export type JournalEvent =
+  | { kind: 'assigned'; order: string; engineer: string; position?: number }
+  | { kind: 'dispatched' | 'en_route' | 'done'; order: string }
+  | { kind: 'failed'; order: string; reason: 'no_show' | 'no_access' | 'missed_window' | 'cancelled' }
+  | { kind: 'engineer_out' | 'engineer_back'; engineer: string }
+  | { kind: 'engineer_delayed'; engineer: string; minutes: number };
+
+/** Записывает событие. Невозможное движок отвергает словами — их и
+    показываем: «инженер E06 не может взять 52405: нет навыка…». */
+/* `base` у ручек журнала — открытый расчёт дня: у каждого расчёта свой
+   журнал, заведённый от его плана. Пусто — журнал плана компании. */
+const baseQuery = (base?: string) => (base ? `&base=${encodeURIComponent(base)}` : '');
+
+export const postEvent = (day: string, at: number, event: JournalEvent, base?: string) =>
+  call<{ recorded: Record<string, unknown>; summary: Record<string, unknown> }>('/event', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ day, at, base, ...event })
+  });
+
+/** Что движок знает о дне по отчётам диспетчера. */
+export interface DayState {
+  day: string;
+  at: number;
+  done: string[];
+  failed: Record<string, string>;
+  /** Заявка → статус по всем, о которых что-то сообщили. Остальные в чьём-то
+      маршруте — «назначено». */
+  statuses: Record<string, string>;
+  /** Заявка → инженер, который к ней едет. */
+  underway: Record<string, string>;
+  summary: { events: number; done: number; failed: number; absent: string[] };
+}
+
+export const loadDayState = (day: string, at: number, base?: string) =>
+  call<DayState>(`/state?day=${encodeURIComponent(day)}&at=${at}${baseQuery(base)}`);
+
+/** «Принять» пересчёт от журнала: показанный план становится назначением
+    дня. Показ журнал не трогает; если после него что-то сообщили — 409,
+    пересчитать заново. */
+export const adoptJournal = (day: string, token: string, base?: string) =>
+  call<{ adopted: string; summary: Record<string, unknown> }>('/journal/adopt', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ day, token, base })
+  });
+
+/** Забыть всё сообщённое по дню и вернуться к утреннему плану. Нужен и на
+    защите: сценарий прогнали, показали — и день снова чистый. */
+export const resetJournal = (day: string, base?: string) =>
+  call<{ summary: Record<string, unknown> }>('/journal/reset', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ day, base })
+  });
+
+/* ─── сколько ещё людей нужно ────────────────────────────────────────────
+
+   Ответ в том виде, в каком его продиктовал постановщик: «для того чтобы
+   выполнить оставшиеся заявки, нужно ещё плюс N исполнителей», — и
+   каких: навыки, транспорт, часы смены. Считает планировщик, а не деление
+   часов на смену. */
+
+export interface StaffingSlot {
+  count: number;
+  skills: string[];
+  skills_title: string;
+  transport: string;
+  transport_title: string;
+  shift_start: number;
+  shift_end: number;
+}
+
+export interface Staffing {
+  unassigned_now: number;
+  needed: number;
+  closes_all: boolean;
+  phrase: string;
+  reliability?: string;
+  slots: StaffingSlot[];
+  still_unassigned: string[];
+}
+
+export const loadStaffing = (day: string, base?: string) =>
+  call<Staffing>(`/staffing?day=${encodeURIComponent(day)}${baseQuery(base)}`);

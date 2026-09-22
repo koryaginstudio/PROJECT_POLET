@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Day } from '../data/contract.ts';
 import {
+  adoptEngineRun,
   ContractError,
   createRun,
   deleteRun,
@@ -16,12 +17,15 @@ import {
 import type { EngineParams } from '../data/engine.ts';
 import type { RunId, DaySummary, SourceId } from '../data/load.ts';
 import { exportRun } from '../data/report.ts';
-import { replanDay, saveReplan } from '../data/api.ts';
-import type { IncidentSpec, ReplanResult } from '../data/api.ts';
+import { adoptJournal, loadDayState, postEvent, replanDay, saveReplan } from '../data/api.ts';
+import type { DayState, JournalEvent } from '../data/api.ts';
+import type { DispatcherActions } from './DispatcherBlock.tsx';
+import { изДвижка } from '../data/fromEngine.ts';
+import type { IncidentKind, IncidentSpec, ReplanResult } from '../data/api.ts';
 import { loadRegistry } from '../data/registry.ts';
 import type { Registry, RunRef } from '../data/registry.ts';
 import { buildDayView, dayStart, plural } from '../data/derive.ts';
-import { useService } from '../data/service.ts';
+import { setPlanHorizon, useService } from '../data/service.ts';
 import { Header } from './Header.tsx';
 import { SubHeader } from './SubHeader.tsx';
 import { Sidebar } from './Sidebar.tsx';
@@ -287,6 +291,9 @@ export function App() {
      работы солвера и решения диспетчера, и потерять его по случайному
      переходу — потерять обе эти вещи. */
   const [incidentOpen, setIncidentOpen] = useState(false);
+  /* Каким событием открыть окно правки. Задаёт его экран «Воздействия»:
+     диспетчер нажал «Инженер выбыл» — окно открывается на выбытии. */
+  const [incidentKind, setIncidentKind] = useState<IncidentKind | undefined>(undefined);
   const [incidentBusy, setIncidentBusy] = useState(false);
   const [incidentFailed, setIncidentFailed] = useState<string | null>(null);
   const [replan, setReplan] = useState<ReplanResult | null>(null);
@@ -301,8 +308,12 @@ export function App() {
     setIncidentBusy(true);
     setIncidentFailed(null);
     try {
-      setReplan(await replanDay(spec));
-      setLastSpec(spec);
+      /* Пересчёт приходит на языке движка — переводим на входе, как и
+         формы расчёта: иначе на экране пересчёта пустели километры. */
+      /* От открытого расчёта: его план и переменные, его журнал. */
+      const withBase: IncidentSpec = { ...spec, base: spec.base ?? engineBase };
+      setReplan(изДвижка(await replanDay(withBase)));
+      setLastSpec(withBase);
     } catch (failure) {
       setIncidentFailed(failure instanceof Error ? failure.message : 'Пересчёт не удался');
     } finally {
@@ -312,13 +323,108 @@ export function App() {
 
   const [lastSpec, setLastSpec] = useState<IncidentSpec | null>(null);
 
+  /* ─── журнал диспетчера ─────────────────────────────────────────────
+
+     Что случилось на самом деле: наряд отправлен, исполнитель выехал,
+     заявка выполнена или сорвалась, заявку закрепили за другим. Есть только
+     у расчёта движка — у него есть день, и движок ведёт по этому дню
+     журнал. Время события — момент, на котором стоит ползунок. */
+  /* Основа — открытый расчёт дня: пересчёт, журнал, статусы и «сколько
+     людей» идут от его плана и переменных. Прежде всё это шло от плана
+     компании, и у расчёта с множителем длительности 2,0 «Воздействия»
+     пересчитывали не тот план, что на экране. У сохранённого пересчёта
+     (остаток дня, только план) основы нет: он снимок, события и пересчёт
+     ведутся от расчёта дня. */
+  const opened = engineReady() ? runEntry(runId) : undefined;
+  const wholeDay =
+    opened !== undefined &&
+    opened.source === null &&
+    (opened.forms === undefined || opened.forms.includes('simulation'));
+  const engineDay = wholeDay ? opened.day ?? null : null;
+  const engineBase = engineDay ? runId : undefined;
+  const [dayState, setDayState] = useState<DayState | null>(null);
+  const [eventBusy, setEventBusy] = useState(false);
+  const [eventFailed, setEventFailed] = useState<string | null>(null);
+
+  const refreshDayState = () => {
+    if (!engineDay) {
+      setDayState(null);
+      return;
+    }
+    loadDayState(engineDay, cut, engineBase)
+      .then(setDayState)
+      .catch(() => setDayState(null));
+  };
+
+  useEffect(refreshDayState, [engineDay, engineBase, cut]);
+
+  const sendEvent = async (event: JournalEvent) => {
+    if (!engineDay || eventBusy) return;
+    setEventBusy(true);
+    setEventFailed(null);
+    try {
+      await postEvent(engineDay, cut, event, engineBase);
+      refreshDayState();
+      /* Закрепление — решение, после которого остаток дня надо пересобрать:
+         движок пересчитывает от журнала, и окно правки показывает цену. */
+      if (event.kind === 'assigned') {
+        setIncidentKind(undefined);
+        setReplan(null);
+        setIncidentFailed(null);
+        setIncidentOpen(true);
+        await runIncident({
+          day: engineDay,
+          at: cut,
+          kind: 'urgent',
+          urgent: 0,
+          source: 'journal',
+          base: engineBase
+        });
+      }
+    } catch (failure) {
+      setEventFailed(failure instanceof Error ? failure.message : 'Событие не записалось');
+    } finally {
+      setEventBusy(false);
+    }
+  };
+
+  const dispatcher: DispatcherActions | undefined = engineDay
+    ? {
+        statuses: dayState?.statuses ?? {},
+        busy: eventBusy,
+        failed: eventFailed,
+        onEvent: sendEvent
+      }
+    : undefined;
+
   /* Принять пересчёт: он становится тем, что показано на экране. В архив
      при этом ничего не уходит — для этого есть «Сохранить». */
-  const keepReplan = () => {
+  const keepReplan = async () => {
     if (!replan || !lastSpec) return;
-    setDraft({ spec: lastSpec, result: replan });
+    /* Пересчёт от журнала: «Принять» делает его назначением дня. До этого
+       журнал не тронут — прежде движок усваивал план уже при показе, и
+       «Отменить правку» ничего не отменяла. */
+    const token = replan.meta.replan.adopt_token;
+    if (token) {
+      setIncidentBusy(true);
+      setIncidentFailed(null);
+      try {
+        await adoptJournal(lastSpec.day, token, lastSpec.base);
+      } catch (failure) {
+        setIncidentFailed(failure instanceof Error ? failure.message : 'Принять не удалось');
+        return;
+      } finally {
+        setIncidentBusy(false);
+      }
+      refreshDayState();
+    }
+    setDraft({ spec: token ? { ...lastSpec, adoptToken: token } : lastSpec, result: replan });
     setIncidentOpen(false);
     setReplan(null);
+    /* С экрана «Воздействия» уходим туда, где новый план видно: сам экран
+       планов не рисует, а принятый пересчёт надо посмотреть до того, как
+       сохранять. */
+    if (section === 'control') nav({ section: 'dispatch', stage: 'plan', view: 'summary' });
     /* Момент переезжает к тому, с которого пересобрали: экран теперь
        показывает остаток дня, и стоять на утре ему незачем. */
     setCut(replan.meta.replan.at);
@@ -336,7 +442,7 @@ export function App() {
     setSaving(true);
     setSaveFailed(null);
     try {
-      const entry = await saveReplan(draft.spec, runId);
+      const entry = adoptEngineRun(await saveReplan(draft.spec, `Правка расчёта ${runCode(runId)}`));
       setDraft(null);
       refreshRuns();
       openRun(entry.id);
@@ -372,10 +478,13 @@ export function App() {
   /* Пороги входят в зависимости памятки: день считается теми же данными, но
      «плохо» и «присмотреться» в нём расставлены по настройке, и подвинутый
      порог обязан перекрасить пульт немедленно. */
-  const dayView = useMemo(
-    () => (shownDay ? buildDayView(shownDay) : null),
-    [shownDay, settings.thresholds, settings.dayStart, settings.dayEnd]
-  );
+  const dayView = useMemo(() => {
+    /* Ось времени обязана доходить до границы суток открытого плана: у
+       выгрузки заказчика это 22:00, а настройка оси по умолчанию — 21:00,
+       и визиты после девяти вечера выпадали с таймлайна. */
+    setPlanHorizon(shownDay?.plan.meta.hard_end);
+    return shownDay ? buildDayView(shownDay) : null;
+  }, [shownDay, settings.thresholds, settings.dayStart, settings.dayEnd]);
   /* Правая панель показывает список маршрутов вместо справочника там, где
      карта — основной способ смотреть на день: на вкладке «Карта» в
      диспетчерской и на всём мониторинге, который сам почти целиком карта. */
@@ -478,14 +587,19 @@ export function App() {
        остатке дня уже нет — его для того и убрали, — и по показанному плану
        он бы не нашёлся вовсе. Читалось это как табельный номер вместо
        фамилии ровно в том событии, где фамилия важнее всего. */
-    const who = incident
-      ? day?.plan.engineers.find((e) => e.id === incident.engineer_id)?.name
-      : null;
-    const what = incident
-      ? incident.kind === 'disabled'
-        ? `${who ?? incident.engineer_id} выбыл до конца дня`
-        : `${who ?? incident.engineer_id} задержался на ${incident.minutes} мин`
-      : `${plural(meta.urgent_ids.length, 'авария', 'аварии', 'аварий')} в плане`;
+    const who =
+      incident && incident.kind !== 'cancelled'
+        ? day?.plan.engineers.find((e) => e.id === incident.engineer_id)?.name
+        : null;
+    const what = !incident
+      ? meta.urgent_ids.length > 0
+        ? `${plural(meta.urgent_ids.length, 'авария', 'аварии', 'аварий')} в плане`
+        : 'пересчёт от журнала диспетчера'
+      : incident.kind === 'cancelled'
+        ? `снята заявка ${incident.order_ids.join(', ')}`
+        : incident.kind === 'disabled'
+          ? `${who ?? incident.engineer_id} выбыл до конца дня`
+          : `${who ?? incident.engineer_id} задержался на ${incident.minutes} мин`;
     return { at: meta.at, gain: meta.assigned_now - meta.assigned_as_is, what };
   }, [draft, day]);
 
@@ -687,7 +801,21 @@ export function App() {
               расчёту так же, как диспетчерская и мониторинг: воздействие
               применяют к конкретному плану, а не вообще. */}
           {section === 'control' && (
-            <ControlScreen runCode={runCode(runId)} cut={cut} live={engineReady()} />
+            <ControlScreen
+              runCode={runCode(runId)}
+              cut={cut}
+              live={engineReady()}
+              canReplan={Boolean(engineDay)}
+              onPick={(kind) => {
+                setIncidentKind(kind);
+                setReplan(null);
+                setIncidentFailed(null);
+                setIncidentOpen(true);
+              }}
+              day={engineDay}
+              base={engineBase}
+              onJournalReset={refreshDayState}
+            />
           )}
 
           {section === 'dispatch' && stage === 'gate' && (
@@ -778,6 +906,7 @@ export function App() {
               onManual={() => setManual(true)}
               onClose={() => nav({ stage: 'gate' })}
               onEdit={() => {
+                setIncidentKind(undefined);
                 setReplan(null);
                 setIncidentFailed(null);
                 setIncidentOpen(true);
@@ -917,6 +1046,7 @@ export function App() {
                 view={dayView}
                 selection={selection}
                 onSelect={setSelection}
+                dispatcher={dispatcher}
               />
             )}
           </aside>
@@ -940,6 +1070,7 @@ export function App() {
         }}
         onRun={runIncident}
         onKeep={keepReplan}
+        initialKind={incidentKind}
       />
 
       <ManualDialog

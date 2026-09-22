@@ -32,7 +32,10 @@ export interface EngineParams {
     остальные — умолчания `Params`. Раньше здесь стояла консервативность 7 при
     шестнадцати в движке, и форма называла заводским то, чего в движке нет. */
 export const ENGINE_DEFAULTS: EngineParams = {
-  churn_penalty: 0,
+  /* 40 — как `Settings.churn_penalty` в движке. Прежде здесь стоял 0:
+     отпечаток расчёта не совпадал с заводским, кэш движка промахивался, и
+     пресеты «Сбалансированно» и «Пересобрать заново» совпадали. */
+  churn_penalty: 40,
   duration_factor: 1.0,
   buffer_step: 16,
   buffer_base: 0,
@@ -67,9 +70,9 @@ export type EngineRule = (typeof ENGINE_RULES)[number];
     поэтому числа здесь те же самые — расходиться им нельзя. */
 export const LIMITS: Record<keyof EngineParams, { min: number; max: number; step: number }> = {
   churn_penalty: { min: 0, max: 1000, step: 1 },
-  duration_factor: { min: 0.5, max: 3, step: 0.05 },
+  duration_factor: { min: 0.5, max: 2, step: 0.05 },
   buffer_step: { min: 0, max: 120, step: 1 },
-  buffer_base: { min: 0, max: 120, step: 1 },
+  buffer_base: { min: 0, max: 240, step: 1 },
   balance_weight: { min: 0, max: 100, step: 0.5 }
 };
 
@@ -94,7 +97,9 @@ export const RULE_TITLES: Record<EngineRule, { label: string; what: string }> = 
    Хранит их браузер: сервера у нас пока нет. Заводские при этом остаются
    нетронутыми, и вернуться к ним можно одним щелчком. */
 
-const DEFAULTS_KEY = 'polet.engine-defaults.v1';
+/* v2: заводской штраф за смену исполнителя стал 40 — сохранённый у людей 0
+   из v1 иначе пережил бы правку. */
+const DEFAULTS_KEY = 'polet.engine-defaults.v2';
 
 function readDefaults(): EngineParams {
   if (typeof localStorage === 'undefined') return { ...ENGINE_DEFAULTS };
@@ -179,7 +184,7 @@ export const CHURN_PRESETS: ChurnPreset[] = [
     label: 'Сбалансированно',
     penalty: ENGINE_DEFAULTS.churn_penalty,
     what: 'Аварийные заявки размещаются, остальной план по возможности сохраняется.',
-    measured: '87% визитов сохраняют исполнителя'
+    measured: '86–89% визитов сохраняют исполнителя'
   },
   {
     value: 'rebuild',

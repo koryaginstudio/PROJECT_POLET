@@ -300,6 +300,13 @@ export interface DayView {
   /** Сколько раз симуляция прогнала этот день. */
   runs: number;
   funnel: Funnel;
+  /** Жёсткая граница суток этого дня, минуты от полуночи: приходит планом
+      от движка. Отдельно от настройки `dayEnd`, потому что это разные
+      вещи: `dayEnd` — докуда рисовать ось времени, `hardEnd` — докуда
+      заявку обязаны выполнить сегодня. Пока их путали, экран объявлял
+      переносимыми на завтра 33 заявки из 205, у которых срок ровно 22:00
+      сегодня. */
+  hardEnd: Minutes;
 }
 
 /** Срез внутри рабочего дня. Данные — план на дату, поэтому «сейчас» берём
@@ -426,9 +433,10 @@ export function buildFunnel(
   deferrable: Order[],
   fragileIds: string[],
   cut: Minutes,
+  hardEnd: Minutes,
   slaOf: (placement: Placement) => Minutes | null = () => null
 ): Funnel {
-  const urgent = unassigned.filter((o) => o.sla_deadline <= dayEnd());
+  const urgent = unassigned.filter((o) => o.sla_deadline <= hardEnd);
   const attentionIds = [...new Set([...urgent.map((o) => o.id), ...fragileIds])];
 
   /* Заявка без инженера «горит», если её окно уже открыто: раздать её
@@ -677,8 +685,14 @@ export function buildDayView(day: Day): DayView {
     .map((id) => orderById.get(id))
     .filter((o): o is Order => Boolean(o));
 
+  /* Жёсткая граница суток — из плана. Настройка `dayEnd` для этого не
+     годится: она про ось времени на экране и по умолчанию равна 21:00,
+     тогда как у выгрузки заказчика день кончается в 22:00. Браузерный
+     планировщик поля не заполняет — там остаётся прежнее поведение. */
+  const hardEnd = plan.meta.hard_end ?? dayEnd();
+
   /* Заявка переносима на завтра, если её крайний срок выходит за пределы дня. */
-  const deferrable = unassigned.filter((o) => o.sla_deadline > dayEnd());
+  const deferrable = unassigned.filter((o) => o.sla_deadline > hardEnd);
 
   const byType = new Map<string, { title: string; count: number }>();
   for (const order of plan.orders) {
@@ -706,6 +720,7 @@ export function buildDayView(day: Day): DayView {
     deferrable,
     fragile.map((f) => f.order.id),
     cutMinutes(),
+    hardEnd,
     slaOf
   );
 
@@ -729,6 +744,26 @@ export function buildDayView(day: Day): DayView {
      были подписаны как «грубые и общие для всех дней»; общими они и остались,
      но теперь их можно подвинуть под свою норму, не трогая код. */
   const limit = service().thresholds;
+
+  /* Две обязательные метрики ТЗ — задействованные исполнители и пробег — и
+     базовый вариант ТЗ рядом. Прежде на пульте их не было вовсе: ни одного
+     километра на экране, кроме масштаба карты, хотя именно по этим двум
+     числам ТЗ сравнивает планы. Пробег с базовым сравнивается на визит:
+     план, назначивший вдвое больше заявок, и проедет больше. */
+  const used =
+    plan.meta.engineers_used ?? plan.routes.filter((route) => route.stops.length > 0).length;
+  const kmRoutes = plan.routes.map((route) => route.totals.distance_km);
+  const km =
+    plan.meta.distance_km_total ??
+    (kmRoutes.every((value) => value != null)
+      ? kmRoutes.reduce((acc: number, value) => acc + (value ?? 0), 0)
+      : null);
+  const perVisit = km !== null && plan.meta.orders_assigned > 0 ? km / plan.meta.orders_assigned : null;
+  const base = plan.meta.baseline ?? null;
+  const basePerVisit =
+    base && base.distance_km_total != null && base.orders_assigned > 0
+      ? base.distance_km_total / base.orders_assigned
+      : null;
 
   const metrics: Metric[] = [
     {
@@ -754,6 +789,30 @@ export function buildDayView(day: Day): DayView {
       caption: 'Не найден инженер',
       group: 'unassigned',
       ...mark(lostShare > 0.1, unassigned.length > 0, 'Для этих заявок не найден инженер')
+    },
+    {
+      key: 'engineers',
+      label: 'Исполнителей',
+      value: String(used),
+      unit: 'чел.',
+      caption: base
+        ? `Базовый вариант ТЗ — ${base.engineers_used}`
+        : `Из ${plan.meta.engineers_total} в штате`,
+      group: 'metric:engineers',
+      flag: 'ok'
+    },
+    {
+      key: 'km',
+      label: 'Пробег',
+      value: km === null ? '—' : String(Math.round(km)),
+      unit: km === null ? undefined : 'км',
+      caption:
+        perVisit === null
+          ? 'Движок не прислал километраж'
+          : `${dec(perVisit, 2)} км на визит` +
+            (basePerVisit !== null ? ` · базовый ${dec(basePerVisit, 2)}` : ''),
+      group: 'metric:km',
+      flag: 'ok'
     },
     {
       key: 'idle',
@@ -813,7 +872,8 @@ export function buildDayView(day: Day): DayView {
     fragile,
     reasons,
     runs: simulation.meta.runs,
-    funnel
+    funnel,
+    hardEnd
   };
 }
 

@@ -6,8 +6,10 @@ import { OrderWindow } from './OrderWindow.tsx';
 import { Complexity } from './Complexity.tsx';
 import type { Day } from '../data/contract.ts';
 import type { DayView } from '../data/derive.ts';
-import { dayEnd, dayStart, deadline, hhmm, homeOf, hoursText, placeOf } from '../data/derive.ts';
-import { skillIcon, skillName, transportIcon, transportName } from '../data/dictionary.ts';
+import { dayStart, dec, deadline, hhmm, homeOf, hoursText, placeOf } from '../data/derive.ts';
+import { equipmentList, skillIcon, skillName, transportIcon, transportName } from '../data/dictionary.ts';
+import { DispatcherBlock } from './DispatcherBlock.tsx';
+import type { DispatcherActions } from './DispatcherBlock.tsx';
 import { EngineerTimeline } from './EngineerTimeline.tsx';
 import { GroupPanel } from './GroupPanel.tsx';
 import type { Selection } from './selection.ts';
@@ -24,6 +26,9 @@ interface Props {
   view: DayView;
   selection: Selection;
   onSelect: (selection: Selection) => void;
+  /** Распоряжения диспетчера по заявке. Есть только у расчёта движка:
+      у расчёта, посчитанного в браузере, журнала нет. */
+  dispatcher?: DispatcherActions;
 }
 
 /* Панель считает всё от начала смены и дальше не двигается: она отвечает на
@@ -39,6 +44,7 @@ const VERDICT_LABEL: Record<string, string> = {
   feasible: 'Мог бы взять',
   no_room: 'Маршрут занят',
   shift_mismatch: 'Не совпадает смена',
+  no_vehicle: 'Не тот транспорт',
   no_skill: 'Нет навыка'
 };
 
@@ -47,6 +53,7 @@ const VERDICT_TONE: Record<string, BadgeTone> = {
   feasible: 'neutral',
   no_room: 'outline',
   shift_mismatch: 'outline',
+  no_vehicle: 'outline',
   no_skill: 'outline'
 };
 
@@ -68,7 +75,7 @@ function CloseCard({ onClose }: { onClose: () => void }) {
 }
 
 /* Открытое поверх справочника: страница группы или карточка объекта. */
-function SelectedCard({ day, view, selection, onSelect }: Props) {
+function SelectedCard({ day, view, selection, onSelect, dispatcher }: Props) {
   const close = () => onSelect(OVERVIEW);
 
   if (selection.kind === 'overview') return null;
@@ -256,9 +263,31 @@ function SelectedCard({ day, view, selection, onSelect }: Props) {
                 <span className="ministage__value">{totals.overtime_minutes}</span>
                 <span className="ministage__label">Переработка, мин</span>
               </div>
+              {/* Вторая обязательная метрика ТЗ — пробег по маршруту каждого
+                  исполнителя. Прежде на экране не было ни одного километра. */}
+              {totals.distance_km != null && (
+                <div className="ministage">
+                  <span className="ministage__value">{dec(totals.distance_km, 1)}</span>
+                  <span className="ministage__label">Пробег, км</span>
+                </div>
+              )}
             </div>
           ) : (
             <p className="rmenu__empty">Маршрута на этот день нет — инженер не выезжал.</p>
+          )}
+          {/* Что выдать утром: под маршрут. Движок кладёт сверх этого по штуке
+              каждого прибора запаса — из него и берётся заявка, переданная
+              днём от другого исполнителя. */}
+          {totals?.equipment && Object.keys(totals.equipment).length > 0 && (
+            <p className="detail__why">
+              Выдать утром:{' '}
+              {equipmentList(
+                Object.entries(totals.equipment).flatMap(([kind, count]) =>
+                  Array<string>(count).fill(kind)
+                )
+              )}
+              {' '}и по штуке каждого прибора про запас.
+            </p>
           )}
         </section>
 
@@ -324,9 +353,17 @@ function SelectedCard({ day, view, selection, onSelect }: Props) {
 
   const order = view.orderById.get(selection.id);
   if (!order) return null;
-  const explain = day.explain.orders[order.id];
+  /* Объяснение — утреннего плана. На плане пересчёта исполнитель мог
+     смениться, и тогда оно рассказывало бы про другого человека: показываем
+     его только там, где исполнитель тот же. */
+  const morning = day.explain.orders[order.id];
+  const explain =
+    morning && morning.assigned_to === (order.assigned_to ?? null) ? morning : undefined;
   const placement = view.stopByOrder.get(order.id);
-  const deferrable = order.sla_deadline > dayEnd();
+  /* По границе суток этого дня, а не по настройке оси времени: у выгрузки
+     заказчика день кончается в 22:00, и заявка со сроком 22:00 — сегодняшняя,
+     а не «можно на завтра». */
+  const deferrable = order.sla_deadline > view.hardEnd;
 
   return (
     <div className="detail enter">
@@ -355,6 +392,7 @@ function SelectedCard({ day, view, selection, onSelect }: Props) {
         {order.priority === 2 && <Badge tone="danger">Авария</Badge>}
         {order.priority === 1 && <Badge tone="accent">Повторный визит</Badge>}
         {deferrable && <Badge tone="outline">Переносима на завтра</Badge>}
+        {order.locked_to && <Badge tone="accent">Закреплена диспетчером</Badge>}
         {placement?.slaBreached && <Badge tone="danger">План нарушает срок</Badge>}
       </div>
 
@@ -380,6 +418,9 @@ function SelectedCard({ day, view, selection, onSelect }: Props) {
         <Row k="Район" v={order.district} />
         <Row k="Навык" v={skillName(order.skill)} />
         <Row k="Длительность" v={`${order.est_minutes} мин`} />
+        {order.required_equipment && order.required_equipment.length > 0 && (
+          <Row k="Оборудование" v={equipmentList(order.required_equipment)} />
+        )}
         <Row k="Крайний срок" v={deadline(order.sla_deadline)} />
         <Row
           k="Исполнитель"
@@ -399,6 +440,25 @@ function SelectedCard({ day, view, selection, onSelect }: Props) {
         />
       </div>
 
+      {dispatcher && (
+        <DispatcherBlock key={order.id} order={order} view={view} dispatcher={dispatcher} />
+      )}
+
+      {/* Почему заявка без исполнителя — ТЗ 2.5. Причину движок отдаёт в
+          `unassigned_detail`, переходник кладёт её в заявку; прежде до экрана
+          она не доходила, и на плане пересчёта не было вовсе ничего. */}
+      {!order.assigned_to && order.unassigned_reason && (
+        <section>
+          <div className="detail__head">
+            <h3 className="detail__subtitle">Почему без исполнителя</h3>
+          </div>
+          <p className="detail__why">
+            {order.unassigned_reason.text.charAt(0).toUpperCase() +
+              order.unassigned_reason.text.slice(1)}
+          </p>
+        </section>
+      )}
+
       {explain && (
         <section>
           <div className="detail__head">
@@ -407,9 +467,11 @@ function SelectedCard({ day, view, selection, onSelect }: Props) {
           {/* Объяснение движка стоит здесь, а не в шапке: оно про то, почему
               выбран этот исполнитель, и читается вместе со списком, из которого
               его выбирали. */}
-          <p className="detail__why">
-            {explain.summary.charAt(0).toUpperCase() + explain.summary.slice(1)}
-          </p>
+          {(order.assigned_to || !order.unassigned_reason) && (
+            <p className="detail__why">
+              {explain.summary.charAt(0).toUpperCase() + explain.summary.slice(1)}
+            </p>
+          )}
           <div className="rowlist">
             {explain.candidates.map((c) => (
               <button
@@ -425,7 +487,9 @@ function SelectedCard({ day, view, selection, onSelect }: Props) {
                   </span>
                 </span>
                 <span className="row__side">
-                  <Badge tone={VERDICT_TONE[c.verdict]}>{VERDICT_LABEL[c.verdict]}</Badge>
+                  <Badge tone={VERDICT_TONE[c.verdict] ?? 'outline'}>
+                    {VERDICT_LABEL[c.verdict] ?? c.verdict}
+                  </Badge>
                 </span>
               </button>
             ))}
@@ -529,7 +593,7 @@ function Branch({
 /* Правая панель — справочник дня: всё посчитанное разложено по папкам, как в
    проводнике. Открытое встаёт сверху, дерево остаётся под ним и не
    схлопывается: проводник тоже не закрывает папки, когда открываешь файл. */
-export function DetailPanel({ day, view, selection, onSelect }: Props) {
+export function DetailPanel({ day, view, selection, onSelect, dispatcher }: Props) {
   /* Справочник считается на начало смены и дальше не двигается. Правая панель
      отвечает на вопрос «что это за объект», а не «что с ним сейчас»: когда её
      содержимое ехало вместе с ползунком, открытый список менялся под руками —
@@ -586,6 +650,7 @@ export function DetailPanel({ day, view, selection, onSelect }: Props) {
             view={view}
             selection={selection}
             onSelect={onSelect}
+            dispatcher={dispatcher}
           />
         </div>
       )}

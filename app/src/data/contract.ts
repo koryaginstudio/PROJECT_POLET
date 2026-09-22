@@ -195,6 +195,8 @@ export interface RouteTotals {
   occupancy: number;
   /** 1.2: пробег всего маршрута, километры. */
   distance_km?: number | null;
+  /** 1.5: что везёт маршрут — утренняя выдача без запаса, прибор → штук. */
+  equipment?: Record<string, number> | null;
 }
 
 export interface Route {
@@ -219,13 +221,36 @@ export interface Plan {
   schema: string;
   kind: 'plan';
   meta: {
+    /** Чем этот день зовут у движка: зона выгрузки («восток») либо номер
+        синтетического дня строкой. Нужен, чтобы понять, на какой запрос
+        пришёл ответ: по дате не различить, у всех трёх зон она одна.
+
+        Необязательное: браузерный планировщик его не заполняет. */
+    day?: string;
     date: string;
     generated_at: number;
     time_format: string;
+    /** Жёсткая граница суток, минуты от полуночи: докуда заявку обязаны
+        выполнить сегодня. У синтетики 21:00, у выгрузки заказчика 22:00 —
+        поэтому её нельзя держать константой и нельзя путать с настройкой
+        `dayEnd`, которая задаёт лишь ось времени на экране.
+
+        Необязательное: браузерный планировщик его не заполняет, и там
+        остаётся прежнее поведение — граница берётся из настроек. */
+    hard_end?: Minutes;
     solver: string;
     orders_total: number;
     orders_assigned: number;
     engineers_total: number;
+    /** Что диспетчер закрепил руками: заявка → инженер. Пусто, когда
+        закреплений нет. Закрепление — запрет, а не пожелание: такая
+        заявка либо у названного инженера, либо не назначена вовсе, и
+        пересчёт её не отнимет. Экрану это нужно, чтобы отличить «так
+        решил движок» от «так сказал человек».
+
+        Ставится событием `POST /api/event` с `kind: "assigned"`.
+        Контрола для этого в вёрстке пока нет. */
+    pinned?: Record<string, string>;
     balance: {
       gini: number;
       occupancy_min: number;
@@ -299,7 +324,19 @@ export interface Simulation {
 export interface Shifts {
   schema: string;
   kind: 'shifts';
-  meta: { shift_hours: number; allowed_starts: string[]; demand_units: string };
+  meta: {
+    day?: string;
+    /** Самая частая длина смены. Одним числом бригаду не описать: у
+        заказчика двое из четырнадцати работают восемь часов, остальные
+        девять — вся раскладка в `shift_hours_by_count`. Показывать
+        «смена 9 ч» рядом с выходом в 14:00 и границей 22:00 нельзя. */
+    shift_hours: number;
+    /** Длина смены → сколько инженеров на ней. Необязательное: движок
+        постарше и браузерный планировщик его не заполняют. */
+    shift_hours_by_count?: Record<string, number>;
+    allowed_starts: string[];
+    demand_units: string;
+  };
   current: { profile: Record<string, number>; expected_coverage: number };
   recommended: {
     profile: Record<string, number>;

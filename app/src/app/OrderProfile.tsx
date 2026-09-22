@@ -5,7 +5,7 @@ import { SegmentedControl } from '../ds/components/forms/SegmentedControl.jsx';
 import type { OrderRecord, Registry } from '../data/registry.ts';
 import { dec, deadline, hhmm } from '../data/derive.ts';
 import {
-  equipmentName,
+  equipmentList,
   isUrgent,
   orderClassName,
   requiredTransportName,
@@ -287,7 +287,7 @@ export function OrderProfile({ order, registry, onClose, onOpenRun, onOpenMap }:
                 {order.requiredEquipment.length > 0 && (
                   <div className="engfacts__row">
                     <dt>Везти</dt>
-                    <dd>{order.requiredEquipment.map(equipmentName).join(', ')}</dd>
+                    <dd>{equipmentList(order.requiredEquipment)}</dd>
                   </div>
                 )}
                 {order.requiredTransport && (
@@ -361,6 +361,14 @@ export function OrderProfile({ order, registry, onClose, onOpenRun, onOpenMap }:
                     {order.seq === null ? 'в маршрут не попала' : `№ ${order.seq + 1} в маршруте`}
                   </dd>
                 </div>
+                {order.seq === null && order.unassignedWhy && (
+                  <div className="engfacts__row">
+                    <dt>Почему</dt>
+                    <dd className="engfacts__tight">
+                      {order.unassignedWhy.charAt(0).toUpperCase() + order.unassignedWhy.slice(1)}
+                    </dd>
+                  </div>
+                )}
                 {order.status && (
                   <div className="engfacts__row">
                     <dt>Состояние</dt>
