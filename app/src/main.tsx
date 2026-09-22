@@ -12,12 +12,14 @@ import {
   RUNS
 } from './data/load.ts';
 import { engineDefaults } from './data/engine.ts';
+import { ErrorBoundary } from './app/ErrorBoundary.tsx';
 import { engineWarming } from './data/api.ts';
 
 /* Движок открывает порт сразу, а дни считает в фоне: на новой машине
    первый запуск — около трёх минут, дальше — секунды. Пока он считает,
    страница говорит это словами и ждёт, а не висит пустой и не сеет
-   расчёты в полусчитанный движок. */
+   расчёты в полусчитанный движок. Вид — та же заставка `.boot`, что и
+   «Загружаем…» в index.html. */
 async function waitForWarmup() {
   for (;;) {
     const warming = await engineWarming();
@@ -25,13 +27,13 @@ async function waitForWarmup() {
     const всего = warming.ready.length + warming.pending.length;
     const root = document.getElementById('root');
     if (root) {
-      const text = document.createElement('p');
-      text.style.cssText = 'padding:48px;font-family:sans-serif;color:#667;max-width:640px';
+      const text = document.createElement('div');
+      text.className = 'boot';
       text.textContent =
         `Движок считает планы участков: готово ${warming.ready.length} из ${всего}` +
         (warming.current ? `, сейчас — ${warming.current}` : '') +
-        `, идёт ${warming.seconds} с. При первом запуске на новой машине это около ` +
-        'трёх минут, дальше — секунды. Страница откроется сама.';
+        `. При первом запуске на новой машине это около трёх минут, дальше — ` +
+        'секунды. Страница откроется сама.';
       root.replaceChildren(text);
     }
     await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -90,6 +92,10 @@ async function seedFirstRuns() {
   }
 }
 
+/* Пока всё это идёт, на странице стоит заглушка из `index.html` —
+   «Загружаем…». Первая отрисовка её и снимает: белого экрана между
+   запуском и планом больше нет. Само приложение обёрнуто в защиту: ошибка
+   в любом экране скажет, что случилось, а не оставит пустую страницу. */
 attachEngine()
   .catch(() => false)
   .then(waitForWarmup)
@@ -98,7 +104,9 @@ attachEngine()
     const { App } = await import('./app/App.tsx');
     createRoot(document.getElementById('root')!).render(
       <React.StrictMode>
-        <App />
+        <ErrorBoundary>
+          <App />
+        </ErrorBoundary>
       </React.StrictMode>
     );
   });

@@ -6,6 +6,42 @@ import { teamName } from '../data/dictionary.ts';
 import { WhyMark } from './WhyMark.tsx';
 import { PersonName } from './PersonName.tsx';
 import { skillIcon, skillName, transportShort } from '../data/dictionary.ts';
+import { looseShare } from '../screens/db/DbHead.tsx';
+
+/** Бригада, если она не сводится к самому человеку. В выгрузке заказчика
+    поле «бригада» у большинства заполнено именем самого инженера, а у
+    одного — «Бригада Каушнян», где Каушнян он сам. Показывать в строке
+    «Бригада» фамилию того, о ком строка, — значит повторить заголовок
+    карточки; такое читается как пустое, и пустым и показывается. */
+export function crewTeam(row: Pick<EngineerRecord, 'name' | 'team'>): string | null {
+  if (!row.team) return null;
+  const team = teamName(row.team).trim().toLowerCase();
+  const name = row.name.trim().toLowerCase();
+  const surname = name.split(/\s+/)[0] ?? name;
+  if (!team || team === name || team === surname) return null;
+  return teamName(row.team);
+}
+
+/** Конфликт штата: человек числится в двух участках, и смены в них
+    накладываются друг на друга. В один день его ждут в двух местах разом —
+    это ошибка данных, и молчать о ней карточка не должна. Участки со
+    сменами, которые не пересекаются (утро в одном, вечер в другом), —
+    не конфликт. */
+export function postsClash(row: Pick<EngineerRecord, 'posts'>): boolean {
+  const posts = row.posts;
+  if (posts.length < 2) return false;
+  for (let i = 0; i < posts.length; i += 1) {
+    for (let j = i + 1; j < posts.length; j += 1) {
+      const a = posts[i];
+      const b = posts[j];
+      if (a.shiftStart < b.shiftEnd && b.shiftStart < a.shiftEnd) return true;
+    }
+  }
+  return false;
+}
+
+/** Текст метки конфликта — один на карточку, строку и таблицу. */
+export const CLASH_TEXT = 'в двух участках, смены пересекаются';
 
 interface Props {
   row: EngineerRecord;
@@ -68,7 +104,10 @@ export function EngineerCard({
     row.posts.every(
       (post) => post.shiftStart === row.posts[0].shiftStart && post.shiftEnd === row.posts[0].shiftEnd
     );
-  const loose = row.occupancyMean > 0 && row.occupancyMean < 0.6;
+  const clash = postsClash(row);
+  /* Порог недогруза — общий на все базы, а не своё число в каждой карточке. */
+  const loose = row.occupancyMean > 0 && row.occupancyMean < looseShare();
+  const team = crewTeam(row);
   /* Расчёты, где у него был маршрут — от свежего к старому: тот, который
      считали последним, интереснее того, что случился месяц назад. */
   const routedRuns = [...row.byRun].reverse().filter((shift) => shift.routed);
@@ -136,14 +175,20 @@ export function EngineerCard({
             общий `gap` строки давал часам ту же дистанцию до значка, что и
             значку до номера, и значок читался подвешенным между двумя
             текстами, а не подписью к времени. */}
-        <span className="engcard__shift">
-          <Icon name="clock" size={12} />
+        <span className={'engcard__shift' + (clash ? ' engcard__clash' : '')}>
+          <Icon name={clash ? 'warning' : 'clock'} size={12} />
           {/* График не свойство человека: он считается по нарядам дня, и у
               того, кто работает на двух участках, смены расходятся. Одну из
               них в шапке показывать нельзя — вторая пропадёт молча. Когда они
               расходятся, шапка говорит об этом, а сами смены стоят у своих
-              участков ниже. */}
-          {sameShift ? `${hhmm(row.shiftStart)}–${hhmm(row.shiftEnd)}` : 'смена по участкам'}
+              участков ниже. Когда они ещё и накладываются, это уже не
+              график, а конфликт штата — и место смены занимает красная
+              метка. */}
+          {clash
+            ? CLASH_TEXT
+            : sameShift
+              ? `${hhmm(row.shiftStart)}–${hhmm(row.shiftEnd)}`
+              : 'смена по участкам'}
         </span>
       </span>
 
@@ -293,13 +338,15 @@ export function EngineerCard({
               <dd className="engfacts__tight">{transportShort(row.transport)}</dd>
             </div>
           )}
-          {row.team && (
+          {team && (
             /* Слово «Бригада» стоит подписью и снято со значения: в двух
                зонах из трёх выгрузка пишет «Бригада Попов», и вместе с
-               подписью выходило «Бригада · Бригада Попов». */
+               подписью выходило «Бригада · Бригада Попов». Строки нет
+               вовсе, когда бригада названа именем самого инженера: см.
+               `crewTeam`. */
             <div className="engfacts__row">
               <dt>Бригада</dt>
-              <dd>{teamName(row.team)}</dd>
+              <dd>{team}</dd>
             </div>
           )}
           {row.posts.map((post) => (

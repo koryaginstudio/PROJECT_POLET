@@ -15,8 +15,8 @@
 import { loadAllOrders, loadRoster, loadRunData, RUNS } from './load.ts';
 import type { RunId } from './load.ts';
 import type { Engineer, Order, Plan, Route, Simulation } from './contract.ts';
-import { placeOf, roadPath } from './derive.ts';
-import { isUrgent } from './dictionary.ts';
+import { occupancyMean, placeOf, roadPath } from './derive.ts';
+import { isUrgent, orderClosed } from './dictionary.ts';
 import { routeLabel, routeNumbers } from './routeIds.ts';
 import { clientLabel, clientNumbers } from './clientIds.ts';
 import { companyOf } from './companies.ts';
@@ -71,10 +71,15 @@ export interface ClientRecord {
   /** Координаты дома — по ним точку показывают на карте. */
   lat: number;
   lon: number;
-  /** Заявок по всем прогонам. */
+  /** Открытых заявок по всем прогонам — тех, что ждали инженера. Закрытые
+      до расчёта в это число не входят: доля «обслужено из» считается от
+      него, и выполненная в учётной системе заявка не должна числиться
+      необслуженной. */
   orders: number;
   /** Из них попали в маршрут. */
   assigned: number;
+  /** Заявок, закрытых до расчёта: выполненных и отменённых. */
+  closed: number;
   /** В скольких прогонах район вообще встречался. */
   runs: number;
   /** Виды работ, которые здесь заказывали. */
@@ -117,13 +122,17 @@ export interface ServiceRecord {
   equipment: string[];
   /** Требуемый транспорт или `null`, если ограничения нет. */
   requiredTransport: string | null;
-  /** Сколько таких заявок в данных. */
+  /** Сколько таких заявок в данных открытых — ждущих инженера. Доля
+      «разложено из» считается от этого числа. */
   orders: number;
+  /** Сколько закрытых до расчёта: выполненных и отменённых. */
+  closed: number;
   /** Из них срочных. */
   urgent: number;
   /** Из них требуют доступа в квартиру. */
   access: number;
-  /** Сколько раз услуга попадала в расчёты и сколько из них разложено. */
+  /** Сколько раз открытая заявка услуги попадала в расчёты и сколько из
+      них разложено. */
   planned: number;
   assigned: number;
 }
@@ -140,6 +149,12 @@ export interface OrderRecord {
   /** Адрес дома либо, если стенд без адресов, район. */
   address: string;
   district: string;
+  /** Ключ точки обслуживания в базе клиентов. Ссылка, а не совпадение строк:
+      экраны сверяли адрес показанной строкой, а она собрана для показа — на
+      наборе без адресов туда попадал весь район одной кучей. */
+  clientKey: string;
+  /** Сквозной номер точки: C0105. По нему заявку ищут и им её подписывают. */
+  clientCode: string;
   /** Кто заказал: та же компания, что стоит на этом адресе в базе клиентов.
       Считается один раз, реестром, и берётся обеими базами оттуда: назови мы
       её в двух местах по-своему — и одна и та же заявка оказалась бы от
@@ -231,8 +246,10 @@ export interface RouteRecord {
   /** Точки визитов по порядку объезда — ими на карточке помечают остановки. */
   stops: [number, number][];
   /** Какая по счёту линия маршрута в наброске расчёта. Ею маршрут красится, и
-      два маршрута одного расчёта не сливаются в один цвет. */
-  lane: number;
+      два маршрута одного расчёта не сливаются в один цвет. Пусто у маршрута,
+      которого в наброске нет: инженера нет в плане либо перегонов меньше
+      двух — красить нечего, и первую линию он занимать не должен. */
+  lane: number | null;
 }
 
 /** Как инженер отработал в одном прогоне. Ряд из таких смен и есть его
@@ -383,6 +400,14 @@ export interface Registry {
   stats: RegistryStats;
 }
 
+/** Ключ точки обслуживания: адрес, а если его нет — район с координатами.
+
+    Одно правило на обе базы. Клиенты собираются по нему, заявки по нему же
+    на клиентов ссылаются; разойдись эти два места — и связь между базами
+    порвалась бы, не сказав ни слова. */
+export const clientKeyOf = (order: Order) =>
+  order.address ?? `${order.district} · ${order.lat},${order.lon}`;
+
 function buildClients(plans: { run: RunRef; plan: Plan }[]): ClientRecord[] {
   /* Копится запись без номера и без заказчика: номер выдаётся в самом конце,
      всем адресам разом, а заказчик — по этому номеру, и до тех пор ни того,
@@ -399,7 +424,7 @@ function buildClients(plans: { run: RunRef; plan: Plan }[]): ClientRecord[] {
       /* Ключ — адрес: одна и та же квартира приходит в разных расчётах, и это
          одна точка, а не две. Дом без адреса опознаём по координатам, чтобы
          соседние дома одного района не слиплись в одну строку. */
-      const key = order.address ?? `${order.district} · ${order.lat},${order.lon}`;
+      const key = clientKeyOf(order);
       let entry = map.get(key);
       if (!entry) {
         entry = {
@@ -410,6 +435,7 @@ function buildClients(plans: { run: RunRef; plan: Plan }[]): ClientRecord[] {
           lon: order.lon,
           orders: 0,
           assigned: 0,
+          closed: 0,
           runs: 0,
           workTypes: [],
           access: 0,
@@ -422,10 +448,19 @@ function buildClients(plans: { run: RunRef; plan: Plan }[]): ClientRecord[] {
         };
         map.set(key, entry);
       }
-      entry.orders += 1;
-      if (order.assigned_to) entry.assigned += 1;
+      /* Закрытая до расчёта заявка — часть истории точки, но не часть
+         «обслужено из»: инженера она не ждала. */
+      if (orderClosed(order)) entry.closed += 1;
+      else {
+        entry.orders += 1;
+        if (order.assigned_to) entry.assigned += 1;
+      }
       if (order.needs_access) entry.access += 1;
-      if (order.priority >= 2) entry.urgent += 1;
+      /* Срочность — по правилу справочника, одному на весь интерфейс:
+         класс, если он пришёл, иначе уровень. Своё правило «уровень от
+         второго» расходилось с базой услуг на заявках, где класс `normal`
+         стоит при высоком уровне. */
+      if (isUrgent(order.priority_class, order.priority)) entry.urgent += 1;
       entry.minutes.push(order.est_minutes);
       entry.typeSet.add(order.work_type);
       entry.runSet.add(run.id);
@@ -450,6 +485,7 @@ function buildClients(plans: { run: RunRef; plan: Plan }[]): ClientRecord[] {
       lon: entry.lon,
       orders: entry.orders,
       assigned: entry.assigned,
+      closed: entry.closed,
       runs: entry.runSet.size,
       workTypes: [...entry.typeSet],
       access: entry.access,
@@ -475,10 +511,11 @@ function buildOrders(
      запасное имя всё равно нужно: пустая строка на месте заказчика читалась
      бы как «заказчика нет», а он есть, просто адрес записан так, что точку по
      нему не опознать. */
-  const companyByKey = new Map(clients.map((client) => [client.key, client.company]));
-  const companyFor = (order: Order) =>
-    companyByKey.get(order.address ?? `${order.district} · ${order.lat},${order.lon}`) ??
-    'Клиент не опознан';
+  const byKey = new Map(clients.map((client) => [client.key, client]));
+  /* Ключ точки собирается тем же правилом, что и в самой базе клиентов, и
+     правило это живёт в одном месте — иначе две базы опознают один дом
+     по-разному, и связь между ними рвётся молча. */
+  const keyFor = (order: Order) => clientKeyOf(order);
 
   for (const { run, plan } of plans) {
     const nameById = new Map(plan.engineers.map((e) => [e.id, e.name]));
@@ -507,7 +544,9 @@ function buildOrders(
         skill: order.skill,
         address: placeOf(order),
         district: order.district,
-        company: companyFor(order),
+        clientKey: keyFor(order),
+        clientCode: byKey.get(keyFor(order))?.code ?? '',
+        company: byKey.get(keyFor(order))?.company ?? 'Клиент не опознан',
         windowStart: order.window_start,
         windowEnd: order.window_end,
         slaDeadline: order.sla_deadline,
@@ -692,8 +731,9 @@ function buildRoutes(plans: { run: RunRef; plan: Plan }[]): RouteRecord[] {
         path: lines.get(route.engineer_id)?.path ?? [],
         stops: lines.get(route.engineer_id)?.stops ?? [],
         /* Маршрута, которого нет в наброске, нет и среди линий: красить
-           нечего, и место в ряду цветов ему ни к чему. */
-        lane: Math.max(0, lanes.indexOf(route.engineer_id))
+           нечего, и место в ряду цветов ему ни к чему. Раньше здесь стоял
+           ноль, и такой маршрут красился цветом первой линии — чужим. */
+        lane: lanes.includes(route.engineer_id) ? lanes.indexOf(route.engineer_id) : null
       });
     }
   }
@@ -702,7 +742,7 @@ function buildRoutes(plans: { run: RunRef; plan: Plan }[]): RouteRecord[] {
   );
 }
 
-type EngineerEntry = EngineerRecord & { skillSet: Set<string>; occupancies: number[] };
+type EngineerEntry = EngineerRecord & { skillSet: Set<string> };
 
 /** Заводит запись инженера, если её ещё нет, и возвращает её. Заводится она
     одинаково и для штата, и для расчёта: разница только в том, что у первого
@@ -732,8 +772,7 @@ function blank(map: Map<string, EngineerEntry>, engineer: Engineer): EngineerEnt
     status: engineer.status ?? null,
     posts: [],
     byRun: [],
-    skillSet: new Set<string>(engineer.skills),
-    occupancies: []
+    skillSet: new Set<string>(engineer.skills)
   };
   map.set(engineer.id, entry);
   return entry;
@@ -778,6 +817,7 @@ function buildServices(orders: Order[], plans: { plan: Plan }[]): ServiceRecord[
         equipment: [],
         requiredTransport: order.required_transport ?? null,
         orders: 0,
+        closed: 0,
         urgent: 0,
         access: 0,
         planned: 0,
@@ -798,7 +838,10 @@ function buildServices(orders: Order[], plans: { plan: Plan }[]): ServiceRecord[
 
   for (const order of orders) {
     const entry = touch(order);
-    entry.orders += 1;
+    /* Закрытые — отдельным числом: доля разложенных считается от открытых,
+       и выполненная заявка в «не разложено» попадать не должна. */
+    if (orderClosed(order)) entry.closed += 1;
+    else entry.orders += 1;
     /* Срочность считаем тем же правилом, что и весь остальной интерфейс:
        есть `priority_class` — он и решает, нет — выводим из уровня. Своё
        правило здесь («класс срочный ИЛИ уровень от второго») расходилось с
@@ -812,6 +855,7 @@ function buildServices(orders: Order[], plans: { plan: Plan }[]): ServiceRecord[
   for (const { plan } of plans) {
     for (const order of plan.orders) {
       const entry = touch(order);
+      if (orderClosed(order)) continue;
       entry.planned += 1;
       if (order.assigned_to) entry.assigned += 1;
     }
@@ -876,7 +920,6 @@ function buildEngineers(
       entry.travelMinutes += route.totals.travel_minutes;
       entry.workMinutes += workMinutesOf(route);
       entry.overtimeMinutes += route.totals.overtime_minutes;
-      entry.occupancies.push(route.totals.occupancy);
     }
   }
 
@@ -891,9 +934,8 @@ function buildEngineers(
       travelMinutes: entry.travelMinutes,
       workMinutes: entry.workMinutes,
       overtimeMinutes: entry.overtimeMinutes,
-      occupancyMean: entry.occupancies.length
-        ? entry.occupancies.reduce((a, b) => a + b, 0) / entry.occupancies.length
-        : 0,
+      /* Среднее — той же формулой, что и везде: по сменам с маршрутом. */
+      occupancyMean: occupancyMean(entry.byRun.filter((shift) => shift.routed)),
       idleRuns: entry.idleRuns,
       shiftStart: entry.shiftStart,
       shiftEnd: entry.shiftEnd,
@@ -1012,20 +1054,25 @@ function buildStats(
   engineers: EngineerRecord[]
 ): RegistryStats {
   const workTypes = new Map<string, number>();
-  let orders = 0;
-  let assigned = 0;
+  /* Заявки считаются по номерам, а не по строкам планов: номер сквозной на
+     всю базу, и одна и та же заявка, разложенная в трёх расчётах одной зоны,
+     — одна заявка, а не три. Раньше сумма шла по длине планов, и повторный
+     расчёт той же зоны удваивал «заявок обработано». Разложенной заявка
+     считается, если инженера ей нашёл хоть один расчёт. */
+  const seen = new Set<string>();
+  const placed = new Set<string>();
 
   const byRun: RunStat[] = plans.map(({ run, plan, simulation }) => {
-    orders += plan.orders.length;
     for (const order of plan.orders) {
-      if (order.assigned_to) assigned += 1;
+      if (order.assigned_to) placed.add(order.id);
+      if (seen.has(order.id)) continue;
+      seen.add(order.id);
       workTypes.set(order.work_type, (workTypes.get(order.work_type) ?? 0) + 1);
     }
     const visits = plan.routes.reduce((sum, r) => sum + r.totals.visits, 0);
     const work = plan.routes.reduce((sum, r) => sum + workMinutesOf(r), 0);
     const travel = plan.routes.reduce((sum, r) => sum + r.totals.travel_minutes, 0);
-    const occupancy =
-      plan.routes.reduce((sum, r) => sum + r.totals.occupancy, 0) / (plan.routes.length || 1);
+    const occupancy = occupancyMean(plan.routes.map((r) => r.totals));
     return {
       run,
       orders: plan.meta.orders_total,
@@ -1056,8 +1103,8 @@ function buildStats(
       .sort((a, b) => b.count - a.count || a.key.localeCompare(b.key));
 
   return {
-    orders,
-    assigned,
+    orders: seen.size,
+    assigned: placed.size,
     byWorkType: tally(workTypes),
     bySkill: tally(skills),
     byRun

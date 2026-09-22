@@ -13,6 +13,11 @@ import { service } from '../../data/service.ts';
 import type { PeriodKey } from '../../app/DbWidgets.tsx';
 import type { WidgetDef } from '../../app/DbWidgets.tsx';
 import { DbHead } from './DbHead.tsx';
+import { DbBar, DbEmpty, DbMore, usePaging } from './DbBar.tsx';
+import type { DbChip } from './DbBar.tsx';
+import { SortMenu } from '../../app/SortMenu.tsx';
+import type { SortRule } from '../../app/SortMenu.tsx';
+import { DbList } from './DbList.tsx';
 
 interface Props {
   registry: Registry;
@@ -51,6 +56,12 @@ const DENSITY = [
 
 const percent = (share: number) => `${Math.round(share * 100)}%`;
 
+/* День расчёта из ISO-даты выгрузки: «2026-08-17» → «17.08.2026». */
+const dayOf = (date: string) => {
+  const [year, month, day] = date.split('-');
+  return day ? `${day}.${month}.${year}` : date;
+};
+
 /* По чему упорядочены расчёты. Первым идёт порядок по дате — свежий расчёт
    это то, с чем работают; остальные правила отвечают на «где вышло лучше» и
    «где осталось больше нераспределённого».
@@ -64,11 +75,37 @@ const percent = (share: number) => `${Math.round(share * 100)}%`;
    и это было бы то же самое правило под другим именем. */
 type Sort = 'date' | 'coverage' | 'loose';
 
-const SORTS: { value: Sort; label: string; desc: boolean }[] = [
-  { value: 'date', label: 'По дате', desc: true },
-  { value: 'coverage', label: 'По покрытию', desc: true },
-  { value: 'loose', label: 'По нераспределённым', desc: true }
+const SORTS: (SortRule & { value: Sort; desc: boolean })[] = [
+  {
+    value: 'date',
+    label: 'По дате',
+    note: 'Когда расчёт завели',
+    desc: true,
+    up: 'Сначала давние',
+    down: 'Сначала свежие'
+  },
+  {
+    value: 'coverage',
+    label: 'По покрытию',
+    note: 'Насколько полно разложился день',
+    desc: true,
+    up: 'Сначала слабые',
+    down: 'Сначала полные'
+  },
+  {
+    value: 'loose',
+    label: 'По нераспределённым',
+    note: 'Сколько заявок осталось без инженера',
+    desc: true,
+    up: 'Сначала чистые',
+    down: 'Сначала с остатком'
+  }
 ];
+
+/* Сколько расчётов показываем сразу. Расчётов в истории обычно единицы, но
+   потолок нужен и здесь: база живёт над прогонами, и за месяц работы их
+   набирается столько же, сколько рабочих дней. */
+const PAGE = 24;
 
 /* Отбор по итогу расчёта: осталось ли в нём что-то, чего движок никому не
    отдал. Это ровно тот вопрос, ради которого в историю и заглядывают. */
@@ -101,6 +138,25 @@ export function DbRunsScreen({
   const [desc, setDesc] = useState(true);
   const [filter, setFilter] = useState<Filter>('all');
   const [query, setQuery] = useState('');
+  const paging = usePaging(PAGE);
+
+  /* Сменили отбор или порядок — счётчик показанного начинается заново. */
+  const narrow = <T,>(set: (value: T) => void) => (value: T) => {
+    set(value);
+    paging.reset();
+  };
+
+  /* Снятие чипа значения не выбирает — оно возвращает отбор к «всем». */
+  const clear = (run: () => void) => () => {
+    run();
+    paging.reset();
+  };
+
+  const reset = () => {
+    setFilter('all');
+    setQuery('');
+    paging.reset();
+  };
   const dense = perRow === '6';
 
   const all = registry.stats.byRun;
@@ -164,26 +220,14 @@ export function DbRunsScreen({
   const pickSort = (value: Sort) => {
     if (value === sort) {
       setDesc((prev) => !prev);
+      paging.reset();
       return;
     }
     setSort(value);
     setDesc(SORTS.find((item) => item.value === value)?.desc ?? true);
+    paging.reset();
   };
 
-  /* Стрелка стоит только у выбранного правила: у остальных она обещала бы
-     сторону, которой они сейчас не задают. */
-  const sortItems = SORTS.map((item) => ({
-    value: item.value,
-    label:
-      item.value === sort ? (
-        <>
-          {item.label}
-          <Icon name={desc ? 'chevron-down' : 'chevron-up'} size={11} />
-        </>
-      ) : (
-        item.label
-      )
-  }));
   /* Срок, за который считает доска. Отдельно от отбора списка: список
      отвечает на «какие расчёты показать», доска — на «за какой срок считать».
      Общим переключателем поиск по номеру менял бы диаграммы, а смена срока —
@@ -530,6 +574,46 @@ export function DbRunsScreen({
     )
   });
 
+  /* Активные отборы — чипами наверху. Каждый снимается своим крестиком. */
+  const chips: DbChip[] = [];
+  if (filter !== 'all') {
+    chips.push({
+      key: 'filter',
+      label: FILTERS.find((item) => item.value === filter)?.label ?? filter,
+      onRemove: clear(() => setFilter('all'))
+    });
+  }
+
+  const shown = rows.slice(0, paging.limit);
+  const hidden = rows.length - shown.length;
+
+  /* Итог выборки — над списком, а не под ним: это ответ на «что дал отбор»,
+     и внизу, за прокруткой, его никто не читает. Числа выбраны по вопросу
+     самой базы: что считали, сколько заявок прошло и что от них осталось. */
+  const summary = (
+    <>
+      <b>{plural(rows.length, 'расчёт', 'расчёта', 'расчётов')}</b> в выборке
+      {rows.length !== all.length && ` из ${all.length}`}
+      {rows.length > 0 && (
+        <>
+          {` · ${plural(
+            rows.reduce((sum, one) => sum + one.orders, 0),
+            'заявка',
+            'заявки',
+            'заявок'
+          )}`}
+          {` · ${rows.reduce((sum, one) => sum + (one.orders - one.assigned), 0)} без инженера`}
+          {` · ${plural(
+            rows.reduce((sum, one) => sum + one.routes, 0),
+            'маршрут',
+            'маршрута',
+            'маршрутов'
+          )}`}
+        </>
+      )}
+    </>
+  );
+
   return (
     <div className="dash enter">
       {/* Заводить расчёт отсюда нечем и незачем: база — это история того, что
@@ -551,69 +635,123 @@ export function DbRunsScreen({
           у каждого своё выравнивание, посередине дыра. Наверху — поиск и
           плотность: это не отбор, а то, с какой стороны на список смотрят. */}
       <DbHead title="База расчётов" board={board.node}>
-        <div className="filters filters--runs">
-          <div className="filters__top">
-            <label className="dbsearch">
-              <Icon name="search" size={14} />
-              <input
-                className="dbsearch__input"
-                value={query}
-                placeholder="Найти расчёт"
-                onChange={(event) => setQuery(event.currentTarget.value)}
+        <DbBar
+          query={query}
+          onQuery={narrow(setQuery)}
+          placeholder="Номер расчёта, дата или заметка"
+          chips={chips}
+          onReset={reset}
+          sort={
+            <SortMenu
+              rules={SORTS}
+              value={sort}
+              desc={desc}
+              onPick={(value: string) => pickSort(value as Sort)}
+              onOrder={narrow(setDesc)}
+            />
+          }
+          summary={summary}
+        >
+          <div className="filters filters--runs">
+            <div className="filters__group">
+              <span className="filters__label">Отбор</span>
+              <SegmentedControl
+                size="sm"
+                items={FILTERS}
+                value={filter}
+                onChange={narrow((value: string) => setFilter(value as Filter))}
               />
-              {query && (
-                <button type="button" className="dbsearch__clear" onClick={() => setQuery('')}>
-                  <Icon name="x" size={12} />
-                </button>
-              )}
-            </label>
+            </div>
 
-            {/* Плотность строки — только у карточек: в таблице строка одна и в
-                строке она одна. */}
-            {mode !== 'table' && (
+            {/* Плотность строки — только у карточек: в таблице и в списке
+                строка одна и в строке она одна. */}
+            {mode !== 'table' && mode !== 'list' && (
               <div className="filters__group filters__group--tight">
                 <span className="filters__label">Карточек в строке</span>
-                <SegmentedControl
-                  size="sm"
-                  items={DENSITY}
-                  value={perRow}
-                  onChange={setPerRow}
-                />
+                <SegmentedControl size="sm" items={DENSITY} value={perRow} onChange={setPerRow} />
               </div>
             )}
           </div>
-
-          <div className="filters__group">
-            <span className="filters__label">Отбор</span>
-            <SegmentedControl
-              size="sm"
-              items={FILTERS}
-              value={filter}
-              onChange={(value: string) => setFilter(value as Filter)}
-            />
-          </div>
-
-          <div
-            className="filters__group"
-            title="Щелчок по выбранному правилу переворачивает порядок"
-          >
-            <span className="filters__label">Сортировка</span>
-            <SegmentedControl
-              size="sm"
-              items={sortItems}
-              value={sort}
-              onChange={(value: string) => pickSort(value as Sort)}
-            />
-          </div>
-        </div>
+        </DbBar>
       </DbHead>
 
       {rows.length === 0 ? (
-        <section className="panel">
-          <p className="clients__lede">
-            Под этот отбор не подошёл ни один расчёт. Снимите фильтр или очистите поиск.
-          </p>
-        </section>
+        <DbEmpty
+          miss="Под этот отбор не подошёл ни один расчёт."
+          blank="Расчётов в истории пока нет: первый появится, когда день разложат в диспетчерской."
+          query={query.trim() !== ''}
+          filtered={filter !== 'all'}
+          onReset={reset}
+        />
+      ) : mode === 'list' ? (
+        /* Список: расчёт — строка, и в ней ровно то, ради чего в историю
+           заходят. Покрытие первым: это ответ на «как посчиталось», всё
+           остальное его объясняет. Кнопка перехода — в конце строки, как в
+           таблице: из базы в расчёт ведёт одна дорога, и она везде на одном
+           месте. */
+        <DbList
+          lead="Расчёт"
+          rows={shown.map((row) => ({
+            key: row.run.id,
+            lead: <Icon name="stack" size={15} />,
+            code: row.run.code,
+            /* Названием — день, на который считали: номером расчёт ищут, а
+               помнят его по дню. Когда завели — в подписи: два расчёта на
+               один день различают именно временем записи, но это уже
+               уточнение, а не имя. Заметка человека стоит перед числами: её
+               писал не движок, и теряться среди них ей не следует. */
+            title: row.run.date ? dayOf(row.run.date) : `Расчёт ${row.run.code}`,
+            sub: (
+              <>
+                {row.run.note ? `${row.run.note} · ` : ''}
+                заведён {stampOf(row.run.created)} ·{' '}
+                {plural(row.routes, 'маршрут', 'маршрута', 'маршрутов')} · {row.engineersOnRoute} из{' '}
+                {row.engineersTotal} инженеров с маршрутом
+                {row.run.id === active ? ' · открыт в диспетчерской' : ''}
+              </>
+            ),
+            cells: [
+              { label: 'Покрытие', value: percent(row.coverage), tone: row.coverage < 0.8 ? ('warn' as const) : undefined },
+              { label: 'Разложено', value: `${row.assigned}/${row.orders}` },
+              {
+                label: 'Без инженера',
+                value: row.orders - row.assigned,
+                tone: row.orders - row.assigned > 0 ? ('warn' as const) : ('muted' as const)
+              },
+              { label: 'Визитов', value: row.visits },
+              { label: 'Занятость', value: percent(row.occupancy) },
+              { label: 'В дороге', value: hoursText(row.travelMinutes) }
+            ],
+            action: (
+              <>
+                <button
+                  type="button"
+                  className="runcard__edit"
+                  onClick={() => onEdit(row.run)}
+                  title={`Изменить запись ${row.run.code}: номер, время, заметка`}
+                  aria-label={`Изменить запись ${row.run.code}`}
+                >
+                  <Icon name="pencil" size={13} />
+                </button>
+                {row.run.id === active ? (
+                  <button
+                    type="button"
+                    className="runcard__go runcard__go--open"
+                    onClick={() => onGo(row.run.id)}
+                  >
+                    <Icon name="arrow-right" size={13} />
+                    Перейти
+                  </button>
+                ) : (
+                  <button type="button" className="runcard__go" onClick={() => onOpen(row.run.id)}>
+                    <Icon name="arrow-right" size={13} />
+                    Открыть
+                  </button>
+                )}
+              </>
+            )
+          }))}
+        />
       ) : mode === 'table' ? (
         <section className="panel">
           <div className="tbl-wrap">
@@ -634,7 +772,7 @@ export function DbRunsScreen({
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row) => (
+                {shown.map((row) => (
                   <tr key={row.run.id} className="tbl__row">
                     <td>
                       <span className="tbl__run">
@@ -705,7 +843,7 @@ export function DbRunsScreen({
             className={'runs__grid' + (dense ? ' runs__grid--dense' : '')}
             style={{ '--per-row': perRow } as React.CSSProperties}
           >
-          {rows.map((row) => (
+          {shown.map((row) => (
             <RunCard
               key={row.run.id}
               row={row}
@@ -732,29 +870,10 @@ export function DbRunsScreen({
         </>
       )}
 
-      {/* Итог выборки под списком — тот же приём, что во всех справочниках:
-          сверху доска отвечает на «как дела вообще», здесь строка отвечает на
-          «а что сейчас на экране». Числа выбраны по вопросу самой базы: что
-          считали, сколько заявок прошло через движок и что от них осталось. */}
-      {rows.length > 0 && (
-        <p className="filters__note filters__note--under">
-          {plural(rows.length, 'расчёт', 'расчёта', 'расчётов')} в выборке
-          {rows.length !== all.length && ` из ${all.length}`}
-          {` · ${plural(
-            rows.reduce((sum, one) => sum + one.orders, 0),
-            'заявка',
-            'заявки',
-            'заявок'
-          )}`}
-          {` · ${rows.reduce((sum, one) => sum + (one.orders - one.assigned), 0)} без инженера`}
-          {` · ${plural(
-            rows.reduce((sum, one) => sum + one.routes, 0),
-            'маршрут',
-            'маршрута',
-            'маршрутов'
-          )}`}
-        </p>
-      )}
+      {/* «Показать ещё» — одна на все три вида: обрезается отрисовка, а
+          выборка и её итог считаются целиком, и кнопка не меняет ни одного
+          числа над списком. */}
+      {rows.length > 0 && <DbMore hidden={hidden} page={PAGE} onMore={paging.more} />}
     </div>
   );
 }

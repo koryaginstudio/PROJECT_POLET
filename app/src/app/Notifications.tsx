@@ -76,17 +76,23 @@ export function Notifications({ view, onSelect }: Props) {
           </div>
 
           <div className="notify__group">
-            <span className="notify__group-title">Держатся на честном слове</span>
-            {fragile.map(({ order, failureRate }) => (
-              <button type="button" key={order.id} className="notify__row" onClick={() => pick(order.id)}>
-                <span className="notify__row-title">
-                  {order.id} · {order.work_title} · {placeOf(order)}
-                </span>
-                <span className="notify__row-meta">
-                  {order.id} · срывается в {dec(failureRate)}% итераций
-                </span>
-              </button>
-            ))}
+            <span className="notify__group-title">Держатся на честном слове — {fragile.length}</span>
+            {/* Пустая группа говорит словами, а не пустотой: иначе заголовок
+                без строк читается как «список не загрузился». */}
+            {fragile.length === 0 ? (
+              <p className="notify__empty">Ни один визит в симуляции не срывается.</p>
+            ) : (
+              fragile.map(({ order, failureRate }) => (
+                <button type="button" key={order.id} className="notify__row" onClick={() => pick(order.id)}>
+                  <span className="notify__row-title">
+                    {order.id} · {order.work_title} · {placeOf(order)}
+                  </span>
+                  <span className="notify__row-meta">
+                    {order.id} · срывается в {dec(failureRate)}% прогонов симуляции
+                  </span>
+                </button>
+              ))
+            )}
           </div>
         </div>
       )}

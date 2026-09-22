@@ -175,11 +175,23 @@ export function DispatchGate({ runs, activeRun, onCreate, onOpen }: Props) {
             <p className="stub__body">Собираем расчёты…</p>
           ) : (
             <div className="gatelist">
-              {shown.length === 0 && (
-                <p className="runmenu__empty">
-                  Расчёта с таким номером нет. Проверьте номер или очистите поиск.
-                </p>
-              )}
+              {/* Пусто по двум разным причинам, и говорить надо разное:
+                  поиск ничего не нашёл — одно, истории нет вовсе — другое. */}
+              {shown.length === 0 &&
+                (runs.length === 0 ? (
+                  <div className="emptynote">
+                    <p className="emptynote__title">Посчитанных расчётов пока нет</p>
+                    <span>Начните с «Создать расчёт» — первый и появится здесь.</span>
+                    <button type="button" className="runcard__go" onClick={onCreate}>
+                      <Icon name="shuffle" size={13} />
+                      Создать расчёт
+                    </button>
+                  </div>
+                ) : (
+                  <p className="runmenu__empty">
+                    Расчёта с таким номером нет. Проверьте номер или очистите поиск.
+                  </p>
+                ))}
               {shown.map((run) => (
                 <button
                   key={run.id}

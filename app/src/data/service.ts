@@ -92,10 +92,14 @@ const STORE = 'polet.service';
 
 /** Смена короче двух часов и длиннее суток — это не настройка, а опечатка. */
 const MIN_SHIFT = 120;
+const DAY = 24 * 60;
 
+/* Границы удерживаются внутри суток с обеих сторон. Начало не позже, чем за
+   минимальную смену до полуночи: иначе конец, отодвинутый от начала на два
+   часа, уходил за полночь, и день кончался в «25:00». */
 function sane(next: ServiceSettings): ServiceSettings {
-  const dayStart = Math.max(0, Math.min(23 * 60, Math.round(next.dayStart)));
-  const dayEnd = Math.max(dayStart + MIN_SHIFT, Math.min(24 * 60, Math.round(next.dayEnd)));
+  const dayStart = Math.max(0, Math.min(DAY - MIN_SHIFT, Math.round(next.dayStart)));
+  const dayEnd = Math.max(dayStart + MIN_SHIFT, Math.min(DAY, Math.round(next.dayEnd)));
   return { ...next, dayStart, dayEnd };
 }
 

@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '../ds/components/core/Button.jsx';
 import { Icon } from '../ds/components/core/Icon.jsx';
 import type { RunPatch } from '../data/load.ts';
+import { RUNS } from '../data/load.ts';
 import type { RunRef } from '../data/registry.ts';
+import { useModalFocus } from './modal.ts';
 
 interface Props {
   /** Запись, которую правят. Пусто — окна нет. */
@@ -36,12 +38,19 @@ const PREFIX = 'R';
    переписки «M031» обязан прочитаться как 31. */
 const tailOf = (code: string) => code.replace(/^[RРрrMМмm]\s*/u, '');
 
+/* Номер дополняется до трёх цифр, как их выдаёт история: набранное «2»
+   становится «R002», а не «R2», и в списках стоит вровень с соседями. Не
+   число — оставляем как набрали: буквы в номере не наше дело. */
+const padTail = (tail: string) => (/^\d{1,2}$/.test(tail) ? tail.padStart(3, '0') : tail);
+
 export function RunEditDialog({ run, onClose, onSave, onDelete }: Props) {
   const [tail, setTail] = useState('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [note, setNote] = useState('');
   const [confirming, setConfirming] = useState(false);
+  const card = useRef<HTMLDivElement>(null);
+  useModalFocus(run !== null, card);
 
   /* Поля наполняются при каждом открытии: окно одно на все записи, и
      оставшийся в нём чужой номер был бы худшим из возможных обманов. */
@@ -64,16 +73,21 @@ export function RunEditDialog({ run, onClose, onSave, onDelete }: Props) {
 
   if (!run) return null;
 
-  const trimmed = tail.trim();
+  const trimmed = padTail(tail.trim());
+  const code = PREFIX + trimmed;
+  /* Номер обязан быть единственным: им расчёты различают вслух и им же
+     находят в поиске, и два R031 в истории — это один потерянный. Свой
+     прежний номер записи оставить можно. */
+  const taken = trimmed.length > 0 && RUNS.some((one) => one.id !== run.id && one.code === code);
   /* Пустой номер и пустая дата не сохраняются: по ним запись находят в
      истории, и без них она перестаёт быть записью. Одна буква номером тоже
      не считается. */
-  const valid = trimmed.length > 0 && date.length > 0;
+  const valid = trimmed.length > 0 && date.length > 0 && !taken;
 
   const save = () => {
     if (!valid) return;
     onSave({
-      code: PREFIX + trimmed,
+      code,
       created: `${date}T${time || '00:00'}`,
       note: note.trim() || undefined
     });
@@ -83,9 +97,12 @@ export function RunEditDialog({ run, onClose, onSave, onDelete }: Props) {
     <div className="modal" role="dialog" aria-modal="true" aria-label={`Правка расчёта ${run.code}`}>
       <button type="button" className="modal__veil" onClick={onClose} aria-label="Закрыть" />
 
-      <div className="modal__card runedit">
+      <div className="modal__card runedit" ref={card}>
         <div className="modal__head">
           <h3 className="runedit__title">Расчёт {run.code}</h3>
+          <span className="modal__esc">
+            <kbd>Esc</kbd> — закрыть
+          </span>
           <button type="button" className="rpanel__x" onClick={onClose} aria-label="Закрыть">
             <Icon name="x" size={16} />
           </button>
@@ -107,9 +124,17 @@ export function RunEditDialog({ run, onClose, onSave, onDelete }: Props) {
               value={tail}
               onChange={(event) => setTail(tailOf(event.currentTarget.value))}
               placeholder="024"
-              aria-label="Номер расчёта после буквы M"
+              aria-label="Номер расчёта после буквы R"
             />
           </span>
+          {taken && (
+            <span className="runedit__wrong">
+              Номер {code} уже есть в истории — выберите другой
+            </span>
+          )}
+          {!taken && trimmed !== tail.trim() && trimmed.length > 0 && (
+            <span className="runedit__hint">Сохранится как {code}</span>
+          )}
         </label>
 
         <div className="runedit__pair">

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '../ds/components/core/Button.jsx';
 import { Icon } from '../ds/components/core/Icon.jsx';
 import { SegmentedControl } from '../ds/components/forms/SegmentedControl.jsx';
@@ -19,6 +19,7 @@ import { durationWhy, requiredTransportWhy } from '../data/rationale.ts';
 import { OrderWindow } from './OrderWindow.tsx';
 import { NoteField } from './NoteField.tsx';
 import { WhyMark } from './WhyMark.tsx';
+import { useModalFocus } from './modal.ts';
 
 interface Props {
   /** Какая заявка открыта. Пусто — карточки нет. */
@@ -27,8 +28,8 @@ interface Props {
   onClose: () => void;
   /** Уйти в расчёт, которому заявка принадлежит. */
   onOpenRun: (runId: string) => void;
-  /** Показать её на карте открытого расчёта. */
-  onOpenMap: (runId: string) => void;
+  /** Показать её на карте своего расчёта: карта откроется на этой точке. */
+  onOpenMap: (runId: string, orderId: string) => void;
 }
 
 /* Карточка заявки целиком: всё, что мы о ней знаем, на одном экране.
@@ -43,6 +44,8 @@ type Tab = 'runs' | 'route' | 'address';
 
 export function OrderProfile({ order, registry, onClose, onOpenRun, onOpenMap }: Props) {
   const [tab, setTab] = useState<Tab>('runs');
+  const card = useRef<HTMLDivElement>(null);
+  useModalFocus(order !== null, card);
 
   useEffect(() => {
     if (order) setTab('runs');
@@ -55,7 +58,7 @@ export function OrderProfile({ order, registry, onClose, onOpenRun, onOpenMap }:
     return () => document.removeEventListener('keydown', onKey);
   }, [order, onClose]);
 
-  /* Тот же номер в других расчётах: заявка, которую в одном прогоне никто не
+  /* Тот же номер в других расчётах: заявка, которую в одном расчёте никто не
      взял, в другом могла лечь в маршрут. */
   const inRuns = useMemo(
     () => (order ? registry.orders.filter((one) => one.id === order.id) : []),
@@ -76,10 +79,13 @@ export function OrderProfile({ order, registry, onClose, onOpenRun, onOpenMap }:
       .sort((a, b) => (a.seq ?? 0) - (b.seq ?? 0));
   }, [order, registry]);
 
-  /* Что ещё заведено по этому адресу — во всех расчётах. */
+  /* Что ещё заведено по этому адресу — во всех расчётах. Сверяем по ключу
+     точки обслуживания, а не по строке адреса: ключ один и тот же у всех
+     заявок клиента, а строка адреса у заявки без дома — это район, и
+     сравнение строк сводило бы вместе полгорода. */
   const atAddress = useMemo(() => {
     if (!order) return [];
-    return registry.orders.filter((one) => one.address === order.address && one.key !== order.key);
+    return registry.orders.filter((one) => one.clientKey === order.clientKey && one.key !== order.key);
   }, [order, registry]);
 
   if (!order) return null;
@@ -92,7 +98,7 @@ export function OrderProfile({ order, registry, onClose, onOpenRun, onOpenMap }:
     <div className="modal" role="dialog" aria-modal="true" aria-label={`Заявка ${order.id}`}>
       <button type="button" className="modal__veil" onClick={onClose} aria-label="Закрыть" />
 
-      <div className="modal__card crewpro">
+      <div className="modal__card crewpro" ref={card}>
         {/* Шапка у инженера двухколоночная: слева портрет, справа имя и
             цифры. У заявки лица нет и не будет — стоявший на его месте
             квадрат со значком вида работ ничего не добавлял: тот же значок
@@ -135,7 +141,7 @@ export function OrderProfile({ order, registry, onClose, onOpenRun, onOpenMap }:
                 <Button
                   variant="secondary"
                   size="sm"
-                  onClick={() => onOpenMap(order.run.id)}
+                  onClick={() => onOpenMap(order.run.id, order.id)}
                   iconLeft={<Icon name="map-pin" size={13} />}
                 >
                   На карте
@@ -148,6 +154,9 @@ export function OrderProfile({ order, registry, onClose, onOpenRun, onOpenMap }:
                 >
                   В расчёт
                 </Button>
+                <span className="modal__esc">
+                  <kbd>Esc</kbd> — закрыть
+                </span>
                 <button type="button" className="rpanel__x" onClick={onClose} aria-label="Закрыть">
                   <Icon name="x" size={16} />
                 </button>

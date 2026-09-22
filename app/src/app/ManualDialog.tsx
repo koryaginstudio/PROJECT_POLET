@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '../ds/components/core/Button.jsx';
 import { Icon } from '../ds/components/core/Icon.jsx';
 import type { EngineParams } from '../data/engine.ts';
 import { DISPATCH_KNOBS, engineDefaults } from '../data/engine.ts';
 import { EngineParamsForm } from './EngineParamsForm.tsx';
+import { useModalFocus } from './modal.ts';
 
 interface Props {
   open: boolean;
@@ -41,6 +42,8 @@ interface Props {
    сравниваются. */
 export function ManualDialog({ open, runCode, params, busy, failed, onClose, onRun }: Props) {
   const [draft, setDraft] = useState<EngineParams>(params);
+  const card = useRef<HTMLDivElement>(null);
+  useModalFocus(open, card);
 
   /* Окно открыли заново — форма снова показывает то, что стоит у расчёта.
      Иначе в ней остались бы позавчерашние правки от прошлого открытия. */
@@ -69,9 +72,14 @@ export function ManualDialog({ open, runCode, params, busy, failed, onClose, onR
         aria-label="Закрыть"
       />
 
-      <div className="modal__card manual__card">
+      <div className="modal__card manual__card" ref={card}>
         <div className="modal__head">
           <h3 className="engine__title">Ручное управление · {runCode}</h3>
+          {!busy && (
+            <span className="modal__esc">
+              <kbd>Esc</kbd> — закрыть
+            </span>
+          )}
           <button
             type="button"
             className="rpanel__x"

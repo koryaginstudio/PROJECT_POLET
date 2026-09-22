@@ -1,8 +1,9 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Icon } from '../ds/components/core/Icon.jsx';
 import type { OrderRecord } from '../data/registry.ts';
 import { hhmm, plural } from '../data/derive.ts';
 import { workTypeIcon } from '../data/dictionary.ts';
+import { useModalFocus } from './modal.ts';
 
 export interface VisitsScope {
   /** Что стоит в заголовке: «Нет линка», «Маршрут M0413», «Расчёт R001». */
@@ -40,6 +41,9 @@ interface Props {
    встал. Заявка, которая в маршрут не попала, времени визита не имеет: у
    невзятой работы его и не бывает, и вместо часов стоит прочерк. */
 export function VisitsDialog({ scope, onClose, onOpenOrder }: Props) {
+  const card = useRef<HTMLDivElement>(null);
+  useModalFocus(scope !== null, card);
+
   useEffect(() => {
     if (!scope) return;
     const onKey = (event: KeyboardEvent) => {
@@ -71,12 +75,15 @@ export function VisitsDialog({ scope, onClose, onOpenOrder }: Props) {
     <div className="modal" role="dialog" aria-modal="true" aria-label={scope.title}>
       <button type="button" className="modal__veil" onClick={onClose} aria-label="Закрыть" />
 
-      <div className="modal__card visits">
+      <div className="modal__card visits" ref={card}>
         <div className="modal__head">
           <div className="visits__head">
             <h3 className="visits__title">{scope.title}</h3>
             <p className="visits__lede">{scope.lede}</p>
           </div>
+          <span className="modal__esc">
+            <kbd>Esc</kbd> — закрыть
+          </span>
           <button type="button" className="rpanel__x" onClick={onClose} aria-label="Закрыть">
             <Icon name="x" size={16} />
           </button>
@@ -113,11 +120,25 @@ export function VisitsDialog({ scope, onClose, onOpenOrder }: Props) {
                 </tr>
               </thead>
               <tbody>
+                {/* Строка открывает заявку и с клавиатуры тоже: Tab доводит до
+                    неё, Enter или пробел открывают — как кнопку. */}
                 {rows.map((order) => (
                   <tr
                     className="tbl__row"
                     key={order.key}
                     onClick={onOpenOrder ? () => onOpenOrder(order) : undefined}
+                    tabIndex={onOpenOrder ? 0 : undefined}
+                    role={onOpenOrder ? 'button' : undefined}
+                    onKeyDown={
+                      onOpenOrder
+                        ? (event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                              event.preventDefault();
+                              onOpenOrder(order);
+                            }
+                          }
+                        : undefined
+                    }
                   >
                     <td>
                       <span className="visits__what">

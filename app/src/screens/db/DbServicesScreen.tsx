@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Icon } from '../../ds/components/core/Icon.jsx';
 import { SegmentedControl } from '../../ds/components/forms/SegmentedControl.jsx';
-import type { Registry, ServiceRecord } from '../../data/registry.ts';
+import type { OrderRecord, Registry, ServiceRecord } from '../../data/registry.ts';
 import { dec, plural } from '../../data/derive.ts';
 import {
   equipmentName,
@@ -12,16 +12,23 @@ import {
   skillName
 } from '../../data/dictionary.ts';
 import { ServiceCard } from '../../app/ServiceCard.tsx';
+import { ServiceProfile } from '../../app/ServiceProfile.tsx';
+import { OrderProfile } from '../../app/OrderProfile.tsx';
 import { SortMenu } from '../../app/SortMenu.tsx';
 import type { SortRule } from '../../app/SortMenu.tsx';
 import { useWidgetBoard, WidgetPeriod, withinPeriod } from '../../app/DbWidgets.tsx';
 import type { PeriodKey, WidgetDef } from '../../app/DbWidgets.tsx';
 import { service } from '../../data/service.ts';
 import { DbHead } from './DbHead.tsx';
+import { DbList } from './DbList.tsx';
+import { DbBar, ChipKey, DbEmpty } from './DbBar.tsx';
+import type { DbChip } from './DbBar.tsx';
 
 interface Props {
   registry: Registry;
   mode: string;
+  /** Уйти в расчёт, в котором встречалась услуга. */
+  onOpenRun: (id: string) => void;
 }
 
 /* Плотность ряда — та же настройка, что в базах расчётов, инженеров и заявок.
@@ -128,7 +135,12 @@ const EMPTY: Slice = { orders: 0, assigned: 0, urgent: 0, access: 0, planned: 0 
    сверху, полоса отбора, карточки или таблица, — и это осознанное повторение:
    справочники об одном хозяйстве, и переучивать диспетчера на четвёртом
    незачем. */
-export function DbServicesScreen({ registry, mode }: Props) {
+export function DbServicesScreen({ registry, mode, onOpenRun }: Props) {
+  /* Какая услуга открыта карточкой. До сих пор в этой базе не открывалась ни
+     одна: восемнадцать карточек только показывали числа, и вопрос «покажи
+     все заявки по замене роутера» из базы услуг не решался. */
+  const [opened, setOpened] = useState<ServiceRecord | null>(null);
+  const [openedOrder, setOpenedOrder] = useState<OrderRecord | null>(null);
   const [perRow, setPerRow] = useState(() => service().perRow as string);
   const [sort, setSort] = useState<Sort>('orders');
   const [desc, setDesc] = useState(true);
@@ -248,10 +260,22 @@ export function DbServicesScreen({ registry, mode }: Props) {
     /* eslint-disable-next-line react-hooks/exhaustive-deps */
   }, [all, desc, filter, picks, query, sort, period, sliceBy]);
 
+  /* Повторный щелчок по выбранному правилу переворачивает порядок — так же,
+     как в остальных пяти базах. Раньше он молча возвращался, и один и тот же
+     жест давал разный итог в соседних разделах. */
   const pickSort = (value: Sort) => {
-    if (value === sort) return;
+    if (value === sort) {
+      setDesc((prev) => !prev);
+      return;
+    }
     setSort(value);
     setDesc(SORTS.find((item) => item.value === value)?.desc ?? true);
+  };
+
+  const reset = () => {
+    setFilter('all');
+    setPicks([]);
+    setQuery('');
   };
 
   /* Группировка по навыку: она и есть ответ на вопрос, как услуги ложатся на
@@ -550,9 +574,58 @@ export function DbServicesScreen({ registry, mode }: Props) {
           slice={sliceOf(row)}
           dense={dense}
           skills={picks}
+          onOpen={() => setOpened(row)}
         />
       ))}
     </div>
+  );
+
+  /* Активные отборы — чипами наверху. Каждый снимается своим крестиком. */
+  const chips: DbChip[] = [];
+  if (filter !== 'all') {
+    chips.push({
+      key: 'filter',
+      label: FILTERS.find((item) => item.value === filter)?.label ?? filter,
+      onRemove: () => setFilter('all')
+    });
+  }
+  for (const key of picks) {
+    chips.push({
+      key: 'skill-' + key,
+      label: (
+        <>
+          <ChipKey>Навык</ChipKey>
+          {skillName(key)}
+        </>
+      ),
+      onRemove: () => setPicks((was) => was.filter((one) => one !== key))
+    });
+  }
+
+  /* Итог выборки — над списком: это ответ на «что дал отбор», и внизу, за
+     прокруткой, его никто не читает. */
+  const summary = (
+    <>
+      <b>{plural(rows.length, 'услуга', 'услуги', 'услуг')}</b> в выборке
+      {rows.length !== all.length && ` из ${all.length}`}
+      {rows.length > 0 && (
+        <>
+          {` · ${plural(
+            rows.reduce((sum, row) => sum + sliceOf(row).orders, 0),
+            'заявка',
+            'заявки',
+            'заявок'
+          )} по ним`}
+          {` · ${dec(
+            rows.reduce((sum, row) => sum + sliceOf(row).orders * row.minutesTo, 0) / 60
+          )} ч работы`}
+          {` · разложено ${percent(
+            rows.reduce((sum, row) => sum + sliceOf(row).assigned, 0) /
+              Math.max(rows.reduce((sum, row) => sum + sliceOf(row).planned, 0), 1)
+          )}`}
+        </>
+      )}
+    </>
   );
 
   return (
@@ -562,76 +635,13 @@ export function DbServicesScreen({ registry, mode }: Props) {
           заявок и инженеров. Наверху — поиск и плотность: это не отбор, а то,
           с какой стороны на список смотрят. */}
       <DbHead title="База услуг" board={board.node}>
-        <div className="filters filters--runs">
-          <div className="filters__top">
-            <label className="dbsearch">
-              <Icon name="search" size={14} />
-              <input
-                className="dbsearch__input"
-                value={query}
-                placeholder="Название услуги, код вида работ, навык или оборудование"
-                onChange={(event) => setQuery(event.currentTarget.value)}
-              />
-              {query && (
-                <button type="button" className="dbsearch__clear" onClick={() => setQuery('')}>
-                  <Icon name="x" size={12} />
-                </button>
-              )}
-            </label>
-
-            {/* Плотность строки — только у карточек: в таблице строка одна и в
-                строке она одна. */}
-            {mode !== 'table' && (
-              <div className="filters__group filters__group--tight">
-                <span className="filters__label">Карточек в строке</span>
-                <SegmentedControl size="sm" items={DENSITY} value={perRow} onChange={setPerRow} />
-              </div>
-            )}
-          </div>
-
-          <div className="filters__group">
-            <span className="filters__label">Отбор</span>
-            <SegmentedControl
-              size="sm"
-              items={FILTERS}
-              value={filter}
-              onChange={(value: string) => setFilter(value as Filter)}
-            />
-          </div>
-
-          {/* Навыков три, и отметки складываются по «или»: навык у услуги
-              один, и «то и это» через «и» дало бы пустой список. Отбор здесь
-              тот же, что подсвечен чипом в карточке. */}
-          <div className="filters__group filters__group--wide">
-            <span className="filters__label">Навык</span>
-            <span className="filters__types">
-              {skills.map((key) => (
-                <button
-                  key={key}
-                  type="button"
-                  className={'chip' + (picks.includes(key) ? ' chip--on' : '')}
-                  onClick={() =>
-                    setPicks((was) =>
-                      was.includes(key) ? was.filter((one) => one !== key) : [...was, key]
-                    )
-                  }
-                  aria-pressed={picks.includes(key)}
-                  title={
-                    picks.includes(key)
-                      ? `Снять «${skillName(key)}»`
-                      : `Оставить услуги навыка «${skillName(key)}»`
-                  }
-                >
-                  <Icon name={skillIcon(key)} size={12} />
-                  {skillName(key)}
-                  {picks.includes(key) && <Icon name="x" size={12} />}
-                </button>
-              ))}
-            </span>
-          </div>
-
-          <div className="filters__group" role="group" aria-label="Сортировка">
-            <span className="filters__label">Сортировка</span>
+        <DbBar
+          query={query}
+          onQuery={setQuery}
+          placeholder="Название услуги, код вида работ, навык или оборудование"
+          chips={chips}
+          onReset={reset}
+          sort={
             <SortMenu
               rules={SORTS}
               value={sort}
@@ -639,17 +649,71 @@ export function DbServicesScreen({ registry, mode }: Props) {
               onPick={(value: string) => pickSort(value as Sort)}
               onOrder={setDesc}
             />
+          }
+          summary={summary}
+        >
+          <div className="filters filters--runs">
+            <div className="filters__group">
+              <span className="filters__label">Отбор</span>
+              <SegmentedControl
+                size="sm"
+                items={FILTERS}
+                value={filter}
+                onChange={(value: string) => setFilter(value as Filter)}
+              />
+            </div>
+
+            {/* Навыков три, и отметки складываются по «или»: навык у услуги
+                один, и «то и это» через «и» дало бы пустой список. Отбор
+                здесь тот же, что подсвечен чипом в карточке. */}
+            <div className="filters__group filters__group--wide">
+              <span className="filters__label">Навык</span>
+              <span className="filters__types">
+                {skills.map((key) => (
+                  <button
+                    key={key}
+                    type="button"
+                    className={'chip' + (picks.includes(key) ? ' chip--on' : '')}
+                    onClick={() =>
+                      setPicks((was) =>
+                        was.includes(key) ? was.filter((one) => one !== key) : [...was, key]
+                      )
+                    }
+                    aria-pressed={picks.includes(key)}
+                    title={
+                      picks.includes(key)
+                        ? `Снять «${skillName(key)}»`
+                        : `Оставить услуги навыка «${skillName(key)}»`
+                    }
+                  >
+                    <Icon name={skillIcon(key)} size={12} />
+                    {skillName(key)}
+                    {picks.includes(key) && <Icon name="x" size={12} />}
+                  </button>
+                ))}
+              </span>
+            </div>
+
+            {/* Плотность строки — только у карточек: в таблице и в списке
+                строка одна и в строке она одна. */}
+            {mode !== 'table' && mode !== 'list' && (
+              <div className="filters__group filters__group--tight">
+                <span className="filters__label">Карточек в строке</span>
+                <SegmentedControl size="sm" items={DENSITY} value={perRow} onChange={setPerRow} />
+              </div>
+            )}
           </div>
-        </div>
+        </DbBar>
       </DbHead>
 
       {rows.length === 0 ? (
-        <section className="panel">
-          <p className="clients__lede">
-            Под этот отбор не подошла ни одна услуга. Снимите отбор, сбросьте навык или очистите
-            поиск.
-          </p>
-        </section>
+        <DbEmpty
+          miss="Под этот отбор не подошла ни одна услуга."
+          blank="Услуг в справочнике пока нет: они собираются из видов работ, пришедших с заявками."
+          query={query.trim() !== ''}
+          filtered={filter !== 'all' || picks.length > 0}
+          onReset={reset}
+        />
       ) : mode === 'skills' ? (
         groups.map(([key, list]) => (
           <section className="panel" key={key}>
@@ -670,6 +734,55 @@ export function DbServicesScreen({ registry, mode }: Props) {
             {cards(list)}
           </section>
         ))
+      ) : mode === 'list' ? (
+        /* Список: услуга — строка, навык иконкой слева. Это тот же вопрос,
+           что и у вида «По навыкам», только заданный по-другому: там навык
+           собирает услуги в группы, здесь он стоит у каждой строки, и
+           восемнадцать услуг читаются подряд, в выбранном порядке. */
+        <DbList
+          lead="Услуга"
+          rows={rows.map((row) => {
+            const slice = sliceOf(row);
+            return {
+              key: row.key,
+              lead: <Icon name={skillIcon(row.skill)} size={15} />,
+              /* Код вида работ — только когда он и название разные строки: в
+                 нынешней выгрузке они совпадают, и номер повторял бы имя. */
+              code: row.key !== row.title ? row.key : undefined,
+              title: row.title,
+              sub: (
+                <>
+                  {skillName(row.skill)}
+                  {row.orderClass ? ` · ${orderClassName(row.orderClass)}` : ''}
+                  {row.equipment.length > 0
+                    ? ` · ${row.equipment.map((item) => equipmentName(item)).join(' · ')}`
+                    : ' · без оборудования'}
+                  {row.requiredTransport ? ` · ${requiredTransportName(row.requiredTransport)}` : ''}
+                </>
+              ),
+              cells: [
+                { label: 'Длительность', value: minutesLabel(row), wide: true },
+                { label: 'Заявок', value: slice.orders },
+                {
+                  label: 'Срочных',
+                  value: slice.urgent > 0 ? slice.urgent : '—',
+                  tone: slice.urgent > 0 ? ('warn' as const) : ('muted' as const)
+                },
+                {
+                  label: 'Нужен доступ',
+                  value: slice.access > 0 ? slice.access : '—',
+                  tone: slice.access > 0 ? undefined : ('muted' as const)
+                },
+                {
+                  label: 'Разложено',
+                  value: slice.planned > 0 ? `${slice.assigned}/${slice.planned}` : '—',
+                  tone: slice.planned > 0 ? undefined : ('muted' as const)
+                }
+              ],
+              onOpen: () => setOpened(row)
+            };
+          })}
+        />
       ) : mode === 'table' ? (
         <section className="panel">
           <div className="tbl-wrap">
@@ -692,7 +805,19 @@ export function DbServicesScreen({ registry, mode }: Props) {
                 {rows.map((row) => {
                   const slice = sliceOf(row);
                   return (
-                    <tr key={row.key} className="tbl__row">
+                    <tr
+                      key={row.key}
+                      className="tbl__row"
+                      tabIndex={0}
+                      role="button"
+                      onClick={() => setOpened(row)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          setOpened(row);
+                        }
+                      }}
+                    >
                       <td>
                         <span className="tbl__strong">{row.title}</span>
                         {/* Код вида работ — только когда он и название разные
@@ -757,25 +882,34 @@ export function DbServicesScreen({ registry, mode }: Props) {
         cards(rows)
       )}
 
-      {rows.length > 0 && (
-        <p className="filters__note filters__note--under">
-          {plural(rows.length, 'услуга', 'услуги', 'услуг')} в выборке
-          {rows.length !== all.length && ` из ${all.length}`}
-          {` · ${plural(
-            rows.reduce((sum, row) => sum + sliceOf(row).orders, 0),
-            'заявка',
-            'заявки',
-            'заявок'
-          )} по ним`}
-          {` · ${dec(
-            rows.reduce((sum, row) => sum + sliceOf(row).orders * row.minutesTo, 0) / 60
-          )} ч работы`}
-          {` · разложено ${percent(
-            rows.reduce((sum, row) => sum + sliceOf(row).assigned, 0) /
-              Math.max(rows.reduce((sum, row) => sum + sliceOf(row).planned, 0), 1)
-          )}`}
-        </p>
-      )}
+
+      <ServiceProfile
+        service={opened}
+        registry={registry}
+        onClose={() => setOpened(null)}
+        onOpenOrder={(order) => {
+          setOpened(null);
+          setOpenedOrder(order);
+        }}
+        onOpenRun={(id) => {
+          setOpened(null);
+          onOpenRun(id);
+        }}
+      />
+
+      <OrderProfile
+        order={openedOrder}
+        registry={registry}
+        onClose={() => setOpenedOrder(null)}
+        onOpenRun={(id) => {
+          setOpenedOrder(null);
+          onOpenRun(id);
+        }}
+        onOpenMap={(id) => {
+          setOpenedOrder(null);
+          onOpenRun(id);
+        }}
+      />
     </div>
   );
 }

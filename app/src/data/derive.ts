@@ -2,7 +2,7 @@
    типы работ, навыки и районы перечисляются из того, что пришло в файле. */
 
 import type { Day, Engineer, Minutes, Order, Risk, Route, Stop } from './contract.ts';
-import { skillName } from './dictionary.ts';
+import { engineerOnShift, orderClosed, skillName } from './dictionary.ts';
 import { clampDay, dayEnd, service } from './service.ts';
 
 export const hhmm = (m: number) =>
@@ -112,10 +112,16 @@ export function buildDistribution<T>(
   };
 }
 
+/** Прочерк на месте числа, которого нет. Один на все форматы: «NaN:NaN» и
+    «NaN ч» на экране читаются как сломанная программа, а пустое поле в чужом
+    плане — обычное дело. */
+const DASH = '—';
+
 /* Крайние сроки в контракте уходят за полночь: 2220 минут — это 13:00
    следующего дня, а не «37:00». Часы без даты здесь врут, поэтому день
    выносится словом. */
 export function deadline(m: number) {
+  if (!Number.isFinite(m)) return DASH;
   const days = Math.floor(m / (24 * 60));
   const rest = m % (24 * 60);
   if (days === 0) return hhmm(rest);
@@ -123,9 +129,18 @@ export function deadline(m: number) {
   return `${hhmm(rest)} через ${days} дн.`;
 }
 
+/** Переносима ли заявка на завтра: её крайний срок уже за полночью. Граница
+    та же, по которой `deadline` пишет «завтра», — сутки, а не конец рабочего
+    дня из настроек: срок в 22:00 при дне до 21:00 всё ещё сегодняшний, и
+    переносить такую заявку значило бы сорвать его. */
+export const isDeferrable = (order: Pick<Order, 'sla_deadline'>) =>
+  order.sla_deadline >= 24 * 60;
+
 /** Русский десятичный разделитель — запятая. */
 export const dec = (n: number, digits = 1) =>
-  n.toLocaleString('ru-RU', { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  Number.isFinite(n)
+    ? n.toLocaleString('ru-RU', { minimumFractionDigits: digits, maximumFractionDigits: digits })
+    : DASH;
 
 export const pct = (n: number) => `${dec(n)}`;
 
@@ -138,6 +153,19 @@ export const pct = (n: number) => `${dec(n)}`;
     «Переработки» с испорченным окончанием, если слово когда-нибудь придёт
     уже смешанным по регистру. */
 export const capitalize = (text: string) => (text ? text[0].toUpperCase() + text.slice(1) : text);
+
+/** Фамилия с инициалами: «Попов О. Н.». Полное ФИО не встаёт ни в плитку
+    шириной в треть карточки, ни в колонку списка, а фамилия — то, чем
+    человека называют и по чему его ищут. Целиком имя остаётся в подсказке. */
+export function shortName(name: string): string {
+  const [surname, first, patronymic] = name.trim().split(/\s+/).filter(Boolean);
+  if (!surname) return name;
+  const initials = [first, patronymic]
+    .filter(Boolean)
+    .map((part) => `${part![0].toUpperCase()}.`)
+    .join(' ');
+  return initials ? `${surname} ${initials}` : surname;
+}
 
 export function pluralWord(n: number, one: string, few: string, many: string) {
   const abs = Math.abs(n) % 100;
@@ -230,7 +258,23 @@ export interface EngineerLoad {
   route?: Route;
   visits: number;
   occupancy: number;
+  /** Вышел, но маршрута не получил. Тот, кто сегодня не на смене, сюда не
+      попадает: он не «свободен», его просто нет. */
   idle: boolean;
+  /** Сегодня на смене. Планировщик кладёт в план весь штат, а раздаёт
+      заявки только вышедшим, и различать их обязан каждый, кто считает
+      свободных. */
+  onShift: boolean;
+}
+
+/** Средняя занятость по маршрутам, доля 0…1. Одна формула на все экраны и
+    на выгрузку: среднее по тем, у кого маршрут есть, без нулей за тех, кому
+    заявок не дали, — простаивающих называют отдельно, числом. Пустое или
+    нечисловое поле в чужом плане не портит среднее, а выпадает из него. */
+export function occupancyMean(items: readonly { occupancy: number }[]): number {
+  const known = items.map((item) => item.occupancy).filter((value) => Number.isFinite(value));
+  if (known.length === 0) return 0;
+  return known.reduce((sum, value) => sum + value, 0) / known.length;
 }
 
 export interface Metric {
@@ -247,7 +291,14 @@ export interface Metric {
   group: string;
 }
 
-export type StageKey = 'planned' | 'enroute' | 'working' | 'done' | 'overdue' | 'unassigned';
+export type StageKey =
+  | 'planned'
+  | 'enroute'
+  | 'working'
+  | 'done'
+  | 'overdue'
+  | 'unassigned'
+  | 'closed';
 
 export interface Stage {
   key: StageKey;
@@ -286,7 +337,12 @@ export interface Funnel {
 export interface DayView {
   metrics: Metric[];
   loads: EngineerLoad[];
+  /** Открытые заявки, которым не нашлось инженера. Закрытых до расчёта здесь
+      нет: выполненная заявка — не «без инженера». */
   unassigned: Order[];
+  /** Заявки, закрытые до расчёта: выполненные и отменённые в учётной системе.
+      В плане лежат со своим статусом, в раскладке не участвуют. */
+  closed: Order[];
   orderById: Map<string, Order>;
   engineerById: Map<string, Engineer>;
   routeByEngineer: Map<string, Route>;
@@ -345,11 +401,18 @@ export const STAGE_META: Record<StageKey, { label: string; tone: Stage['tone']; 
     tone: 'danger',
     hint: 'Оценка движка, а не факт: по этим заявкам план выходит за крайний срок, и они сорвутся с той или иной вероятностью. Сколько на самом деле, покажет смена'
   },
-  unassigned: { label: 'Без инженера', tone: 'idle' }
+  unassigned: { label: 'Без инженера', tone: 'idle' },
+  closed: {
+    label: 'Закрыта до расчёта',
+    tone: 'idle',
+    hint: 'Выполнена или отменена в учётной системе ещё до того, как день считали: в раскладку не входила'
+  }
 };
 
 /** Этапы заявки, у которой есть маршрут. «Без инженера» живёт отдельно:
-    оно не выводится из маршрута и добавляется только в воронку смены. */
+    оно не выводится из маршрута и добавляется только в воронку смены.
+    «Закрыта до расчёта» — тоже: закрытая заявка в воронку дня не входит
+    вовсе, воронка считает только то, что раскладывали. */
 const ROUTED_STAGES: StageKey[] = ['planned', 'enroute', 'working', 'done', 'overdue'];
 
 const REASON_LABELS: Record<string, string> = {
@@ -393,7 +456,8 @@ const emptyBuckets = (): Record<StageKey, Bucket> => ({
   working: { ids: [], delta: 0, atRisk: 0, crew: new Set() },
   done: { ids: [], delta: 0, atRisk: 0, crew: new Set() },
   overdue: { ids: [], delta: 0, atRisk: 0, crew: new Set() },
-  unassigned: { ids: [], delta: 0, atRisk: 0, crew: new Set() }
+  unassigned: { ids: [], delta: 0, atRisk: 0, crew: new Set() },
+  closed: { ids: [], delta: 0, atRisk: 0, crew: new Set() }
 });
 
 function stagesFrom(
@@ -433,10 +497,10 @@ export function buildFunnel(
   deferrable: Order[],
   fragileIds: string[],
   cut: Minutes,
-  hardEnd: Minutes,
   slaOf: (placement: Placement) => Minutes | null = () => null
 ): Funnel {
-  const urgent = unassigned.filter((o) => o.sla_deadline <= hardEnd);
+  /* Горит та, у которой срок сегодняшний: переносимая на завтра подождёт. */
+  const urgent = unassigned.filter((o) => !isDeferrable(o));
   const attentionIds = [...new Set([...urgent.map((o) => o.id), ...fragileIds])];
 
   /* Заявка без инженера «горит», если её окно уже открыто: раздать её
@@ -489,8 +553,14 @@ export function stageOfOrder(
   cut: Minutes
 ): { key: StageKey; label: string; tone: Stage['tone'] } {
   const placement = view.stopByOrder.get(orderId);
+  const order = view.orderById.get(orderId);
+  /* Закрытая до расчёта заявка маршрута не имеет, но и «без инженера» она
+     не осталась — по ней некуда ехать. Проверяется раньше маршрута: в чужом
+     плане закрытая заявка может стоять и в маршруте, и тогда это ошибка
+     плана, а не этап смены. */
+  if (order && orderClosed(order)) return { key: 'closed', ...STAGE_META.closed };
   if (!placement) return { key: 'unassigned', ...STAGE_META.unassigned };
-  const { key } = stageOf(placement, cut, view.orderById.get(orderId)?.sla_deadline ?? null);
+  const { key } = stageOf(placement, cut, order?.sla_deadline ?? null);
   return { key, ...STAGE_META[key] };
 }
 
@@ -557,9 +627,12 @@ export function engineerTimeline(
   return segments;
 }
 
-export type LiveStatus = 'no-route' | 'before' | 'enroute' | 'working' | 'overdue' | 'done';
+export type LiveStatus = 'off' | 'no-route' | 'before' | 'enroute' | 'working' | 'overdue' | 'done';
 
 const LIVE_STATUS_META: Record<LiveStatus, { label: string; tone: Stage['tone'] }> = {
+  /* Не вышел — не то же, что вышел и остался без маршрута: второго можно
+     нагрузить прямо сейчас, первого сегодня нет. */
+  off: { label: 'Не на смене', tone: 'idle' },
   'no-route': { label: 'Без маршрута', tone: 'idle' },
   before: { label: 'Смена не началась', tone: 'planned' },
   enroute: { label: 'В пути', tone: 'accent' },
@@ -588,8 +661,12 @@ export interface LiveEngineer {
     первая в маршруте, ещё не закрытая к этому моменту, — и по ней читается,
     где он сейчас: едет, работает или опаздывает. */
 export function buildLiveRoster(view: DayView, cut: Minutes): LiveEngineer[] {
-  return view.loads.map(({ engineer, route }): LiveEngineer => {
+  return view.loads.map(({ engineer, route, onShift }): LiveEngineer => {
     const base = { engineer, route, orderId: null, lateMinutes: 0 };
+
+    if (!onShift) {
+      return { ...base, status: 'off', ...LIVE_STATUS_META.off, visitsDone: 0, visitsTotal: 0 };
+    }
 
     if (!route || route.stops.length === 0) {
       return { ...base, status: 'no-route', ...LIVE_STATUS_META['no-route'], visitsDone: 0, visitsTotal: 0 };
@@ -638,7 +715,15 @@ export function buildLiveRoster(view: DayView, cut: Minutes): LiveEngineer[] {
 }
 
 /** Порядок для списка мониторинга: сперва то, что требует внимания. */
-export const LIVE_STATUS_ORDER: LiveStatus[] = ['overdue', 'working', 'enroute', 'before', 'done', 'no-route'];
+export const LIVE_STATUS_ORDER: LiveStatus[] = [
+  'overdue',
+  'working',
+  'enroute',
+  'before',
+  'done',
+  'no-route',
+  'off'
+];
 
 export function buildDayView(day: Day): DayView {
   const { plan, simulation } = day;
@@ -670,29 +755,32 @@ export function buildDayView(day: Day): DayView {
   const loads: EngineerLoad[] = plan.engineers
     .map((engineer) => {
       const route = routeByEngineer.get(engineer.id);
+      const onShift = engineerOnShift(engineer);
       return {
         engineer,
         route,
         visits: route?.totals.visits ?? 0,
         occupancy: route?.totals.occupancy ?? 0,
-        idle: !route || route.totals.visits === 0
+        idle: onShift && (!route || route.totals.visits === 0),
+        onShift
       };
     })
     .sort((a, b) => b.occupancy - a.occupancy);
 
-
+  /* Закрытые до расчёта заявки отсеиваются и здесь, а не только в
+     планировщике: план приходит и из архива движка, и из старой записи, и
+     «без инженера» там может стоять выполненная заявка. Выполненная — не
+     «без инженера», по ней некуда ехать. */
+  const closed = plan.orders.filter(orderClosed);
   const unassigned = plan.unassigned
     .map((id) => orderById.get(id))
-    .filter((o): o is Order => Boolean(o));
+    .filter((o): o is Order => o !== undefined && !orderClosed(o));
 
-  /* Жёсткая граница суток — из плана. Настройка `dayEnd` для этого не
-     годится: она про ось времени на экране и по умолчанию равна 21:00,
-     тогда как у выгрузки заказчика день кончается в 22:00. Браузерный
-     планировщик поля не заполняет — там остаётся прежнее поведение. */
+  /* Жёсткая граница суток — из плана: докуда рисовать ось и что считать
+     сегодняшним. Переносимость — по сроку «не сегодня» (`isDeferrable`). */
   const hardEnd = plan.meta.hard_end ?? dayEnd();
 
-  /* Заявка переносима на завтра, если её крайний срок выходит за пределы дня. */
-  const deferrable = unassigned.filter((o) => o.sla_deadline > hardEnd);
+  const deferrable = unassigned.filter(isDeferrable);
 
   const byType = new Map<string, { title: string; count: number }>();
   for (const order of plan.orders) {
@@ -720,7 +808,6 @@ export function buildDayView(day: Day): DayView {
     deferrable,
     fragile.map((f) => f.order.id),
     cutMinutes(),
-    hardEnd,
     slaOf
   );
 
@@ -729,13 +816,30 @@ export function buildDayView(day: Day): DayView {
   /* Точка у подписи вместо цветного числа: цифры на пульте одинаково
      чёрные, а отметка говорит, с какой из них начинать разбор. Пороги
      грубые и общие для всех дней — это подсказка, а не оценка плана. */
-  const shiftMinutes = plan.engineers.reduce(
-    (sum, engineer) => sum + Math.max(0, engineer.shift_end - engineer.shift_start),
+
+  /* Простой считается на той же базе, на какой он накоплен. Простой маршрута
+     — это ожидание внутри его окна, от выезда до конца последнего визита;
+     хвост смены после последнего визита и смены тех, кто маршрута не
+     получил, в него не входят — так решил планировщик, и делить это
+     ожидание на смены всего штата значило бы показать четверть незанятого
+     времени как одну восьмую. Делим на сумму окон маршрутов. */
+  const routeMinutes = plan.routes.reduce(
+    (sum, route) => sum + Math.max(0, route.totals.end - route.totals.start),
     0
   );
-  const idleShare = shiftMinutes > 0 ? simulation.idle_minutes / shiftMinutes : 0;
+  const idleShare = routeMinutes > 0 ? simulation.idle_minutes / routeMinutes : 0;
   const lostShare = plan.meta.orders_total > 0 ? unassigned.length / plan.meta.orders_total : 0;
-  const gap = spread.occupancy_max / Math.max(spread.occupancy_min, 0.01);
+
+  /* Разрыв — между самым загруженным и самым свободным из тех, у кого
+     маршрут есть. Нули за тех, кому заявок не дали, сюда не идут: с ними
+     знаменатель упирался в сотую, и разрыв выходил в шестьдесят раз при
+     загрузках от тридцати до восьмидесяти процентов. Простаивающих называет
+     подпись — отдельным числом, а не бесконечным разрывом. */
+  const routed = loads.filter((load) => !load.idle && load.route);
+  const busiest = routed.length ? Math.max(...routed.map((load) => load.occupancy)) : 0;
+  const loosest = routed.length ? Math.min(...routed.map((load) => load.occupancy)) : 0;
+  const gap = loosest > 0 ? busiest / loosest : 1;
+  const idleCount = loads.filter((load) => load.idle).length;
 
   const mark = (bad: boolean, watch: boolean, hint: string): Pick<Metric, 'flag' | 'hint'> =>
     bad ? { flag: 'bad', hint } : watch ? { flag: 'watch', hint } : { flag: 'ok' };
@@ -824,7 +928,7 @@ export function buildDayView(day: Day): DayView {
       ...mark(
         idleShare > limit.idleBad / 100,
         idleShare > limit.idleWatch / 100,
-        'Ожидание свободных окон занимает заметную долю смены'
+        'Ожидание свободных окон занимает заметную долю времени на маршрутах'
       )
     },
     {
@@ -832,7 +936,9 @@ export function buildDayView(day: Day): DayView {
       label: 'Разрыв загрузки',
       value: dec(gap),
       unit: '\u00d7',
-      caption: `Загрузка от ${Math.round(spread.occupancy_min * 100)}% до ${Math.round(spread.occupancy_max * 100)}%`,
+      caption:
+        `Загрузка от ${Math.round(loosest * 100)}% до ${Math.round(busiest * 100)}%` +
+        (idleCount > 0 ? `, без маршрута: ${idleCount}` : ''),
       group: 'metric:spread',
       ...mark(
         gap >= limit.gapBad,
@@ -861,6 +967,7 @@ export function buildDayView(day: Day): DayView {
     metrics,
     loads,
     unassigned,
+    closed,
     orderById,
     engineerById,
     routeByEngineer,
@@ -914,17 +1021,21 @@ export function ordersStatus(view: DayView): StatusSplit[] {
   ];
 }
 
-/** У инженера проблема, если маршрут есть, но он перегружен или рвёт срок. */
+/** У инженера проблема, если маршрут есть, но он перегружен или рвёт срок.
+    Четыре доли складываются в весь штат: с маршрутом, свободные, проблемные
+    и те, кого сегодня нет. Последних раньше считали свободными — а
+    свободный это тот, кому можно дать заявку прямо сейчас. */
 export function crewStatus(view: DayView): StatusSplit[] {
   const breached = new Set(
     [...view.stopByOrder.values()].filter((p) => p.slaBreached).map((p) => p.engineerId)
   );
-  const withRoute = view.loads.filter((l) => !l.idle);
+  const withRoute = view.loads.filter((l) => l.onShift && !l.idle);
   const heavy = service().thresholds.occupancy / 100;
   const problem = withRoute.filter((l) => l.occupancy >= heavy || breached.has(l.engineer.id));
   const problemIds = new Set(problem.map((l) => l.engineer.id));
   const clean = withRoute.filter((l) => !problemIds.has(l.engineer.id));
   const idle = view.loads.filter((l) => l.idle);
+  const off = view.loads.filter((l) => !l.onShift);
 
   return [
     {
@@ -947,6 +1058,13 @@ export function crewStatus(view: DayView): StatusSplit[] {
       count: problem.length,
       ids: [...problemIds],
       tone: 'bad'
+    },
+    {
+      key: 'off',
+      label: 'Не на смене',
+      count: off.length,
+      ids: off.map((l) => l.engineer.id),
+      tone: 'wait'
     }
   ];
 }
@@ -986,6 +1104,8 @@ export interface OrdersBoard {
   burningIds: string[];
   /** Уникальные id всего проблемного — то же число, что в квадрате «Проблемные». */
   problemIds: string[];
+  /** Закрытые до расчёта: в «всего» входят, в раскладке нет. */
+  closedIds: string[];
 }
 
 /** Заявка «новая», если исполнителя нет, а окно ещё даже не начиналось:
@@ -1021,9 +1141,12 @@ export function buildOrdersBoard(view: DayView, cut: Minutes): OrdersBoard {
     orderIds: [...view.orderById.values()].filter((o) => o.work_type === type.key).map((o) => o.id)
   }));
 
-  /* Первые три квадрата — разбиение без остатка: всего = с инженером + без инженера.
-     Четвёртый считает другое: он режет те же заявки поперёк, поэтому и подписан
-     как срез, а не как ещё одна доля. */
+  /* Первые три квадрата — разбиение без остатка: всего = с инженером + без
+     инженера + закрытые до расчёта. Закрытых квадрата нет — они не ждут
+     решения, — но в подписи к «всего» они названы, иначе сумма двух соседних
+     квадратов не сходилась бы с первым. Четвёртый считает другое: он режет
+     те же заявки поперёк, поэтому и подписан как срез, а не как ещё одна доля. */
+  const closedNote = view.closed.length > 0 ? ` + ${view.closed.length} закрыто до расчёта` : '';
   return {
     values: [
       {
@@ -1031,7 +1154,7 @@ export function buildOrdersBoard(view: DayView, cut: Minutes): OrdersBoard {
         label: 'Всего заявок',
         icon: 'clipboard-list',
         value: view.orderById.size,
-        note: `${assigned.length} с инженером + ${view.unassigned.length} без`,
+        note: `${assigned.length} с инженером + ${view.unassigned.length} без${closedNote}`,
         tone: 'neutral',
         groupKey: 'all',
         orderIds: [...view.orderById.keys()]
@@ -1072,7 +1195,8 @@ export function buildOrdersBoard(view: DayView, cut: Minutes): OrdersBoard {
     assignedIds: assigned,
     freshIds: fresh.map((o) => o.id),
     burningIds: burning.map((o) => o.id),
-    problemIds
+    problemIds,
+    closedIds: view.closed.map((o) => o.id)
   };
 }
 
@@ -1080,16 +1204,20 @@ export interface CrewBoard {
   values: BoardValue[];
   bySkill: { key: string; label: string; count: number; engineerIds: string[] }[];
   problemBuckets: { key: string; label: string; count: number; engineerIds: string[] }[];
-  /** Движок не поставил в маршрут ни одной заявки. */
+  /** Вышел, а движок не поставил в маршрут ни одной заявки. */
   freeIds: string[];
+  /** Сегодня не на смене: в штате числится, заявок не получает. */
+  offShiftIds: string[];
 }
 
 /* Доска инженеров, как и доска заявок, описывает собранный день, а не текущую
-   минуту: срез сюда не приходит вовсе. «Свободен» здесь значит «движок не дал
-   ни одной заявки», а не «сейчас не на визите». */
+   минуту: срез сюда не приходит вовсе. «Свободен» здесь значит «вышел, а
+   движок не дал ни одной заявки», а не «сейчас не на визите» — и не «сегодня
+   не работает»: того, кто не вышел, нагрузить нельзя. */
 export function buildCrewBoard(view: DayView): CrewBoard {
-  const onShift = view.loads.filter((l) => !l.idle);
+  const onShift = view.loads.filter((l) => l.onShift && !l.idle);
   const free = view.loads.filter((l) => l.idle);
+  const off = view.loads.filter((l) => !l.onShift);
   const heavy = service().thresholds.occupancy / 100;
   const overloaded = onShift.filter((l) => l.occupancy >= heavy);
   const withBreach = onShift.filter((load) =>
@@ -1130,7 +1258,8 @@ export function buildCrewBoard(view: DayView): CrewBoard {
         label: 'Всего инженеров',
         icon: 'users',
         value: view.loads.length,
-        note: 'В смене',
+        /* В штате, а не в смене: план держит весь штат, а вышли не все. */
+        note: off.length > 0 ? `В штате, не на смене: ${off.length}` : 'В штате, все на смене',
         tone: 'neutral',
         groupKey: 'crew-all',
         orderIds: view.loads.map((l) => l.engineer.id)
@@ -1170,6 +1299,7 @@ export function buildCrewBoard(view: DayView): CrewBoard {
       .map(([key, ids]) => ({ key, label: skillName(key), count: ids.length, engineerIds: ids }))
       .sort((a, b) => b.count - a.count),
     problemBuckets,
-    freeIds: free.map((l) => l.engineer.id)
+    freeIds: free.map((l) => l.engineer.id),
+    offShiftIds: off.map((l) => l.engineer.id)
   };
 }

@@ -1,6 +1,6 @@
 import { Icon } from '../ds/components/core/Icon.jsx';
 import type { DayView } from '../data/derive.ts';
-import { hhmm, placeOf } from '../data/derive.ts';
+import { deadline, hhmm, homeOf, placeOf, visits } from '../data/derive.ts';
 import { transportIcon, transportName } from '../data/dictionary.ts';
 import { PersonName } from './PersonName.tsx';
 import { routeColor } from './MapBoard.tsx';
@@ -31,6 +31,10 @@ interface Props {
       сам. */
   pinned: string | null;
   selectedOrder: string | null;
+  /** Кто выезжает из общего гнезда, если нажали на него. */
+  nest: string[] | null;
+  /** Выбрать маршрут из перечня гнезда. */
+  onPickRoute: (id: string) => void;
   /** Закрыть сводку: вернуть итоги расчёта. */
   onClose: () => void;
   /** Открыть карточку из базы поверх карты. */
@@ -52,6 +56,8 @@ export function MapPick({
   view,
   pinned,
   selectedOrder,
+  nest,
+  onPickRoute,
   onClose,
   onOpenEngineer,
   onOpenOrder,
@@ -64,7 +70,11 @@ export function MapPick({
   const placement = selectedOrder ? view.stopByOrder.get(selectedOrder) : undefined;
   const load = pinned ? view.loads.find((item) => item.engineer.id === pinned) : undefined;
 
-  if (!order && !load) return null;
+  const crowd = nest
+    ? view.loads.filter((one) => nest.includes(one.engineer.id))
+    : [];
+
+  if (!order && !load && crowd.length === 0) return null;
 
   const head = (tone: string, title: React.ReactNode, note: string, icon?: string) => (
     <div className="mpick__head">
@@ -89,6 +99,36 @@ export function MapPick({
     </div>
   );
 
+  /* Общее гнездо выезда. Отвечает на «кто отсюда едет»: место одно, а путей
+     из него дюжина, и выбрать нужный можно прямо здесь. */
+  if (crowd.length > 0 && !order && !load) {
+    return (
+      <section className="mapstat mpick" aria-label="Общий выезд">
+        {head('#8A8A8A', <b className="mpick__name">Общий выезд</b>, homeOf(crowd[0].engineer))}
+
+        <div className="mpick__rows">
+          {row('Выезжают', `${crowd.length}`)}
+        </div>
+
+        <div className="mpick__crowd">
+          {crowd.map((one) => (
+            <button
+              key={one.engineer.id}
+              type="button"
+              className="mpick__one"
+              onClick={() => onPickRoute(one.engineer.id)}
+              title={`Показать маршрут: ${one.engineer.name}`}
+            >
+              <span className="mpick__mark" style={{ background: colorOf(one.engineer.id) }} />
+              <PersonName name={one.engineer.name} stacked={false} />
+              <span className="mpick__num">{visits(one.visits)}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
   /* Заявка. Отвечает на «что это за точка и кто на неё едет». */
   if (order) {
     const mine = placement ? view.engineerById.get(placement.engineerId) : undefined;
@@ -104,7 +144,9 @@ export function MapPick({
         <div className="mpick__rows">
           {row('Адрес', placeOf(order))}
           {row('Окно приёма', `${hhmm(order.window_start)}–${hhmm(order.window_end)}`)}
-          {row('Крайний срок', hhmm(order.sla_deadline))}
+          {/* Срок уходит за полночь у трети заявок: «37:00» читается как
+              опечатка, а «13:00 завтра» — как срок. */}
+          {row('Крайний срок', deadline(order.sla_deadline))}
           {row('Работа', `${order.est_minutes} мин`)}
           {stop && row('Визит', `${hhmm(stop.arrive)}–${hhmm(stop.finish)}`)}
           {row(

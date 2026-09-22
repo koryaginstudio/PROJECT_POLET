@@ -25,6 +25,14 @@ const COLUMNS = {
   urgent: ['авар', 'срочн', 'urgent']
 };
 
+/* Сколько времени на объекте бывает у одного визита. Те же границы, что у
+   поля в форме ручного ввода: выгрузка и рука должны заводить одинаковые
+   заявки. Число за этими границами — не длинный визит, а ошибка колонки:
+   «1 234,5» из русского Excel разбирается как тысяча двести тридцать пять
+   минут, то есть двадцать часов работы у одной двери. */
+const MINUTES_MIN = 5;
+const MINUTES_MAX = 480;
+
 /** Шаблон выгрузки: его скачивают, заполняют поверх примера и присылают. */
 export const CSV_TEMPLATE = [
   'Адрес;Что делаем;Окно с;Окно до;Работы, мин;Авария',
@@ -45,11 +53,15 @@ export function parseOrders(text: string, usedIds: Set<string>, fileName: string
   if (lines.length < 2) return { fileName, orders: [], skipped, missing: [] };
 
   /* Разделитель определяем по шапке: Excel в русской локали пишет точку с
-     запятой, в английской — запятую, и угадать по расширению нельзя. */
+     запятой, в английской — запятую, а «сохранить как текст» даёт табуляцию,
+     и угадать по расширению нельзя. Берём тот, которого в шапке больше;
+     шапка вовсе без разделителей — это одна колонка, и разделитель тогда не
+     важен: раньше такая шапка сравнивалась «ноль не меньше нуля» и молча
+     проходила как точка с запятой, хотя выбирать было не из чего. */
   const head = lines[0];
-  const sep = (head.match(/;/g)?.length ?? 0) >= (head.match(/,/g)?.length ?? 0) ? ';' : ',';
+  const sep = separatorOf(head);
 
-  const header = split(head, sep).map((cell) => cell.trim().toLowerCase());
+  const header = split(head, sep).cells.map((cell) => cell.trim().toLowerCase());
   const find = (names: string[]) =>
     header.findIndex((cell) => names.some((name) => cell.includes(name)));
 
@@ -73,15 +85,32 @@ export function parseOrders(text: string, usedIds: Set<string>, fileName: string
   if (at.address < 0) return { fileName, orders, skipped, missing };
 
   for (let index = 1; index < lines.length; index += 1) {
-    const cells = split(lines[index], sep);
+    const { cells, broken } = split(lines[index], sep);
+    if (broken) {
+      skipped.push({ line: index + 1, why: 'незакрытая кавычка: колонки не разделились' });
+      continue;
+    }
     const address = (cells[at.address] ?? '').trim();
     if (!address) {
       skipped.push({ line: index + 1, why: 'пустой адрес' });
       continue;
     }
 
+    /* Подставлять по умолчанию можно только там, где колонки нет вовсе — об
+       этом честно сказано в `missing`. Колонка есть, а значение в ней не
+       разобралось — это ошибка в строке, и строку надо снять с причиной, а
+       не молча поставить ей окно 10:00–14:00 и час работ: такая заявка
+       пошла бы в расчёт с временем, которого никто не называл. */
     const from = at.from >= 0 ? minutesOf(cells[at.from]) : null;
     const to = at.to >= 0 ? minutesOf(cells[at.to]) : null;
+    if (at.from >= 0 && from === null) {
+      skipped.push({ line: index + 1, why: `не разобралось начало окна «${cellText(cells[at.from])}»` });
+      continue;
+    }
+    if (at.to >= 0 && to === null) {
+      skipped.push({ line: index + 1, why: `не разобрался конец окна «${cellText(cells[at.to])}»` });
+      continue;
+    }
     /* Перевёрнутое окно — это ошибка выгрузки, а не заявка на ночную смену:
        такую строку лучше снять, чем тихо поменять местами и посчитать. */
     if (from !== null && to !== null && to <= from) {
@@ -89,7 +118,23 @@ export function parseOrders(text: string, usedIds: Set<string>, fileName: string
       continue;
     }
 
-    const minutes = at.minutes >= 0 ? Number(String(cells[at.minutes]).replace(',', '.')) : NaN;
+    const minutes = at.minutes >= 0 ? numberOf(cells[at.minutes]) : null;
+    if (at.minutes >= 0 && (minutes === null || minutes <= 0)) {
+      skipped.push({
+        line: index + 1,
+        why: `не разобралась длительность работ «${cellText(cells[at.minutes])}»`
+      });
+      continue;
+    }
+    if (minutes !== null && (minutes < MINUTES_MIN || minutes > MINUTES_MAX)) {
+      skipped.push({
+        line: index + 1,
+        why:
+          `длительность работ «${cellText(cells[at.minutes])}» вне границ ` +
+          `${MINUTES_MIN}–${MINUTES_MAX} мин`
+      });
+      continue;
+    }
     const urgentCell = at.urgent >= 0 ? (cells[at.urgent] ?? '').trim().toLowerCase() : '';
 
     const id = nextId(used);
@@ -100,7 +145,7 @@ export function parseOrders(text: string, usedIds: Set<string>, fileName: string
       workTitle: (cells[at.work] ?? '').trim() || 'Работы по заявке',
       windowStart: from ?? 10 * 60,
       windowEnd: to ?? 14 * 60,
-      minutes: Number.isFinite(minutes) && minutes > 0 ? Math.round(minutes) : 60,
+      minutes: minutes !== null ? Math.round(minutes) : 60,
       urgent: ['да', 'yes', '1', 'true', 'авария', 'срочно'].includes(urgentCell)
     });
   }
@@ -108,8 +153,41 @@ export function parseOrders(text: string, usedIds: Set<string>, fileName: string
   return { fileName, orders, skipped, missing };
 }
 
-/** Разбор строки: кавычки держим, потому что в адресе бывает разделитель. */
-function split(line: string, sep: string): string[] {
+/** Каким знаком шапка разделена на колонки. */
+function separatorOf(head: string): string {
+  const candidates = [';', ',', '\t'];
+  let best = candidates[0];
+  let most = 0;
+  for (const sep of candidates) {
+    const count = head.split(sep).length - 1;
+    if (count > most) {
+      most = count;
+      best = sep;
+    }
+  }
+  return best;
+}
+
+/** Значение ячейки для причины снятия: обрезано, чтобы причина влезла в
+    строку, и без переводов строк. */
+const cellText = (raw: string | undefined) => (raw ?? '').trim().slice(0, 24);
+
+/** Число так, как его пишет Excel в русской локали: «1 234,5» — с
+    неразрывным пробелом между разрядами и запятой в дроби. Оба пробела,
+    обычный и неразрывный, убираем; запятую меняем на точку. */
+function numberOf(raw: string | undefined): number | null {
+  const text = (raw ?? '').replace(/[\s  ]/g, '').replace(',', '.');
+  if (!text) return null;
+  const value = Number(text);
+  return Number.isFinite(value) ? value : null;
+}
+
+/** Разбор строки: кавычки держим, потому что в адресе бывает разделитель.
+
+    Незакрытую кавычку отмечаем: остаток строки она съедает целиком, и
+    вместо трёх колонок выходит одна длинная. Молча принять такую строку
+    нельзя — адрес в ней окажется склеенным со всем, что стояло дальше. */
+function split(line: string, sep: string): { cells: string[]; broken: boolean } {
   const cells: string[] = [];
   let cell = '';
   let quoted = false;
@@ -131,10 +209,12 @@ function split(line: string, sep: string): string[] {
     cell += char;
   }
   cells.push(cell);
-  return cells;
+  return { cells, broken: quoted };
 }
 
-/** «10:00», «10.00», «10» и «9:30» — всё это минуты от полуночи. */
+/** «10:00», «10.00», «10» и «9:30» — всё это минуты от полуночи. Пустая
+    ячейка и то, что часами не читается, — `null`: решает звавший, снять
+    строку или подставить своё. */
 function minutesOf(raw: string | undefined): number | null {
   const value = (raw ?? '').trim();
   if (!value) return null;

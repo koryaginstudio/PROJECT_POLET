@@ -6,17 +6,17 @@ import { engineDefaults, ENGINE_DEFAULTS } from '../data/engine.ts';
 import { EngineParamsForm } from '../app/EngineParamsForm.tsx';
 import { SourcePicker } from '../app/SourcePicker.tsx';
 import type { SourceChoice } from '../app/SourcePicker.tsx';
-import type { DayView } from '../data/derive.ts';
+import type { ShiftInput } from '../data/shift.ts';
+import { shiftSummary } from '../data/shift.ts';
 import type { SourceId } from '../data/load.ts';
 import { BUILT_IN, isBuiltIn, loadZone, sources, zoneTitle } from '../data/load.ts';
+import type { Engineer } from '../data/contract.ts';
 import { DatasetImport } from '../app/DatasetImport.tsx';
 import { plural } from '../data/derive.ts';
 
 interface Props {
   onCancel: () => void;
-  onCreate: (params: EngineParams, zone: SourceId) => void;
-  /** Состав дня: по нему собирается список инженеров и их навыков. */
-  view: DayView | null;
+  onCreate: (params: EngineParams, zone: SourceId, shift: ShiftInput) => void;
   /** Движок сейчас считает. Восемь секунд — это его работа, а не задержка
       сети, поэтому кнопка не просто блокируется, а говорит, что происходит. */
   solving?: boolean;
@@ -33,7 +33,6 @@ interface Props {
 export function CreateRunScreen({
   onCancel,
   onCreate,
-  view,
   solving = false,
   failed = null,
   first = false
@@ -43,10 +42,14 @@ export function CreateRunScreen({
      единственная неподвижная точка отсчёта. */
   const [params, setParams] = useState<EngineParams>(engineDefaults());
   /* Состав дня: по умолчанию в смене все, кто есть. Снимают тех, кто
-     сегодня не вышел, — это решение, а не настройка по умолчанию. */
+     сегодня не вышел, — это решение, а не настройка по умолчанию.
+
+     Список пустой до тех пор, пока не прочитана зона: заполнить его
+     табельными открытого расчёта нельзя — считать могут соседнюю зону, и
+     её инженеры зовутся иначе. */
   const [source, setSource] = useState<SourceChoice>(() => ({
     from: 'manual',
-    engineers: view ? view.loads.map((load) => load.engineer.id) : [],
+    engineers: [],
     skillsOff: {},
     extra: []
   }));
@@ -78,6 +81,43 @@ export function CreateRunScreen({
       cancelled = true;
     };
   }, [list]);
+
+  /* Состав выбранной зоны. Меняется вместе с зоной: снятые с одной зоны
+     табельные к соседней отношения не имеют, и переносить их туда значило бы
+     снять с работы людей, которых диспетчер не трогал. */
+  const [crew, setCrew] = useState<Engineer[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    loadZone(zone)
+      .then((data) => {
+        if (cancelled) return;
+        setCrew(data.engineers);
+        setSource((was) => ({
+          ...was,
+          engineers: data.engineers.map((one) => one.id),
+          skillsOff: {},
+          extra: []
+        }));
+      })
+      .catch(() => {
+        if (!cancelled) setCrew([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [zone]);
+
+  /* Что из вводных доедет до расчёта. Полный состав смены — это не вводная,
+     а отсутствие вводных: «в смене все» и «я никого не снимал» — одно и то
+     же, и писать это в запись расчёта незачем. */
+  const shift: ShiftInput = {
+    ...(crew.length > 0 && source.engineers.length < crew.length
+      ? { engineers: source.engineers }
+      : {}),
+    ...(Object.keys(source.skillsOff).length > 0 ? { skillsOff: source.skillsOff } : {}),
+    ...(source.extra.length > 0 ? { extra: source.extra } : {})
+  };
+  const shiftNote = shiftSummary(shift, crew.length);
 
   /* Загруженный набор сразу становится выбранным: человек принёс его, чтобы
      посчитать, а не чтобы он лежал в списке. */
@@ -169,9 +209,16 @@ export function CreateRunScreen({
         </div>
       </section>
 
-      {/* Состав смены и заявки поверх выгрузки — только когда есть от чего
-          отталкиваться: на первом расчёте открытого дня ещё нет. */}
-      {view && <SourcePicker view={view} value={source} onChange={setSource} />}
+      {/* Состав смены и заявки поверх выгрузки. Отталкиваемся от выбранной
+          зоны, а не от открытого расчёта: считают то, что выбрано здесь. */}
+      {crew.length > 0 && (
+        <SourcePicker
+          crew={crew}
+          orderCount={sizes[zone]?.orders ?? 0}
+          value={source}
+          onChange={setSource}
+        />
+      )}
 
       {/* Сами переменные — общей вёрсткой с настройками: вопрос один и тот
           же, значит и подписи, и пресеты, и замеры одни и те же. */}
@@ -216,6 +263,13 @@ export function CreateRunScreen({
                     Вернуть значения движка
                   </button>
                 )}
+                {/* Вводные смены называем здесь же, у кнопки. Их задают
+                    на панели выше и к моменту запуска уже не видят, а
+                    расчёт пойдёт именно с ними — и это последнее место,
+                    где ошибку ещё можно заметить до восьми секунд счёта. */}
+                {shiftNote.length > 0 && (
+                  <span className="createbar__shift">Вводные смены: {shiftNote.join(' · ')}.</span>
+                )}
               </>
             )}
           </span>
@@ -229,7 +283,7 @@ export function CreateRunScreen({
               variant="accent"
               size="sm"
               className="engine__cta"
-              onClick={() => onCreate(params, zone)}
+              onClick={() => onCreate(params, zone, shift)}
               disabled={solving}
               iconLeft={<Icon name="shuffle" size={14} />}
             >

@@ -15,6 +15,8 @@ interface Props {
   activeRun: RunId;
   onGoSection: (id: SectionId) => void;
   onOpenRun: (id: RunId) => void;
+  /** Завести первый расчёт — когда истории ещё нет. */
+  onCreate: () => void;
 }
 
 const percent = (share: number) => `${Math.round(share)}%`;
@@ -24,7 +26,7 @@ const percent = (share: number) => `${Math.round(share)}%`;
    происходит по нему прямо сейчас, и что считали до этого. Своих данных
    почти не заводит — читает то же, что и остальные экраны, только собирает
    в одном месте. */
-export function HomeScreen({ day, view, runs, activeRun, onGoSection, onOpenRun }: Props) {
+export function HomeScreen({ day, view, runs, activeRun, onGoSection, onOpenRun, onCreate }: Props) {
   const roster = useMemo(() => buildLiveRoster(view, cutMinutes()), [view]);
   const liveCounts = useMemo(() => {
     const working = roster.filter((r) => r.status === 'working').length;
@@ -116,6 +118,17 @@ export function HomeScreen({ day, view, runs, activeRun, onGoSection, onOpenRun 
         </div>
         {!runs ? (
           <p className="stub__body">Собираем расчёты…</p>
+        ) : recent.length === 0 ? (
+          /* Пустая история — словами и кнопкой, а не пустым местом: пустой
+             ряд плиток читается как «не загрузилось». */
+          <div className="emptynote">
+            <p className="emptynote__title">Расчётов пока нет</p>
+            <span>Первый расчёт заводится в диспетчерской: выберите зону и запустите счёт.</span>
+            <button type="button" className="runcard__go" onClick={onCreate}>
+              <Icon name="shuffle" size={13} />
+              Создать расчёт
+            </button>
+          </div>
         ) : (
           <div className="homeruns">
             {recent.map((run) => {

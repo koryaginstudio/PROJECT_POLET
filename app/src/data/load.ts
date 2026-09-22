@@ -25,7 +25,11 @@ import { SCHEMA, schemaAccepted } from './contract.ts';
 import type { Day, Dictionaries, Engineer, Order, Plan, Simulation } from './contract.ts';
 import { engineDefaults } from './engine.ts';
 import type { EngineParams } from './engine.ts';
+import { useDictionaries } from './dictionary.ts';
+import { riskThresholds } from './knobs.ts';
 import { applyCrew, crewVersion } from './crew.ts';
+import { applyShift, hasShiftInput, shiftKey } from './shift.ts';
+import type { ShiftInput } from './shift.ts';
 import { datasetByKey, datasets } from './datasets.ts';
 import type { Dataset } from './datasets.ts';
 import { planDay } from './planner.ts';
@@ -107,6 +111,11 @@ export interface RunEntry {
   solveSeconds?: number;
   /** С какими переменными движка его считали. */
   params: EngineParams;
+  /** Вводные смены, с которыми его считали: кто вышел, у кого сняли навык,
+      что дописали поверх выгрузки. Хранятся с записью, а не только в форме:
+      план пересчитывается при каждом открытии, и без них повторный расчёт
+      разошёлся бы с тем, что диспетчер видел утром. */
+  shift?: ShiftInput;
   /** Заметка человека: зачем этот расчёт считали и чем он кончился. Движок
       её не заполняет и не читает — это подпись к записи, а не входные данные. */
   note?: string;
@@ -217,7 +226,18 @@ let engineOn = false;
 /** Запущен ли движок. Интерфейс этим не управляет — только показывает. */
 export const engineReady = () => engineOn;
 
-const codeAt = (index: number) => 'R' + String(index + 1).padStart(3, '0');
+/* Следующий номер — за самым большим из существующих, а не «длина истории
+   плюс один»: после удаления среднего расчёта длина уменьшается, и новый
+   получал бы номер, который уже носит последний в списке. Номер, который
+   человек переписал по-своему, в счёт не идёт: он не из этого ряда. */
+function nextCode(): string {
+  let last = 0;
+  for (const run of RUNS) {
+    const match = /^R(\d+)$/.exec(run.code);
+    if (match) last = Math.max(last, Number(match[1]));
+  }
+  return 'R' + String(last + 1).padStart(3, '0');
+}
 
 /** Ищет движок. Вызывается один раз при старте.
 
@@ -286,7 +306,7 @@ export function adoptEngineRun(record: EngineRun): RunEntry {
     /* Номер движка, а не место в списке: расчёты браузера при живом
        движке спрятаны, и повторов нет, а «R003» на экране обязано быть
        тем же R003, что в архиве движка и в заметке «Правка расчёта R003». */
-    code: record.code || codeAt(RUNS.length),
+    code: record.code || nextCode(),
     date: record.date,
     created: record.created,
     note: record.note,
@@ -330,9 +350,9 @@ export const latestRun = (): RunId => {
 export async function createRun(
   params: EngineParams,
   zone: SourceId = BUILT_IN[0],
-  day?: string
+  day?: string,
+  shift?: ShiftInput
 ): Promise<RunEntry> {
-  const index = RUNS.length;
   const now = new Date();
 
   if (engineOn && engineTakesRealData()) {
@@ -349,16 +369,21 @@ export async function createRun(
   }
 
   const started = performance.now();
-  const computed = await computeDay(zone, params);
+  const computed = await computeDay(zone, params, shift);
   const entry: RunEntry = {
     id: `run-${Date.now().toString(36)}`,
-    code: codeAt(index),
+    /* Номер выдаётся после счёта, а не до: два расчёта, заведённые подряд,
+       иначе получили бы один номер, пока первый ещё считался. */
+    code: nextCode(),
     date: computed.plan.meta.date,
     /* Время у заведённого расчёта настоящее: его завели вот сейчас. */
     created: `${iso(now)}T${clock(now.getHours() * 60 + now.getMinutes())}`,
     source: zone,
     solveSeconds: Number(((performance.now() - started) / 1000).toFixed(2)),
-    params
+    params,
+    /* Пустые вводные в запись не пишем: «считали выгрузку как есть» — это
+       отсутствие вводных, а не вводные из трёх пустых списков. */
+    ...(hasShiftInput(shift) ? { shift } : {})
   };
   RUNS.push(entry);
   RUN_BY_ID.set(entry.id, entry);
@@ -399,11 +424,62 @@ export async function seedRuns(): Promise<boolean> {
   return RUNS.length > 0;
 }
 
+/* ─── правки записей ─────────────────────────────────────────────────────
+
+   Номер, время создания и заметку у расчёта заводит человек. Чтобы «снять
+   все правки» значило то, что написано, надо помнить, каким поле было до
+   первой правки: без этого снимать нечего — правка уже стала записью.
+
+   Поэтому при первой правке поля его прежнее значение уходит в слепок, и
+   он же хранится рядом с историей. Снятие возвращает записи из слепка и
+   слепок стирает. Второй и следующие разы поле в слепок уже не кладутся:
+   вернуться надо к исходному, а не к предпоследнему. */
+
+const BASE_KEY = 'polet.runs.base.v1';
+
+type RunBase = Record<RunId, RunPatch>;
+
+function readBase(): RunBase {
+  if (typeof localStorage === 'undefined') return {};
+  try {
+    const raw = localStorage.getItem(BASE_KEY);
+    const parsed = raw ? (JSON.parse(raw) as RunBase) : {};
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+const RUN_BASE: RunBase = readBase();
+
+function saveBase() {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    localStorage.setItem(BASE_KEY, JSON.stringify(RUN_BASE));
+  } catch {
+    /* Та же причина, что и у истории: закрытое хранилище не ошибка. */
+  }
+}
+
 /** Правит поля записи, которые заводит человек. Цифры плана не трогает —
     их в `RunPatch` и нет. */
 export function updateRun(id: RunId, patch: RunPatch): void {
   const entry = RUN_BY_ID.get(id);
   if (!entry) return;
+
+  const before = RUN_BASE[id] ?? {};
+  let snapped = false;
+  for (const field of Object.keys(patch) as (keyof RunPatch)[]) {
+    if (patch[field] === entry[field]) continue;
+    if (field in before) continue;
+    (before as Record<string, unknown>)[field] = entry[field];
+    snapped = true;
+  }
+  if (snapped) {
+    RUN_BASE[id] = before;
+    saveBase();
+  }
+
   Object.assign(entry, patch);
   saveRuns();
 
@@ -421,22 +497,57 @@ export function deleteRun(id: RunId): void {
   if (at === -1) return;
   RUNS.splice(at, 1);
   RUN_BY_ID.delete(id);
+  delete RUN_BASE[id];
+  saveBase();
   saveRuns();
 }
 
-/** Сколько расчётов держит браузер. Нужно настройкам — там их и снимают. */
-export const runEditCount = () => RUNS.filter((run) => run.source !== null).length;
+/** Сколько записей правил человек. Именно записей, а не полей: диспетчер
+    считает правки записями — «трогал три расчёта», — и снимаются они тоже
+    записями, все разом. */
+export const runEditCount = () =>
+  Object.keys(RUN_BASE).filter((id) => RUN_BY_ID.has(id)).length;
+
+/** Возвращает правленые записи к исходным значениям. Историю не трогает:
+    расчёты остаются на месте, у них откатываются номер, время и заметка. */
+export function clearRunEdits(): void {
+  for (const [id, before] of Object.entries(RUN_BASE)) {
+    const entry = RUN_BY_ID.get(id);
+    if (entry) Object.assign(entry, before);
+    delete RUN_BASE[id];
+  }
+  saveBase();
+  saveRuns();
+}
+
+/** Сколько расчётов держит браузер. Нужно настройкам: стереть историю —
+    отдельное действие, и цена у него своя. */
+export const runCount = () => RUNS.filter((run) => run.source !== null).length;
 
 /** Стирает всю историю расчётов. Данные зон не трогает: они лежат файлами
-    и к истории отношения не имеют. */
-export function clearRunEdits(): void {
+    и к истории отношения не имеют.
+
+    Зовётся из одного места — из настроек, после подтверждения. Всё, что
+    показывает открытый расчёт, после этого ссылается в пустоту, поэтому
+    звавший обязан увести экран туда, где расчёт не нужен. */
+export function clearHistory(): void {
   RUNS.length = 0;
   LOCAL_HIDDEN.length = 0;
   RUN_BY_ID.clear();
+  for (const id of Object.keys(RUN_BASE)) delete RUN_BASE[id];
+  saveBase();
   saveRuns();
 }
 
-export const runEntry = (id: RunId): RunEntry => RUN_BY_ID.get(id) ?? RUNS[RUNS.length - 1];
+/** Запись расчёта по номеру.
+
+    Неизвестный номер отдаёт последнюю запись — ссылка на удалённый расчёт
+    открывает свежий, а не пустой экран. Пустая история не отдаёт ничего, и
+    это не исключительный случай, а первое утро: звавший обязан проверить.
+    Раньше здесь стоял тип без пустоты, и два места в оболочке читали у неё
+    поля напрямую — стёртая история роняла экран в белое. */
+export const runEntry = (id: RunId): RunEntry | undefined =>
+  RUN_BY_ID.get(id) ?? RUNS[RUNS.length - 1];
 
 export const runCode = (id: RunId) => runEntry(id)?.code ?? '';
 
@@ -489,6 +600,18 @@ export function whenLabel(iso: string): string {
 
 const endpoint = (source: string, kind: string) => `/data/${source}/${kind}.json`;
 
+/* Предельный срок на чтение файла. Без него зависший обмен — сеть
+   отвалилась посреди ответа — держал бы «загружаем» до закрытия вкладки.
+   Файлы лежат рядом с сайтом, и самый тяжёлый из них, дороги зоны на
+   полтора мегабайта, читается за секунды; пятнадцать — с запасом на
+   плохую сеть. */
+const FETCH_TIMEOUT = 15_000;
+
+const timeLimit = () => AbortSignal.timeout(FETCH_TIMEOUT);
+
+/** Истёк ли срок, а не упала сеть: разные слова в ошибке. */
+const timedOut = (error: unknown) => (error as { name?: string })?.name === 'TimeoutError';
+
 export class ContractError extends Error {
   constructor(readonly kind: string, readonly detail: string) {
     super(`${kind}: ${detail}`);
@@ -521,9 +644,12 @@ async function fetchForm<T extends { schema: string; kind: string }>(
   const url = endpoint(source, kind);
   let response: Response;
   try {
-    response = await fetch(url);
-  } catch {
-    throw new ContractError(kind, 'Сервер не ответил');
+    response = await fetch(url, { signal: timeLimit() });
+  } catch (error) {
+    throw new ContractError(
+      kind,
+      timedOut(error) ? `Сервер не ответил за ${FETCH_TIMEOUT / 1000} с` : 'Сервер не ответил'
+    );
   }
   if (!response.ok) throw new ContractError(kind, `ответ ${response.status}`);
 
@@ -577,29 +703,29 @@ export interface ZoneData {
    Файл тяжелее прочих — в нём ломаная на каждую пару адресов зоны, — но
    читается один раз за сеанс и переиспользуется всеми расчётами по этой
    зоне. Его отсутствие не ошибка: расчёт вернётся к прямым линиям, а
-   интерфейс откроется как ни в чём не бывало. */
+   интерфейс откроется как ни в чём не бывало.
+
+   Два исхода здесь разные. Файла нет или он не разобрался — это свойство
+   зоны, и ответ `null` можно запомнить. Сеть не ответила — это свойство
+   минуты, и такой обмен отсюда выходит отказом: звавший снимет его с кеша,
+   и следующий заход сходит в сеть заново. */
 async function fetchRoads(zone: SourceId): Promise<Roads | null> {
-  try {
-    const response = await fetch(`/data/${zone}/roads.json`);
-    if (!response.ok) {
-      /* Молча возвращаться к прямым нельзя: на экране это выглядит не как
-         «файла нет», а как «программа врёт про маршруты», и искать причину
-         приходится по всему коду. Сама карта скажет о том же словом, а здесь
-         остаётся след для того, кто полезет в консоль. */
-      console.warn(
-        `[polet] дороги зоны «${zone}» не отдались (${response.status}) — карта нарисует перегоны прямыми`
-      );
-      return null;
-    }
-    const roads = readRoads(await response.json());
-    if (!roads) {
-      console.warn(`[polet] дороги зоны «${zone}» не разобрались — карта нарисует перегоны прямыми`);
-    }
-    return roads;
-  } catch (error) {
-    console.warn(`[polet] дороги зоны «${zone}» не прочитались:`, error);
+  const response = await fetch(`/data/${zone}/roads.json`, { signal: timeLimit() });
+  if (!response.ok) {
+    /* Молча возвращаться к прямым нельзя: на экране это выглядит не как
+       «файла нет», а как «программа врёт про маршруты», и искать причину
+       приходится по всему коду. Сама карта скажет о том же словом, а здесь
+       остаётся след для того, кто полезет в консоль. */
+    console.warn(
+      `[polet] дороги зоны «${zone}» не отдались (${response.status}) — карта нарисует перегоны прямыми`
+    );
     return null;
   }
+  const roads = readRoads(await response.json());
+  if (!roads) {
+    console.warn(`[polet] дороги зоны «${zone}» не разобрались — карта нарисует перегоны прямыми`);
+  }
+  return roads;
 }
 
 /* Дороги одной зоны читаются один раз за сеанс: файл на полтора мегабайта, и
@@ -609,7 +735,14 @@ const roadsCache = new Map<SourceId, Promise<Roads | null>>();
 const zoneRoads = (zone: SourceId): Promise<Roads | null> => {
   const ready = roadsCache.get(zone);
   if (ready) return ready;
-  const reading = fetchRoads(zone);
+  /* Отказ сети из кеша убираем — тем же приёмом, что у планов: иначе одна
+     потерянная секунда навсегда оставляла бы зону без дорог, и каждый
+     следующий заход получал бы тот же отклонённый обмен, не сходив в сеть. */
+  const reading = fetchRoads(zone).catch((error: unknown) => {
+    console.warn(`[polet] дороги зоны «${zone}» не прочитались:`, error);
+    roadsCache.delete(zone);
+    return null;
+  });
   roadsCache.set(zone, reading);
   return reading;
 };
@@ -702,6 +835,9 @@ export function loadZone(zone: SourceId): Promise<ZoneData> {
   })();
 
   zoneCache.set(zone, reading);
+  /* Отказ из кеша убираем: файл не отдался один раз — не значит, что зона
+     закрыта до перезагрузки страницы. */
+  reading.catch(() => zoneCache.delete(zone));
   return reading;
 }
 
@@ -768,8 +904,26 @@ export async function loadAllOrders(): Promise<Order[]> {
 
 let dictionaries: Promise<Dictionaries | null> | null = null;
 
+/* Файла нет — это ответ, и он запоминается. Сеть не ответила — отказ, и он
+   уходит наружу, чтобы кеш его не запомнил. */
+async function fetchDictionaries(): Promise<Dictionaries | null> {
+  const response = await fetch('/data/dictionaries.json', { signal: timeLimit() });
+  if (!response.ok) return null;
+  const body = (await response.json()) as Dictionaries;
+  return body.kind === 'dictionaries' ? body : null;
+}
+
 /** Подписи ко всем кодам. Формы может не быть — тогда работаем на встроенном
-    словаре, и ни один экран от этого не ломается. */
+    словаре, и ни один экран от этого не ломается.
+
+    Прочитанная форма тут же становится верхним слоем словаря: до сих пор
+    файл качался, клался в запись дня и на этом всё кончалось — подписи на
+    экранах оставались встроенными, и восемнадцать типов работ из выгрузки
+    справочник не видел.
+
+    С живым движком поверх файла ложится его справочник: русские названия
+    навыков и видов работ он знает лучше. Файл остаётся снизу, а не
+    уходит: подписи технологий (FMC, FTTB, GPON) есть только в нём. */
 /* Справочники движка в форму словарей контракта.
 
    Слой подписей у интерфейса и так двухэтажный — встроенный снизу,
@@ -792,27 +946,39 @@ function словариИзСправочника(справочник: EngineCa
   };
 }
 
+/** Верхний словарь поверх нижнего — по каждому разделу подписей. */
+function поверх(низ: Dictionaries | null, верх: Dictionaries | null): Dictionaries | null {
+  if (!низ) return верх;
+  if (!верх) return низ;
+  const итог: Record<string, unknown> = { ...низ };
+  for (const [ключ, значение] of Object.entries(верх)) {
+    const было = итог[ключ];
+    итог[ключ] =
+      значение && typeof значение === 'object' && было && typeof было === 'object'
+        ? { ...(было as object), ...(значение as object) }
+        : значение;
+  }
+  return итог as unknown as Dictionaries;
+}
+
 export function loadDictionaries(): Promise<Dictionaries | null> {
   if (!dictionaries) {
-    dictionaries = (async () => {
-      /* С живым движком справочники его: он их и составляет. Не
-         отозвался — падаем на файл рядом с данными, как было. */
-      if (engineOn) {
-        try {
-          return словариИзСправочника(await loadCatalogue());
-        } catch {
-          /* Ручки может не быть у движка постарше — тогда файл. */
-        }
-      }
-      try {
-        const response = await fetch('/data/dictionaries.json');
-        if (!response.ok) return null;
-        const body = (await response.json()) as Dictionaries;
-        return body.kind === 'dictionaries' ? body : null;
-      } catch {
+    dictionaries = Promise.all([
+      fetchDictionaries(),
+      /* Справочник движка не отозвался — остаёмся на файле. */
+      engineOn ? loadCatalogue().then(словариИзСправочника).catch(() => null) : null
+    ])
+      .then(([файл, движок]) => {
+        const body = поверх(файл, движок);
+        useDictionaries(body);
+        return body;
+      })
+      .catch(() => {
+        /* Отказ сети — не «формы нет»: снимаем с кеша, следующий заход
+           попробует снова, а до тех пор работаем на встроенном словаре. */
+        dictionaries = null;
         return null;
-      }
-    })();
+      });
   }
   return dictionaries;
 }
@@ -822,22 +988,43 @@ export function loadDictionaries(): Promise<Dictionaries | null> {
    этого не меняется. */
 const planCache = new Map<string, Promise<PlannedDay>>();
 
-const planKey = (zone: SourceId, params: EngineParams) =>
-  `${zone}|${crewVersion()}|${params.duration_factor}|${params.buffer_base}|` +
-  `${params.buffer_step}|${params.balance_weight}`;
+/* Пороги риска входят в ключ: раскладку они не меняют, но подпись у визита
+   — да, и план, посчитанный при прежних порогах, показывал бы прежние. */
+const planKey = (zone: SourceId, params: EngineParams, shift?: ShiftInput) => {
+  const risk = riskThresholds();
+  return (
+    `${zone}|${crewVersion()}|${params.duration_factor}|${params.buffer_base}|` +
+    `${params.buffer_step}|${params.balance_weight}|${risk.high}/${risk.medium}|${shiftKey(shift)}`
+  );
+};
 
-/** Считает день по данным зоны. */
-export function computeDay(zone: SourceId, params: EngineParams): Promise<PlannedDay> {
-  const key = planKey(zone, params);
+/** Считает день по данным зоны с вводными смены.
+
+    Вводные входят в ключ кеша: день без снятого инженера и день с ним — это
+    два разных плана, и отдавать второй вместо первого нельзя. */
+export function computeDay(
+  zone: SourceId,
+  params: EngineParams,
+  shift?: ShiftInput
+): Promise<PlannedDay> {
+  const key = planKey(zone, params, shift);
   const cached = planCache.get(key);
   if (cached) return cached;
 
   const computing = (async () => {
-    const data = await loadZone(zone);
-    return planDay(data.orders, data.engineers, params, data.date, data.roads);
+    /* Справочник — до счёта: планировщик пишет объяснения словами
+       справочника, а план запоминается, и объяснение, собранное до прихода
+       подписей, осталось бы на встроенных словах до перезагрузки. */
+    const [data] = await Promise.all([loadZone(zone), loadDictionaries()]);
+    const day = applyShift(data, shift);
+    return planDay(day.orders, day.engineers, params, day.date, day.roads);
   })();
 
   planCache.set(key, computing);
+  /* Отказ из кеша убираем: одна потерянная секунда сети иначе навсегда
+     закрывала бы расчёт по этой зоне — каждый следующий заход получал бы
+     тот же отклонённый обмен, не сходив в сеть ни разу. */
+  computing.catch(() => planCache.delete(key));
   return computing;
 }
 
@@ -885,7 +1072,7 @@ export async function loadDay(id: RunId): Promise<Day> {
   }
 
   const [computed, dict] = await Promise.all([
-    computeDay(entry.source, entry.params),
+    computeDay(entry.source, entry.params, entry.shift),
     loadDictionaries()
   ]);
   return { id, ...computed, dictionaries: dict };
@@ -961,7 +1148,7 @@ export async function loadRunData(): Promise<Map<RunId, { plan: Plan; simulation
   const own = RUNS.filter((run) => run.source !== null);
   const computed = await Promise.all(
     own.map(async (run) => {
-      const day = await computeDay(run.source!, run.params);
+      const day = await computeDay(run.source!, run.params, run.shift);
       return [run.id, { plan: day.plan, simulation: day.simulation }] as const;
     })
   );

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Icon } from '../ds/components/core/Icon.jsx';
 import { Button } from '../ds/components/core/Button.jsx';
 import type { DaySummary, RunId } from '../data/load.ts';
-import { runCode, runEntry, stampOf } from '../data/load.ts';
+import { runCode, runEntry, stampOf, whenLabel } from '../data/load.ts';
 import { dec, plural } from '../data/derive.ts';
 import type { Registry, RunStat } from '../data/registry.ts';
 import { deleteCompare, engineAlive, listCompares, saveCompare, EngineError } from '../data/api.ts';
@@ -72,7 +72,7 @@ interface Props {
    за R029 и чем он отличался от R031: отбирали по карточкам, а получали
    список.
 
-   «Запустить сравнение» кладёт набор в архив движка — снимком, а не
+   «Сохранить сравнение» кладёт набор в архив движка — снимком, а не
    ссылками: расчёт могут переименовать или удалить, а сохранённое сравнение
    обязано остаться читаемым. Оно отвечает на вопрос «что мы видели, когда
    принимали решение», и это и есть причина возвращаться к нему через
@@ -98,7 +98,12 @@ export function CompareScreen({
   const [failed, setFailed] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!engineAlive()) return;
+    /* Без движка архива нет — и это ответ, а не ожидание: пустой список,
+       чтобы «Читаем архив…» не горело вечно. */
+    if (!engineAlive()) {
+      setSaved([]);
+      return;
+    }
     let cancelled = false;
     listCompares()
       .then((list) => !cancelled && setSaved(list))
@@ -148,8 +153,12 @@ export function CompareScreen({
   /* Номер сравнения — из той же серии, что и у всего остального: C001 и дальше.
      Открытая запись носит свой, новый набор — первый свободный. Считаем по
      архиву, а не заводим счётчик: номер присваивает движок при сохранении, и
-     два источника нумерации однажды разошлись бы. */
+     два источника нумерации однажды разошлись бы.
+
+     Без движка номера нет вовсе: обещать «C001», которого никто не
+     присвоит, значит врать в заголовке. */
   const nextCode = (() => {
+    if (!engineAlive()) return null;
     const used = (saved ?? [])
       .map((item) => Number(item.code.replace(/\D/g, '')))
       .filter((value) => Number.isFinite(value));
@@ -157,13 +166,19 @@ export function CompareScreen({
   })();
   const code = openedCode ?? nextCode;
 
-  async function dropSaved(id: string) {
+  /* Удалить запись из архива. Возвращает, чем кончилось: строка означает
+     неудачу, и строка архива покажет её на месте, а не проглотит. Не
+     удалилось — запись остаётся на экране: это честнее, чем убрать её из
+     списка и сделать вид, что архив её больше не помнит. */
+  async function dropSaved(id: string): Promise<string | null> {
     try {
       await deleteCompare(id);
       setSaved((prev) => (prev ?? []).filter((item) => item.id !== id));
-    } catch {
-      /* Не удалилось — запись останется на экране. Это честнее, чем убрать
-         её из списка и сделать вид, что архив её больше не помнит. */
+      return null;
+    } catch (error) {
+      return error instanceof EngineError
+        ? error.message
+        : 'Удалить не вышло: движок не ответил. Повторите попытку.';
     }
   }
 
@@ -245,8 +260,9 @@ export function CompareScreen({
               расчётов в наборе, видно по карточкам под ним; а вот чем это
               сравнение будет называться в архиве — больше нигде не сказано. */}
           <h2 className="dash__section-title">
-            Сравнение {code}
+            {code ? `Сравнение ${code}` : 'Сравнение'}
             {openedCode && <span className="dbrun__date">из архива</span>}
+            {!code && <span className="dbrun__date">без номера: движок не запущен</span>}
           </h2>
           {picks.length > 0 && (
             <button
@@ -346,24 +362,36 @@ export function CompareScreen({
                 собран и движок на месте, объяснять нечего: кнопка горит и
                 говорит за себя. */}
             {!engineAlive()
-              ? 'Сохранять некуда: движок не запущен. Набор живёт до перезагрузки страницы.'
+              ? 'Сохранить сравнение некуда: архив сравнений ведёт движок, а он не запущен. Набор живёт до перезагрузки страницы.'
               : short
                 ? `Для сравнения нужно хотя бы ${COMPARE_MIN} расчёта.`
                 : null}
           </span>
           {/* Выгрузка стоит рядом с сохранением, но отвечает за другое:
               сохранение кладёт набор в архив программы, выгрузка выносит его
-              наружу — в чужую таблицу или в чужой отчёт. */}
+              наружу — в чужую таблицу или в чужой отчёт.
+
+              Кнопка называется тем, что делает: сравнение уже показано
+              ниже, а нажатие кладёт его снимок в архив. «Запустить» обещало
+              счёт, которого здесь нет. */}
           <ExportMenu onPick={exportAs} disabled={short} />
-          <Button
-            variant="accent"
-            size="sm"
-            onClick={save}
-            disabled={short || busy || !engineAlive()}
-            iconLeft={<Icon name="shuffle" size={14} />}
+          <span
+            title={
+              !engineAlive()
+                ? 'Сохранение недоступно: архив сравнений ведёт движок, а он не запущен'
+                : undefined
+            }
           >
-            {busy ? 'Сохраняю…' : 'Запустить сравнение'}
-          </Button>
+            <Button
+              variant="accent"
+              size="sm"
+              onClick={save}
+              disabled={short || busy || !engineAlive()}
+              iconLeft={<Icon name="check" size={14} />}
+            >
+              {busy ? 'Сохраняю…' : 'Сохранить сравнение'}
+            </Button>
+          </span>
         </div>
 
         {/* Форматы выбраны, а наполнение файлов ещё не собрано. Говорим об
@@ -410,7 +438,7 @@ function snapshot(row: RunStat): SavedCompareRun {
     created: row.run.created,
     /* Номер дня у движка знает запись истории, а не справочник: в
        справочнике лежит то, что посчитано, а день — то, по чему считали. */
-    day: runEntry(row.run.id).day,
+    day: runEntry(row.run.id)?.day,
     note: row.run.note,
     orders: row.orders,
     assigned: row.assigned,
@@ -459,7 +487,7 @@ function CompareGate({
   onClearPicks: () => void;
   onGoRuns: () => void;
   onOpen: (record: SavedCompare) => void;
-  onDrop: (id: string) => void;
+  onDrop: (id: string) => Promise<string | null>;
 }) {
   const list = saved ?? [];
   /* Чем упорядочен список готовых расчётов. Порядки самые обычные — по дате,
@@ -526,7 +554,9 @@ function CompareGate({
             <span className="gate__title">Открыть сохранённое</span>
             <span className="gate__note">
               {list.length === 0
-                ? 'Пока ничего не сохранено. Соберите набор и нажмите «Запустить сравнение».'
+                ? engineAlive()
+                  ? 'Пока ничего не сохранено. Соберите набор и нажмите «Сохранить сравнение».'
+                  : 'Архив сравнений ведёт движок, а он не запущен: сохранённых сравнений нет.'
                 : 'Снимок набора, каким он был в день сохранения.'}
             </span>
             <span className="gate__go">
@@ -582,7 +612,9 @@ function CompareGate({
                       onClick={() => onToggle(run.id)}
                     >
                       <span className="gaterow__code">{run.code}</span>
-                      <span className="gaterow__when">{run.date}</span>
+                      {/* Когда считали, а не какой день разложен: дата
+                          выгрузки у всех одна и ничего не различает. */}
+                      <span className="gaterow__when">{whenLabel(run.created)}</span>
                       <span className="gaterow__facts">
                         покрытие {dec(run.coverage)} % · разложено{' '}
                         {run.ordersAssigned} из {run.ordersTotal} · без инженера {run.unassigned}
@@ -679,7 +711,7 @@ function SavedList({
 }: {
   saved: SavedCompare[] | null;
   onOpen: (record: SavedCompare) => void;
-  onDrop: (id: string) => void;
+  onDrop: (id: string) => Promise<string | null>;
 }) {
   if (!saved || saved.length === 0) return null;
 
@@ -701,7 +733,11 @@ function SavedList({
 /* Строка архива. Одна на оба места — на входе в раздел и под собранным
    набором: это одна и та же запись, и выглядеть она должна одинаково. Номер
    открывает запись, корзина удаляет; всё остальное в строке — содержание, а
-   не действие. */
+   не действие.
+
+   Удаление в два шага, как у записи расчёта: первый щелчок только
+   спрашивает, и промах по корзине не стоит сравнения. Неудача пишется
+   тут же, в строке. */
 function SavedRow({
   item,
   onOpen,
@@ -709,8 +745,21 @@ function SavedRow({
 }: {
   item: SavedCompare;
   onOpen: () => void;
-  onDrop: (id: string) => void;
+  onDrop: (id: string) => Promise<string | null>;
 }) {
+  const [confirming, setConfirming] = useState(false);
+  const [dropping, setDropping] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
+
+  const drop = async () => {
+    setDropping(true);
+    setFailed(null);
+    const why = await onDrop(item.id);
+    setDropping(false);
+    setConfirming(false);
+    if (why) setFailed(why);
+  };
+
   return (
     <article className="saved__row">
       <button type="button" className="saved__code saved__code--open" onClick={onOpen}>
@@ -733,15 +782,34 @@ function SavedRow({
         ))}
       </span>
       {item.note && <span className="saved__note">{item.note}</span>}
-      <button
-        type="button"
-        className="runcard__edit runcard__edit--drop"
-        onClick={() => onDrop(item.id)}
-        title={`Удалить сравнение ${item.code}`}
-        aria-label={`Удалить сравнение ${item.code}`}
-      >
-        <Icon name="trash" size={13} />
-      </button>
+      {failed && <span className="runedit__wrong">{failed}</span>}
+      {confirming ? (
+        <>
+          <span className="runedit__ask">Удалить {item.code}?</span>
+          <button type="button" className="runedit__danger" onClick={drop} disabled={dropping}>
+            <Icon name="trash" size={13} />
+            {dropping ? 'Удаляю…' : 'Удалить'}
+          </button>
+          <button
+            type="button"
+            className="runedit__cancel"
+            onClick={() => setConfirming(false)}
+            disabled={dropping}
+          >
+            Нет
+          </button>
+        </>
+      ) : (
+        <button
+          type="button"
+          className="runcard__edit runcard__edit--drop"
+          onClick={() => setConfirming(true)}
+          title={`Удалить сравнение ${item.code}`}
+          aria-label={`Удалить сравнение ${item.code}`}
+        >
+          <Icon name="trash" size={13} />
+        </button>
+      )}
     </article>
   );
 }

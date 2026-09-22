@@ -3,7 +3,7 @@ import { Icon } from '../ds/components/core/Icon.jsx';
 import { RunTabs } from './RunTabs.tsx';
 import type { RunId, DaySummary } from '../data/load.ts';
 import { runCode, runDate } from '../data/load.ts';
-import { toggleDuty, useDuty } from '../data/duty.ts';
+import { holderOf, onDuty, toggleDuty, useDuty } from '../data/duty.ts';
 import { isCrossRun, isRunScoped, SUBHEADER } from './nav.ts';
 import type { SectionId } from './nav.ts';
 import { COMPARE_MAX } from './compare.ts';
@@ -40,7 +40,7 @@ export function SubHeader({
   onCloseRun
 }: Props) {
   const config = SUBHEADER[section];
-  /* Прогон выбирают там, где он есть. Разделы, которые читают все прогоны
+  /* Расчёт выбирают там, где он есть. Разделы, которые читают все расчёты
      сразу, вместо переключателя получают прямую подпись: показывать
      неработающий выбор хуже, чем не показывать его вовсе. */
   const runScoped = isRunScoped(section) && !planPending;
@@ -53,10 +53,12 @@ export function SubHeader({
      диспетчер с планом и работает, — решение «этот и берём» принимают,
      глядя на план, а не на карточку в справочнике. Обе кнопки правят одно и
      то же хранилище, поэтому нажатая здесь тут же видна и в базе. */
-  const day = useDuty();
+  /* Подписка нужна ради перерисовки: кто держит день, спрашивают у слоя
+     данных по расчёту и дате — день считается по участку, а не по календарю. */
+  useDuty();
   const date = onCloseRun ? runDate(activeRun) : '';
-  const working = Boolean(date) && day[date] === activeRun;
-  const heldBy = date ? day[date] : undefined;
+  const working = onDuty(activeRun, date);
+  const heldBy = holderOf(activeRun, date);
   const held = heldBy && heldBy !== activeRun ? runCode(heldBy) : null;
   const dayText = date.split('-').reverse().join('.');
   return (
@@ -84,7 +86,7 @@ export function SubHeader({
           своим именем, а лента расчётов в нём не показана — обещать нечего. */}
       {crossRun && !picking && <div className="subhdr__spacer" />}
       {/* «В работу» — про открытый расчёт: с этой минуты день принадлежит ему,
-          а прочие прогоны того же дня остаются черновиками. Стоит в конце
+          а прочие расчёты того же дня остаются черновиками. Стоит в конце
           строки, за лентой расчётов: лента отвечает на «какой смотрим», а
           кнопка — на «какой берём», и это разные вопросы.
 

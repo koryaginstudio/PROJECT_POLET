@@ -5,9 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" href="/src/ds/assets/logo/mark.svg" />
     <title>PROJECT POLET — диспетчерская</title>
+    <!-- Заглушка до первой отрисовки. Стили здесь, а не в общем файле:
+         общий приезжает вместе со сборкой, а заглушка должна быть видна
+         раньше неё. Первая отрисовка снимает её вместе с этими правилами. -->
+    <style>
+      .boot {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+        font-size: 15px;
+        color: #6b6b6b;
+        background: #f6f6f4;
+      }
+    </style>
   </head>
   <body>
-    <div id="root"><p style="padding:48px;font-family:sans-serif;color:#667">Загружаем…</p></div>
+    <div id="root"><div class="boot">Загружаем…</div></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

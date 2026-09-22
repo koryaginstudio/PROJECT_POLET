@@ -1,6 +1,6 @@
 import { Icon } from '../ds/components/core/Icon.jsx';
 import type { OrderRecord } from '../data/registry.ts';
-import { dec, deadline, hhmm } from '../data/derive.ts';
+import { dec, deadline, hhmm, shortName } from '../data/derive.ts';
 import { requiredTransportWhy } from '../data/rationale.ts';
 import {
   equipmentList,
@@ -35,6 +35,9 @@ interface Props {
   /** В каких ещё расчётах встречается заявка с этим номером. Считает база:
       карточка видит одну строку и о соседних прогонах не знает. */
   runs?: { runId: string; code: string }[];
+  /** Открыть ту же заявку в другом расчёте — по чипу «Есть также в». Нет —
+      чипы не нажимаются. */
+  onOpenIn?: (runId: string) => void;
 }
 
 /* Карточка заявки. Собрана по образцу карточки инженера, и это то же
@@ -59,20 +62,15 @@ function dayLabel(iso: string): string {
   return MONTHS[index] ? `${Number(day)} ${MONTHS[index]}` : iso;
 }
 
-/** Фамилия с инициалами: «Попов О. Н.». Полное ФИО в плитку шириной в треть
-    карточки не встаёт ни при какой плотности, а фамилия — то, чем человека
-    называют. Целиком имя остаётся в подсказке. */
-function shortName(name: string): string {
-  const [surname, first, patronymic] = name.trim().split(/\s+/).filter(Boolean);
-  if (!surname) return name;
-  const initials = [first, patronymic]
-    .filter(Boolean)
-    .map((part) => `${part![0].toUpperCase()}.`)
-    .join(' ');
-  return initials ? `${surname} ${initials}` : surname;
-}
-
-export function OrderCard({ row, seat, onOpen, dense = false, workType = [], runs = [] }: Props) {
+export function OrderCard({
+  row,
+  seat,
+  onOpen,
+  dense = false,
+  workType = [],
+  runs = [],
+  onOpenIn
+}: Props) {
   const urgent = isUrgent(row.priorityClass, row.priority);
   const free = !row.engineerId;
   /* Запас — сколько остаётся от закрытия окна до крайнего срока. Это и есть
@@ -90,11 +88,17 @@ export function OrderCard({ row, seat, onOpen, dense = false, workType = [], run
        отдельных кнопок у неё нет. */
     <article
       className={'runcard runcard--flat' + (onOpen ? ' runcard--open' : '')}
-      onClick={onOpen}
+      /* Щелчок по чипу расчёта до карточки не доходит: иначе вместе с той же
+         заявкой в другом расчёте открывалась бы и эта. */
+      onClick={(event) => {
+        if ((event.target as HTMLElement).closest('button')) return;
+        onOpen?.();
+      }}
       role={onOpen ? 'button' : undefined}
       tabIndex={onOpen ? 0 : undefined}
       onKeyDown={(event) => {
         if (!onOpen) return;
+        if ((event.target as HTMLElement).closest('button')) return;
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault();
           onOpen();
@@ -398,11 +402,27 @@ export function OrderCard({ row, seat, onOpen, dense = false, workType = [], run
       {!dense && others.length > 0 && (
         <div className="engcard__runs">
           <span className="engcard__runs-label">Есть также в:</span>
-          {others.map((ref) => (
-            <span key={ref.runId} className="chip chip--sm">
-              {ref.code}
-            </span>
-          ))}
+          {/* Чип открывает ту же заявку в том расчёте: строка отвечает на
+              «считали ли её ещё где-то», и следующий вопрос — «и как там
+              легло» — должен решаться одним нажатием, а не поиском номера
+              в соседней вкладке. */}
+          {others.map((ref) =>
+            onOpenIn ? (
+              <button
+                key={ref.runId}
+                type="button"
+                className="chip chip--sm"
+                title={`Открыть заявку ${row.id} в расчёте ${ref.code}`}
+                onClick={() => onOpenIn(ref.runId)}
+              >
+                {ref.code}
+              </button>
+            ) : (
+              <span key={ref.runId} className="chip chip--sm">
+                {ref.code}
+              </span>
+            )
+          )}
         </div>
       )}
 

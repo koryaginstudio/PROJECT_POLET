@@ -11,11 +11,13 @@ import {
   loadSummaries,
   seedRuns,
   engineReady,
+  loadPlaces,
   runCode,
   runEntry
 } from '../data/load.ts';
+import { engineDefaults } from '../data/engine.ts';
 import type { EngineParams } from '../data/engine.ts';
-import type { RunId, DaySummary, SourceId } from '../data/load.ts';
+import type { RunId, DaySummary, Place, SourceId } from '../data/load.ts';
 import { exportRun } from '../data/report.ts';
 import { adoptJournal, loadDayState, postEvent, replanDay, saveReplan } from '../data/api.ts';
 import type { DayState, JournalEvent } from '../data/api.ts';
@@ -23,6 +25,7 @@ import type { DispatcherActions } from './DispatcherBlock.tsx';
 import { изДвижка } from '../data/fromEngine.ts';
 import type { IncidentKind, IncidentSpec, ReplanResult } from '../data/api.ts';
 import { loadRegistry } from '../data/registry.ts';
+import type { ShiftInput } from '../data/shift.ts';
 import type { Registry, RunRef } from '../data/registry.ts';
 import { buildDayView, dayStart, plural } from '../data/derive.ts';
 import { setPlanHorizon, useService } from '../data/service.ts';
@@ -47,20 +50,33 @@ import { DbRoutesScreen } from '../screens/db/DbRoutesScreen.tsx';
 import { DbEngineersScreen } from '../screens/db/DbEngineersScreen.tsx';
 import { DbServicesScreen } from '../screens/db/DbServicesScreen.tsx';
 import { DbRunsScreen } from '../screens/db/DbRunsScreen.tsx';
-import { Stub } from '../screens/Stub.tsx';
+import { StatsScreen } from '../screens/StatsScreen.tsx';
 import { CompareScreen } from '../screens/CompareScreen.tsx';
 import { SettingsScreen } from '../screens/SettingsScreen.tsx';
+import { OrderProfile } from './OrderProfile.tsx';
+import { CrewProfile } from './CrewProfile.tsx';
+import { ClientProfile } from './ClientProfile.tsx';
+import { ServiceProfile } from './ServiceProfile.tsx';
+import type { Hit } from '../data/find.ts';
 import { RunEditDialog } from './RunEditDialog.tsx';
 import { ManualDialog } from './ManualDialog.tsx';
 import { IncidentDialog } from './IncidentDialog.tsx';
-import { isDbSection, SUBHEADER } from './nav.ts';
+import { isDbSection } from './nav.ts';
 import type { SectionId } from './nav.ts';
 import { firstView, readRoute, sameRoute, writeRoute } from './route.ts';
 import type { Route } from './route.ts';
 import { COMPARE_MAX } from './compare.ts';
-import { dropDuty, dutyOf } from '../data/duty.ts';
+import { dropDuty } from '../data/duty.ts';
 import { OVERVIEW } from './selection.ts';
 import type { Selection } from './selection.ts';
+import { DayFail } from './DayFail.tsx';
+import type { DayView } from '../data/derive.ts';
+import '../styles/screens.css';
+
+/* Вопрос, который задаётся перед любым уходом с несохранённого пересчёта.
+   Один на все дороги — ленту, базу, карту, кнопку «назад», — чтобы человек
+   узнавал его, а не читал каждый раз заново. */
+const LEAVE_QUESTION = 'Пересчёт не сохранён — уйти и потерять его?';
 
 export function App() {
   /* Где мы находимся, написано в адресе: раздел, вкладка внутри него, шаг
@@ -83,10 +99,10 @@ export function App() {
      дерево, а не только экран настроек. */
   const settings = useService();
   const [navCollapsed, setNavCollapsed] = useState(settings.navCollapsed);
-  /* Список прогонов нужен переключателю в подшапке и сравнению — грузим один
+  /* Список расчётов нужен переключателю в подшапке и сравнению — грузим один
      раз на сессию, он не зависит от открытого расчёта. */
   const [runs, setRuns] = useState<DaySummary[] | null>(null);
-  /* Базы данных и статистика живут над прогоном: свой источник, своя загрузка
+  /* Базы данных и статистика живут над расчётом: свой источник, своя загрузка
      и только тогда, когда в них впервые заходят. */
   const [registry, setRegistry] = useState<Registry | null>(null);
   const [registryError, setRegistryError] = useState<string | null>(null);
@@ -128,13 +144,27 @@ export function App() {
 
   /* Адрес ведёт: «назад», «вперёд» и вручную набранная ссылка меняют его, а
      состояние читается из него заново. Сравниваем по значениям — иначе
-     каждое событие давало бы новый объект и лишнюю перерисовку. */
+     каждое событие давало бы новый объект и лишнюю перерисовку.
+
+     Кнопка «назад» — такая же дорога с несохранённого пересчёта, как лента
+     или база, и спрашивает так же. Отказался — адрес возвращается на
+     прежний, и экран остаётся где был. Текущий адрес и черновик читаем
+     через ссылки: слушатель заведён один раз, а состояние с тех пор
+     сменилось. */
+  const routeRef = useRef(route);
+  routeRef.current = route;
+  const draftRef = useRef<boolean>(false);
   useEffect(() => {
-    const sync = () =>
-      setRoute((prev) => {
-        const next = readRoute(window.location.hash);
-        return sameRoute(prev, next) ? prev : next;
-      });
+    const sync = () => {
+      const prev = routeRef.current;
+      const next = readRoute(window.location.hash);
+      if (sameRoute(prev, next)) return;
+      if (draftRef.current && next.runId !== prev.runId && !window.confirm(LEAVE_QUESTION)) {
+        window.history.replaceState(null, '', writeRoute(prev));
+        return;
+      }
+      setRoute(next);
+    };
     window.addEventListener('hashchange', sync);
     return () => window.removeEventListener('hashchange', sync);
   }, []);
@@ -160,11 +190,18 @@ export function App() {
   useEffect(() => {
     /* Открыли другой расчёт — черновик не переезжает: он был пересчётом
        другого дня, и показывать его поверх чужого плана значило бы смешать
-       два расчёта в один экран. Уйти, не заметив, нельзя: переход спросит. */
+       два расчёта в один экран. Уйти, не заметив, нельзя: каждая дорога к
+       другому расчёту проходит через `leaveDraft` и спрашивает. */
     setDraft(null);
     setReplan(null);
     setSaveFailed(null);
   }, [runId]);
+
+  /* Что выбрать в правой колонке, когда расчёт загрузится. Обычно — итоги
+     дня, но карточка заявки просит открыть карту на своей точке, а карточка
+     маршрута — на своём маршруте: без этого выбор, сделанный до загрузки,
+     стирался бы её окончанием. */
+  const pendingSelection = useRef<Selection | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -179,11 +216,16 @@ export function App() {
       .then((loaded) => {
         if (cancelled) return;
         setDay(loaded);
-        setSelection(OVERVIEW);
+        setSelection(pendingSelection.current ?? OVERVIEW);
+        pendingSelection.current = null;
       })
       .catch((e: unknown) => {
         if (cancelled) return;
-        setError(e instanceof ContractError ? e.message : 'Расчёт не загрузился');
+        setError(
+          e instanceof ContractError
+            ? e.message
+            : 'Данные расчёта не прочитались. Откройте другой расчёт или обновите страницу.'
+        );
       });
     return () => {
       cancelled = true;
@@ -237,7 +279,11 @@ export function App() {
       })
       .catch((e: unknown) => {
         if (!cancelled) {
-          setRegistryError(e instanceof ContractError ? e.message : 'Базы данных не загрузились');
+          setRegistryError(
+            e instanceof ContractError
+              ? e.message
+              : 'Справочники не прочитались. Обновите страницу; если не поможет — проверьте, что файлы данных на месте.'
+          );
         }
       });
     return () => {
@@ -268,7 +314,7 @@ export function App() {
        ссылка на несуществующую запись не мешала бы работать — карточки
        сверяются со своим номером и молча остались бы серыми, — но день после
        этого числился бы занятым, а хозяина у него не было. */
-    if (editing.date && dutyOf(editing.date) === gone) dropDuty(editing.date);
+    if (editing.date) dropDuty(gone, editing.date);
     deleteRun(gone);
     setEditing(null);
     setCompare((prev) => prev.filter((id) => id !== gone));
@@ -315,7 +361,11 @@ export function App() {
       setReplan(изДвижка(await replanDay(withBase)));
       setLastSpec(withBase);
     } catch (failure) {
-      setIncidentFailed(failure instanceof Error ? failure.message : 'Пересчёт не удался');
+      setIncidentFailed(
+        failure instanceof Error
+          ? failure.message
+          : 'Движок не ответил. Проверьте, что он запущен, и нажмите «Пересчитать» ещё раз.'
+      );
     } finally {
       setIncidentBusy(false);
     }
@@ -435,8 +485,28 @@ export function App() {
     setSaveFailed(null);
   };
 
+  /* Есть ли что терять — для слушателя адреса, который заведён один раз и
+     самого `draft` не видит. */
+  draftRef.current = draft !== null;
+
+  /* Охранник несохранённого пересчёта. Раньше спрашивал только крестик в
+     подшапке, а лента, база расчётов, карта из карточки и «назад» в
+     браузере меняли расчёт молча — и черновик исчезал вместе с полутора
+     секундами работы движка и решением диспетчера. Теперь любая дорога к
+     другому расчёту проходит здесь: нечего терять — пропускает молча,
+     есть — спрашивает, и при отказе ничего не происходит. */
+  const leaveDraft = (): boolean => {
+    if (!draft) return true;
+    if (!window.confirm(LEAVE_QUESTION)) return false;
+    setDraft(null);
+    setReplan(null);
+    setSaveFailed(null);
+    return true;
+  };
+
   /* Сохранить: пересчёт ложится в архив отдельной записью, помеченной как
-     правка, со ссылкой на расчёт, от которого он отпочковался. */
+     правка, со ссылкой на расчёт, от которого он отпочковался. Открывается
+     она без вопроса: черновик только что стал записью, терять уже нечего. */
   const saveDraft = async () => {
     if (!draft || saving) return;
     setSaving(true);
@@ -445,9 +515,13 @@ export function App() {
       const entry = adoptEngineRun(await saveReplan(draft.spec, `Правка расчёта ${runCode(runId)}`));
       setDraft(null);
       refreshRuns();
-      openRun(entry.id);
+      showRun(entry.id);
     } catch (failure) {
-      setSaveFailed(failure instanceof Error ? failure.message : 'Сохранить не удалось');
+      setSaveFailed(
+        failure instanceof Error
+          ? failure.message
+          : 'Запись не сохранилась. Пересчёт остаётся на экране — повторите попытку.'
+      );
     } finally {
       setSaving(false);
     }
@@ -504,7 +578,9 @@ export function App() {
     nav({ section: id, view: firstView(id) });
   };
 
-  const openRun = (id: RunId) => {
+  /* Открыть расчёт без вопросов — для тех мест, где терять уже нечего:
+     только что сохранённая запись или только что посчитанный день. */
+  const showRun = (id: RunId) => {
     setCut(dayStart());
     /* Выбор расчёта — где угодно: в ленте подшапки, в базе расчётов, на
        дашборде — и есть открытие плана.
@@ -517,10 +593,26 @@ export function App() {
     nav({ runId: id, stage: 'plan', ...(section === 'dispatch' ? { view: firstView('dispatch') } : {}) });
   };
 
-  /* Щелчок по карте в карточке расчёта: открыть его и сразу показать карту —
-     плитка обещает карту, значит, к ней и ведёт. */
-  const openRunMap = (id: RunId) => {
+  const openRun = (id: RunId) => {
+    if (id !== runId && !leaveDraft()) return;
+    showRun(id);
+  };
+
+  /* Выбор в правой колонке к моменту, когда расчёт откроется. Тот же расчёт
+     уже загружен — выбор ложится сразу; другой — ждёт загрузки. */
+  const selectOnOpen = (id: RunId, choice: Selection) => {
+    setSelection(choice);
+    if (id !== runId) pendingSelection.current = choice;
+  };
+
+  /* Щелчок по карте в карточке расчёта или заявки: открыть его и сразу
+     показать карту — плитка обещает карту, значит, к ней и ведёт. Из
+     карточки заявки карта встречает этой заявкой, а не днём целиком: точку
+     среди двухсот иначе искать глазами. */
+  const openRunMap = (id: RunId, orderId?: string) => {
+    if (id !== runId && !leaveDraft()) return;
     setCut(dayStart());
+    if (orderId) selectOnOpen(id, { kind: 'order', id: orderId });
     nav({ runId: id, stage: 'plan', section: 'dispatch', view: 'map' });
   };
 
@@ -530,23 +622,79 @@ export function App() {
      целиком, в котором свою линию потом ищи глазами. Своего экрана у
      маршрута нет, и это единственное место, где его смотрят как есть. */
   const openRouteMap = (id: RunId, engineerId: string) => {
+    if (id !== runId && !leaveDraft()) return;
     setCut(dayStart());
     setPinnedRoute(engineerId);
     setRouteFocus((n) => n + 1);
-    setSelection({ kind: 'engineer', id: engineerId });
+    selectOnOpen(id, { kind: 'engineer', id: engineerId });
     nav({ runId: id, stage: 'plan', section: 'dispatch', view: 'map' });
   };
 
   /* «Перейти» у открытого расчёта: ведёт к нему в диспетчерскую, ничего в
      нём не переоткрывая — момент и выбранный объект остаются как были. */
-  const goToRun = (id: RunId) =>
+  const goToRun = (id: RunId) => {
+    if (id !== runId && !leaveDraft()) return;
     nav({ runId: id, stage: 'plan', section: 'dispatch', view: firstView('dispatch') });
+  };
+
+  /* ─── карточка найденной записи ───────────────────────────────────────
+
+     Карточка живёт здесь, а не в базе, по одной причине: поиск в шапке стоит
+     на каждом экране, и открывать он обязан отовсюду. Раньше найденное клали
+     в правую панель, а её нет ни в базах, ни на дашборде, ни в сравнении —
+     диспетчер выбирал строку в подсказке и не получал ничего.
+
+     Хранится не сама запись, а её род и ключ: справочники пересобираются
+     после правок, и запись, взятая по ссылке, после этого указывала бы на
+     прежний объект. Ключ переживает пересборку, объект — нет. */
+  const [lookup, setLookup] = useState<{ kind: 'order' | 'client' | 'engineer' | 'service'; key: string } | null>(
+    null
+  );
+  /* Участки нужны карточке инженера — она даёт менять участок, а список
+     мест лежит рядом с данными. Читаем один раз: он не меняется. */
+  const [places, setPlaces] = useState<Place[]>([]);
+  useEffect(() => {
+    loadPlaces()
+      .then(setPlaces)
+      .catch(() => undefined);
+  }, []);
+
+  const looked = useMemo(() => {
+    if (!lookup || !registry) return null;
+    if (lookup.kind === 'order') {
+      return { kind: 'order' as const, row: registry.orders.find((one) => one.key === lookup.key) ?? null };
+    }
+    if (lookup.kind === 'client') {
+      return { kind: 'client' as const, row: registry.clients.find((one) => one.key === lookup.key) ?? null };
+    }
+    if (lookup.kind === 'engineer') {
+      return { kind: 'engineer' as const, row: registry.engineers.find((one) => one.id === lookup.key) ?? null };
+    }
+    return { kind: 'service' as const, row: registry.services.find((one) => one.key === lookup.key) ?? null };
+  }, [lookup, registry]);
+
+  /* Куда ведёт находка. Четыре рода записей открываются карточкой поверх
+     экрана, два — переходом: у расчёта свой экран, а у маршрута своего нет,
+     и смотрят его на карте того расчёта, которому он принадлежит. */
+  const openHit = (hit: Hit) => {
+    if (hit.kind === 'run') {
+      goToRun(hit.key as RunId);
+      return;
+    }
+    if (hit.kind === 'route') {
+      const route = registry?.routes.find((one) => one.key === hit.key);
+      if (route) openRouteMap(route.run.id as RunId, route.engineerId);
+      return;
+    }
+    setLookup({ kind: hit.kind, key: hit.key });
+  };
 
   /* «Открыть» в базе расчётов открывает его по-настоящему — с переходом к
      плану. Раньше кнопка только помечала карточку, а диспетчерская всё равно
      встречала вопросом «создать или выбрать»: расчёт числился открытым и
      открытым не был. */
   const openRunFromDb = (id: RunId) => {
+    if (id !== runId && !leaveDraft()) return;
     setCut(dayStart());
     nav({ runId: id, stage: 'plan', section: 'dispatch', view: firstView('dispatch') });
   };
@@ -558,12 +706,12 @@ export function App() {
      готовый». Несохранённый пересчёт при этом спрашивает: он живёт только на
      экране, и закрытие плана его теряет. */
   const closeRun = () => {
-    if (draft && !window.confirm('Пересчёт не сохранён — закрыть расчёт и потерять его?')) return;
-    setDraft(null);
-    setReplan(null);
-    setSaveFailed(null);
+    if (!leaveDraft()) return;
     nav({ section: 'dispatch', view: firstView('dispatch'), stage: 'gate' });
   };
+
+  /* Две дороги с экрана ошибки: к выбору другого расчёта и на дашборд. */
+  const pickAnotherRun = () => nav({ section: 'dispatch', view: firstView('dispatch'), stage: 'gate' });
 
   /* Завести расчёт можно из любого раздела — кнопка в меню ведёт к той же
      форме, что и «Создать расчёт» в диспетчерской. Форма одна: два входа в
@@ -573,8 +721,9 @@ export function App() {
   /* Выгрузка расчёта книгой Excel. Собирается из того, что уже загружено:
      формы открытого дня лежат в памяти, и ходить за ними второй раз незачем. */
   const exportDay = () => {
-    if (!day) return;
-    exportRun(day, runEntry(runId));
+    const entry = runEntry(runId);
+    if (!day || !entry) return;
+    exportRun(day, entry);
   };
 
   /* Короткая подпись под то, что показано: без неё полоса сообщала бы
@@ -622,7 +771,11 @@ export function App() {
       setManual(false);
       openRun(entry.id);
     } catch (failure) {
-      setManualFailed(failure instanceof Error ? failure.message : 'Пересчёт не удался');
+      setManualFailed(
+        failure instanceof Error
+          ? failure.message
+          : 'День не пересчитался. Проверьте переменные и нажмите «Пересчитать» ещё раз.'
+      );
     } finally {
       setManualBusy(false);
     }
@@ -635,19 +788,26 @@ export function App() {
   const [solving, setSolving] = useState(false);
   const [solveFailed, setSolveFailed] = useState<string | null>(null);
 
-  const runEngine = async (params: EngineParams, zone?: SourceId) => {
+  const runEngine = async (params: EngineParams, zone?: SourceId, shift?: ShiftInput) => {
     if (solving) return;
     setSolving(true);
     setSolveFailed(null);
     try {
-      const entry = await createRun(params, zone);
+      const entry = await createRun(params, zone, undefined, shift);
       refreshRuns();
-      openRun(entry.id);
-      setRebuilding(true);
+      /* Посчитанный день открывается сразу. Окно пересчёта после этого
+         не показываем: раньше оно всплывало само с погашенными
+         переключателями и читалось как «что-то не доделано», хотя расчёт
+         уже готов и виден. */
+      showRun(entry.id);
     } catch (failure) {
       /* Движок не ответил или отказал — остаёмся на форме и говорим, что
          случилось. Уводить на пустой расчёт, которого нет, нельзя. */
-      setSolveFailed(failure instanceof Error ? failure.message : 'Расчёт не удался');
+      setSolveFailed(
+        failure instanceof Error
+          ? failure.message
+          : 'День не посчитался. Проверьте вводные — зону, состав смены, заявки — и запустите расчёт ещё раз.'
+      );
     } finally {
       setSolving(false);
     }
@@ -661,7 +821,6 @@ export function App() {
       <CreateRunScreen
         onCancel={() => undefined}
         onCreate={runEngine}
-        view={null}
         solving={solving}
         failed={solveFailed}
         first
@@ -669,27 +828,32 @@ export function App() {
     );
   }
 
-  if (error) {
-    return (
-      <div style={{ padding: 48, maxWidth: 560 }}>
-        <h1 style={{ fontSize: 28 }}>Расчёт не загрузился</h1>
-        <p style={{ marginTop: 12, color: 'var(--text-secondary)' }}>{error}</p>
-        <p style={{ marginTop: 12, color: 'var(--text-secondary)' }}>
-          Интерфейс собран под схему 1.0. Проверьте, что отдаёт источник данных.
-        </p>
-      </div>
-    );
-  }
-
-  if (!day || !dayView) {
-    return <div style={{ padding: 48, color: 'var(--text-secondary)' }}>Загружаем расчёт…</div>;
-  }
+  /* День нужен не всем разделам. Базы, сравнение, статистика и настройки
+     читают справочники и историю, а не открытый расчёт, — и обязаны работать
+     даже тогда, когда расчёт не загрузился. Поэтому ошибка и «загружаем»
+     встают не вместо оболочки, а на место тех экранов, которым без дня
+     показывать нечего: шапка, меню и лента остаются, и уйти с ошибки есть
+     куда. */
+  const ready = day && dayView ? { day, view: dayView } : null;
+  const dayNeeded = section === 'home' || section === 'monitor' || section === 'control' || onPlan;
+  const dayPending = error ? (
+    <DayFail
+      runCode={runCode(runId)}
+      message={error}
+      onPickRun={pickAnotherRun}
+      onHome={() => goSection('home')}
+    />
+  ) : (
+    <div className="stub enter">
+      <p className="stub__body">Загружаем расчёт…</p>
+    </div>
+  );
 
   const counts = {
-    orders: day.plan.meta.orders_total,
-    unassigned: dayView.unassigned.length,
-    routes: day.plan.routes.length,
-    engineers: day.plan.meta.engineers_total,
+    orders: ready?.day.plan.meta.orders_total ?? 0,
+    unassigned: ready?.view.unassigned.length ?? 0,
+    routes: ready?.day.plan.routes.length ?? 0,
+    engineers: ready?.day.plan.meta.engineers_total ?? 0,
     runs: runs?.length ?? 0,
     /* Сколько расчётов отобрано к сравнению. Цифра у пункта меню — то же
        число, что в заголовке экрана: набор собирают в базе расчётов, а
@@ -706,7 +870,7 @@ export function App() {
     dbRoutes: registry?.routes.length ?? 0
   };
 
-  /* Правая панель всегда про объект открытого прогона. Там, где прогона нет,
+  /* Правая панель всегда про объект открытого расчёта. Там, где расчёта нет,
      её не показываем — и колонку под неё тоже, иначе справа остаётся пустая
      полоса, которая читается как несработавший экран. Дашборд обзорный и
      объекта не выбирает, поэтому тоже идёт без неё. */
@@ -721,9 +885,146 @@ export function App() {
     <div className="stub enter">
       <h2 className="stub__title">Собираем данные</h2>
       <p className="stub__body">
-        Читаем планы всех расчётов — раздел строится по ним сразу, а не по открытому прогону.
+        Читаем планы всех расчётов — раздел строится по ним сразу, а не по открытому расчёту.
       </p>
     </div>
+  );
+
+  /* Экраны, которым нужен открытый день. Собраны в одну функцию, чтобы
+     показывать их только тогда, когда день на месте, а на его месте — ошибку
+     или «загружаем», не трогая остальную оболочку. Имена `day` и `dayView`
+     здесь уже не пустые: это те же значения, но проверенные. */
+  const dayScreens = (day: Day, dayView: DayView) => (
+    <>
+      {section === 'home' && (
+        <HomeScreen
+          day={day}
+          view={dayView}
+          runs={runs}
+          activeRun={runId}
+          onGoSection={goSection}
+          onOpenRun={openRun}
+          onCreate={createRunForm}
+        />
+      )}
+
+      {section === 'monitor' && (
+        <MonitorScreen
+          view={dayView}
+          runId={runId}
+          live={liveRoute}
+          onLive={setHoverRoute}
+          pinned={pinnedRoute}
+          onPin={pinRoute}
+          focus={routeFocus}
+          onSelectOrder={(id) => setSelection({ kind: 'order', id })}
+          onSelectEngineer={(id) => setSelection({ kind: 'engineer', id })}
+        />
+      )}
+
+      {/* Управление воздействием — третий этап процесса. Привязано к
+          расчёту так же, как диспетчерская и мониторинг: воздействие
+          применяют к конкретному плану, а не вообще. */}
+      {section === 'control' && (
+        <ControlScreen
+          runCode={runCode(runId)}
+          cut={cut}
+          live={engineReady()}
+          canReplan={Boolean(engineDay)}
+          onPick={(kind) => {
+            setIncidentKind(kind);
+            setReplan(null);
+            setIncidentFailed(null);
+            setIncidentOpen(true);
+          }}
+          day={engineDay}
+          base={engineBase}
+          onJournalReset={refreshDayState}
+        />
+      )}
+
+      {/* Обзор стоит перед сводкой: расчёт открывают картой дня, а
+          числа читают на ней же. Остальные вкладки — тот же расчёт
+          другими способами, и держит их общий экран плана. */}
+      {onOverview && (
+        <OverviewScreen
+          view={dayView}
+          runId={runId}
+          run={runCode(runId)}
+          live={liveRoute}
+          onLive={setHoverRoute}
+          pinned={pinnedRoute}
+          onPin={pinRoute}
+          focus={routeFocus}
+          selectedOrder={selection.kind === 'order' ? selection.id : null}
+          /* Щелчок по точке остаётся на карте: обзор отвечает сводкой в
+             правой колонке, на месте итогов расчёта. Раньше он уводил в
+             «Карту», и человек терял и карту, и место, на которое
+             смотрел. Пусто — выбор сняли, колонка возвращает итоги. */
+          onSelectOrder={(id) => setSelection(id ? { kind: 'order', id } : OVERVIEW)}
+          /* Инженера показывает справочник в сводке — туда и ведём:
+             список маршрутов карточки человека не открывает. */
+          onSelectEngineer={(id) => {
+            setSelection({ kind: 'engineer', id });
+            nav({ view: 'summary' });
+          }}
+          onOpenMetric={(group) => {
+            setSelection({ kind: 'group', id: group });
+            nav({ view: 'summary' });
+          }}
+          onOpenSummary={() => nav({ view: 'summary' })}
+          registry={registry}
+          onOpenRun={(id) => openRun(id as RunId)}
+          onOpenMap={(id) => openRunMap(id as RunId)}
+          onTrack={(id) => {
+            nav({ section: 'monitor' });
+            if (dayView?.loads.some((load) => load.engineer.id === id)) {
+              pinRoute(id);
+              setSelection({ kind: 'engineer', id });
+            }
+          }}
+          onChanged={refreshRuns}
+          draft={draftNote}
+        />
+      )}
+
+      {section === 'dispatch' && stage === 'plan' && !onOverview && (
+        <DashboardScreen
+          day={day}
+          view={dayView}
+          runId={runId}
+          mode={view}
+          run={runCode(runId)}
+          selectedOrder={selection.kind === 'order' ? selection.id : null}
+          hotHour={hotHour}
+          live={liveRoute}
+          onLive={setHoverRoute}
+          pinned={pinnedRoute}
+          onPin={pinRoute}
+          focus={routeFocus}
+          cut={cut}
+          onCutChange={setCut}
+          onSelectOrder={(id) => setSelection({ kind: 'order', id })}
+          onSelectEngineer={(id) => setSelection({ kind: 'engineer', id })}
+          onOpenGroup={(id) => setSelection({ kind: 'group', id })}
+          onOpenList={setSelection}
+          onExport={exportDay}
+          onManual={() => setManual(true)}
+          engineLive={engineReady()}
+          onClose={() => nav({ stage: 'gate' })}
+          onEdit={() => {
+            setReplan(null);
+            setIncidentFailed(null);
+            setIncidentOpen(true);
+          }}
+          draft={draftNote}
+          saving={saving}
+          saveFailed={saveFailed}
+          onSave={saveDraft}
+          onDropDraft={dropDraft}
+        />
+      )}
+    </>
   );
 
   return (
@@ -740,8 +1041,10 @@ export function App() {
       <Header
         collapsed={navCollapsed}
         onToggleNav={() => setNavCollapsed((v) => !v)}
-        view={dayView}
+        view={ready?.view ?? null}
         onSelect={setSelection}
+        registry={registry}
+        onFind={openHit}
         onHome={() => goSection('home')}
         onOpenSettings={() => nav({ section: 'engine', view: 'service' })}
       />
@@ -772,51 +1075,7 @@ export function App() {
         </div>
 
         <main className="shell__main">
-          {section === 'home' && (
-            <HomeScreen
-              day={day}
-              view={dayView}
-              runs={runs}
-              activeRun={runId}
-              onGoSection={goSection}
-              onOpenRun={openRun}
-            />
-          )}
-
-          {section === 'monitor' && (
-            <MonitorScreen
-              view={dayView}
-              runId={runId}
-              live={liveRoute}
-              onLive={setHoverRoute}
-              pinned={pinnedRoute}
-              onPin={pinRoute}
-              focus={routeFocus}
-              onSelectOrder={(id) => setSelection({ kind: 'order', id })}
-              onSelectEngineer={(id) => setSelection({ kind: 'engineer', id })}
-            />
-          )}
-
-          {/* Управление воздействием — третий этап процесса. Привязано к
-              расчёту так же, как диспетчерская и мониторинг: воздействие
-              применяют к конкретному плану, а не вообще. */}
-          {section === 'control' && (
-            <ControlScreen
-              runCode={runCode(runId)}
-              cut={cut}
-              live={engineReady()}
-              canReplan={Boolean(engineDay)}
-              onPick={(kind) => {
-                setIncidentKind(kind);
-                setReplan(null);
-                setIncidentFailed(null);
-                setIncidentOpen(true);
-              }}
-              day={engineDay}
-              base={engineBase}
-              onJournalReset={refreshDayState}
-            />
-          )}
+          {dayNeeded && (ready ? dayScreens(ready.day, ready.view) : dayPending)}
 
           {section === 'dispatch' && stage === 'gate' && (
             <DispatchGate
@@ -831,91 +1090,8 @@ export function App() {
             <CreateRunScreen
               onCancel={() => nav({ stage: 'gate' })}
               onCreate={runEngine}
-              view={dayView}
               solving={solving}
               failed={solveFailed}
-            />
-          )}
-
-          {/* Обзор стоит перед сводкой: расчёт открывают картой дня, а
-              числа читают на ней же. Остальные вкладки — тот же расчёт
-              другими способами, и держит их общий экран плана. */}
-          {onOverview && (
-            <OverviewScreen
-              view={dayView}
-              runId={runId}
-              run={runCode(runId)}
-              live={liveRoute}
-              onLive={setHoverRoute}
-              pinned={pinnedRoute}
-              onPin={pinRoute}
-              focus={routeFocus}
-              selectedOrder={selection.kind === 'order' ? selection.id : null}
-              /* Щелчок по точке остаётся на карте: обзор отвечает сводкой в
-                 правой колонке, на месте итогов расчёта. Раньше он уводил в
-                 «Карту», и человек терял и карту, и место, на которое
-                 смотрел. Пусто — выбор сняли, колонка возвращает итоги. */
-              onSelectOrder={(id) => setSelection(id ? { kind: 'order', id } : OVERVIEW)}
-              /* Инженера показывает справочник в сводке — туда и ведём:
-                 список маршрутов карточки человека не открывает. */
-              onSelectEngineer={(id) => {
-                setSelection({ kind: 'engineer', id });
-                nav({ view: 'summary' });
-              }}
-              onOpenMetric={(group) => {
-                setSelection({ kind: 'group', id: group });
-                nav({ view: 'summary' });
-              }}
-              onOpenSummary={() => nav({ view: 'summary' })}
-              registry={registry}
-              onOpenRun={(id) => openRun(id as RunId)}
-              onOpenMap={(id) => openRunMap(id as RunId)}
-              onTrack={(id) => {
-                nav({ section: 'monitor' });
-                if (dayView?.loads.some((load) => load.engineer.id === id)) {
-                  pinRoute(id);
-                  setSelection({ kind: 'engineer', id });
-                }
-              }}
-              onChanged={refreshRuns}
-              draft={draftNote}
-            />
-          )}
-
-          {section === 'dispatch' && stage === 'plan' && !onOverview && (
-            <DashboardScreen
-              day={day}
-              view={dayView}
-              runId={runId}
-              mode={view}
-              run={runCode(runId)}
-              selectedOrder={selection.kind === 'order' ? selection.id : null}
-              hotHour={hotHour}
-              live={liveRoute}
-              onLive={setHoverRoute}
-              pinned={pinnedRoute}
-              onPin={pinRoute}
-              focus={routeFocus}
-              cut={cut}
-              onCutChange={setCut}
-              onSelectOrder={(id) => setSelection({ kind: 'order', id })}
-              onSelectEngineer={(id) => setSelection({ kind: 'engineer', id })}
-              onOpenGroup={(id) => setSelection({ kind: 'group', id })}
-              onOpenList={setSelection}
-              onExport={exportDay}
-              onManual={() => setManual(true)}
-              onClose={() => nav({ stage: 'gate' })}
-              onEdit={() => {
-                setIncidentKind(undefined);
-                setReplan(null);
-                setIncidentFailed(null);
-                setIncidentOpen(true);
-              }}
-              draft={draftNote}
-              saving={saving}
-              saveFailed={saveFailed}
-              onSave={saveDraft}
-              onDropDraft={dropDraft}
             />
           )}
 
@@ -935,11 +1111,18 @@ export function App() {
             />
           )}
 
-          {/* Статистика снята под новую сборку: прежнее наполнение считалось
-              по всем расчётам сразу и с отбором расчётов не связано. */}
-          {section === 'stats' && (
-            <Stub title={SUBHEADER[section].title} onBack={() => goSection('dispatch')} />
-          )}
+          {/* Статистика стоит над расчётами и читает справочники: те же
+              итоги, что в базе расчётов, но сведённые в один экран. */}
+          {section === 'stats' &&
+            (!registry ? (
+              registryPending
+            ) : (
+              <StatsScreen
+                registry={registry}
+                active={stage === 'plan' ? runId : null}
+                onOpenRun={openRunFromDb}
+              />
+            ))}
 
           {onDb &&
             (!registry ? (
@@ -957,7 +1140,7 @@ export function App() {
                 onEdit={setEditing}
               />
             ) : section === 'db-services' ? (
-              <DbServicesScreen registry={registry} mode={view} />
+              <DbServicesScreen registry={registry} mode={view} onOpenRun={openRunFromDb} />
             ) : section === 'db-orders' ? (
               <DbOrdersScreen
                 registry={registry}
@@ -966,7 +1149,7 @@ export function App() {
                 onOpenMap={openRunMap}
               />
             ) : section === 'db-clients' ? (
-              <DbClientsScreen registry={registry} mode={view} />
+              <DbClientsScreen registry={registry} mode={view} onOpenRun={openRunFromDb} />
             ) : section === 'db-routes' ? (
               <DbRoutesScreen registry={registry} mode={view} onOpenRoute={openRouteMap} />
             ) : (
@@ -982,7 +1165,15 @@ export function App() {
                    и открытый расчёт пересобираются с нуля. */
                 onChanged={() => {
                   setRegistry(null);
-                  loadDay(runId).then(setDay).catch(() => undefined);
+                  /* Пока день перечитывается, расчёт могли переключить:
+                     ответ тогда принадлежит уже не тому, что открыт, и
+                     класть его на экран нельзя. */
+                  const wanted = runId;
+                  loadDay(wanted)
+                    .then((loaded) => {
+                      if (routeRef.current.runId === wanted) setDay(loaded);
+                    })
+                    .catch(() => undefined);
                   refreshRuns();
                 }}
                 /* «Отследить» из профиля: пока своего экрана слежения нет,
@@ -1002,11 +1193,26 @@ export function App() {
             ))}
 
           {section === 'engine' && (
-            <SettingsScreen mode={view} registry={registry} onEditsCleared={refreshRuns} />
+            <SettingsScreen
+              mode={view}
+              registry={registry}
+              onEditsCleared={refreshRuns}
+              /* Истории больше нет — открытый расчёт ссылается в пустоту.
+                 Уводим на дашборд и забываем день: остаться на настройках
+                 можно, но всё, что читает открытый расчёт — шапка, лента,
+                 правая панель, — читало бы стёртую запись. */
+              onHistoryCleared={() => {
+                setDay(null);
+                setDraft(null);
+                setReplan(null);
+                refreshRuns();
+                setRoute({ section: 'home', view: '', stage: 'gate', runId: latestRun() });
+              }}
+            />
           )}
         </main>
 
-        {withDetail && (
+        {withDetail && ready && (
           <aside className="shell__detail">
             {/* У каждой вкладки плана правая панель своя: она договаривает
                 то, чего не говорит сама вкладка. Карта — «во сколько и что»
@@ -1015,7 +1221,7 @@ export function App() {
                 этому моменту. Сводке договаривать нечего, у неё справочник. */}
             {onMap ? (
               <RoutePanel
-                view={dayView}
+                view={ready.view}
                 runId={runId}
                 live={liveRoute}
                 pinned={pinnedRoute}
@@ -1026,14 +1232,14 @@ export function App() {
               />
             ) : onPlan && view === 'timeline' ? (
               <HourPanel
-                view={dayView}
+                view={ready.view}
                 onHoverHour={setHotHour}
                 onSelectOrder={(id) => setSelection({ kind: 'order', id })}
                 onSelectEngineer={(id) => setSelection({ kind: 'engineer', id })}
               />
             ) : onPlan && view === 'kanban' ? (
               <CrewPanel
-                view={dayView}
+                view={ready.view}
                 cut={cut}
                 onCutChange={setCut}
                 selected={selection.kind === 'order' ? selection.id : null}
@@ -1042,8 +1248,8 @@ export function App() {
               />
             ) : (
               <DetailPanel
-                day={day}
-                view={dayView}
+                day={ready.day}
+                view={ready.view}
                 selection={selection}
                 onSelect={setSelection}
                 dispatcher={dispatcher}
@@ -1053,30 +1259,38 @@ export function App() {
         )}
       </div>
 
+      {/* Окно пересчёта само больше не всплывает: после расчёта день
+          открывается сразу. Открыть его будет чем, когда пересчёт от момента
+          подключат к движку. */}
       <EngineDialog cut={cut} open={rebuilding} onClose={() => setRebuilding(false)} />
 
-      <IncidentDialog
-        open={incidentOpen}
-        view={dayView}
-        runCode={runCode(runId)}
-        day={runEntry(runId).day ?? null}
-        cut={cut}
-        busy={incidentBusy}
-        failed={incidentFailed}
-        result={replan}
-        onClose={() => {
-          setIncidentOpen(false);
-          setReplan(null);
-        }}
-        onRun={runIncident}
-        onKeep={keepReplan}
-        initialKind={incidentKind}
-      />
+      {ready && (
+        <IncidentDialog
+          open={incidentOpen}
+          view={ready.view}
+          live={engineReady()}
+          runCode={runCode(runId)}
+          /* День движка — только у расчёта целого дня: у сохранённого
+             пересчёта (остатка дня) пересчитывать нечего. */
+          day={engineDay}
+          cut={cut}
+          busy={incidentBusy}
+          failed={incidentFailed}
+          result={replan}
+          onClose={() => {
+            setIncidentOpen(false);
+            setReplan(null);
+          }}
+          onRun={runIncident}
+          onKeep={keepReplan}
+          initialKind={incidentKind}
+        />
+      )}
 
       <ManualDialog
         open={manual}
         runCode={runCode(runId)}
-        params={runEntry(runId).params}
+        params={runEntry(runId)?.params ?? engineDefaults()}
         busy={manualBusy}
         failed={manualFailed}
         onClose={() => setManual(false)}
@@ -1089,6 +1303,86 @@ export function App() {
         onSave={saveRun}
         onDelete={dropRun}
       />
+
+      {/* Карточка найденной записи — поверх любого экрана.
+
+          Стоит в оболочке, а не в базах, потому что поиск стоит в шапке и
+          работает отовсюду: из мониторинга, из сравнения, из настроек. База
+          открывает те же карточки у себя — там они часть экрана, — а здесь
+          они отвечают поиску, и одно другому не мешает: открыта всегда одна.
+
+          Из карточки можно уйти вглубь: из клиента и услуги — в заявку, из
+          заявки — в расчёт и на карту. Тогда прежняя карточка закрывается, а
+          новая встаёт на её место: два окна друг поверх друга диспетчер
+          закрывал бы дважды, не понимая, почему. */}
+      {registry && looked?.kind === 'order' && (
+        <OrderProfile
+          order={looked.row}
+          registry={registry}
+          onClose={() => setLookup(null)}
+          onOpenRun={(id) => {
+            setLookup(null);
+            goToRun(id as RunId);
+          }}
+          onOpenMap={(id, orderId) => {
+            setLookup(null);
+            openRunMap(id as RunId, orderId);
+          }}
+        />
+      )}
+
+      {registry && looked?.kind === 'client' && (
+        <ClientProfile
+          client={looked.row}
+          registry={registry}
+          onClose={() => setLookup(null)}
+          onOpenOrder={(order) => setLookup({ kind: 'order', key: order.key })}
+          onOpenRun={(id) => {
+            setLookup(null);
+            goToRun(id as RunId);
+          }}
+        />
+      )}
+
+      {registry && looked?.kind === 'service' && (
+        <ServiceProfile
+          service={looked.row}
+          registry={registry}
+          onClose={() => setLookup(null)}
+          onOpenOrder={(order) => setLookup({ kind: 'order', key: order.key })}
+          onOpenRun={(id) => {
+            setLookup(null);
+            goToRun(id as RunId);
+          }}
+        />
+      )}
+
+      {registry && looked?.kind === 'engineer' && (
+        <CrewProfile
+          crew={looked.row}
+          registry={registry}
+          places={places}
+          onClose={() => setLookup(null)}
+          onTrack={(id) => {
+            setLookup(null);
+            setSelection({ kind: 'engineer', id });
+            nav({ section: 'monitor', view: firstView('monitor') });
+          }}
+          onOpenRun={(id) => {
+            setLookup(null);
+            goToRun(id as RunId);
+          }}
+          onOpenMap={(id, orderId) => {
+            setLookup(null);
+            openRunMap(id as RunId, orderId);
+          }}
+          /* Правка и удаление отсюда закрыты: карточка открыта поиском, а не
+             базой инженеров, и менять штат мимоходом — не то, за чем сюда
+             пришли. Кадровые действия остаются в своей базе. */
+          onSave={() => undefined}
+          onDelete={() => undefined}
+        />
+      )}
     </div>
   );
 }

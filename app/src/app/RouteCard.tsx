@@ -1,8 +1,9 @@
 import { Icon } from '../ds/components/core/Icon.jsx';
 import type { RouteRecord } from '../data/registry.ts';
-import { capitalize, dec, hhmm, hoursText, pluralWord } from '../data/derive.ts';
+import { capitalize, dec, hhmm, hoursText, pluralWord, shortName } from '../data/derive.ts';
 import { faceOf } from '../data/photos.ts';
 import { RouteMap } from './RouteMap.tsx';
+import { looseShare } from '../screens/db/DbHead.tsx';
 
 interface Props {
   row: RouteRecord;
@@ -20,18 +21,10 @@ interface Props {
   onOpen: () => void;
   /** День, на который построен план: `2026-09-08` → `08.09.2026`. */
   day?: string;
-}
-
-/** Фамилия с инициалами: «Попов О. Н.». Полное ФИО в строку полей не встаёт,
-    а фамилия — то, чем человека называют. Целиком имя остаётся в подсказке. */
-function shortName(name: string): string {
-  const [surname, first, patronymic] = name.trim().split(/\s+/).filter(Boolean);
-  if (!surname) return name;
-  const initials = [first, patronymic]
-    .filter(Boolean)
-    .map((part) => `${part![0].toUpperCase()}.`)
-    .join(' ');
-  return initials ? `${surname} ${initials}` : surname;
+  /** Открыть профиль инженера, который ехал. Нет — имя не нажимается. */
+  onOpenEngineer?: () => void;
+  /** Открыть заявку маршрута по номеру. Нет — чипы заявок не нажимаются. */
+  onOpenOrder?: (orderId: string) => void;
 }
 
 /* День расчёта из ISO-даты выгрузки. */
@@ -59,9 +52,19 @@ const dayOf = (date: string) => {
    прошёл, а числами это не сказать: двенадцать визитов по одному кварталу и
    двенадцать через полобласти считаются одинаково. Поэтому в середине — своя
    линия во всю плитку, а не общий план дня. */
-export function RouteCard({ row, seat, others = [], dense = false, onOpen, day }: Props) {
+export function RouteCard({
+  row,
+  seat,
+  others = [],
+  dense = false,
+  onOpen,
+  day,
+  onOpenEngineer,
+  onOpenOrder
+}: Props) {
   const overtime = row.overtimeMinutes > 0;
-  const loose = row.occupancy > 0 && row.occupancy < 0.6;
+  /* Порог недогруза — общий на все базы, а не своё число в каждой карточке. */
+  const loose = row.occupancy > 0 && row.occupancy < looseShare();
   /* Плотная строка — единственный вид карточки без кнопки карты внутри, и
      тогда дорога с клавиатуры нужна ей самой. В обычном виде такую дорогу
      даёт плитка карты, подписанная словами, и вторая точка фокуса вокруг
@@ -242,7 +245,13 @@ export function RouteCard({ row, seat, others = [], dense = false, onOpen, day }
       {/* Что о маршруте говорит сама запись, а не его итог: кто ехал и на
           какой день построен план. Лицо рядом с фамилией — то же, по
           которому человека узнают в базе инженеров: снимок раздаётся по
-          табельному, а не по месту в списке. */}
+          табельному, а не по месту в списке.
+
+          Имя — переход в профиль человека: маршрут отвечает на «где он
+          ездил», а «кто он такой» — вопрос к базе инженеров, и дорога туда
+          должна начинаться там, где имя написано. Кнопкой имя выглядит
+          только под курсором: вся карточка и так нажимается, и ещё одна
+          обведённая кнопка внутри неё спорила бы с ней. */}
       {!dense && (
         <dl className="engfacts">
           <div className="engfacts__row">
@@ -252,16 +261,34 @@ export function RouteCard({ row, seat, others = [], dense = false, onOpen, day }
                 справа же он ровно то, чем и является, — короткая приписка к
                 фамилии, по которой человека сверяют. */}
             <dd>
-              <span className="engfacts__who" title={row.engineerName}>
-                <img
-                  className="engfacts__face"
-                  src={faceOf({ id: row.engineerId, name: row.engineerName })}
-                  alt=""
-                  loading="lazy"
-                />
-                {shortName(row.engineerName)}
-                <span className="engfacts__sub">{row.engineerId}</span>
-              </span>
+              {(() => {
+                const who = (
+                  <>
+                    <img
+                      className="engfacts__face"
+                      src={faceOf({ id: row.engineerId, name: row.engineerName })}
+                      alt=""
+                      loading="lazy"
+                    />
+                    {shortName(row.engineerName)}
+                    <span className="engfacts__sub">{row.engineerId}</span>
+                  </>
+                );
+                return onOpenEngineer ? (
+                  <button
+                    type="button"
+                    className="engfacts__who dblink"
+                    title={`${row.engineerName} — открыть профиль`}
+                    onClick={onOpenEngineer}
+                  >
+                    {who}
+                  </button>
+                ) : (
+                  <span className="engfacts__who" title={row.engineerName}>
+                    {who}
+                  </span>
+                );
+              })()}
             </dd>
           </div>
           {day && (
@@ -280,15 +307,31 @@ export function RouteCard({ row, seat, others = [], dense = false, onOpen, day }
           По номеру заявку находят в соседней базе; номер стоит и на самой
           карточке заявки, и в маршруте он тот же.
 
-          Тем же рядом чипов, что навыки у инженера и признаки у заявки. */}
+          Тем же рядом чипов, что навыки у инженера и признаки у заявки.
+          Чип нажимается и открывает заявку: номер здесь и есть ссылка, и
+          искать его руками в соседней базе — лишний ход. Щелчок по чипу до
+          карточки не доходит — иначе открывалась бы ещё и карта. */}
       {!dense && row.orderIds.length > 0 && (
         <div className="runcard__actions engcard__skills">
-          {row.orderIds.map((id, index) => (
-            <span key={id} className="chip chip--sm" title={`Визит № ${index + 1} — заявка ${id}`}>
-              <Icon name="clipboard-list" size={12} />
-              {id}
-            </span>
-          ))}
+          {row.orderIds.map((id, index) =>
+            onOpenOrder ? (
+              <button
+                key={id}
+                type="button"
+                className="chip chip--sm"
+                title={`Визит № ${index + 1} — открыть заявку ${id}`}
+                onClick={() => onOpenOrder(id)}
+              >
+                <Icon name="clipboard-list" size={12} />
+                {id}
+              </button>
+            ) : (
+              <span key={id} className="chip chip--sm" title={`Визит № ${index + 1} — заявка ${id}`}>
+                <Icon name="clipboard-list" size={12} />
+                {id}
+              </span>
+            )
+          )}
         </div>
       )}
 

@@ -113,6 +113,8 @@ export function OverviewScreen({
       return { x: 0, y: 0 };
     }
   });
+  /* Кого показывает сводка, когда нажали на общее гнездо выезда. */
+  const [nest, setNest] = useState<string[] | null>(null);
   const [held, setHeld] = useState(false);
   const grab = useRef<{ x: number; y: number; from: { x: number; y: number }; moved: boolean } | null>(
     null
@@ -205,7 +207,7 @@ export function OverviewScreen({
     card?.kind === 'engineer'
       ? (registry?.engineers.find((one) => one.id === card.id) ?? null)
       : null;
-  /* Заявка ищется в своём расчёте: номера в прогонах повторяются, и без
+  /* Заявка ищется в своём расчёте: номера в расчётах повторяются, и без
      номера расчёта открылась бы чужая запись. */
   const orderCard =
     card?.kind === 'order'
@@ -213,7 +215,7 @@ export function OverviewScreen({
       : null;
 
   /* Выбрали маршрут или заявку — колонка отвечает о них, а не о дне. */
-  const picked = Boolean(pinned || selectedOrder);
+  const picked = Boolean(pinned || selectedOrder || nest);
 
   const stats = folded ? (
     /* Сложенная колонка молчит обо всём, кроме одного: пока пересчёт не
@@ -233,7 +235,9 @@ export function OverviewScreen({
           : 'Вернуть итоги расчёта'
       }
     >
-      <Icon name={draft ? 'alert-triangle' : 'chart-bar'} size={14} />
+      {/* Значок тот же, что у раздела «Расчёты» в меню: свёрнутая плашка
+          называет расчёт, а не статистику и не сравнение. */}
+      <Icon name={draft ? 'alert-triangle' : 'stack'} size={14} />
       {draft ? 'Пересчёт не сохранён' : run}
     </button>
   ) : (
@@ -275,9 +279,17 @@ export function OverviewScreen({
 
       {/* Тихая строка вместо кнопки: уход в сводку — не действие над
           расчётом, а соседняя вкладка, и звучать он должен тише чисел. */}
-      <button type="button" className="mapstat__go" onClick={onOpenSummary}>
-        Разобрать в сводке
-        <Icon name="arrow-right" size={13} />
+      {/* Уход в сводку — стрелкой: в полосе поверх карты слова «Разобрать в
+          сводке» занимали больше места, чем иное число, а куда она ведёт,
+          говорит подсказка. */}
+      <button
+        type="button"
+        className="mapstat__go"
+        onClick={onOpenSummary}
+        title="Разобрать расчёт в сводке"
+        aria-label="Разобрать расчёт в сводке"
+      >
+        <Icon name="arrow-right" size={14} />
       </button>
     </section>
   );
@@ -292,8 +304,14 @@ export function OverviewScreen({
         view={view}
         pinned={pinned}
         selectedOrder={selectedOrder}
+        nest={nest}
+        onPickRoute={(id) => {
+          setNest(null);
+          onPin(id);
+        }}
         onClose={() => {
           onSelectOrder(null);
+          setNest(null);
           onPin(null);
         }}
         onOpenEngineer={(id) => registry && setCard({ kind: 'engineer', id })}
@@ -329,10 +347,23 @@ export function OverviewScreen({
         live={live}
         onLive={onLive}
         pinned={pinned}
-        onPin={onPin}
+        /* Выбрали маршрут — прежняя заявка снимается: сводка отвечает о том,
+           на что нажали последним. Иначе щелчок по пути оставлял на месте
+           открытую точку, и казалось, что он не сработал. */
+        onPin={(id) => {
+          if (id) {
+            onSelectOrder(null);
+            setNest(null);
+          }
+          onPin(id);
+        }}
         focus={focus}
-        onSelectOrder={onSelectOrder}
+        onSelectOrder={(id) => {
+          setNest(null);
+          onSelectOrder(id);
+        }}
         onSelectEngineer={onSelectEngineer}
+        onSelectNest={setNest}
         fill
         aside={aside}
       />
