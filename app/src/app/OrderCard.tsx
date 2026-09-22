@@ -174,6 +174,7 @@ export function OrderCard({
             to={row.windowEnd}
             start={row.visitStart ?? undefined}
             finish={row.visitEnd ?? undefined}
+            hardEnd={row.hardEnd ?? undefined}
             risky={slack <= 0}
           />
         </div>

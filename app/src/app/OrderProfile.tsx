@@ -239,6 +239,7 @@ export function OrderProfile({ order, registry, onClose, onOpenRun, onOpenMap }:
                   to={order.windowEnd}
                   start={order.visitStart ?? undefined}
                   finish={order.visitEnd ?? undefined}
+                  hardEnd={order.hardEnd ?? undefined}
                   risky={slack <= 0}
                 />
               </div>
