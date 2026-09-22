@@ -187,6 +187,11 @@ export interface OrderRecord {
   windowStart: number;
   windowEnd: number;
   slaDeadline: number;
+  /** Граница суток расчёта этой заявки (`plan.meta.hard_end`). Нужна шкале
+      окна в базах: без неё шкала тянулась бы до конца дня того расчёта,
+      который открыт сейчас, и одна заявка в базе и в панели выглядела бы
+      по-разному. Пусто у плана без границы — шкала встаёт на настройку. */
+  hardEnd: number | null;
   priority: number;
   estMinutes: number;
   needsAccess: boolean;
@@ -585,6 +590,7 @@ function buildOrders(
         windowStart: order.window_start,
         windowEnd: order.window_end,
         slaDeadline: order.sla_deadline,
+        hardEnd: plan.meta.hard_end ?? null,
         priority: order.priority,
         estMinutes: order.est_minutes,
         needsAccess: order.needs_access,

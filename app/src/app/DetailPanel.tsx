@@ -6,7 +6,7 @@ import { OrderWindow } from './OrderWindow.tsx';
 import { Complexity } from './Complexity.tsx';
 import type { Day } from '../data/contract.ts';
 import type { DayView } from '../data/derive.ts';
-import { dayStart, dec, deadline, hhmm, homeOf, hoursText, placeOf } from '../data/derive.ts';
+import { dayStart, dec, deadline, hhmm, homeOf, hoursText, isDeferrable, placeOf } from '../data/derive.ts';
 import { equipmentList, skillIcon, skillName, transportIcon, transportName } from '../data/dictionary.ts';
 import { DispatcherBlock } from './DispatcherBlock.tsx';
 import type { DispatcherActions } from './DispatcherBlock.tsx';
@@ -362,8 +362,8 @@ function SelectedCard({ day, view, selection, onSelect, dispatcher }: Props) {
   const placement = view.stopByOrder.get(order.id);
   /* По границе суток этого дня, а не по настройке оси времени: у выгрузки
      заказчика день кончается в 22:00, и заявка со сроком 22:00 — сегодняшняя,
-     а не «можно на завтра». */
-  const deferrable = order.sla_deadline > view.hardEnd;
+     а не «можно на завтра». Правило одно с воронкой и колокольчиком. */
+  const deferrable = isDeferrable(order, view.hardEnd);
 
   return (
     <div className="detail enter">
@@ -385,6 +385,7 @@ function SelectedCard({ day, view, selection, onSelect, dispatcher }: Props) {
         start={placement?.stop.start}
         finish={placement?.stop.finish}
         risky={placement?.stop.risk === 'high' || placement?.slaBreached}
+        hardEnd={view.hardEnd}
       />
 
       <div className="marks">

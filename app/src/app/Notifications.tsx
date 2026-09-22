@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../ds/components/core/Icon.jsx';
 import type { DayView } from '../data/derive.ts';
-import { dec, deadline, placeOf } from '../data/derive.ts';
+import { dec, deadline, isDeferrable, placeOf } from '../data/derive.ts';
 import type { Selection } from './selection.ts';
 
 interface Props {
@@ -15,7 +15,8 @@ export function Notifications({ view, onSelect }: Props) {
   const [open, setOpen] = useState(false);
   const wrap = useRef<HTMLDivElement>(null);
 
-  const urgent = view.unassigned.filter((o) => o.sla_deadline <= view.hardEnd);
+  /* Срочная — та, что не переносима на завтра: правило одно с воронкой. */
+  const urgent = view.unassigned.filter((o) => !isDeferrable(o, view.hardEnd));
   const fragile = view.fragile.slice(0, 5);
   const total = urgent.length + fragile.length;
 

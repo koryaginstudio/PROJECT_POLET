@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Day } from '../data/contract.ts';
 import {
   adoptEngineRun,
@@ -28,7 +28,7 @@ import type { IncidentKind, IncidentSpec, ReplanResult } from '../data/api.ts';
 import { engineerInDay, loadRegistry } from '../data/registry.ts';
 import type { ShiftInput } from '../data/shift.ts';
 import type { Registry, RunRef } from '../data/registry.ts';
-import { buildDayView, dayStart, plural } from '../data/derive.ts';
+import { buildDayView, dayEnd, dayStart, planHorizon, plural } from '../data/derive.ts';
 import { setPlanHorizon, useService } from '../data/service.ts';
 import { Header } from './Header.tsx';
 import { SubHeader } from './SubHeader.tsx';
@@ -618,13 +618,42 @@ export function App() {
   /* Пороги входят в зависимости памятки: день считается теми же данными, но
      «плохо» и «присмотреться» в нём расставлены по настройке, и подвинутый
      порог обязан перекрасить пульт немедленно. */
-  const dayView = useMemo(() => {
-    /* Ось времени обязана доходить до границы суток открытого плана: у
-       выгрузки заказчика это 22:00, а настройка оси по умолчанию — 21:00,
-       и визиты после девяти вечера выпадали с таймлайна. */
-    setPlanHorizon(shownDay?.plan.meta.hard_end);
-    return shownDay ? buildDayView(shownDay) : null;
-  }, [shownDay, settings.thresholds, settings.dayStart, settings.dayEnd]);
+  /* Ось времени обязана доходить до границы суток открытого плана: у
+     выгрузки заказчика это 22:00, а настройка оси по умолчанию — 21:00,
+     и визиты после девяти вечера выпадали с таймлайна.
+
+     Горизонт ставится эффектом, а не посреди рендера: запись в модуль из
+     useMemo — побочное действие, которое React вправе выполнить дважды или
+     выбросить. Эффект — макетный: он срабатывает до отрисовки на экране, а
+     `setHorizon` тут же перерисовывает дерево с новой осью, так что кадра
+     со старой диспетчер не видит. Число в состоянии нужно ещё и памяткам
+     ниже: `dayView` читает ось через `cutMinutes` и обязан пересчитаться. */
+  const [horizon, setHorizon] = useState(0);
+  const shownPlan = shownDay?.plan;
+  useLayoutEffect(() => {
+    const next = shownPlan ? planHorizon(shownPlan) : undefined;
+    setPlanHorizon(next);
+    setHorizon(next ?? 0);
+  }, [shownPlan]);
+
+  /* Сменился расчёт — и момент, выставленный на старом дне, мог оказаться
+     вне нового: после дня до 22:00 ползунок в 21:30 на дне до 21:00 молча
+     прижался бы к 21:00, и время на ползунке разошлось бы с выставленным.
+     Такой момент возвращаем на начало дня. Это страховка: почти все пути
+     открытия расчёта (showRun, openRunMap, openRouteMap, openRunFromDb) сами
+     ставят момент на начало дня, а сюда остаются переход по адресу и
+     «Перейти» (goToRun) — только они и приносят момент со старого дня.
+     Момент внутри нового дня не трогаем: сбрасывать его без нужды незачем.
+     Горизонт в зависимостях: границы нового дня известны, только когда он
+     загружен. */
+  useLayoutEffect(() => {
+    setCut((at) => (at < dayStart() || at > dayEnd() ? dayStart() : at));
+  }, [runId, horizon, settings.dayStart, settings.dayEnd]);
+
+  const dayView = useMemo(
+    () => (shownDay ? buildDayView(shownDay) : null),
+    [shownDay, horizon, settings.thresholds, settings.dayStart, settings.dayEnd]
+  );
   /* Правая панель показывает список маршрутов вместо справочника там, где
      карта — основной способ смотреть на день: на вкладке «Карта» в
      диспетчерской и на всём мониторинге, который сам почти целиком карта. */

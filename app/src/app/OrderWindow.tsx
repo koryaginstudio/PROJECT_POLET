@@ -1,6 +1,5 @@
 import { hhmm } from '../data/derive.ts';
 import { dayEnd, dayStart } from '../data/service.ts';
-import { pct } from './scale.ts';
 
 interface Props {
   /** Окно приёма: когда клиент готов принять инженера. */
@@ -11,6 +10,9 @@ interface Props {
   start?: number;
   finish?: number;
   risky?: boolean;
+  /** Граница суток плана (`meta.hard_end`), если карточка знает свой план.
+      Без неё шкала тянется по самому окну и визиту. */
+  hardEnd?: number;
 }
 
 /* Шаг делений, часы. Каждый час давал на узкой карточке пятнадцать рисок в
@@ -32,7 +34,19 @@ const STEP = 3;
    молчалива — видно, что «что-то с десяти до двенадцати», но окно это или
    визит, и чем одно отличается от другого, приходилось выяснять по подписям
    вокруг. */
-export function OrderWindow({ from, to, arrive, start, finish, risky }: Props) {
+export function OrderWindow({ from, to, arrive, start, finish, risky, hardEnd }: Props) {
+  /* Конец шкалы — свой, а не общая ось: карточка заявки живёт и в базах, где
+     день не открыт и горизонт плана не выставлен. Шкала доходит до границы
+     суток плана и до конца самого окна и визита, округлённых до часа, — у
+     выгрузки заказчика окно 21:00–22:00 иначе сплющивалось в черту у правого
+     края шкалы 07:00–21:00. Не дальше полуночи: шкала — одни сутки. */
+  const end = Math.min(
+    24 * 60,
+    Math.ceil(Math.max(dayEnd(), hardEnd ?? 0, to, finish ?? 0) / 60) * 60
+  );
+  const pct = (m: number) =>
+    ((Math.min(end, Math.max(dayStart(), m)) - dayStart()) / (end - dayStart())) * 100;
+
   const left = pct(from);
   const width = Math.max(2, pct(to) - left);
   const visit = start !== undefined && finish !== undefined;
@@ -40,7 +54,7 @@ export function OrderWindow({ from, to, arrive, start, finish, risky }: Props) {
   /* Деления: от первого круглого часа, кратного шагу, и дальше через шаг. */
   const marks: number[] = [];
   const firstMark = Math.ceil(dayStart() / 60 / STEP) * STEP * 60;
-  for (let mark = firstMark; mark <= dayEnd(); mark += STEP * 60) marks.push(mark);
+  for (let mark = firstMark; mark <= end; mark += STEP * 60) marks.push(mark);
 
   /* Подпись держится в границах шкалы: у окна с краю дня она иначе уезжает
      за панель. */

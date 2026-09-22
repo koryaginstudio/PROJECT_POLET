@@ -173,7 +173,8 @@ export function DashboardScreen({
         view.deferrable,
         view.fragile.map((f) => f.order.id),
         cut,
-        (placement) => view.orderById.get(placement.stop.order_id)?.sla_deadline ?? null
+        (placement) => view.orderById.get(placement.stop.order_id)?.sla_deadline ?? null,
+        view.hardEnd
       ),
     [day, view, cut]
   );

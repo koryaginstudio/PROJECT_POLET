@@ -117,7 +117,22 @@ export function CompareHours({ profiles }: { profiles: RunProfile[] }) {
      сутки целиком именно затем, чтобы пережить смену настройки, а показывать
      пустые ночные часы незачем. */
   const from = Math.floor(dayStart() / 60);
-  const to = Math.ceil(dayEnd() / 60);
+  /* Конец — по настройке, но не раньше последнего часа, где хоть что-то
+     происходило. По данным, а не по горизонту открытого дня: в сравнении
+     стоят сразу несколько расчётов, у каждого своя граница суток, и час
+     21–22 у выгрузки заказчика иначе пропадал, пока день не открыт. */
+  const lastData = useMemo(() => {
+    let last = 0;
+    for (const profile of profiles) {
+      for (const slice of profile.hours) {
+        if (slice.busy || slice.done || slice.workMinutes || slice.travelMinutes || slice.waitMinutes) {
+          last = Math.max(last, Math.floor(slice.at / 60) + 1);
+        }
+      }
+    }
+    return Math.min(24, last);
+  }, [profiles]);
+  const to = Math.max(Math.ceil(dayEnd() / 60), lastData);
   const hours = useMemo(
     () => Array.from({ length: Math.max(1, to - from) }, (_, index) => from + index),
     [from, to]
