@@ -24,7 +24,12 @@
    уступят место фотографиям.
 
    Когда придут настоящие фотографии, отсюда уйдёт только источник: карточка
-   спрашивает лицо по инженеру и не знает, откуда оно взялось. */
+   спрашивает лицо по инженеру и не знает, откуда оно взялось.
+
+   Снимки 14–24 и 37–45 пришли PNG 1448×1086 по 1,8 МБ — 37 МБ на двадцать
+   аватарок, которые на экране не больше 240 пикселей. Они приведены к виду
+   остальных: JPEG 900×675, около 110 КБ. Иначе сборка в `web/` репозитория
+   движка весила бы полсотни мегабайт, а клон у проверяющего — столько же. */
 
 const PHOTOS = [
   'photo-02.jpg',
@@ -41,26 +46,26 @@ const PHOTOS = [
   'photo-13.jpg',
   'photo-p1.jpg',
   'photo-p2.jpg',
-  'photo-14.png',
-  'photo-15.png',
-  'photo-16.png',
-  'photo-17.png',
-  'photo-18.png',
-  'photo-19.png',
-  'photo-20.png',
-  'photo-21.png',
-  'photo-22.png',
-  'photo-23.png',
-  'photo-24.png',
-  'photo-37.png',
-  'photo-38.png',
-  'photo-39.png',
-  'photo-40.png',
-  'photo-41.png',
-  'photo-42.png',
-  'photo-43.png',
-  'photo-44.png',
-  'photo-45.png'
+  'photo-14.jpg',
+  'photo-15.jpg',
+  'photo-16.jpg',
+  'photo-17.jpg',
+  'photo-18.jpg',
+  'photo-19.jpg',
+  'photo-20.jpg',
+  'photo-21.jpg',
+  'photo-22.jpg',
+  'photo-23.jpg',
+  'photo-24.jpg',
+  'photo-37.jpg',
+  'photo-38.jpg',
+  'photo-39.jpg',
+  'photo-40.jpg',
+  'photo-41.jpg',
+  'photo-42.jpg',
+  'photo-43.jpg',
+  'photo-44.jpg',
+  'photo-45.jpg'
 ];
 
 /* Цвета для знаков. Приглушённые: знак стоит там же, где фотография, и не
