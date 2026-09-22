@@ -28,7 +28,7 @@ interface Props {
   onOpenRun?: (runId: RunId) => void;
   onOpenMap?: (runId: RunId) => void;
   /** «Отследить» из профиля инженера, открытого с карточки маршрута. */
-  onTrack?: (id: string) => void;
+  onTrack?: (id: string) => string | void;
   /** Данные штата поправили в профиле — справочник надо собрать заново. */
   onChanged?: () => void;
 }

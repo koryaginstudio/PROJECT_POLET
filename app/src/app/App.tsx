@@ -11,9 +11,11 @@ import {
   loadSummaries,
   seedRuns,
   engineReady,
+  engineDayTitle,
   loadPlaces,
   runCode,
-  runEntry
+  runEntry,
+  RUNS
 } from '../data/load.ts';
 import { engineDefaults } from '../data/engine.ts';
 import type { EngineParams } from '../data/engine.ts';
@@ -630,6 +632,38 @@ export function App() {
     nav({ runId: id, stage: 'plan', section: 'dispatch', view: 'map' });
   };
 
+  /* «Отследить» инженера с другого участка. У программы расчёта номера
+     E00…E13 повторяются на каждом участке, и ключ справочника «участок:номер»
+     в открытом расчёте чужого участка не находит никого — прежде экран молча
+     уходил в слежение за чужим днём без выбранного человека. Теперь ведём в
+     последний расчёт его участка и закрепляем его маршрут. Расчёта его
+     участка нет — никуда не уводим и отвечаем словами: строка уходит в
+     карточку, и та показывает её у кнопки. */
+  const trackElsewhere = (key: string): string | void => {
+    const cut = key.indexOf(':');
+    if (cut < 0) return;
+    const home = key.slice(0, cut);
+    const code = key.slice(cut + 1);
+    const latest = RUNS.filter((run) => run.source === null && run.day === home).sort((a, b) =>
+      b.created.localeCompare(a.created)
+    )[0];
+    if (!latest) {
+      const open = day?.plan.meta.day;
+      return (
+        `Этот инженер работает на участке ${engineDayTitle(home)}, а открыт расчёт ` +
+        (open ? `участка ${engineDayTitle(open)}` : 'другого участка') +
+        '. Откройте или заведите расчёт его участка.'
+      );
+    }
+    /* Отказался уходить с несохранённого пересчёта — остаёмся в карточке. */
+    if (latest.id !== runId && !leaveDraft()) return '';
+    setCut(dayStart());
+    setPinnedRoute(code);
+    setRouteFocus((n) => n + 1);
+    selectOnOpen(latest.id, { kind: 'engineer', id: code });
+    nav({ runId: latest.id, stage: 'plan', section: 'monitor', view: firstView('monitor') });
+  };
+
   /* «Перейти» у открытого расчёта: ведёт к нему в диспетчерскую, ничего в
      нём не переоткрывая — момент и выбранный объект остаются как были. */
   const goToRun = (id: RunId) => {
@@ -951,6 +985,7 @@ export function App() {
           view={dayView}
           runId={runId}
           run={runCode(runId)}
+          planDay={day?.plan.meta.day}
           live={liveRoute}
           onLive={setHoverRoute}
           pinned={pinnedRoute}
@@ -977,10 +1012,11 @@ export function App() {
           onOpenRun={(id) => openRun(id as RunId)}
           onOpenMap={(id) => openRunMap(id as RunId)}
           onTrack={(id) => {
-            nav({ section: 'monitor' });
             /* Карточка отдаёт ключ справочника («восток:E00»), план знает
                номер: человек с тем же номером на другом участке — не он. */
             const local = engineerInDay(id, day?.plan.meta.day);
+            if (local === null) return trackElsewhere(id);
+            nav({ section: 'monitor' });
             if (local && dayView?.loads.some((load) => load.engineer.id === local)) {
               pinRoute(local);
               setSelection({ kind: 'engineer', id: local });
@@ -1186,8 +1222,9 @@ export function App() {
                    если нет — просто открываем мониторинг, показывать там
                    нечего, но раздел тот. */
                 onTrack={(id) => {
-                  nav({ section: 'monitor' });
                   const local = engineerInDay(id, day?.plan.meta.day);
+                  if (local === null) return trackElsewhere(id);
+                  nav({ section: 'monitor' });
                   if (local && dayView?.loads.some((load) => load.engineer.id === local)) {
                     pinRoute(local);
                     setSelection({ kind: 'engineer', id: local });
@@ -1368,8 +1405,13 @@ export function App() {
           places={places}
           onClose={() => setLookup(null)}
           onTrack={(id) => {
-            setLookup(null);
             const local = engineerInDay(id, day?.plan.meta.day);
+            if (local === null) {
+              const miss = trackElsewhere(id);
+              if (typeof miss !== 'string') setLookup(null);
+              return miss;
+            }
+            setLookup(null);
             if (local) setSelection({ kind: 'engineer', id: local });
             nav({ section: 'monitor', view: firstView('monitor') });
           }}

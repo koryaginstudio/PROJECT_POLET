@@ -65,9 +65,9 @@ function read(): DutyMap {
       if (typeof key !== 'string' || typeof id !== 'string' || !key || !id) continue;
       /* Запись под общим `engine|дата` — от версии, где расчёты движка не
          различались по участку. Переводим на участок по самому расчёту, если
-         он уже в истории; архив движка приезжает позже чтения хранилища, и
-         тогда запись просто лежит без дела — «в работе» придётся нажать
-         заново, чужой участок она уже не снимет. */
+         он уже в истории. Обычно архив движка приезжает позже чтения
+         хранилища — тогда запись лежит до `migrateEngineDuty`, которую зовут
+         после подтягивания архива. */
       if (key.startsWith('engine|') && RUNS.some((run) => run.id === id)) {
         clean[dayKey(id, key.slice('engine|'.length))] = id;
         continue;
@@ -85,6 +85,26 @@ function read(): DutyMap {
 }
 
 let current = read();
+
+/** Переводит отметки старого вида `engine|дата` на день участка — после
+    того как архив движка попал в историю. При чтении хранилища архива ещё
+    нет, и без этого шага у всех расчётов движка молча пропадало «в работе»,
+    а сами отметки навсегда оставались сиротами. Расчёта в истории нет —
+    отметка стирается: взять её не на что. Свежая отметка дня участка важнее
+    переведённой старой и не перезаписывается. */
+export function migrateEngineDuty(): void {
+  const stale = Object.keys(current).filter((key) => key.startsWith('engine|'));
+  if (stale.length === 0) return;
+  const next: DutyMap = { ...current };
+  for (const key of stale) {
+    const id = next[key];
+    delete next[key];
+    if (!id || !RUNS.some((run) => run.id === id)) continue;
+    const fresh = dayKey(id, key.slice('engine|'.length));
+    if (!(fresh in next)) next[fresh] = id;
+  }
+  save(next);
+}
 const watchers = new Set<() => void>();
 
 function save(next: DutyMap): void {

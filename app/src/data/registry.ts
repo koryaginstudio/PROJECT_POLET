@@ -12,7 +12,7 @@
    сети и адрес приходит пустым, база молча возвращается к прежнему поведению.
    Ничего к контракту здесь не придумывается. */
 
-import { engineDayTitle, loadAllOrders, loadRoster, loadRunData, RUNS } from './load.ts';
+import { engineDayTitle, loadAllOrders, loadRoster, loadRunData, missingEngineZones, RUNS } from './load.ts';
 import type { RosterEngineer, RunId } from './load.ts';
 import type { Engineer, Order, Plan, Route, Simulation } from './contract.ts';
 import { occupancyMean, placeOf, roadPath } from './derive.ts';
@@ -430,6 +430,9 @@ export interface Registry {
   /** Почасовой разрез каждого расчёта — для наложения в сравнении. */
   profiles: RunProfile[];
   stats: RegistryStats;
+  /** Участки программы расчёта, чей план не прочитался: их штата и заявок
+      в справочнике нет. Пусто — всё на месте (и всегда пусто без неё). */
+  missingZones: string[];
 }
 
 /** Ключ точки обслуживания: адрес, а если его нет — район с координатами.
@@ -1210,6 +1213,7 @@ export async function loadRegistry(): Promise<Registry> {
     engineers,
     services,
     profiles: buildProfiles(plans),
-    stats: buildStats(plans, engineers)
+    stats: buildStats(plans, engineers),
+    missingZones: missingEngineZones()
   };
 }

@@ -414,7 +414,16 @@ export function SourcePicker({ crew, orderCount, value, onChange }: Props) {
    выгрузке. Поэтому оба блока здесь заменены одной панелью, которая прямо
    говорит, откуда берутся заявки и люди: вопрос «где снять человека со
    смены» должен получить ответ, а не пустое место. */
-export function EngineSourceNote({ orders, engineers }: { orders?: number; engineers?: number }) {
+export function EngineSourceNote({
+  orders,
+  engineers,
+  fail
+}: {
+  orders?: number;
+  engineers?: number;
+  /** Почему размер участка не узнали — техническая причина для «Подробностей». */
+  fail?: string;
+}) {
   return (
     <section className="panel">
       <div className="dash__section-head">
@@ -430,10 +439,28 @@ export function EngineSourceNote({ orders, engineers }: { orders?: number; engin
                 `${plural(engineers, 'инженер', 'инженера', 'инженеров')}.`
               : ''}
           </p>
+          {fail !== undefined && (
+            <>
+              <p>
+                Не удалось узнать размер участка: программа расчёта не отдала его план. Откройте
+                этот экран ещё раз.
+              </p>
+              <details className="fold">
+                <summary className="fold__summary">
+                  <Icon name="chevron-right" size={13} />
+                  Подробности
+                </summary>
+                <div className="fold__body">
+                  <p>{fail}</p>
+                </div>
+              </details>
+            </>
+          )}
           <p>
             Снять человека со смены или добавить заявку здесь нельзя: программа расчёта такие
-            вводные не принимает. Поломку, отмену или срочную заявку в течение дня отмечают в
-            открытом расчёте — день пересчитается от этой минуты.
+            вводные не принимает. Если инженера сегодня не будет, он задерживается, сломалось
+            оборудование, клиент отменил или пришла срочная заявка — отметьте это в открытом
+            расчёте, и день пересчитается с этой минуты.
           </p>
         </div>
       </div>

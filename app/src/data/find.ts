@@ -168,9 +168,13 @@ const engineerHit = (engineer: EngineerRecord, found: Probe): Hit => ({
   key: engineer.id,
   code: engineer.code,
   title: engineer.name,
+  /* У программы расчёта номера E00…E13 и имена по шаблону одни и те же на
+     каждом участке: без участка три строки «Артём Белов E00» не различить.
+     Составной ключ («участок:номер») — признак именно такого инженера. */
   meta:
+    (engineer.id.includes(':') && engineer.zone ? `${engineer.zone} · ` : '') +
     `смена ${hhmm(engineer.shiftStart)}–${hhmm(engineer.shiftEnd)} · ` +
-    `${engineer.visits} визитов в ${engineer.runs} расчётах`,
+    `${engineer.visits} заявок в ${engineer.runs} расчётах`,
   why: found.why,
   rank: found.rank
 });
@@ -181,7 +185,7 @@ const routeHit = (route: RouteRecord, found: Probe): Hit => ({
   code: route.code,
   title: route.engineerName,
   meta:
-    `расчёт ${route.run.code} · ${route.visits} визитов · ` +
+    `расчёт ${route.run.code} · ${route.visits} заявок · ` +
     `${hhmm(route.start)}–${hhmm(route.end)}`,
   why: found.why,
   rank: found.rank

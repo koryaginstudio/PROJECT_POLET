@@ -3,6 +3,7 @@ import { Icon } from '../ds/components/core/Icon.jsx';
 import type { DayView } from '../data/derive.ts';
 import { hhmm } from '../data/derive.ts';
 import type { Registry } from '../data/registry.ts';
+import { engineerKey } from '../data/registry.ts';
 import { editCrew, removeCrew } from '../data/crew.ts';
 import { engineReady, loadPlaces } from '../data/load.ts';
 import type { Place } from '../data/load.ts';
@@ -18,6 +19,9 @@ interface Props {
   /** Расчёт, чей план на карте: по нему у маршрутов их собственные номера. */
   runId: string;
   run: string;
+  /** День программы расчёта у открытого плана («восток»). Пусто у расчёта
+      браузера. Нужен точному ключу инженера в справочнике. */
+  planDay?: string;
   /** Подсвеченный маршрут — общий с картой и списками. */
   live: string | null;
   onLive: (engineerId: string | null) => void;
@@ -46,7 +50,7 @@ interface Props {
   onOpenRun: (id: string) => void;
   onOpenMap: (id: string) => void;
   /** «Отследить» из карточки инженера. */
-  onTrack: (id: string) => void;
+  onTrack: (id: string) => string | void;
   /** Правка штата из карточки: история и справочники пересобираются. */
   onChanged: () => void;
 }
@@ -88,7 +92,8 @@ export function OverviewScreen({
   onOpenRun,
   onOpenMap,
   onTrack,
-  onChanged
+  onChanged,
+  planDay
 }: Props) {
   /* Колонку складывают, когда карта важнее чисел: под ней город, и
      разглядывать его сквозь неё нельзя. Сложенная, она оставляет от себя
@@ -204,12 +209,14 @@ export function OverviewScreen({
   }, []);
 
   /* Карта знает инженера по номеру в плане, справочник — по своему ключу:
-     у движка E00 есть на каждом участке, и это разные люди. Поэтому ищем
-     того, кто с этим номером работал в открытом расчёте, а уж потом —
-     по ключу как есть. */
+     у движка E00 есть на каждом участке, и это разные люди. Сначала — точный
+     ключ по дню открытого плана: он находит человека, даже если расчёт
+     заведён после сборки справочника. Потом — тот, кто с этим номером
+     работал в открытом расчёте, и уж потом — ключ как есть. */
   const crewCard =
     card?.kind === 'engineer'
-      ? (registry?.engineers.find(
+      ? (registry?.engineers.find((one) => one.id === engineerKey(planDay, card.id)) ??
+        registry?.engineers.find(
           (one) => one.code === card.id && one.byRun.some((shift) => shift.code === run)
         ) ??
         registry?.engineers.find((one) => one.id === card.id) ??
@@ -393,8 +400,10 @@ export function OverviewScreen({
           onOpenMap(id);
         }}
         onTrack={(id) => {
-          setCard(null);
-          onTrack(id);
+          /* Следить некуда — карточка остаётся и объясняет почему. */
+          const miss = onTrack(id);
+          if (typeof miss !== 'string') setCard(null);
+          return miss;
         }}
         locked={engineReady() ? CREW_ENGINE_LOCK : null}
         onSave={(patch) => {

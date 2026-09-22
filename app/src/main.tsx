@@ -13,6 +13,7 @@ import {
 } from './data/load.ts';
 import { engineDefaults } from './data/engine.ts';
 import { ErrorBoundary } from './app/ErrorBoundary.tsx';
+import { migrateEngineDuty } from './data/duty.ts';
 import { engineWarming } from './data/api.ts';
 
 /* Движок открывает порт сразу, а дни считает в фоне: на новой машине
@@ -78,6 +79,9 @@ async function seedFirstRuns() {
        дописывал бы в архив движка ещё три расчёта. Сеем, только если он
        прочитан и пуст. */
     const прочитан = await pullArchive().then(() => true, () => false);
+    /* Архив в истории — теперь старые отметки «в работе» есть на что
+       перевести (см. `migrateEngineDuty`). */
+    if (прочитан) migrateEngineDuty();
     if (!прочитан || RUNS.length > 0) return;
   } else if (RUNS.length > 0) {
     return;

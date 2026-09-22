@@ -31,8 +31,10 @@ interface Props {
   registry: Registry;
   onClose: () => void;
   /** «Отследить»: увести туда, где видно, где человек сейчас и что делает.
-      Своего экрана слежения пока нет — ведёт в мониторинг. */
-  onTrack: (id: string) => void;
+      Своего экрана слежения пока нет — ведёт в мониторинг. Строка в ответ —
+      следить некуда (расчёта его участка нет), и это объяснение: карточка
+      остаётся открытой и показывает его у кнопки. */
+  onTrack: (id: string) => string | void;
   /** Участки со своими офисами и рамками дня — из них выбирают при правке
       участка, и они же задают человеку адрес выезда и часы. */
   places: Place[];
@@ -111,6 +113,8 @@ export function CrewProfile({
   const [transport, setTransport] = useState('car');
   const [skills, setSkills] = useState<string[]>([]);
   const [confirming, setConfirming] = useState(false);
+  /* Почему «Отследить» никуда не увело — словами у кнопки, а не молча. */
+  const [trackMiss, setTrackMiss] = useState<string | null>(null);
   const card = useRef<HTMLDivElement>(null);
   useModalFocus(crew !== null, card);
 
@@ -118,6 +122,7 @@ export function CrewProfile({
     if (crew) setTab('shifts');
     setEditing(false);
     setConfirming(false);
+    setTrackMiss(null);
     /* Открыли другого человека — чужой отбор визитов закрывается: он про
        предыдущего, и остаться поверх нового профиля не может. */
     setVisits(null);
@@ -334,6 +339,11 @@ export function CrewProfile({
                     <span className="crewpro__id">{crew.code}</span>
                     <span className="crewpro__role">
                       Инженер
+                      {/* У программы расчёта номер повторяется на каждом
+                          участке — без участка карточки не различить. */}
+                      {crew.id.includes(':') && (crew.zone ?? crew.posts[0]?.zone)
+                        ? ` · участок ${crew.zone ?? crew.posts[0]?.zone}`
+                        : ''}
                       {crew.team ? ` · бригада ${teamName(crew.team)}` : ''}
                     </span>
                   </div>
@@ -350,6 +360,15 @@ export function CrewProfile({
                       <span>{locked}</span>
                     </p>
                   )}
+                  {/* «Отследить» не увело: человек с другого участка, а
+                      расчёта его участка нет. Объяснение — там же, где и
+                      причина закрытой правки. */}
+                  {trackMiss && (
+                    <p className="crewpro__locked" role="status">
+                      <Icon name="info" size={14} />
+                      <span>{trackMiss}</span>
+                    </p>
+                  )}
                 </div>
                 <div className="crewpro__actions">
                   {/* Куда он сейчас едет и что делает — свой экран слежения
@@ -358,7 +377,10 @@ export function CrewProfile({
                   <Button
                     variant="secondary"
                     size="sm"
-                    onClick={() => onTrack(crew.id)}
+                    onClick={() => {
+                      const miss = onTrack(crew.id);
+                      setTrackMiss(typeof miss === 'string' ? miss : null);
+                    }}
                     iconLeft={<Icon name="navigation-arrow" size={13} />}
                   >
                     Отследить

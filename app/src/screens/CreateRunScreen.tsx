@@ -61,6 +61,9 @@ export function CreateRunScreen({
      диспетчера. */
   const [zone, setZone] = useState<SourceId>(BUILT_IN[0]);
   const [sizes, setSizes] = useState<Record<string, { orders: number; engineers: number }>>({});
+  /* Участки, чей размер узнать не удалось, — с технической причиной. Без
+     этого карточка навсегда оставалась на «Читаем данные…». */
+  const [sizeFails, setSizeFails] = useState<Record<string, string>>({});
   /* Список источников меняется прямо на этом экране: загрузили набор — он
      встал в тот же ряд. Поэтому он в состоянии, а не считается на лету. */
   /* Программа расчёта считает только три участка выгрузки: загруженный
@@ -76,17 +79,24 @@ export function CreateRunScreen({
     Promise.all(
       list.map((key) =>
         zoneSize(key)
-          .then((size) => [key, size] as const)
-          .catch(() => null)
+          .then((size) => ({ key, size, fail: null }))
+          .catch((error: unknown) => ({
+            key,
+            size: null,
+            fail: error instanceof Error ? error.message : String(error)
+          }))
       )
     )
       .then((zones) => {
         if (cancelled) return;
         const next: Record<string, { orders: number; engineers: number }> = {};
+        const fails: Record<string, string> = {};
         for (const one of zones) {
-          if (one) next[one[0]] = one[1];
+          if (one.size) next[one.key] = one.size;
+          else if (one.fail !== null) fails[one.key] = one.fail;
         }
         setSizes((was) => ({ ...was, ...next }));
+        setSizeFails(fails);
       })
       .catch(() => undefined);
     return () => {
@@ -209,7 +219,9 @@ export function CreateRunScreen({
                   {size
                     ? `${plural(size.orders, 'заявка', 'заявки', 'заявок')}, ` +
                       `${plural(size.engineers, 'инженер', 'инженера', 'инженеров')}`
-                    : 'Читаем данные…'}
+                    : sizeFails[key] !== undefined
+                      ? 'Не удалось узнать размер участка'
+                      : 'Читаем данные…'}
                 </span>
                 {!isBuiltIn(key) && <span className="srccard__mark">загружен</span>}
               </button>
@@ -230,7 +242,11 @@ export function CreateRunScreen({
       </section>
 
       {engine && (
-        <EngineSourceNote orders={sizes[zone]?.orders} engineers={sizes[zone]?.engineers} />
+        <EngineSourceNote
+          orders={sizes[zone]?.orders}
+          engineers={sizes[zone]?.engineers}
+          fail={sizeFails[zone]}
+        />
       )}
 
       {/* Состав смены и заявки поверх выгрузки. Отталкиваемся от выбранной

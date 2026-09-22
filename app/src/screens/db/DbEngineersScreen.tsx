@@ -26,7 +26,7 @@ interface Props {
   /** Данные штата поправили: справочник надо собрать заново. */
   onChanged: () => void;
   /** «Отследить» из профиля: увести в мониторинг за конкретным инженером. */
-  onTrack: (id: string) => void;
+  onTrack: (id: string) => string | void;
   /** Уйти в расчёт заявки, открытой из профиля, и показать её на карте. */
   onOpenRun: (id: RunId) => void;
   onOpenMap: (id: RunId) => void;
@@ -862,6 +862,22 @@ export function DbEngineersScreen({
         </DbBar>
       </DbHead>
 
+      {/* План участка не пришёл от программы расчёта — его людей в базе нет.
+          Молча показанный неполный штат читался бы как «людей стало меньше». */}
+      {registry.missingZones.length > 0 && (
+        <div className="srcengine" role="status">
+          <Icon name="alert-triangle" size={16} />
+          <div className="srcengine__text">
+            <p>
+              {registry.missingZones.length === 1
+                ? `Штат участка ${registry.missingZones[0]} не загрузился`
+                : `Штат участков ${registry.missingZones.join(', ')} не загрузился`}
+              {' '}— его инженеров в списке нет. Обновите страницу.
+            </p>
+          </div>
+        </div>
+      )}
+
       {rows.length === 0 ? (
         <DbEmpty
           miss="Под этот отбор не подошёл ни один инженер."
@@ -1095,8 +1111,10 @@ export function DbEngineersScreen({
           onOpenMap(id as RunId);
         }}
         onTrack={(id) => {
-          setOpened(null);
-          onTrack(id);
+          /* Следить некуда — карточка остаётся и объясняет почему. */
+          const miss = onTrack(id);
+          if (typeof miss !== 'string') setOpened(null);
+          return miss;
         }}
         onChanged={onChanged}
       />

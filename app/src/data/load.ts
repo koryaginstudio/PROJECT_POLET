@@ -271,6 +271,7 @@ function nextCode(): string {
     `plan.meta.hard_end`. Условие снято, архив читается. */
 export async function attachEngine(): Promise<boolean> {
   engineOn = await probeEngine();
+  forgetEnginePlans();
   return engineOn;
 }
 
@@ -888,6 +889,22 @@ export type RosterEngineer = Engineer & { day?: string };
    сеанс; отказ из кеша убирается, чтобы следующий заход попробовал снова. */
 const enginePlanCache = new Map<string, Promise<Plan>>();
 
+/* Участки, чей план при последнем чтении не отдался. Базы молча теряли
+   такой участок из штата — «инженеров в штате» становилось меньше без
+   объяснения. Теперь справочник забирает этот список и говорит о нём. */
+const engineMisses = new Set<string>();
+
+/** Подписи участков движка, чей план не прочитался при последнем заходе. */
+export const missingEngineZones = (): string[] => [...engineMisses];
+
+/** Забыть прочитанные планы участков: следующий заход прочитает их у движка
+    заново. Зовётся при повторном поиске движка — за это время в нём могли
+    поменяться правила расчёта, а с ними и план. */
+export function forgetEnginePlans(): void {
+  enginePlanCache.clear();
+  engineMisses.clear();
+}
+
 function enginePlanOf(day: string): Promise<Plan> {
   const cached = enginePlanCache.get(day);
   if (cached) return cached;
@@ -903,9 +920,17 @@ function enginePlanOf(day: string): Promise<Plan> {
 async function engineZone(zone: SourceId): Promise<{ day: string; title: string; plan: Plan } | null> {
   const day = ENGINE_ZONE[zone];
   if (!engineOn || !day) return null;
-  const plan = await enginePlanOf(day).catch(() => null);
-  if (!plan) return null;
   const title = engineDayTitle(day);
+  const plan = await enginePlanOf(day).catch((error: unknown) => {
+    /* Молча выпадать нельзя: в базе просто стало бы меньше людей. */
+    console.warn(`[polet] план участка «${title}» не прочитался у программы расчёта:`, error);
+    return null;
+  });
+  if (!plan) {
+    engineMisses.add(title);
+    return null;
+  }
+  engineMisses.delete(title);
   return {
     day,
     title,
@@ -927,6 +952,12 @@ const engineZones = () => Promise.all(BUILT_IN.map((zone) => engineZone(zone)));
 export async function zoneSize(zone: SourceId): Promise<{ orders: number; engineers: number }> {
   const engine = await engineZone(zone);
   if (engine) return { orders: engine.plan.orders.length, engineers: engine.plan.engineers.length };
+  /* План не пришёл — к файлам не откатываемся: их размеры обещали бы чужую
+     бригаду. Отказ уходит наружу, и карточка честно говорит, что не знает. */
+  const engineDay = ENGINE_ZONE[zone];
+  if (engineOn && engineDay) {
+    throw new Error(`план участка «${engineDayTitle(engineDay)}» не пришёл от программы расчёта`);
+  }
   const data = await loadZone(zone);
   return { orders: data.orders.length, engineers: data.engineers.length };
 }
