@@ -49,6 +49,7 @@ import {
 } from './api.ts';
 import type { EngineCatalogue, EngineRun } from './api.ts';
 import { изДвижка } from './fromEngine.ts';
+import { HumanRefusal } from './errors.ts';
 
 /* Источник данных — это день, который раскладывают. Их два рода, и в
    интерфейсе они неотличимы:
@@ -266,6 +267,14 @@ const ENGINE_ZONE: Record<string, string> = {
   center: 'югоцентр'
 };
 
+/** Как день движка называется на экране: «юго-восток» → «Юго-Восток».
+    Синтетический день — «день 7». Нужно заставке прогрева в main.tsx. */
+export function engineDayTitle(day: string): string {
+  const zone = Object.keys(ENGINE_ZONE).find((key) => ENGINE_ZONE[key] === day);
+  if (zone) return zoneTitle(zone);
+  return /^\d+$/.test(day) ? `день ${day}` : day;
+}
+
 /** Умеет ли движок считать по нашим данным. Да — см. `attachEngine`. */
 const engineTakesRealData = () => true;
 
@@ -364,7 +373,12 @@ export async function createRun(
        прежде любой расчёт пересчитывался по востоку. Не назвали ни то, ни
        другое — отказ, а не синтетический день 1. */
     const target = day ?? ENGINE_ZONE[zone];
-    if (!target) throw new Error(`не знаю, какой день считать для «${zone}»`);
+    if (!target) {
+      throw new HumanRefusal(
+        `Набор «${zoneTitle(zone)}» программа расчёта не считает`,
+        'Выберите участок Восток, Юго-Восток или Центр.'
+      );
+    }
     return adoptEngineRun(await createEngineRun(target, params));
   }
 
@@ -405,13 +419,30 @@ export async function createRun(
     она становится только после того, как всё стёрли руками, а это уже
     осознанное «начать сначала».
 
-    Возвращает, завела ли что-нибудь: адрес к этому времени уже прочитан и
-    указывает в пустоту, и звавшему надо знать, что теперь есть куда. */
+    Затравка одна, и зовётся она один раз — из main.tsx, до первой
+    отрисовки: адрес читается при первом рендере, и к нему в истории уже
+    должны стоять все записи. Прежде вторая копия той же логики жила в
+    main.tsx, и две расходились: одна сеяла при движке, другая нет.
+
+    Возвращает, завела ли что-нибудь. */
 export async function seedRuns(): Promise<boolean> {
-  if (RUNS.length > 0) return false;
-  /* С живым движком историю приносит его архив, а не мы: подмешивать к ней
-     свои расчёты значило бы выдать посчитанное здесь за посчитанное им. */
-  if (engineOn && engineTakesRealData()) return false;
+  if (engineOn && engineTakesRealData()) {
+    /* С живым движком история приходит из его архива, а не считается
+       заново: считать поверх его расчётов свои значило бы выдать
+       посчитанное здесь за посчитанное им. Браузерные записи при нём
+       прячем — см. `hideLocalRuns`.
+
+       Архив подтягивается всегда, а не только на пустом списке: иначе
+       браузер, в котором уже были свои расчёты, архива движка не видел бы. */
+    hideLocalRuns();
+    /* Архив не прочитался — не сеем: иначе каждый сбой `GET /runs`
+       дописывал бы в архив движка ещё три расчёта. Сеем, только если он
+       прочитан и пуст. */
+    const прочитан = await pullArchive().then(() => true, () => false);
+    if (!прочитан || RUNS.length > 0) return false;
+  } else if (RUNS.length > 0) {
+    return false;
+  }
 
   for (const zone of BUILT_IN) {
     try {
@@ -466,6 +497,11 @@ function saveBase() {
 export function updateRun(id: RunId, patch: RunPatch): void {
   const entry = RUN_BY_ID.get(id);
   if (!entry) return;
+  /* Расчёт движка живёт в его архиве, и номер с датой там свои: правка здесь
+     прожила бы до перезагрузки, а потом архив вернул бы прежние — и «R003»
+     на экране перестал бы совпадать с R003 в заметке «Правка расчёта R003».
+     У такой записи правится только заметка: её движок хранит сам. */
+  if (entry.source === null) patch = patch.note === undefined ? {} : { note: patch.note };
 
   const before = RUN_BASE[id] ?? {};
   let snapped = false;
@@ -491,15 +527,22 @@ export function updateRun(id: RunId, patch: RunPatch): void {
 }
 
 /** Убирает запись из истории. Данные зоны при этом остаются на месте:
-    удаляется расчёт, а не день, по которому его считали. */
-export function deleteRun(id: RunId): void {
+    удаляется расчёт, а не день, по которому его считали.
+
+    Возвращает, удалила ли. Расчёт движка не удаляется: он в его архиве, и
+    ручки удаления у движка нет — убранная отсюда запись вернулась бы при
+    следующей загрузке, а до того на неё ещё ссылались бы сохранённые
+    пересчёты и сравнения. */
+export function deleteRun(id: RunId): boolean {
   const at = RUNS.findIndex((run) => run.id === id);
-  if (at === -1) return;
+  if (at === -1) return false;
+  if (RUNS[at].source === null) return false;
   RUNS.splice(at, 1);
   RUN_BY_ID.delete(id);
   delete RUN_BASE[id];
   saveBase();
   saveRuns();
+  return true;
 }
 
 /** Сколько записей правил человек. Именно записей, а не полей: диспетчер
@@ -1148,11 +1191,18 @@ export async function loadRunData(): Promise<Map<RunId, { plan: Plan; simulation
   const own = RUNS.filter((run) => run.source !== null);
   const computed = await Promise.all(
     own.map(async (run) => {
-      const day = await computeDay(run.source!, run.params, run.shift);
-      return [run.id, { plan: day.plan, simulation: day.simulation }] as const;
+      /* То же и для своих: набор, который удалили из загруженных, или зона,
+         чей файл не прочитался, не должны гасить весь список. */
+      try {
+        const day = await computeDay(run.source!, run.params, run.shift);
+        return [run.id, { plan: day.plan, simulation: day.simulation }] as const;
+      } catch (error) {
+        console.warn(`[polet] расчёт ${run.code} не посчитался:`, error);
+        return null;
+      }
     })
   );
-  for (const [id, pair] of computed) byRun.set(id, pair);
+  for (const pair of computed) if (pair) byRun.set(pair[0], pair[1]);
 
   const out = new Map<RunId, { plan: Plan; simulation: Simulation }>();
   for (const run of RUNS) {

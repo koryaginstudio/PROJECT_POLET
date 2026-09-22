@@ -2,6 +2,7 @@ import { Component } from 'react';
 import type { ErrorInfo, ReactNode } from 'react';
 import { Button } from '../ds/components/core/Button.jsx';
 import { Icon } from '../ds/components/core/Icon.jsx';
+import { humanError } from '../data/errors.ts';
 
 interface Props {
   children: ReactNode;
@@ -55,24 +56,41 @@ export class ErrorBoundary extends Component<Props, State> {
     const { failure } = this.state;
     if (!failure) return this.props.children;
 
+    /* Незнакомая ошибка отрисовки — «Экран не открылся»; знакомая (связь,
+       ответ программы расчёта) — своими словами. Строка исключения уходит
+       под «Подробности»: диспетчеру она ничего не говорит. */
+    const human = humanError(failure, {
+      title: 'Экран не открылся',
+      hint:
+        'Программа наткнулась на ошибку и не смогла нарисовать этот экран. Данные при этом не ' +
+        'потеряны: расчёты и правки лежат там же, где лежали. Перезагрузите страницу или вернитесь на главную.'
+    });
+
     return (
       <div className="crash" role="alert">
         <div className="crash__card">
           <span className="crash__icon">
             <Icon name="alert-triangle" size={22} />
           </span>
-          <h1 className="crash__title">Экран не открылся</h1>
-          <p className="crash__body">
-            Программа наткнулась на ошибку и не смогла нарисовать этот экран. Данные при этом не
-            потеряны: расчёты и правки лежат там же, где лежали.
-          </p>
-          <p className="crash__reason">{failure.message || String(failure)}</p>
+          <h1 className="crash__title">{human.title}</h1>
+          <p className="crash__body">{human.hint}</p>
+          {human.detail && (
+            <details className="fold">
+              <summary className="fold__summary">
+                <Icon name="chevron-right" size={13} />
+                Подробности
+              </summary>
+              <div className="fold__body">
+                <p className="crash__reason">{human.detail}</p>
+              </div>
+            </details>
+          )}
           <div className="crash__actions">
             <Button variant="primary" size="sm" onClick={this.reload}>
               Перезагрузить страницу
             </Button>
             <Button variant="secondary" size="sm" onClick={this.home} iconLeft={<Icon name="house" size={14} />}>
-              На дашборд
+              На главную
             </Button>
           </div>
         </div>

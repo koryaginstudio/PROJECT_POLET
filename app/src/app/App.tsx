@@ -9,7 +9,6 @@ import {
   latestRun,
   loadDay,
   loadSummaries,
-  seedRuns,
   engineReady,
   loadPlaces,
   runCode,
@@ -70,6 +69,8 @@ import { dropDuty } from '../data/duty.ts';
 import { OVERVIEW } from './selection.ts';
 import type { Selection } from './selection.ts';
 import { DayFail } from './DayFail.tsx';
+import { humanError, humanLine } from '../data/errors.ts';
+import type { HumanError } from '../data/errors.ts';
 import type { DayView } from '../data/derive.ts';
 import '../styles/screens.css';
 
@@ -92,7 +93,7 @@ export function App() {
   const { section, view, stage, runId } = route;
   const nav = (patch: Partial<Route>) => setRoute((prev) => ({ ...prev, ...patch }));
   const [day, setDay] = useState<Day | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<HumanError | null>(null);
   const [selection, setSelection] = useState<Selection>(OVERVIEW);
   /* Настройки сервиса нужны здесь целиком: от них зависят и границы смены, и
      пороги, по которым считается день, — а значит, перерисоваться должно всё
@@ -195,6 +196,15 @@ export function App() {
     setDraft(null);
     setReplan(null);
     setSaveFailed(null);
+    /* Пересчёт и событие, ушедшие к движку до смены, свои ответы уже не
+       покажут: билет сменился (см. `runIncident`). Окно правки и занятость
+       снимаем здесь же — иначе новый расчёт ждал бы, пока ответит старый. */
+    replanTicket.current += 1;
+    setIncidentOpen(false);
+    setIncidentBusy(false);
+    setIncidentFailed(null);
+    setEventBusy(false);
+    setEventFailed(null);
   }, [runId]);
 
   /* Что выбрать в правой колонке, когда расчёт загрузится. Обычно — итоги
@@ -222,9 +232,10 @@ export function App() {
       .catch((e: unknown) => {
         if (cancelled) return;
         setError(
-          e instanceof ContractError
-            ? e.message
-            : 'Данные расчёта не прочитались. Откройте другой расчёт или обновите страницу.'
+          humanError(e, {
+            title: 'Данные расчёта не прочитались',
+            hint: 'Откройте другой расчёт или обновите страницу.'
+          })
         );
       });
     return () => {
@@ -232,22 +243,15 @@ export function App() {
     };
   }, [runId]);
 
-  /* История расчётов: сперва затравка, потом сводки.
+  /* История расчётов: сводки.
 
-     Затравка нужна ровно один раз и ровно в одном случае — когда браузер
-     здесь впервые и хранилище пустое. Тогда она считает по расчёту на зону,
-     и список открывается не пустым. Адрес к этой минуте уже разобран и
-     ссылается в пустоту, поэтому свежий расчёт надо ещё и подставить в
-     него — но только если своего там нет: ссылка на конкретный расчёт
-     важнее того, что мы завели сами. */
+     Затравки здесь больше нет: первые расчёты заводит `seedRuns` в main.tsx,
+     до первой отрисовки, — и адрес, разобранный при первом рендере, уже
+     видит их. Две затравки в двух местах расходились: одна сеяла при
+     движке, другая нет. */
   useEffect(() => {
     let cancelled = false;
-    seedRuns()
-      .then((seeded) => {
-        if (cancelled) return null;
-        if (seeded) setRoute((prev) => (prev.runId ? prev : { ...prev, runId: latestRun() }));
-        return loadSummaries();
-      })
+    loadSummaries()
       .then((list) => {
         if (list && !cancelled) setRuns(list);
       })
@@ -314,8 +318,10 @@ export function App() {
        ссылка на несуществующую запись не мешала бы работать — карточки
        сверяются со своим номером и молча остались бы серыми, — но день после
        этого числился бы занятым, а хозяина у него не было. */
+    /* Расчёт программы расчёта не удаляется (он в её архиве) — тогда и
+       день за ним остаётся. Окно правки такую кнопку и не показывает. */
+    if (!deleteRun(gone)) return;
     if (editing.date) dropDuty(gone, editing.date);
-    deleteRun(gone);
     setEditing(null);
     setCompare((prev) => prev.filter((id) => id !== gone));
     /* Удалили открытый расчёт — уходим на самый свежий из оставшихся: экран,
@@ -349,8 +355,15 @@ export function App() {
   const [saving, setSaving] = useState(false);
   const [saveFailed, setSaveFailed] = useState<string | null>(null);
 
+  /* Билет пересчёта. Пересчёт идёт до минуты, и за это время диспетчер
+     может открыть другой расчёт; ответ старого тогда лёг бы поверх нового
+     дня — план одного расчёта на экране другого. Смена расчёта меняет билет,
+     и ответ с чужим билетом выбрасывается. */
+  const replanTicket = useRef(0);
+
   const runIncident = async (spec: IncidentSpec) => {
     if (incidentBusy) return;
+    const ticket = replanTicket.current;
     setIncidentBusy(true);
     setIncidentFailed(null);
     try {
@@ -358,16 +371,22 @@ export function App() {
          формы расчёта: иначе на экране пересчёта пустели километры. */
       /* От открытого расчёта: его план и переменные, его журнал. */
       const withBase: IncidentSpec = { ...spec, base: spec.base ?? engineBase };
-      setReplan(изДвижка(await replanDay(withBase)));
+      const result = изДвижка(await replanDay(withBase));
+      if (ticket !== replanTicket.current) return;
+      setReplan(result);
       setLastSpec(withBase);
     } catch (failure) {
+      if (ticket !== replanTicket.current) return;
       setIncidentFailed(
-        failure instanceof Error
-          ? failure.message
-          : 'Движок не ответил. Проверьте, что он запущен, и нажмите «Пересчитать» ещё раз.'
+        humanLine(failure, {
+          title: 'Пересчёт не получился',
+          hint: 'Нажмите «Пересчитать» ещё раз.'
+        })
       );
     } finally {
-      setIncidentBusy(false);
+      /* Занятость чужого билета уже снята сменой расчёта, и новый пересчёт
+         мог её поставить снова — не трогаем. */
+      if (ticket === replanTicket.current) setIncidentBusy(false);
     }
   };
 
@@ -396,24 +415,45 @@ export function App() {
   const [eventBusy, setEventBusy] = useState(false);
   const [eventFailed, setEventFailed] = useState<string | null>(null);
 
+  /* Порядковый номер запроса /state. Ползунок времени шлёт запрос на каждый
+     шаг, ответы приходят вразнобой, и поздний ответ на 10:00 затирал бы уже
+     показанное 14:00. Кладём только ответ на последний запрос — и только если
+     открыт всё тот же день: обновление, заказанное событием старого расчёта,
+     уходит уже после смены и иначе оказалось бы «последним». */
+  const dayStateSeq = useRef(0);
+  const dayKey = useRef('');
+  dayKey.current = `${engineDay ?? ''}|${engineBase ?? ''}`;
+
   const refreshDayState = () => {
+    dayStateSeq.current += 1;
+    const seq = dayStateSeq.current;
+    const key = `${engineDay ?? ''}|${engineBase ?? ''}`;
     if (!engineDay) {
       setDayState(null);
       return;
     }
+    const current = () => seq === dayStateSeq.current && key === dayKey.current;
     loadDayState(engineDay, cut, engineBase)
-      .then(setDayState)
-      .catch(() => setDayState(null));
+      .then((state) => {
+        if (current()) setDayState(state);
+      })
+      .catch(() => {
+        if (current()) setDayState(null);
+      });
   };
 
   useEffect(refreshDayState, [engineDay, engineBase, cut]);
 
   const sendEvent = async (event: JournalEvent) => {
     if (!engineDay || eventBusy) return;
+    const ticket = replanTicket.current;
     setEventBusy(true);
     setEventFailed(null);
     try {
       await postEvent(engineDay, cut, event, engineBase);
+      /* Пока событие записывалось, открыли другой расчёт — его экран этим
+         ответом не трогаем. */
+      if (ticket !== replanTicket.current) return;
       refreshDayState();
       /* Закрепление — решение, после которого остаток дня надо пересобрать:
          движок пересчитывает от журнала, и окно правки показывает цену. */
@@ -432,9 +472,12 @@ export function App() {
         });
       }
     } catch (failure) {
-      setEventFailed(failure instanceof Error ? failure.message : 'Событие не записалось');
+      if (ticket !== replanTicket.current) return;
+      setEventFailed(
+        humanLine(failure, { title: 'Событие не записалось', hint: 'Повторите ещё раз.' })
+      );
     } finally {
-      setEventBusy(false);
+      if (ticket === replanTicket.current) setEventBusy(false);
     }
   };
 
@@ -461,7 +504,9 @@ export function App() {
       try {
         await adoptJournal(lastSpec.day, token, lastSpec.base);
       } catch (failure) {
-        setIncidentFailed(failure instanceof Error ? failure.message : 'Принять не удалось');
+        setIncidentFailed(
+          humanLine(failure, { title: 'Принять не удалось', hint: 'Нажмите «Принять» ещё раз.' })
+        );
         return;
       } finally {
         setIncidentBusy(false);
@@ -518,9 +563,10 @@ export function App() {
       showRun(entry.id);
     } catch (failure) {
       setSaveFailed(
-        failure instanceof Error
-          ? failure.message
-          : 'Запись не сохранилась. Пересчёт остаётся на экране — повторите попытку.'
+        humanLine(failure, {
+          title: 'Запись не сохранилась',
+          hint: 'Пересчёт остаётся на экране — повторите попытку.'
+        })
       );
     } finally {
       setSaving(false);
@@ -772,9 +818,10 @@ export function App() {
       openRun(entry.id);
     } catch (failure) {
       setManualFailed(
-        failure instanceof Error
-          ? failure.message
-          : 'День не пересчитался. Проверьте переменные и нажмите «Пересчитать» ещё раз.'
+        humanLine(failure, {
+          title: 'День не пересчитался',
+          hint: 'Проверьте переменные и нажмите «Пересчитать» ещё раз.'
+        })
       );
     } finally {
       setManualBusy(false);
@@ -804,9 +851,10 @@ export function App() {
       /* Движок не ответил или отказал — остаёмся на форме и говорим, что
          случилось. Уводить на пустой расчёт, которого нет, нельзя. */
       setSolveFailed(
-        failure instanceof Error
-          ? failure.message
-          : 'День не посчитался. Проверьте вводные — зону, состав смены, заявки — и запустите расчёт ещё раз.'
+        humanLine(failure, {
+          title: 'День не посчитался',
+          hint: 'Проверьте вводные — зону, состав смены, заявки — и запустите расчёт ещё раз.'
+        })
       );
     } finally {
       setSolving(false);
@@ -839,7 +887,7 @@ export function App() {
   const dayPending = error ? (
     <DayFail
       runCode={runCode(runId)}
-      message={error}
+      failure={error}
       onPickRun={pickAnotherRun}
       onHome={() => goSection('home')}
     />

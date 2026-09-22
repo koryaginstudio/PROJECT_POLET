@@ -15,9 +15,22 @@
         align-items: center;
         justify-content: center;
         font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
-        font-size: 15px;
-        color: #6b6b6b;
+        padding: 0 16px;
+        /* 16px и почти чёрный: заставку прогрева читают минуту-другую, и
+           серым мелким её разбирали с трудом. */
+        font-size: 16px;
+        line-height: 1.5;
+        color: #1f1f1d;
         background: #f6f6f4;
+      }
+      .boot__text {
+        max-width: 560px;
+      }
+      .boot__text p {
+        margin: 0 0 8px;
+      }
+      .boot__title {
+        font-weight: 600;
       }
     </style>
   </head>

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Button } from '../ds/components/core/Button.jsx';
 import { Icon } from '../ds/components/core/Icon.jsx';
 import type { RunPatch } from '../data/load.ts';
-import { RUNS } from '../data/load.ts';
+import { RUNS, runEntry } from '../data/load.ts';
 import type { RunRef } from '../data/registry.ts';
 import { useModalFocus } from './modal.ts';
 
@@ -73,6 +73,11 @@ export function RunEditDialog({ run, onClose, onSave, onDelete }: Props) {
 
   if (!run) return null;
 
+  /* Расчёт программы расчёта лежит в её архиве: номер и дата там свои, а
+     удалить запись оттуда нельзя — см. `updateRun` и `deleteRun`. Окно
+     говорит это одной фразой вместо полей, которые молча не сработали бы. */
+  const archived = runEntry(run.id)?.source === null;
+
   const trimmed = padTail(tail.trim());
   const code = PREFIX + trimmed;
   /* Номер обязан быть единственным: им расчёты различают вслух и им же
@@ -82,10 +87,14 @@ export function RunEditDialog({ run, onClose, onSave, onDelete }: Props) {
   /* Пустой номер и пустая дата не сохраняются: по ним запись находят в
      истории, и без них она перестаёт быть записью. Одна буква номером тоже
      не считается. */
-  const valid = trimmed.length > 0 && date.length > 0 && !taken;
+  const valid = archived || (trimmed.length > 0 && date.length > 0 && !taken);
 
   const save = () => {
     if (!valid) return;
+    if (archived) {
+      onSave({ note: note.trim() || undefined });
+      return;
+    }
     onSave({
       code,
       created: `${date}T${time || '00:00'}`,
@@ -109,8 +118,9 @@ export function RunEditDialog({ run, onClose, onSave, onDelete }: Props) {
         </div>
 
         <p className="runedit__lede">
-          Правится то, что завели вы: номер, время создания и заметка. Цифры плана правке не
-          подлежат — их посчитал движок.
+          {archived
+            ? 'Цифры плана, номер и дата правке не подлежат — их завела программа расчёта.'
+            : 'Правится то, что завели вы: номер, время создания и заметка. Цифры плана правке не подлежат — их посчитала программа расчёта.'}
         </p>
 
         <label className="runedit__field">
@@ -121,6 +131,7 @@ export function RunEditDialog({ run, onClose, onSave, onDelete }: Props) {
             </span>
             <input
               className="runedit__bare"
+              readOnly={archived}
               value={tail}
               onChange={(event) => setTail(tailOf(event.currentTarget.value))}
               placeholder="024"
@@ -143,6 +154,7 @@ export function RunEditDialog({ run, onClose, onSave, onDelete }: Props) {
             <input
               className="runedit__input"
               type="date"
+              readOnly={archived}
               value={date}
               onChange={(event) => setDate(event.currentTarget.value)}
             />
@@ -153,6 +165,7 @@ export function RunEditDialog({ run, onClose, onSave, onDelete }: Props) {
             <input
               className="runedit__input"
               type="time"
+              readOnly={archived}
               value={time}
               onChange={(event) => setTime(event.currentTarget.value)}
             />
@@ -170,10 +183,17 @@ export function RunEditDialog({ run, onClose, onSave, onDelete }: Props) {
           />
         </label>
 
-        <p className="runedit__note">
-          Правки хранятся в этом браузере: сервера у нас пока нет. Снять их разом можно в
-          настройках, на вкладке «Данные».
-        </p>
+        {archived ? (
+          <p className="runedit__archived">
+            Этот расчёт хранится в архиве программы расчёта: удалить его отсюда нельзя, можно
+            оставить заметку.
+          </p>
+        ) : (
+          <p className="runedit__note">
+            Правки хранятся в этом браузере: сервера у нас пока нет. Снять их разом можно в
+            настройках, на вкладке «Данные».
+          </p>
+        )}
 
         <div className="runedit__actions">
           <Button variant="primary" size="sm" onClick={save} disabled={!valid}>
@@ -185,7 +205,7 @@ export function RunEditDialog({ run, onClose, onSave, onDelete }: Props) {
 
           <span className="runedit__spacer" />
 
-          {confirming ? (
+          {archived ? null : confirming ? (
             <>
               <span className="runedit__ask">Удалить запись?</span>
               <button type="button" className="runedit__danger" onClick={onDelete}>

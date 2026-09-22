@@ -146,7 +146,7 @@ export interface EngineWarming {
 export async function engineWarming(): Promise<EngineWarming | null> {
   if (base === null) return null;
   try {
-    const response = await fetch(`${base}/health`);
+    const response = await fetch(`${base}/health`, { signal: AbortSignal.timeout(PROBE_TIMEOUT) });
     const body = (await response.json()) as { warming?: EngineWarming | null };
     return body.warming ?? null;
   } catch {
@@ -154,15 +154,25 @@ export async function engineWarming(): Promise<EngineWarming | null> {
   }
 }
 
+/** Отчего не вышел обмен с движком. Нужно `humanError` (errors.ts): «не
+    запущен», «думает дольше срока» и «отказал с объяснением» — три разных
+    совета человеку, и различать их по тексту сообщения было бы хрупко. */
+export type EngineFailure = 'offline' | 'timeout' | 'garbled' | 'refused';
+
 export class EngineError extends Error {
-  constructor(message: string) {
+  /** Код ответа сервера, если ответ был. */
+  readonly status: number | null;
+  readonly failure: EngineFailure;
+  constructor(message: string, failure: EngineFailure = 'refused', status: number | null = null) {
     super(message);
     this.name = 'EngineError';
+    this.failure = failure;
+    this.status = status;
   }
 }
 
 async function call<T>(path: string, init?: RequestInit, timeout = CALL_TIMEOUT): Promise<T> {
-  if (!base) throw new EngineError('Движок не запущен');
+  if (!base) throw new EngineError('Движок не запущен', 'offline');
   let response: Response;
   try {
     response = await fetch(`${base}${path}`, { ...init, signal: AbortSignal.timeout(timeout) });
@@ -171,19 +181,19 @@ async function call<T>(path: string, init?: RequestInit, timeout = CALL_TIMEOUT)
        движок есть, но занят или завис, и «проверьте, что запущен» здесь
        посылает искать не там. */
     if ((error as { name?: string })?.name === 'TimeoutError') {
-      throw new EngineError(`Движок не ответил за ${Math.round(timeout / 1000)} с`);
+      throw new EngineError(`Движок не ответил за ${Math.round(timeout / 1000)} с`, 'timeout');
     }
-    throw new EngineError('Движок не отвечает — проверьте, что он запущен');
+    throw new EngineError('Движок не отвечает — проверьте, что он запущен', 'offline');
   }
   let body: unknown;
   try {
     body = await response.json();
   } catch {
-    throw new EngineError(`Движок ответил не JSON (${response.status})`);
+    throw new EngineError(`Движок ответил не JSON (${response.status})`, 'garbled', response.status);
   }
   if (!response.ok) {
     const said = (body as { error?: string }).error;
-    throw new EngineError(said ?? `Движок ответил ${response.status}`);
+    throw new EngineError(said ?? `Движок ответил ${response.status}`, 'refused', response.status);
   }
   return body as T;
 }
@@ -207,18 +217,22 @@ export const createEngineRun = (day: string, params: EngineParams, note = '') =>
   );
 
 /** Все четыре формы одного расчёта. */
+/* Срок — как у счёта: формы расчёта с переменными, которых нет в кэше,
+   движок пересчитывает при запросе, и это до 45 с. */
 export const loadEngineForms = (id: string) =>
-  call<EngineForms>(`/runs/${encodeURIComponent(id)}`);
+  call<EngineForms>(`/runs/${encodeURIComponent(id)}`, undefined, SOLVE_TIMEOUT);
 
 /** Четыре формы целого дня — GET /api/day. Нужны пересчёту из архива:
     объяснение, сводка и график — дня, от которого он отпочковался. */
+/* Срок — как у счёта: холодный день движок считает до восьми секунд. */
 export const loadEngineDay = (day: string) =>
-  call<Omit<EngineForms, 'run'>>(`/day?day=${encodeURIComponent(day)}`);
+  call<Omit<EngineForms, 'run'>>(`/day?day=${encodeURIComponent(day)}`, undefined, SOLVE_TIMEOUT);
 
 /** Одна форма. Базам данных нужен только план, и тянуть ради них
     объяснение на полтораста килобайт незачем. */
+/* Срок — как у `loadEngineForms`: форма может пересчитываться на лету. */
 export const loadEngineForm = <T>(id: string, kind: string) =>
-  call<T>(`/runs/${encodeURIComponent(id)}/${kind}`);
+  call<T>(`/runs/${encodeURIComponent(id)}/${kind}`, undefined, SOLVE_TIMEOUT);
 
 /** Заметка человека к расчёту. Движок её не читает — хранит и отдаёт. */
 export const noteEngineRun = (id: string, note: string) =>
@@ -450,7 +464,10 @@ export const saveReplan = (spec: IncidentSpec, note = '') =>
         base: spec.base
       }
     })
-  });
+  },
+  /* Сохранение не считает заново, но при устаревшем кэше движок достраивает
+     план сам — пятнадцати секунд на это мало. */
+  SOLVE_TIMEOUT);
 
 /* ─── сохранённые сравнения ──────────────────────────────────────────────
 
@@ -531,12 +548,14 @@ export type JournalEvent =
    журнал, заведённый от его плана. Пусто — журнал плана компании. */
 const baseQuery = (base?: string) => (base ? `&base=${encodeURIComponent(base)}` : '');
 
+/* У ручек журнала срок счёта: событие, состояние и «Принять» заставляют
+   движок проиграть день заново, а у непрогретого расчёта это не секунды. */
 export const postEvent = (day: string, at: number, event: JournalEvent, base?: string) =>
   call<{ recorded: Record<string, unknown>; summary: Record<string, unknown> }>('/event', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ day, at, base, ...event })
-  });
+  }, SOLVE_TIMEOUT);
 
 /** Что движок знает о дне по отчётам диспетчера. */
 export interface DayState {
@@ -553,7 +572,7 @@ export interface DayState {
 }
 
 export const loadDayState = (day: string, at: number, base?: string) =>
-  call<DayState>(`/state?day=${encodeURIComponent(day)}&at=${at}${baseQuery(base)}`);
+  call<DayState>(`/state?day=${encodeURIComponent(day)}&at=${at}${baseQuery(base)}`, undefined, SOLVE_TIMEOUT);
 
 /** «Принять» пересчёт от журнала: показанный план становится назначением
     дня. Показ журнал не трогает; если после него что-то сообщили — 409,
@@ -563,7 +582,7 @@ export const adoptJournal = (day: string, token: string, base?: string) =>
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ day, token, base })
-  });
+  }, SOLVE_TIMEOUT);
 
 /** Забыть всё сообщённое по дню и вернуться к утреннему плану. Нужен и на
     защите: сценарий прогнали, показали — и день снова чистый. */
@@ -572,7 +591,7 @@ export const resetJournal = (day: string, base?: string) =>
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ day, base })
-  });
+  }, SOLVE_TIMEOUT);
 
 /* ─── сколько ещё людей нужно ────────────────────────────────────────────
 
@@ -601,5 +620,6 @@ export interface Staffing {
   still_unassigned: string[];
 }
 
+/* Срок счёта: «сколько людей» — это несколько прогонов планировщика, до минуты. */
 export const loadStaffing = (day: string, base?: string) =>
-  call<Staffing>(`/staffing?day=${encodeURIComponent(day)}${baseQuery(base)}`);
+  call<Staffing>(`/staffing?day=${encodeURIComponent(day)}${baseQuery(base)}`, undefined, SOLVE_TIMEOUT);
