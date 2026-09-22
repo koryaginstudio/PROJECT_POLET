@@ -130,7 +130,7 @@ class Journal:
         p = cls.path(day, base)
         if not p.exists():
             return cls(day=day, base=base)
-        raw = json.loads(p.read_text())
+        raw = json.loads(p.read_text(encoding="utf-8"))
         return cls(day=day, assignment=raw.get("assignment", {}),
                    events=raw.get("events", []), base=base)
 
@@ -139,7 +139,7 @@ class Journal:
         self.path(self.day, self.base).write_text(json.dumps(
             {"day": self.day, "base": self.base, "assignment": self.assignment,
              "events": self.events},
-            ensure_ascii=False, indent=1))
+            ensure_ascii=False, indent=1), encoding="utf-8")
 
     # ---------- наполнение ----------
 

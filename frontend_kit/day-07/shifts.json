@@ -24,7 +24,7 @@
    "09:00": 6,
    "10:00": 2
   },
-  "expected_coverage": 65.7
+  "expected_coverage": 65.1
  },
  "recommended": {
   "profile": {
@@ -34,7 +34,7 @@
    "10:00": 4,
    "12:00": 5
   },
-  "expected_coverage": 80.5,
+  "expected_coverage": 80.6,
   "starts_by_engineer": {
    "E00": "12:00",
    "E01": "12:00",

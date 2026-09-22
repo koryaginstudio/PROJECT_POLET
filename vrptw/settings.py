@@ -80,14 +80,15 @@ class Settings:
         if not settings_file().exists():
             return cls()
         try:
-            raw = json.loads(settings_file().read_text())
+            raw = json.loads(settings_file().read_text(encoding="utf-8"))
         except Exception:      # noqa: BLE001 — битый файл не повод падать
             return cls()
         known = {f.name for f in fields(cls)}
         return cls(**{k: float(v) for k, v in raw.items() if k in known})
 
     def save(self) -> None:
-        settings_file().write_text(json.dumps(asdict(self), ensure_ascii=False, indent=1))
+        settings_file().write_text(json.dumps(asdict(self), ensure_ascii=False, indent=1),
+                                   encoding="utf-8")
 
     # ---------- правка ----------
 

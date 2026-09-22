@@ -188,7 +188,7 @@ def _search(query: str, limit: int = 1) -> list[dict]:
            f"&countrycodes=ru&q=" + _urlencode(query))
     cmd = ["curl", "-s", "-w", "\n%{http_code}", "--max-time", "25",
            "-H", f"User-Agent: {USER_AGENT}", url]
-    out = subprocess.run(cmd, capture_output=True, text=True).stdout
+    out = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8").stdout
     if not out:
         raise ОтказСервиса("пустой ответ")
 
@@ -218,7 +218,7 @@ def _search_photon(query: str) -> list[dict]:
     url = f"{PHOTON}?limit=1&lang=default&q=" + _urlencode(query)
     cmd = ["curl", "-s", "-w", "\n%{http_code}", "--max-time", "25",
            "-H", f"User-Agent: {USER_AGENT}", url]
-    out = subprocess.run(cmd, capture_output=True, text=True).stdout
+    out = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8").stdout
     if not out:
         raise ОтказСервиса("photon: пустой ответ")
     body, _, code = out.rpartition("\n")

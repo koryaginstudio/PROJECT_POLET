@@ -169,16 +169,25 @@ def отпечаток_кода() -> str:
     # включая ручку «жив ли он». Пропуск безопаснее: в худшем случае
     # отпечаток не заметит правку в файле, который всё равно не читается.
     файлы = [p for p in файлы if p.is_file()]
+    return _хэш_файлов(файлы, корень.parent)
 
+
+def _хэш_файлов(файлы, основа: Path) -> str:
+    """Хэш набора файлов: имена от `основа` и содержимое.
+
+    Имя в хэш тоже: переименование модуля меняет поведение импорта, а
+    содержимое при этом может не измениться ни на байт. Имя — с прямыми
+    слэшами, содержимое — с переводами строк LF: на Windows путь пишется
+    через «\\», а Git for Windows по умолчанию ставит CRLF, и отпечаток
+    расходился бы с нашим — готовые планы не подошли бы, и первый запуск у
+    проверяющего снова шёл бы минуты."""
     h = hashlib.sha1()
     for путь in файлы:
-        # Имя в хэш тоже: переименование модуля меняет поведение импорта,
-        # а содержимое при этом может не измениться ни на байт.
         try:
-            h.update(str(путь.relative_to(корень.parent)).encode("utf-8"))
+            h.update(путь.relative_to(основа).as_posix().encode("utf-8"))
         except ValueError:
             h.update(путь.name.encode("utf-8"))
-        h.update(путь.read_bytes())
+        h.update(путь.read_bytes().replace(b"\r\n", b"\n"))
     return h.hexdigest()[:8]
 
 
@@ -435,7 +444,7 @@ class Stand:
             путь = _кэш(имя)
             if путь is not None:
                 try:
-                    сырой = json.loads(путь.read_text())
+                    сырой = json.loads(путь.read_text(encoding="utf-8"))
                     plan = _план_из_словаря(day, сырой)
                     if plan.check_invariants(day):
                         plan = None
@@ -454,7 +463,7 @@ class Stand:
                     raise RuntimeError(f"план невалиден: {problems[:2]}")
                 CACHE_DIR.mkdir(exist_ok=True)
                 (CACHE_DIR / имя).write_text(json.dumps(
-                    _план_в_словарь(plan, секунд), ensure_ascii=False))
+                    _план_в_словарь(plan, секунд), ensure_ascii=False), encoding="utf-8")
             with self._lock:
                 self._days[ключ] = (day, plan)
                 self._откуда[ключ] = откуда
@@ -528,7 +537,7 @@ class Stand:
         path = CACHE_DIR / f"day-{slug(ident)}-{ключ_кэша(st)}.json"
         откуда = self._откуда.get(ключ)
         if not fresh and откуда is not None and (откуда / path.name).exists():
-            forms = json.loads((откуда / path.name).read_text())
+            forms = json.loads((откуда / path.name).read_text(encoding="utf-8"))
             with self._lock:
                 self._forms[ключ] = forms
             return forms
@@ -559,7 +568,7 @@ class Stand:
             "simulation": build_simulation(day, plan, runs=MC_RUNS, seed=rng),
             "shifts": build_shifts(day, starts, coverage_now, coverage_rec),
         }
-        path.write_text(json.dumps(forms, ensure_ascii=False))
+        path.write_text(json.dumps(forms, ensure_ascii=False), encoding="utf-8")
         with self._lock:
             self._forms[ключ] = forms
         return forms
@@ -1485,7 +1494,7 @@ class Stand:
         # перезапуска сервера сохранённая карточка открывалась другим планом.
         replans_dir().mkdir(parents=True, exist_ok=True)
         (replans_dir() / f"{запись['id']}.json").write_text(
-            json.dumps(готовое, ensure_ascii=False))
+            json.dumps(готовое, ensure_ascii=False), encoding="utf-8")
         return запись
 
     def staffing(self, ident: str, base: str | None = None) -> dict:
@@ -1504,7 +1513,7 @@ class Stand:
             путь = _кэш(имя)
             if путь is not None:
                 try:
-                    return json.loads(путь.read_text())
+                    return json.loads(путь.read_text(encoding="utf-8"))
                 except (json.JSONDecodeError, OSError):
                     pass
             day, _ = self.day_and_plan(ident, st)
@@ -1512,7 +1521,8 @@ class Stand:
             ответ = {"schema": SCHEMA_VERSION, **ответ,
                      "meta": {"day": day.ident, "date": day.date}}
             CACHE_DIR.mkdir(exist_ok=True)
-            (CACHE_DIR / имя).write_text(json.dumps(ответ, ensure_ascii=False))
+            (CACHE_DIR / имя).write_text(json.dumps(ответ, ensure_ascii=False),
+                                         encoding="utf-8")
             return ответ
 
     @staticmethod
@@ -1620,7 +1630,7 @@ class Stand:
         сохранённый = replans_dir() / f"{run_id}.json"
         if замысел and сохранённый.exists():
             return {"run": {**запись, "forms": self._формы_записи(запись)},
-                    "plan": json.loads(сохранённый.read_text())}
+                    "plan": json.loads(сохранённый.read_text(encoding="utf-8"))}
         if замысел:
             # Записи, сохранённые до 22 сентября, своего плана не хранят —
             # только замысел: их по-прежнему пересчитываем.
@@ -3339,7 +3349,7 @@ def check():
     # он загрузил архив до того, как первый в него дописал.
     try:
         второй = Stand()
-        до_двоих = {r["id"] for r in json.loads(runs_path().read_text())}
+        до_двоих = {r["id"] for r in json.loads(runs_path().read_text(encoding="utf-8"))}
 
         # Сохраняется только показанное: оба стенда сперва показывают.
         get("/api/replan?day=восток&at=820&urgent=2")
@@ -3351,7 +3361,7 @@ def check():
             {"day": "восток", "at": 820, "urgent": 2},
             source="sim", note="писал замер")
 
-        на_диске = json.loads(runs_path().read_text())
+        на_диске = json.loads(runs_path().read_text(encoding="utf-8"))
         ids = [r["id"] for r in на_диске]
         коды = [r["code"] for r in на_диске]
         ok_оба = первый_id in ids and запись_2["id"] in ids
@@ -3691,7 +3701,7 @@ def check():
             for name, payload in формы.items():
                 if name in ("plan", "explain", "simulation", "shifts"):
                     (Path(tmp) / f"{name}.json").write_text(
-                        json.dumps(payload, ensure_ascii=False))
+                        json.dumps(payload, ensure_ascii=False), encoding="utf-8")
             return check_contract(Path(tmp))
 
     # Синтетический день на заводских настройках — как было.
@@ -4012,6 +4022,9 @@ def check():
     ok_а, bad_а = _проверка_отпечатка_адресов()
     runs_ok += ok_а
     failed += bad_а
+    ok_w, bad_w = _проверка_отпечатка_crlf()
+    runs_ok += ok_w
+    failed += bad_w
 
     ok_в, bad_в = _проверка_выгрузок(base)
     runs_ok += ok_в
@@ -4059,6 +4072,29 @@ def _проверка_отпечатка_адресов() -> tuple[int, int]:
         return 1, 0
     print(f"  ✗ правка координаты в кэше адресов не меняет отпечаток "
           f"({отпечатки[0]}): кэш отдаст план со старыми точками")
+    return 0, 1
+
+
+def _проверка_отпечатка_crlf() -> tuple[int, int]:
+    """Отпечаток на Windows тот же: переводы строк CRLF его не меняют.
+
+    Git for Windows по умолчанию ставит CRLF, и без этого у проверяющего
+    готовые планы не подходили бы. Один и тот же файл в двух каталогах — с
+    LF и с CRLF. Разделитель пути «\\» закрыт `as_posix()`; на Mac его не
+    построить."""
+    import tempfile
+    отпечатки = []
+    for перевод in ("\n", "\r\n"):
+        основа = Path(tempfile.mkdtemp(prefix="vrptw-check-crlf-"))
+        файл = основа / "vrptw" / "пример.py"
+        файл.parent.mkdir()
+        файл.write_bytes(перевод.join(["# пример", "x = 'кириллица'", ""]).encode("utf-8"))
+        отпечатки.append(_хэш_файлов([файл], основа))
+    if отпечатки[0] == отпечатки[1]:
+        print(f"  ✓ {'отпечаток не видит CRLF':<38}{отпечатки[0]}")
+        return 1, 0
+    print(f"  ✗ отпечаток зависит от переводов строк ({отпечатки[0]} ≠ {отпечатки[1]}): "
+          f"на Windows готовые планы не подойдут")
     return 0, 1
 
 

@@ -158,7 +158,7 @@ def main():
         if g or i:
             print(f"  {'  '+reason:<20}{g:>10.2f}{i:>13.2f}")
 
-    with open("bench_results.json", "w") as f:
+    with open("bench_results.json", "w", encoding="utf-8") as f:
         json.dump(rows, f, ensure_ascii=False, indent=2, default=str)
     print("\nПодробности: bench_results.json")
 

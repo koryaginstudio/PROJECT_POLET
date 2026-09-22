@@ -9,7 +9,7 @@
  "orders": {
   "R0000": {
    "assigned_to": "E09",
-   "summary": "назначен Семёнов: дешевле всех остальных из 1 подходящих",
+   "summary": "назначен Семёнов: единственный, кому она подходит и влезает в маршрут",
    "candidates": [
     {
      "engineer_id": "E00",
@@ -51,24 +51,24 @@
      "engineer_id": "E06",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E07",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E08",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E09",
      "verdict": "chosen",
-     "cost": 204.4,
+     "cost": 202.4,
      "note": "назначен"
     },
     {
@@ -86,32 +86,32 @@
    ]
   },
   "R0001": {
-   "assigned_to": "E00",
-   "summary": "назначен Соколов: дешевле всех остальных из 5 подходящих",
+   "assigned_to": "E05",
+   "summary": "назначен Новиков: дешевле всех остальных из 4 подходящих",
    "candidates": [
     {
      "engineer_id": "E00",
-     "verdict": "chosen",
-     "cost": 91.0,
-     "note": "назначен"
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
     },
     {
      "engineer_id": "E01",
      "verdict": "feasible",
      "cost": 338.0,
-     "note": "мог бы, но обошёлся бы дороже на 247"
+     "note": "мог бы, но обошёлся бы дороже на 239"
     },
     {
      "engineer_id": "E02",
      "verdict": "feasible",
      "cost": 226.5,
-     "note": "мог бы, но обошёлся бы дороже на 136"
+     "note": "мог бы, но обошёлся бы дороже на 127"
     },
     {
      "engineer_id": "E03",
      "verdict": "feasible",
-     "cost": 191.4,
-     "note": "мог бы, но обошёлся бы дороже на 100"
+     "cost": 207.7,
+     "note": "мог бы, но обошёлся бы дороже на 108"
     },
     {
      "engineer_id": "E04",
@@ -121,27 +121,27 @@
     },
     {
      "engineer_id": "E05",
-     "verdict": "feasible",
-     "cost": 157.7,
-     "note": "мог бы, но обошёлся бы дороже на 67"
+     "verdict": "chosen",
+     "cost": 99.3,
+     "note": "назначен"
     },
     {
      "engineer_id": "E06",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E07",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E08",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E09",
@@ -164,8 +164,8 @@
    ]
   },
   "R0002": {
-   "assigned_to": "E05",
-   "summary": "назначен Новиков: дешевле всех остальных из 4 подходящих",
+   "assigned_to": "E09",
+   "summary": "назначен Семёнов: дешевле всех остальных из 5 подходящих",
    "candidates": [
     {
      "engineer_id": "E00",
@@ -199,33 +199,33 @@
     },
     {
      "engineer_id": "E05",
-     "verdict": "chosen",
-     "cost": 82.3,
-     "note": "назначен"
+     "verdict": "feasible",
+     "cost": 101.5,
+     "note": "мог бы, но обошёлся бы дороже на 34"
     },
     {
      "engineer_id": "E06",
      "verdict": "feasible",
      "cost": 166.4,
-     "note": "мог бы, но обошёлся бы дороже на 84"
+     "note": "мог бы, но обошёлся бы дороже на 98"
     },
     {
      "engineer_id": "E07",
      "verdict": "feasible",
-     "cost": 237.4,
-     "note": "мог бы, но обошёлся бы дороже на 155"
+     "cost": 256.8,
+     "note": "мог бы, но обошёлся бы дороже на 189"
     },
     {
      "engineer_id": "E08",
      "verdict": "feasible",
      "cost": 179.0,
-     "note": "мог бы, но обошёлся бы дороже на 97"
+     "note": "мог бы, но обошёлся бы дороже на 111"
     },
     {
      "engineer_id": "E09",
-     "verdict": "no_room",
-     "cost": null,
-     "note": "маршрут уже занят в это время"
+     "verdict": "chosen",
+     "cost": 68.0,
+     "note": "назначен"
     },
     {
      "engineer_id": "E10",
@@ -285,19 +285,19 @@
      "engineer_id": "E06",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E07",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E08",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E09",
@@ -363,19 +363,19 @@
      "engineer_id": "E06",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E07",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E08",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E09",
@@ -399,7 +399,7 @@
   },
   "R0005": {
    "assigned_to": "E05",
-   "summary": "назначен Новиков: дешевле всех остальных из 1 подходящих",
+   "summary": "назначен Новиков: единственный, кому она подходит и влезает в маршрут",
    "candidates": [
     {
      "engineer_id": "E00",
@@ -434,7 +434,7 @@
     {
      "engineer_id": "E05",
      "verdict": "chosen",
-     "cost": 136.4,
+     "cost": 132.4,
      "note": "назначен"
     },
     {
@@ -477,13 +477,13 @@
   },
   "R0006": {
    "assigned_to": "E03",
-   "summary": "назначен Волков: дешевле всех остальных из 4 подходящих",
+   "summary": "назначен Волков: дешевле всех остальных из 5 подходящих",
    "candidates": [
     {
      "engineer_id": "E00",
-     "verdict": "feasible",
-     "cost": 161.5,
-     "note": "мог бы, но обошёлся бы дороже на 77"
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
     },
     {
      "engineer_id": "E01",
@@ -500,7 +500,7 @@
     {
      "engineer_id": "E03",
      "verdict": "chosen",
-     "cost": 84.3,
+     "cost": 111.6,
      "note": "назначен"
     },
     {
@@ -511,45 +511,45 @@
     },
     {
      "engineer_id": "E05",
-     "verdict": "no_room",
-     "cost": null,
-     "note": "маршрут уже занят в это время"
+     "verdict": "feasible",
+     "cost": 244.8,
+     "note": "мог бы, но обошёлся бы дороже на 133"
     },
     {
      "engineer_id": "E06",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E07",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E08",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E09",
-     "verdict": "no_room",
-     "cost": null,
-     "note": "маршрут уже занят в это время"
+     "verdict": "feasible",
+     "cost": 269.6,
+     "note": "мог бы, но обошёлся бы дороже на 158"
     },
     {
      "engineer_id": "E10",
      "verdict": "feasible",
      "cost": 230.9,
-     "note": "мог бы, но обошёлся бы дороже на 147"
+     "note": "мог бы, но обошёлся бы дороже на 119"
     },
     {
      "engineer_id": "E11",
      "verdict": "feasible",
-     "cost": 232.1,
-     "note": "мог бы, но обошёлся бы дороже на 148"
+     "cost": 226.6,
+     "note": "мог бы, но обошёлся бы дороже на 115"
     }
    ]
   },
@@ -560,8 +560,8 @@
     {
      "engineer_id": "E00",
      "verdict": "feasible",
-     "cost": 229.8,
-     "note": "мог бы, но обошёлся бы дороже на 112"
+     "cost": 180.0,
+     "note": "мог бы, но обошёлся бы дороже на 86"
     },
     {
      "engineer_id": "E01",
@@ -577,9 +577,9 @@
     },
     {
      "engineer_id": "E03",
-     "verdict": "feasible",
-     "cost": 146.7,
-     "note": "мог бы, но обошёлся бы дороже на 29"
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
     },
     {
      "engineer_id": "E04",
@@ -590,50 +590,50 @@
     {
      "engineer_id": "E05",
      "verdict": "chosen",
-     "cost": 117.5,
+     "cost": 94.3,
      "note": "назначен"
     },
     {
      "engineer_id": "E06",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E07",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E08",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E09",
-     "verdict": "no_room",
-     "cost": null,
-     "note": "маршрут уже занят в это время"
+     "verdict": "feasible",
+     "cost": 170.5,
+     "note": "мог бы, но обошёлся бы дороже на 76"
     },
     {
      "engineer_id": "E10",
      "verdict": "feasible",
      "cost": 221.2,
-     "note": "мог бы, но обошёлся бы дороже на 104"
+     "note": "мог бы, но обошёлся бы дороже на 127"
     },
     {
      "engineer_id": "E11",
      "verdict": "feasible",
-     "cost": 193.6,
-     "note": "мог бы, но обошёлся бы дороже на 76"
+     "cost": 188.2,
+     "note": "мог бы, но обошёлся бы дороже на 94"
     }
    ]
   },
   "R0008": {
    "assigned_to": "E07",
-   "summary": "назначен Егоров: дешевле всех остальных из 3 подходящих",
+   "summary": "назначен Егоров: дешевле всех остальных из 5 подходящих",
    "candidates": [
     {
      "engineer_id": "E00",
@@ -663,13 +663,13 @@
      "engineer_id": "E04",
      "verdict": "feasible",
      "cost": 191.6,
-     "note": "мог бы, но обошёлся бы дороже на 120"
+     "note": "мог бы, но обошёлся бы дороже на 111"
     },
     {
      "engineer_id": "E05",
-     "verdict": "no_room",
-     "cost": null,
-     "note": "маршрут уже занят в это время"
+     "verdict": "feasible",
+     "cost": 294.3,
+     "note": "мог бы, но обошёлся бы дороже на 214"
     },
     {
      "engineer_id": "E06",
@@ -680,7 +680,7 @@
     {
      "engineer_id": "E07",
      "verdict": "chosen",
-     "cost": 71.9,
+     "cost": 80.6,
      "note": "назначен"
     },
     {
@@ -691,9 +691,9 @@
     },
     {
      "engineer_id": "E09",
-     "verdict": "no_room",
-     "cost": null,
-     "note": "маршрут уже занят в это время"
+     "verdict": "feasible",
+     "cost": 241.4,
+     "note": "мог бы, но обошёлся бы дороже на 161"
     },
     {
      "engineer_id": "E10",
@@ -704,20 +704,20 @@
     {
      "engineer_id": "E11",
      "verdict": "feasible",
-     "cost": 168.0,
-     "note": "мог бы, но обошёлся бы дороже на 96"
+     "cost": 165.5,
+     "note": "мог бы, но обошёлся бы дороже на 85"
     }
    ]
   },
   "R0009": {
-   "assigned_to": "E05",
-   "summary": "назначен Новиков: дешевле всех остальных из 2 подходящих",
+   "assigned_to": "E00",
+   "summary": "назначен Соколов: дешевле всех остальных из 4 подходящих",
    "candidates": [
     {
      "engineer_id": "E00",
-     "verdict": "no_room",
-     "cost": null,
-     "note": "маршрут уже занят в это время"
+     "verdict": "chosen",
+     "cost": 123.9,
+     "note": "назначен"
     },
     {
      "engineer_id": "E01",
@@ -745,33 +745,33 @@
     },
     {
      "engineer_id": "E05",
-     "verdict": "chosen",
-     "cost": 120.2,
-     "note": "назначен"
+     "verdict": "feasible",
+     "cost": 145.9,
+     "note": "мог бы, но обошёлся бы дороже на 22"
     },
     {
      "engineer_id": "E06",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E07",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E08",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E09",
-     "verdict": "no_room",
-     "cost": null,
-     "note": "маршрут уже занят в это время"
+     "verdict": "feasible",
+     "cost": 172.3,
+     "note": "мог бы, но обошёлся бы дороже на 48"
     },
     {
      "engineer_id": "E10",
@@ -782,14 +782,14 @@
     {
      "engineer_id": "E11",
      "verdict": "feasible",
-     "cost": 195.7,
-     "note": "мог бы, но обошёлся бы дороже на 76"
+     "cost": 190.3,
+     "note": "мог бы, но обошёлся бы дороже на 66"
     }
    ]
   },
   "R0010": {
    "assigned_to": "E08",
-   "summary": "назначен Павлов: дешевле всех остальных из 5 подходящих",
+   "summary": "назначен Павлов: дешевле всех остальных из 6 подходящих",
    "candidates": [
     {
      "engineer_id": "E00",
@@ -823,9 +823,9 @@
     },
     {
      "engineer_id": "E05",
-     "verdict": "no_room",
-     "cost": null,
-     "note": "маршрут уже занят в это время"
+     "verdict": "feasible",
+     "cost": 157.3,
+     "note": "мог бы, но обошёлся бы дороже на 87"
     },
     {
      "engineer_id": "E06",
@@ -836,8 +836,8 @@
     {
      "engineer_id": "E07",
      "verdict": "feasible",
-     "cost": 162.1,
-     "note": "мог бы, но обошёлся бы дороже на 92"
+     "cost": 152.8,
+     "note": "мог бы, но обошёлся бы дороже на 83"
     },
     {
      "engineer_id": "E08",
@@ -848,8 +848,8 @@
     {
      "engineer_id": "E09",
      "verdict": "feasible",
-     "cost": 228.2,
-     "note": "мог бы, но обошёлся бы дороже на 158"
+     "cost": 134.6,
+     "note": "мог бы, но обошёлся бы дороже на 64"
     },
     {
      "engineer_id": "E10",
@@ -860,8 +860,8 @@
     {
      "engineer_id": "E11",
      "verdict": "feasible",
-     "cost": 148.9,
-     "note": "мог бы, но обошёлся бы дороже на 79"
+     "cost": 143.5,
+     "note": "мог бы, но обошёлся бы дороже на 73"
     }
    ]
   },
@@ -902,26 +902,26 @@
     {
      "engineer_id": "E05",
      "verdict": "chosen",
-     "cost": 93.9,
+     "cost": 86.3,
      "note": "назначен"
     },
     {
      "engineer_id": "E06",
      "verdict": "feasible",
      "cost": 212.0,
-     "note": "мог бы, но обошёлся бы дороже на 118"
+     "note": "мог бы, но обошёлся бы дороже на 126"
     },
     {
      "engineer_id": "E07",
      "verdict": "feasible",
-     "cost": 225.7,
-     "note": "мог бы, но обошёлся бы дороже на 132"
+     "cost": 244.9,
+     "note": "мог бы, но обошёлся бы дороже на 159"
     },
     {
      "engineer_id": "E08",
      "verdict": "feasible",
      "cost": 171.4,
-     "note": "мог бы, но обошёлся бы дороже на 78"
+     "note": "мог бы, но обошёлся бы дороже на 85"
     },
     {
      "engineer_id": "E09",
@@ -987,19 +987,19 @@
      "engineer_id": "E06",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E07",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E08",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E09",
@@ -1023,7 +1023,7 @@
   },
   "R0013": {
    "assigned_to": "E07",
-   "summary": "назначен Егоров: дешевле всех остальных из 1 подходящих",
+   "summary": "назначен Егоров: единственный, кому она подходит и влезает в маршрут",
    "candidates": [
     {
      "engineer_id": "E00",
@@ -1070,7 +1070,7 @@
     {
      "engineer_id": "E07",
      "verdict": "chosen",
-     "cost": 104.2,
+     "cost": 151.2,
      "note": "назначен"
     },
     {
@@ -1100,8 +1100,8 @@
    ]
   },
   "R0014": {
-   "assigned_to": null,
-   "summary": "все подходящие инженеры заняты в это время",
+   "assigned_to": "E07",
+   "summary": "назначен Егоров: единственный, кому она подходит и влезает в маршрут",
    "candidates": [
     {
      "engineer_id": "E00",
@@ -1147,9 +1147,9 @@
     },
     {
      "engineer_id": "E07",
-     "verdict": "no_room",
-     "cost": null,
-     "note": "маршрут уже занят в это время"
+     "verdict": "chosen",
+     "cost": 146.6,
+     "note": "назначен"
     },
     {
      "engineer_id": "E08",
@@ -1221,19 +1221,19 @@
      "engineer_id": "E06",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E07",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E08",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E09",
@@ -1257,7 +1257,7 @@
   },
   "R0016": {
    "assigned_to": "E08",
-   "summary": "назначен Павлов: дешевле всех остальных из 5 подходящих",
+   "summary": "назначен Павлов: дешевле всех остальных из 6 подходящих",
    "candidates": [
     {
      "engineer_id": "E00",
@@ -1291,9 +1291,9 @@
     },
     {
      "engineer_id": "E05",
-     "verdict": "no_room",
-     "cost": null,
-     "note": "маршрут уже занят в это время"
+     "verdict": "feasible",
+     "cost": 156.9,
+     "note": "мог бы, но обошёлся бы дороже на 94"
     },
     {
      "engineer_id": "E06",
@@ -1304,8 +1304,8 @@
     {
      "engineer_id": "E07",
      "verdict": "feasible",
-     "cost": 136.0,
-     "note": "мог бы, но обошёлся бы дороже на 73"
+     "cost": 144.7,
+     "note": "мог бы, но обошёлся бы дороже на 82"
     },
     {
      "engineer_id": "E08",
@@ -1316,8 +1316,8 @@
     {
      "engineer_id": "E09",
      "verdict": "feasible",
-     "cost": 111.0,
-     "note": "мог бы, но обошёлся бы дороже на 48"
+     "cost": 98.2,
+     "note": "мог бы, но обошёлся бы дороже на 36"
     },
     {
      "engineer_id": "E10",
@@ -1328,14 +1328,14 @@
     {
      "engineer_id": "E11",
      "verdict": "feasible",
-     "cost": 114.8,
-     "note": "мог бы, но обошёлся бы дороже на 52"
+     "cost": 109.6,
+     "note": "мог бы, но обошёлся бы дороже на 47"
     }
    ]
   },
   "R0017": {
    "assigned_to": "E08",
-   "summary": "назначен Павлов: дешевле всех остальных из 1 подходящих",
+   "summary": "назначен Павлов: единственный, кому она подходит и влезает в маршрут",
    "candidates": [
     {
      "engineer_id": "E00",
@@ -1413,19 +1413,19 @@
   },
   "R0018": {
    "assigned_to": "E00",
-   "summary": "назначен Соколов: дешевле всех остальных из 4 подходящих",
+   "summary": "назначен Соколов: дешевле всех остальных из 3 подходящих",
    "candidates": [
     {
      "engineer_id": "E00",
      "verdict": "chosen",
-     "cost": 86.8,
+     "cost": 118.7,
      "note": "назначен"
     },
     {
      "engineer_id": "E01",
      "verdict": "feasible",
      "cost": 381.3,
-     "note": "мог бы, но обошёлся бы дороже на 294"
+     "note": "мог бы, но обошёлся бы дороже на 263"
     },
     {
      "engineer_id": "E02",
@@ -1436,8 +1436,8 @@
     {
      "engineer_id": "E03",
      "verdict": "feasible",
-     "cost": 178.9,
-     "note": "мог бы, но обошёлся бы дороже на 92"
+     "cost": 195.0,
+     "note": "мог бы, но обошёлся бы дороже на 76"
     },
     {
      "engineer_id": "E04",
@@ -1447,27 +1447,27 @@
     },
     {
      "engineer_id": "E05",
-     "verdict": "feasible",
-     "cost": 180.9,
-     "note": "мог бы, но обошёлся бы дороже на 94"
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
     },
     {
      "engineer_id": "E06",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E07",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E08",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E09",
@@ -1491,7 +1491,7 @@
   },
   "R0019": {
    "assigned_to": "E08",
-   "summary": "назначен Павлов: дешевле всех остальных из 2 подходящих",
+   "summary": "назначен Павлов: дешевле всех остальных из 3 подходящих",
    "candidates": [
     {
      "engineer_id": "E00",
@@ -1549,9 +1549,9 @@
     },
     {
      "engineer_id": "E09",
-     "verdict": "no_room",
-     "cost": null,
-     "note": "маршрут уже занят в это время"
+     "verdict": "feasible",
+     "cost": 261.1,
+     "note": "мог бы, но обошёлся бы дороже на 145"
     },
     {
      "engineer_id": "E10",
@@ -1611,19 +1611,19 @@
      "engineer_id": "E06",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E07",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E08",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E09",
@@ -1689,19 +1689,19 @@
      "engineer_id": "E06",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E07",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E08",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E09",
@@ -1724,32 +1724,32 @@
    ]
   },
   "R0022": {
-   "assigned_to": "E09",
-   "summary": "назначен Семёнов: дешевле всех остальных из 5 подходящих",
+   "assigned_to": "E00",
+   "summary": "назначен Соколов: дешевле всех остальных из 4 подходящих",
    "candidates": [
     {
      "engineer_id": "E00",
-     "verdict": "feasible",
-     "cost": 163.1,
-     "note": "мог бы, но обошёлся бы дороже на 38"
+     "verdict": "chosen",
+     "cost": 123.7,
+     "note": "назначен"
     },
     {
      "engineer_id": "E01",
      "verdict": "feasible",
      "cost": 246.6,
-     "note": "мог бы, но обошёлся бы дороже на 122"
+     "note": "мог бы, но обошёлся бы дороже на 123"
     },
     {
      "engineer_id": "E02",
      "verdict": "feasible",
      "cost": 157.3,
-     "note": "мог бы, но обошёлся бы дороже на 32"
+     "note": "мог бы, но обошёлся бы дороже на 34"
     },
     {
      "engineer_id": "E03",
      "verdict": "feasible",
-     "cost": 212.2,
-     "note": "мог бы, но обошёлся бы дороже на 87"
+     "cost": 229.9,
+     "note": "мог бы, но обошёлся бы дороже на 106"
     },
     {
      "engineer_id": "E04",
@@ -1767,25 +1767,25 @@
      "engineer_id": "E06",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E07",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E08",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E09",
-     "verdict": "chosen",
-     "cost": 124.8,
-     "note": "назначен"
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
     },
     {
      "engineer_id": "E10",
@@ -1880,8 +1880,8 @@
    ]
   },
   "R0024": {
-   "assigned_to": "E07",
-   "summary": "назначен Егоров: дешевле всех остальных из 1 подходящих",
+   "assigned_to": null,
+   "summary": "все подходящие инженеры заняты в это время",
    "candidates": [
     {
      "engineer_id": "E00",
@@ -1927,9 +1927,9 @@
     },
     {
      "engineer_id": "E07",
-     "verdict": "chosen",
-     "cost": 133.8,
-     "note": "назначен"
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
     },
     {
      "engineer_id": "E08",
@@ -2018,14 +2018,14 @@
     {
      "engineer_id": "E09",
      "verdict": "chosen",
-     "cost": 112.0,
+     "cost": 104.0,
      "note": "назначен"
     },
     {
      "engineer_id": "E10",
      "verdict": "feasible",
      "cost": 202.4,
-     "note": "мог бы, но обошёлся бы дороже на 90"
+     "note": "мог бы, но обошёлся бы дороже на 98"
     },
     {
      "engineer_id": "E11",
@@ -2096,14 +2096,14 @@
     {
      "engineer_id": "E09",
      "verdict": "chosen",
-     "cost": 114.6,
+     "cost": 104.6,
      "note": "назначен"
     },
     {
      "engineer_id": "E10",
      "verdict": "feasible",
      "cost": 210.6,
-     "note": "мог бы, но обошёлся бы дороже на 96"
+     "note": "мог бы, но обошёлся бы дороже на 106"
     },
     {
      "engineer_id": "E11",
@@ -2235,19 +2235,19 @@
      "engineer_id": "E06",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E07",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E08",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E09",
@@ -2313,19 +2313,19 @@
      "engineer_id": "E06",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E07",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E08",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E09",
@@ -2372,8 +2372,8 @@
     {
      "engineer_id": "E03",
      "verdict": "feasible",
-     "cost": 212.4,
-     "note": "мог бы, но обошёлся бы дороже на 116"
+     "cost": 230.4,
+     "note": "мог бы, но обошёлся бы дороже на 134"
     },
     {
      "engineer_id": "E04",
@@ -2391,19 +2391,19 @@
      "engineer_id": "E06",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E07",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E08",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E09",
@@ -2427,7 +2427,7 @@
   },
   "R0031": {
    "assigned_to": "E10",
-   "summary": "назначен Голубев: дешевле всех остальных из 1 подходящих",
+   "summary": "назначен Голубев: дешевле всех остальных из 2 подходящих",
    "candidates": [
     {
      "engineer_id": "E00",
@@ -2485,9 +2485,9 @@
     },
     {
      "engineer_id": "E09",
-     "verdict": "no_room",
-     "cost": null,
-     "note": "маршрут уже занят в это время"
+     "verdict": "feasible",
+     "cost": 180.8,
+     "note": "мог бы, но обошёлся бы дороже на 79"
     },
     {
      "engineer_id": "E10",
@@ -2540,8 +2540,8 @@
     {
      "engineer_id": "E05",
      "verdict": "feasible",
-     "cost": 144.1,
-     "note": "мог бы, но обошёлся бы дороже на 78"
+     "cost": 120.3,
+     "note": "мог бы, но обошёлся бы дороже на 55"
     },
     {
      "engineer_id": "E06",
@@ -2552,8 +2552,8 @@
     {
      "engineer_id": "E07",
      "verdict": "feasible",
-     "cost": 151.6,
-     "note": "мог бы, но обошёлся бы дороже на 86"
+     "cost": 155.5,
+     "note": "мог бы, но обошёлся бы дороже на 90"
     },
     {
      "engineer_id": "E08",
@@ -2583,7 +2583,7 @@
   },
   "R0033": {
    "assigned_to": "E01",
-   "summary": "назначен Кузнецов: дешевле всех остальных из 4 подходящих",
+   "summary": "назначен Кузнецов: дешевле всех остальных из 6 подходящих",
    "candidates": [
     {
      "engineer_id": "E00",
@@ -2617,33 +2617,33 @@
     },
     {
      "engineer_id": "E05",
-     "verdict": "no_room",
-     "cost": null,
-     "note": "маршрут уже занят в это время"
+     "verdict": "feasible",
+     "cost": 341.7,
+     "note": "мог бы, но обошёлся бы дороже на 250"
     },
     {
      "engineer_id": "E06",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E07",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E08",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E09",
-     "verdict": "no_room",
-     "cost": null,
-     "note": "маршрут уже занят в это время"
+     "verdict": "feasible",
+     "cost": 284.7,
+     "note": "мог бы, но обошёлся бы дороже на 193"
     },
     {
      "engineer_id": "E10",
@@ -2654,8 +2654,8 @@
     {
      "engineer_id": "E11",
      "verdict": "feasible",
-     "cost": 207.4,
-     "note": "мог бы, но обошёлся бы дороже на 116"
+     "cost": 202.0,
+     "note": "мог бы, но обошёлся бы дороже на 110"
     }
    ]
   },
@@ -2738,14 +2738,14 @@
    ]
   },
   "R0035": {
-   "assigned_to": "E03",
-   "summary": "назначен Волков: дешевле всех остальных из 4 подходящих",
+   "assigned_to": "E00",
+   "summary": "назначен Соколов: дешевле всех остальных из 3 подходящих",
    "candidates": [
     {
      "engineer_id": "E00",
-     "verdict": "feasible",
-     "cost": 150.6,
-     "note": "мог бы, но обошёлся бы дороже на 40"
+     "verdict": "chosen",
+     "cost": 106.6,
+     "note": "назначен"
     },
     {
      "engineer_id": "E01",
@@ -2757,13 +2757,13 @@
      "engineer_id": "E02",
      "verdict": "feasible",
      "cost": 222.3,
-     "note": "мог бы, но обошёлся бы дороже на 111"
+     "note": "мог бы, но обошёлся бы дороже на 116"
     },
     {
      "engineer_id": "E03",
-     "verdict": "chosen",
-     "cost": 110.8,
-     "note": "назначен"
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
     },
     {
      "engineer_id": "E04",
@@ -2781,19 +2781,19 @@
      "engineer_id": "E06",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E07",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E08",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E09",
@@ -2805,7 +2805,7 @@
      "engineer_id": "E10",
      "verdict": "feasible",
      "cost": 175.6,
-     "note": "мог бы, но обошёлся бы дороже на 65"
+     "note": "мог бы, но обошёлся бы дороже на 69"
     },
     {
      "engineer_id": "E11",
@@ -2859,19 +2859,19 @@
      "engineer_id": "E06",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E07",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E08",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E09",
@@ -2937,19 +2937,19 @@
      "engineer_id": "E06",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E07",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E08",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E09",
@@ -3171,19 +3171,19 @@
      "engineer_id": "E06",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E07",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E08",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E09",
@@ -3230,8 +3230,8 @@
     {
      "engineer_id": "E03",
      "verdict": "feasible",
-     "cost": 233.7,
-     "note": "мог бы, но обошёлся бы дороже на 115"
+     "cost": 255.1,
+     "note": "мог бы, но обошёлся бы дороже на 136"
     },
     {
      "engineer_id": "E04",
@@ -3249,19 +3249,19 @@
      "engineer_id": "E06",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E07",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E08",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E09",
@@ -3284,14 +3284,14 @@
    ]
   },
   "R0042": {
-   "assigned_to": "E03",
-   "summary": "назначен Волков: дешевле всех остальных из 4 подходящих",
+   "assigned_to": "E00",
+   "summary": "назначен Соколов: дешевле всех остальных из 5 подходящих",
    "candidates": [
     {
      "engineer_id": "E00",
-     "verdict": "feasible",
-     "cost": 152.0,
-     "note": "мог бы, но обошёлся бы дороже на 63"
+     "verdict": "chosen",
+     "cost": 158.3,
+     "note": "назначен"
     },
     {
      "engineer_id": "E01",
@@ -3307,9 +3307,9 @@
     },
     {
      "engineer_id": "E03",
-     "verdict": "chosen",
-     "cost": 89.3,
-     "note": "назначен"
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
     },
     {
      "engineer_id": "E04",
@@ -3319,45 +3319,45 @@
     },
     {
      "engineer_id": "E05",
-     "verdict": "no_room",
-     "cost": null,
-     "note": "маршрут уже занят в это время"
+     "verdict": "feasible",
+     "cost": 216.1,
+     "note": "мог бы, но обошёлся бы дороже на 58"
     },
     {
      "engineer_id": "E06",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E07",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E08",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E09",
-     "verdict": "no_room",
-     "cost": null,
-     "note": "маршрут уже занят в это время"
+     "verdict": "feasible",
+     "cost": 203.1,
+     "note": "мог бы, но обошёлся бы дороже на 45"
     },
     {
      "engineer_id": "E10",
      "verdict": "feasible",
      "cost": 243.8,
-     "note": "мог бы, но обошёлся бы дороже на 154"
+     "note": "мог бы, но обошёлся бы дороже на 86"
     },
     {
      "engineer_id": "E11",
      "verdict": "feasible",
-     "cost": 217.2,
-     "note": "мог бы, но обошёлся бы дороже на 128"
+     "cost": 211.8,
+     "note": "мог бы, но обошёлся бы дороже на 54"
     }
    ]
   },
@@ -3368,8 +3368,8 @@
     {
      "engineer_id": "E00",
      "verdict": "feasible",
-     "cost": 144.0,
-     "note": "мог бы, но обошёлся бы дороже на 64"
+     "cost": 117.9,
+     "note": "мог бы, но обошёлся бы дороже на 53"
     },
     {
      "engineer_id": "E01",
@@ -3381,13 +3381,13 @@
      "engineer_id": "E02",
      "verdict": "feasible",
      "cost": 248.9,
-     "note": "мог бы, но обошёлся бы дороже на 168"
+     "note": "мог бы, но обошёлся бы дороже на 184"
     },
     {
      "engineer_id": "E03",
-     "verdict": "feasible",
-     "cost": 94.8,
-     "note": "мог бы, но обошёлся бы дороже на 14"
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
     },
     {
      "engineer_id": "E04",
@@ -3398,44 +3398,44 @@
     {
      "engineer_id": "E05",
      "verdict": "chosen",
-     "cost": 80.3,
+     "cost": 65.1,
      "note": "назначен"
     },
     {
      "engineer_id": "E06",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E07",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E08",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E09",
-     "verdict": "no_room",
-     "cost": null,
-     "note": "маршрут уже занят в это время"
+     "verdict": "feasible",
+     "cost": 210.5,
+     "note": "мог бы, но обошёлся бы дороже на 146"
     },
     {
      "engineer_id": "E10",
      "verdict": "feasible",
      "cost": 154.4,
-     "note": "мог бы, но обошёлся бы дороже на 74"
+     "note": "мог бы, но обошёлся бы дороже на 89"
     },
     {
      "engineer_id": "E11",
      "verdict": "feasible",
-     "cost": 133.9,
-     "note": "мог бы, но обошёлся бы дороже на 54"
+     "cost": 138.6,
+     "note": "мог бы, но обошёлся бы дороже на 74"
     }
    ]
   },
@@ -3483,19 +3483,19 @@
      "engineer_id": "E06",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E07",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E08",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E09",
@@ -3512,8 +3512,8 @@
     {
      "engineer_id": "E11",
      "verdict": "feasible",
-     "cost": 233.1,
-     "note": "мог бы, но обошёлся бы дороже на 135"
+     "cost": 230.6,
+     "note": "мог бы, но обошёлся бы дороже на 133"
     }
    ]
   },
@@ -3561,19 +3561,19 @@
      "engineer_id": "E06",
      "verdict": "feasible",
      "cost": 257.2,
-     "note": "мог бы, но обошёлся бы дороже на 194"
+     "note": "мог бы, но обошёлся бы дороже на 178"
     },
     {
      "engineer_id": "E07",
      "verdict": "feasible",
-     "cost": 191.8,
-     "note": "мог бы, но обошёлся бы дороже на 128"
+     "cost": 213.1,
+     "note": "мог бы, но обошёлся бы дороже на 134"
     },
     {
      "engineer_id": "E08",
      "verdict": "feasible",
      "cost": 153.7,
-     "note": "мог бы, но обошёлся бы дороже на 90"
+     "note": "мог бы, но обошёлся бы дороже на 74"
     },
     {
      "engineer_id": "E09",
@@ -3590,20 +3590,20 @@
     {
      "engineer_id": "E11",
      "verdict": "chosen",
-     "cost": 63.5,
+     "cost": 79.6,
      "note": "назначен"
     }
    ]
   },
   "R0046": {
    "assigned_to": "E02",
-   "summary": "назначен Морозов: дешевле всех остальных из 4 подходящих",
+   "summary": "назначен Морозов: дешевле всех остальных из 3 подходящих",
    "candidates": [
     {
      "engineer_id": "E00",
-     "verdict": "feasible",
-     "cost": 187.7,
-     "note": "мог бы, но обошёлся бы дороже на 80"
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
     },
     {
      "engineer_id": "E01",
@@ -3620,8 +3620,8 @@
     {
      "engineer_id": "E03",
      "verdict": "feasible",
-     "cost": 184.0,
-     "note": "мог бы, но обошёлся бы дороже на 76"
+     "cost": 200.4,
+     "note": "мог бы, но обошёлся бы дороже на 92"
     },
     {
      "engineer_id": "E04",
@@ -3639,19 +3639,19 @@
      "engineer_id": "E06",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E07",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E08",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E09",
@@ -3722,8 +3722,8 @@
     {
      "engineer_id": "E07",
      "verdict": "feasible",
-     "cost": 136.1,
-     "note": "мог бы, но обошёлся бы дороже на 21"
+     "cost": 131.8,
+     "note": "мог бы, но обошёлся бы дороже на 17"
     },
     {
      "engineer_id": "E08",
@@ -3795,19 +3795,19 @@
      "engineer_id": "E06",
      "verdict": "feasible",
      "cost": 207.9,
-     "note": "мог бы, но обошёлся бы дороже на 152"
+     "note": "мог бы, но обошёлся бы дороже на 150"
     },
     {
      "engineer_id": "E07",
      "verdict": "chosen",
-     "cost": 55.6,
+     "cost": 57.6,
      "note": "назначен"
     },
     {
      "engineer_id": "E08",
      "verdict": "feasible",
      "cost": 141.1,
-     "note": "мог бы, но обошёлся бы дороже на 86"
+     "note": "мог бы, но обошёлся бы дороже на 83"
     },
     {
      "engineer_id": "E09",
@@ -3831,7 +3831,7 @@
   },
   "R0049": {
    "assigned_to": "E06",
-   "summary": "назначен Козлов: дешевле всех остальных из 4 подходящих",
+   "summary": "назначен Козлов: дешевле всех остальных из 6 подходящих",
    "candidates": [
     {
      "engineer_id": "E00",
@@ -3865,9 +3865,9 @@
     },
     {
      "engineer_id": "E05",
-     "verdict": "no_room",
-     "cost": null,
-     "note": "маршрут уже занят в это время"
+     "verdict": "feasible",
+     "cost": 244.7,
+     "note": "мог бы, но обошёлся бы дороже на 190"
     },
     {
      "engineer_id": "E06",
@@ -3878,8 +3878,8 @@
     {
      "engineer_id": "E07",
      "verdict": "feasible",
-     "cost": 249.2,
-     "note": "мог бы, но обошёлся бы дороже на 195"
+     "cost": 241.0,
+     "note": "мог бы, но обошёлся бы дороже на 187"
     },
     {
      "engineer_id": "E08",
@@ -3889,9 +3889,9 @@
     },
     {
      "engineer_id": "E09",
-     "verdict": "no_room",
-     "cost": null,
-     "note": "маршрут уже занят в это время"
+     "verdict": "feasible",
+     "cost": 226.4,
+     "note": "мог бы, но обошёлся бы дороже на 172"
     },
     {
      "engineer_id": "E10",
@@ -3902,8 +3902,8 @@
     {
      "engineer_id": "E11",
      "verdict": "feasible",
-     "cost": 210.2,
-     "note": "мог бы, но обошёлся бы дороже на 156"
+     "cost": 204.1,
+     "note": "мог бы, но обошёлся бы дороже на 150"
     }
    ]
   },
@@ -4029,19 +4029,19 @@
      "engineer_id": "E06",
      "verdict": "feasible",
      "cost": 254.9,
-     "note": "мог бы, но обошёлся бы дороже на 185"
+     "note": "мог бы, но обошёлся бы дороже на 182"
     },
     {
      "engineer_id": "E07",
      "verdict": "chosen",
-     "cost": 70.0,
+     "cost": 72.7,
      "note": "назначен"
     },
     {
      "engineer_id": "E08",
      "verdict": "feasible",
      "cost": 166.3,
-     "note": "мог бы, но обошёлся бы дороже на 96"
+     "note": "мог бы, но обошёлся бы дороже на 94"
     },
     {
      "engineer_id": "E09",
@@ -4107,19 +4107,19 @@
      "engineer_id": "E06",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E07",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E08",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E09",
@@ -4143,7 +4143,7 @@
   },
   "R0053": {
    "assigned_to": "E02",
-   "summary": "назначен Морозов: дешевле всех остальных из 3 подходящих",
+   "summary": "назначен Морозов: дешевле всех остальных из 4 подходящих",
    "candidates": [
     {
      "engineer_id": "E00",
@@ -4185,25 +4185,25 @@
      "engineer_id": "E06",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E07",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E08",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E09",
-     "verdict": "no_room",
-     "cost": null,
-     "note": "маршрут уже занят в это время"
+     "verdict": "feasible",
+     "cost": 246.1,
+     "note": "мог бы, но обошёлся бы дороже на 103"
     },
     {
      "engineer_id": "E10",
@@ -4214,26 +4214,26 @@
     {
      "engineer_id": "E11",
      "verdict": "feasible",
-     "cost": 222.1,
-     "note": "мог бы, но обошёлся бы дороже на 79"
+     "cost": 219.6,
+     "note": "мог бы, но обошёлся бы дороже на 77"
     }
    ]
   },
   "R0054": {
    "assigned_to": "E11",
-   "summary": "назначен Виноградов: дешевле всех остальных из 4 подходящих",
+   "summary": "назначен Виноградов: дешевле всех остальных из 3 подходящих",
    "candidates": [
     {
      "engineer_id": "E00",
-     "verdict": "feasible",
-     "cost": 270.0,
-     "note": "мог бы, но обошёлся бы дороже на 160"
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
     },
     {
      "engineer_id": "E01",
      "verdict": "feasible",
      "cost": 276.5,
-     "note": "мог бы, но обошёлся бы дороже на 167"
+     "note": "мог бы, но обошёлся бы дороже на 166"
     },
     {
      "engineer_id": "E02",
@@ -4244,8 +4244,8 @@
     {
      "engineer_id": "E03",
      "verdict": "feasible",
-     "cost": 252.1,
-     "note": "мог бы, но обошёлся бы дороже на 142"
+     "cost": 278.9,
+     "note": "мог бы, но обошёлся бы дороже на 169"
     },
     {
      "engineer_id": "E04",
@@ -4263,19 +4263,19 @@
      "engineer_id": "E06",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E07",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E08",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E09",
@@ -4292,7 +4292,7 @@
     {
      "engineer_id": "E11",
      "verdict": "chosen",
-     "cost": 109.9,
+     "cost": 110.0,
      "note": "назначен"
     }
    ]
@@ -4419,19 +4419,19 @@
      "engineer_id": "E06",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E07",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E08",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E09",
@@ -4455,7 +4455,7 @@
   },
   "R0057": {
    "assigned_to": "E06",
-   "summary": "назначен Козлов: дешевле всех остальных из 2 подходящих",
+   "summary": "назначен Козлов: дешевле всех остальных из 3 подходящих",
    "candidates": [
     {
      "engineer_id": "E00",
@@ -4489,9 +4489,9 @@
     },
     {
      "engineer_id": "E05",
-     "verdict": "no_room",
-     "cost": null,
-     "note": "маршрут уже занят в это время"
+     "verdict": "feasible",
+     "cost": 213.9,
+     "note": "мог бы, но обошёлся бы дороже на 148"
     },
     {
      "engineer_id": "E06",
@@ -4526,14 +4526,14 @@
     {
      "engineer_id": "E11",
      "verdict": "feasible",
-     "cost": 202.5,
-     "note": "мог бы, но обошёлся бы дороже на 136"
+     "cost": 197.4,
+     "note": "мог бы, но обошёлся бы дороже на 131"
     }
    ]
   },
   "R0058": {
    "assigned_to": "E01",
-   "summary": "назначен Кузнецов: дешевле всех остальных из 3 подходящих",
+   "summary": "назначен Кузнецов: дешевле всех остальных из 4 подходящих",
    "candidates": [
     {
      "engineer_id": "E00",
@@ -4567,27 +4567,27 @@
     },
     {
      "engineer_id": "E05",
-     "verdict": "no_room",
-     "cost": null,
-     "note": "маршрут уже занят в это время"
+     "verdict": "feasible",
+     "cost": 341.7,
+     "note": "мог бы, но обошёлся бы дороже на 268"
     },
     {
      "engineer_id": "E06",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E07",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E08",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E09",
@@ -4604,38 +4604,38 @@
     {
      "engineer_id": "E11",
      "verdict": "feasible",
-     "cost": 222.2,
-     "note": "мог бы, но обошёлся бы дороже на 148"
+     "cost": 216.8,
+     "note": "мог бы, но обошёлся бы дороже на 143"
     }
    ]
   },
   "R0059": {
    "assigned_to": "E11",
-   "summary": "назначен Виноградов: дешевле всех остальных из 5 подходящих",
+   "summary": "назначен Виноградов: дешевле всех остальных из 4 подходящих",
    "candidates": [
     {
      "engineer_id": "E00",
-     "verdict": "feasible",
-     "cost": 197.7,
-     "note": "мог бы, но обошёлся бы дороже на 103"
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
     },
     {
      "engineer_id": "E01",
      "verdict": "feasible",
      "cost": 296.7,
-     "note": "мог бы, но обошёлся бы дороже на 202"
+     "note": "мог бы, но обошёлся бы дороже на 190"
     },
     {
      "engineer_id": "E02",
      "verdict": "feasible",
      "cost": 241.5,
-     "note": "мог бы, но обошёлся бы дороже на 146"
+     "note": "мог бы, но обошёлся бы дороже на 134"
     },
     {
      "engineer_id": "E03",
      "verdict": "feasible",
-     "cost": 251.4,
-     "note": "мог бы, но обошёлся бы дороже на 156"
+     "cost": 273.9,
+     "note": "мог бы, но обошёлся бы дороже на 167"
     },
     {
      "engineer_id": "E04",
@@ -4653,19 +4653,19 @@
      "engineer_id": "E06",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E07",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E08",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E09",
@@ -4682,7 +4682,7 @@
     {
      "engineer_id": "E11",
      "verdict": "chosen",
-     "cost": 95.1,
+     "cost": 107.0,
      "note": "назначен"
     }
    ]
@@ -4701,7 +4701,7 @@
      "engineer_id": "E01",
      "verdict": "feasible",
      "cost": 291.6,
-     "note": "мог бы, но обошёлся бы дороже на 208"
+     "note": "мог бы, но обошёлся бы дороже на 196"
     },
     {
      "engineer_id": "E02",
@@ -4712,7 +4712,7 @@
     {
      "engineer_id": "E03",
      "verdict": "chosen",
-     "cost": 84.1,
+     "cost": 95.7,
      "note": "назначен"
     },
     {
@@ -4731,19 +4731,19 @@
      "engineer_id": "E06",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E07",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E08",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E09",
@@ -4809,19 +4809,19 @@
      "engineer_id": "E06",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E07",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E08",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E09",
@@ -4887,19 +4887,19 @@
      "engineer_id": "E06",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E07",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E08",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E09",
@@ -4923,7 +4923,7 @@
   },
   "R0063": {
    "assigned_to": "E06",
-   "summary": "назначен Козлов: дешевле всех остальных из 1 подходящих",
+   "summary": "назначен Козлов: единственный, кому она подходит и влезает в маршрут",
    "candidates": [
     {
      "engineer_id": "E00",
@@ -5000,8 +5000,8 @@
    ]
   },
   "R0064": {
-   "assigned_to": "E09",
-   "summary": "назначен Семёнов: дешевле всех остальных из 5 подходящих",
+   "assigned_to": "E05",
+   "summary": "назначен Новиков: дешевле всех остальных из 4 подходящих",
    "candidates": [
     {
      "engineer_id": "E00",
@@ -5035,33 +5035,33 @@
     },
     {
      "engineer_id": "E05",
-     "verdict": "feasible",
-     "cost": 95.8,
-     "note": "мог бы, но обошёлся бы дороже на 10"
+     "verdict": "chosen",
+     "cost": 72.3,
+     "note": "назначен"
     },
     {
      "engineer_id": "E06",
      "verdict": "feasible",
      "cost": 212.3,
-     "note": "мог бы, но обошёлся бы дороже на 126"
+     "note": "мог бы, но обошёлся бы дороже на 140"
     },
     {
      "engineer_id": "E07",
      "verdict": "feasible",
-     "cost": 212.6,
-     "note": "мог бы, но обошёлся бы дороже на 127"
+     "cost": 225.9,
+     "note": "мог бы, но обошёлся бы дороже на 154"
     },
     {
      "engineer_id": "E08",
      "verdict": "feasible",
      "cost": 151.1,
-     "note": "мог бы, но обошёлся бы дороже на 65"
+     "note": "мог бы, но обошёлся бы дороже на 79"
     },
     {
      "engineer_id": "E09",
-     "verdict": "chosen",
-     "cost": 86.0,
-     "note": "назначен"
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
     },
     {
      "engineer_id": "E10",
@@ -5079,13 +5079,13 @@
   },
   "R0065": {
    "assigned_to": "E11",
-   "summary": "назначен Виноградов: дешевле всех остальных из 5 подходящих",
+   "summary": "назначен Виноградов: дешевле всех остальных из 4 подходящих",
    "candidates": [
     {
      "engineer_id": "E00",
-     "verdict": "feasible",
-     "cost": 211.0,
-     "note": "мог бы, но обошёлся бы дороже на 94"
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
     },
     {
      "engineer_id": "E01",
@@ -5102,8 +5102,8 @@
     {
      "engineer_id": "E03",
      "verdict": "feasible",
-     "cost": 257.1,
-     "note": "мог бы, но обошёлся бы дороже на 140"
+     "cost": 283.9,
+     "note": "мог бы, но обошёлся бы дороже на 167"
     },
     {
      "engineer_id": "E04",
@@ -5121,19 +5121,19 @@
      "engineer_id": "E06",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E07",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E08",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E09",
@@ -5199,19 +5199,19 @@
      "engineer_id": "E06",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E07",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E08",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E09",
@@ -5234,8 +5234,8 @@
    ]
   },
   "R0067": {
-   "assigned_to": "E05",
-   "summary": "назначен Новиков: дешевле всех остальных из 4 подходящих",
+   "assigned_to": "E09",
+   "summary": "назначен Семёнов: дешевле всех остальных из 5 подходящих",
    "candidates": [
     {
      "engineer_id": "E00",
@@ -5269,9 +5269,9 @@
     },
     {
      "engineer_id": "E05",
-     "verdict": "chosen",
-     "cost": 70.3,
-     "note": "назначен"
+     "verdict": "feasible",
+     "cost": 91.1,
+     "note": "мог бы, но обошёлся бы дороже на 21"
     },
     {
      "engineer_id": "E06",
@@ -5282,8 +5282,8 @@
     {
      "engineer_id": "E07",
      "verdict": "feasible",
-     "cost": 234.1,
-     "note": "мог бы, но обошёлся бы дороже на 164"
+     "cost": 247.8,
+     "note": "мог бы, но обошёлся бы дороже на 178"
     },
     {
      "engineer_id": "E08",
@@ -5293,9 +5293,9 @@
     },
     {
      "engineer_id": "E09",
-     "verdict": "no_room",
-     "cost": null,
-     "note": "маршрут уже занят в это время"
+     "verdict": "chosen",
+     "cost": 70.2,
+     "note": "назначен"
     },
     {
      "engineer_id": "E10",
@@ -5313,7 +5313,7 @@
   },
   "R0068": {
    "assigned_to": "E07",
-   "summary": "назначен Егоров: дешевле всех остальных из 2 подходящих",
+   "summary": "назначен Егоров: дешевле всех остальных из 4 подходящих",
    "candidates": [
     {
      "engineer_id": "E00",
@@ -5347,9 +5347,9 @@
     },
     {
      "engineer_id": "E05",
-     "verdict": "no_room",
-     "cost": null,
-     "note": "маршрут уже занят в это время"
+     "verdict": "feasible",
+     "cost": 323.5,
+     "note": "мог бы, но обошёлся бы дороже на 224"
     },
     {
      "engineer_id": "E06",
@@ -5360,7 +5360,7 @@
     {
      "engineer_id": "E07",
      "verdict": "chosen",
-     "cost": 100.5,
+     "cost": 100.0,
      "note": "назначен"
     },
     {
@@ -5371,9 +5371,9 @@
     },
     {
      "engineer_id": "E09",
-     "verdict": "no_room",
-     "cost": null,
-     "note": "маршрут уже занят в это время"
+     "verdict": "feasible",
+     "cost": 242.9,
+     "note": "мог бы, но обошёлся бы дороже на 143"
     },
     {
      "engineer_id": "E10",
@@ -5384,20 +5384,20 @@
     {
      "engineer_id": "E11",
      "verdict": "feasible",
-     "cost": 187.4,
-     "note": "мог бы, но обошёлся бы дороже на 87"
+     "cost": 182.0,
+     "note": "мог бы, но обошёлся бы дороже на 82"
     }
    ]
   },
   "R0069": {
-   "assigned_to": "E00",
-   "summary": "назначен Соколов: дешевле всех остальных из 3 подходящих",
+   "assigned_to": "E03",
+   "summary": "назначен Волков: дешевле всех остальных из 4 подходящих",
    "candidates": [
     {
      "engineer_id": "E00",
-     "verdict": "chosen",
-     "cost": 129.6,
-     "note": "назначен"
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
     },
     {
      "engineer_id": "E01",
@@ -5413,9 +5413,9 @@
     },
     {
      "engineer_id": "E03",
-     "verdict": "no_room",
-     "cost": null,
-     "note": "маршрут уже занят в это время"
+     "verdict": "chosen",
+     "cost": 126.5,
+     "note": "назначен"
     },
     {
      "engineer_id": "E04",
@@ -5425,27 +5425,27 @@
     },
     {
      "engineer_id": "E05",
-     "verdict": "no_room",
-     "cost": null,
-     "note": "маршрут уже занят в это время"
+     "verdict": "feasible",
+     "cost": 271.9,
+     "note": "мог бы, но обошёлся бы дороже на 145"
     },
     {
      "engineer_id": "E06",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E07",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E08",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E09",
@@ -5457,25 +5457,25 @@
      "engineer_id": "E10",
      "verdict": "feasible",
      "cost": 283.9,
-     "note": "мог бы, но обошёлся бы дороже на 154"
+     "note": "мог бы, но обошёлся бы дороже на 157"
     },
     {
      "engineer_id": "E11",
      "verdict": "feasible",
-     "cost": 236.1,
-     "note": "мог бы, но обошёлся бы дороже на 106"
+     "cost": 242.7,
+     "note": "мог бы, но обошёлся бы дороже на 116"
     }
    ]
   },
   "R0070": {
-   "assigned_to": "E00",
-   "summary": "назначен Соколов: дешевле всех остальных из 2 подходящих",
+   "assigned_to": "E03",
+   "summary": "назначен Волков: дешевле всех остальных из 4 подходящих",
    "candidates": [
     {
      "engineer_id": "E00",
-     "verdict": "chosen",
-     "cost": 131.5,
-     "note": "назначен"
+     "verdict": "no_room",
+     "cost": null,
+     "note": "маршрут уже занят в это время"
     },
     {
      "engineer_id": "E01",
@@ -5491,9 +5491,9 @@
     },
     {
      "engineer_id": "E03",
-     "verdict": "no_room",
-     "cost": null,
-     "note": "маршрут уже занят в это время"
+     "verdict": "chosen",
+     "cost": 119.0,
+     "note": "назначен"
     },
     {
      "engineer_id": "E04",
@@ -5503,33 +5503,33 @@
     },
     {
      "engineer_id": "E05",
-     "verdict": "no_room",
-     "cost": null,
-     "note": "маршрут уже занят в это время"
+     "verdict": "feasible",
+     "cost": 257.2,
+     "note": "мог бы, но обошёлся бы дороже на 138"
     },
     {
      "engineer_id": "E06",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E07",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E08",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E09",
-     "verdict": "no_room",
-     "cost": null,
-     "note": "маршрут уже занят в это время"
+     "verdict": "feasible",
+     "cost": 288.3,
+     "note": "мог бы, но обошёлся бы дороже на 169"
     },
     {
      "engineer_id": "E10",
@@ -5540,14 +5540,14 @@
     {
      "engineer_id": "E11",
      "verdict": "feasible",
-     "cost": 242.1,
-     "note": "мог бы, но обошёлся бы дороже на 111"
+     "cost": 236.6,
+     "note": "мог бы, но обошёлся бы дороже на 118"
     }
    ]
   },
   "R0071": {
    "assigned_to": "E06",
-   "summary": "назначен Козлов: дешевле всех остальных из 4 подходящих",
+   "summary": "назначен Козлов: дешевле всех остальных из 6 подходящих",
    "candidates": [
     {
      "engineer_id": "E00",
@@ -5581,9 +5581,9 @@
     },
     {
      "engineer_id": "E05",
-     "verdict": "no_room",
-     "cost": null,
-     "note": "маршрут уже занят в это время"
+     "verdict": "feasible",
+     "cost": 209.5,
+     "note": "мог бы, но обошёлся бы дороже на 154"
     },
     {
      "engineer_id": "E06",
@@ -5594,8 +5594,8 @@
     {
      "engineer_id": "E07",
      "verdict": "feasible",
-     "cost": 240.2,
-     "note": "мог бы, но обошёлся бы дороже на 185"
+     "cost": 248.1,
+     "note": "мог бы, но обошёлся бы дороже на 193"
     },
     {
      "engineer_id": "E08",
@@ -5605,9 +5605,9 @@
     },
     {
      "engineer_id": "E09",
-     "verdict": "no_room",
-     "cost": null,
-     "note": "маршрут уже занят в это время"
+     "verdict": "feasible",
+     "cost": 184.4,
+     "note": "мог бы, но обошёлся бы дороже на 129"
     },
     {
      "engineer_id": "E10",
@@ -5618,8 +5618,8 @@
     {
      "engineer_id": "E11",
      "verdict": "feasible",
-     "cost": 188.7,
-     "note": "мог бы, но обошёлся бы дороже на 134"
+     "cost": 183.4,
+     "note": "мог бы, но обошёлся бы дороже на 128"
     }
    ]
   },
@@ -5679,12 +5679,12 @@
      "engineer_id": "E08",
      "verdict": "feasible",
      "cost": 221.7,
-     "note": "мог бы, но обошёлся бы дороже на 78"
+     "note": "мог бы, но обошёлся бы дороже на 120"
     },
     {
      "engineer_id": "E09",
      "verdict": "chosen",
-     "cost": 144.0,
+     "cost": 101.8,
      "note": "назначен"
     },
     {
@@ -5823,19 +5823,19 @@
      "engineer_id": "E06",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E07",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E08",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E09",
@@ -5859,7 +5859,7 @@
   },
   "R0075": {
    "assigned_to": "E02",
-   "summary": "назначен Морозов: дешевле всех остальных из 3 подходящих",
+   "summary": "назначен Морозов: дешевле всех остальных из 4 подходящих",
    "candidates": [
     {
      "engineer_id": "E00",
@@ -5901,25 +5901,25 @@
      "engineer_id": "E06",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E07",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E08",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E09",
-     "verdict": "no_room",
-     "cost": null,
-     "note": "маршрут уже занят в это время"
+     "verdict": "feasible",
+     "cost": 269.6,
+     "note": "мог бы, но обошёлся бы дороже на 112"
     },
     {
      "engineer_id": "E10",
@@ -5930,14 +5930,14 @@
     {
      "engineer_id": "E11",
      "verdict": "feasible",
-     "cost": 228.1,
-     "note": "мог бы, но обошёлся бы дороже на 71"
+     "cost": 223.0,
+     "note": "мог бы, но обошёлся бы дороже на 66"
     }
    ]
   },
   "R0076": {
    "assigned_to": "E10",
-   "summary": "назначен Голубев: дешевле всех остальных из 2 подходящих",
+   "summary": "назначен Голубев: дешевле всех остальных из 3 подходящих",
    "candidates": [
     {
      "engineer_id": "E00",
@@ -5971,27 +5971,27 @@
     },
     {
      "engineer_id": "E05",
-     "verdict": "no_room",
-     "cost": null,
-     "note": "маршрут уже занят в это время"
+     "verdict": "feasible",
+     "cost": 263.9,
+     "note": "мог бы, но обошёлся бы дороже на 126"
     },
     {
      "engineer_id": "E06",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E07",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E08",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E09",
@@ -6008,14 +6008,14 @@
     {
      "engineer_id": "E11",
      "verdict": "feasible",
-     "cost": 234.1,
-     "note": "мог бы, но обошёлся бы дороже на 96"
+     "cost": 231.6,
+     "note": "мог бы, но обошёлся бы дороже на 93"
     }
    ]
   },
   "R0077": {
    "assigned_to": "E08",
-   "summary": "назначен Павлов: дешевле всех остальных из 5 подходящих",
+   "summary": "назначен Павлов: дешевле всех остальных из 6 подходящих",
    "candidates": [
     {
      "engineer_id": "E00",
@@ -6049,9 +6049,9 @@
     },
     {
      "engineer_id": "E05",
-     "verdict": "no_room",
-     "cost": null,
-     "note": "маршрут уже занят в это время"
+     "verdict": "feasible",
+     "cost": 143.5,
+     "note": "мог бы, но обошёлся бы дороже на 75"
     },
     {
      "engineer_id": "E06",
@@ -6062,8 +6062,8 @@
     {
      "engineer_id": "E07",
      "verdict": "feasible",
-     "cost": 151.4,
-     "note": "мог бы, но обошёлся бы дороже на 83"
+     "cost": 157.8,
+     "note": "мог бы, но обошёлся бы дороже на 90"
     },
     {
      "engineer_id": "E08",
@@ -6074,8 +6074,8 @@
     {
      "engineer_id": "E09",
      "verdict": "feasible",
-     "cost": 209.6,
-     "note": "мог бы, но обошёлся бы дороже на 141"
+     "cost": 122.9,
+     "note": "мог бы, но обошёлся бы дороже на 55"
     },
     {
      "engineer_id": "E10",
@@ -6086,8 +6086,8 @@
     {
      "engineer_id": "E11",
      "verdict": "feasible",
-     "cost": 142.6,
-     "note": "мог бы, но обошёлся бы дороже на 74"
+     "cost": 137.3,
+     "note": "мог бы, но обошёлся бы дороже на 69"
     }
    ]
   },
@@ -6135,19 +6135,19 @@
      "engineer_id": "E06",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E07",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E08",
      "verdict": "no_skill",
      "cost": null,
-     "note": "нет навыка «install»"
+     "note": "нет навыка «Работы на подключение и дозаказы»"
     },
     {
      "engineer_id": "E09",
@@ -6164,14 +6164,14 @@
     {
      "engineer_id": "E11",
      "verdict": "feasible",
-     "cost": 285.6,
-     "note": "мог бы, но обошёлся бы дороже на 101"
+     "cost": 280.0,
+     "note": "мог бы, но обошёлся бы дороже на 95"
     }
    ]
   },
   "R0079": {
    "assigned_to": "E04",
-   "summary": "назначен Лебедев: дешевле всех остальных из 3 подходящих",
+   "summary": "назначен Лебедев: дешевле всех остальных из 5 подходящих",
    "candidates": [
     {
      "engineer_id": "E00",
@@ -6205,9 +6205,9 @@
     },
     {
      "engineer_id": "E05",
-     "verdict": "no_room",
-     "cost": null,
-     "note": "маршрут уже занят в это время"
+     "verdict": "feasible",
+     "cost": 250.4,
+     "note": "мог бы, но обошёлся бы дороже на 132"
     },
     {
      "engineer_id": "E06",
@@ -6218,8 +6218,8 @@
     {
      "engineer_id": "E07",
      "verdict": "feasible",
-     "cost": 216.2,
-     "note": "мог бы, но обошёлся бы дороже на 98"
+     "cost": 202.1,
+     "note": "мог бы, но обошёлся бы дороже на 84"
     },
     {
      "engineer_id": "E08",
@@ -6229,9 +6229,9 @@
     },
     {
      "engineer_id": "E09",
-     "verdict": "no_room",
-     "cost": null,
-     "note": "маршрут уже занят в это время"
+     "verdict": "feasible",
+     "cost": 233.0,
+     "note": "мог бы, но обошёлся бы дороже на 114"
     },
     {
      "engineer_id": "E10",
@@ -6242,8 +6242,8 @@
     {
      "engineer_id": "E11",
      "verdict": "feasible",
-     "cost": 210.2,
-     "note": "мог бы, но обошёлся бы дороже на 92"
+     "cost": 207.7,
+     "note": "мог бы, но обошёлся бы дороже на 89"
     }
    ]
   }

@@ -127,7 +127,7 @@ def _curl(url: str, post: str | None = None, timeout: int = 180,
             if post is not None else [url])
     last = ""
     for attempt in range(tries):
-        out = subprocess.run(cmd, capture_output=True, text=True).stdout
+        out = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8").stdout
         if out:
             try:
                 return json.loads(out)
@@ -156,7 +156,7 @@ def _reverse(lat: float, lon: float) -> dict | None:
            f"&zoom=18&addressdetails=1")
     cmd = ["curl", "-s", "--max-time", "25", "-H",
            "User-Agent: vrptw-hackathon-stand/1.0 (одноразовая сборка кэша)", url]
-    out = subprocess.run(cmd, capture_output=True, text=True).stdout
+    out = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8").stdout
     if not out:
         return None
     try:
@@ -196,7 +196,7 @@ def fetch_addresses() -> list[dict]:
     done: dict[str, list[dict]] = {}
     if PARTIAL_FILE.exists():
         try:
-            saved = json.loads(PARTIAL_FILE.read_text())
+            saved = json.loads(PARTIAL_FILE.read_text(encoding="utf-8"))
             if isinstance(saved, dict) and all(isinstance(v, list)
                                                for v in saved.values()):
                 done = saved
@@ -224,7 +224,7 @@ def fetch_addresses() -> list[dict]:
             rec["district"] = name
             picked.append(rec)
         done[name] = picked
-        PARTIAL_FILE.write_text(json.dumps(done, ensure_ascii=False))
+        PARTIAL_FILE.write_text(json.dumps(done, ensure_ascii=False), encoding="utf-8")
         print(f"  [{i:>2}/{len(DISTRICTS)}] {name}: {len(picked)} адресов "
               f"за {tries} попыток")
 
@@ -233,7 +233,7 @@ def fetch_addresses() -> list[dict]:
             if len(done.get(n, [])) < PER_DISTRICT]
     if thin:
         print(f"  неполные районы: {', '.join(thin)}")
-    ADDRESS_FILE.write_text(json.dumps(out, ensure_ascii=False, indent=1))
+    ADDRESS_FILE.write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding="utf-8")
     print(f"  → {len(out)} адресов в {ADDRESS_FILE.name}")
     return out
 
@@ -279,12 +279,13 @@ def build() -> None:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
     if ADDRESS_FILE.exists():
-        addresses = json.loads(ADDRESS_FILE.read_text())
+        addresses = json.loads(ADDRESS_FILE.read_text(encoding="utf-8"))
         print(f"адреса уже собраны: {len(addresses)}")
     else:
         print("Собираю адреса из OpenStreetMap:")
         addresses = fetch_addresses()
-        ADDRESS_FILE.write_text(json.dumps(addresses, ensure_ascii=False, indent=1))
+        ADDRESS_FILE.write_text(json.dumps(addresses, ensure_ascii=False, indent=1),
+                                encoding="utf-8")
         print(f"  → {len(addresses)} адресов в {ADDRESS_FILE.name}")
 
     print("Считаю матрицу времени по настоящим дорогам:")
@@ -355,7 +356,7 @@ class OSMNetwork:
         в 13,7 км от точки выезда.
         """
         if addresses is None:
-            addresses = json.loads((address_file or ADDRESS_FILE).read_text())
+            addresses = json.loads((address_file or ADDRESS_FILE).read_text(encoding="utf-8"))
             blob = np.load(matrix_file or MATRIX_FILE)
             duration, distance = blob["duration"], blob["distance"]
         self.nodes: list[Address] = [Address(i, a) for i, a in enumerate(addresses)]
@@ -536,7 +537,7 @@ class OSMNetwork:
         # другой поток сервера может дописать в него перегон.
         snapshot = dict(self._geometry)
         tmp = path.with_suffix(".tmp")
-        tmp.write_text(json.dumps(snapshot, ensure_ascii=False))
+        tmp.write_text(json.dumps(snapshot, ensure_ascii=False), encoding="utf-8")
         os.replace(tmp, path)
         return len(snapshot)
 
@@ -600,7 +601,7 @@ def points_fingerprint(addresses: list[dict]) -> str:
 def _load_geometry(path: Path = GEOMETRY_FILE) -> dict:
     if path.exists():
         try:
-            return json.loads(path.read_text())
+            return json.loads(path.read_text(encoding="utf-8"))
         except Exception:
             return {}
     return {}
@@ -830,7 +831,7 @@ def network_for_points(points, refresh: bool = False,
     geo_file = root / f"geometry-{fp}.json"
 
     if not refresh and pts_file.exists() and mat_file.exists():
-        saved = json.loads(pts_file.read_text())
+        saved = json.loads(pts_file.read_text(encoding="utf-8"))
         blob = np.load(mat_file)
         if not quiet:
             print(f"  сеть на {len(saved)} узлов взята из кэша ({fp})")
@@ -847,7 +848,7 @@ def network_for_points(points, refresh: bool = False,
                   "OSRM и указать его в VRPTW_OSRM")
     dur, dist = fetch_matrix(addresses, tries=tries)
 
-    pts_file.write_text(json.dumps(addresses, ensure_ascii=False))
+    pts_file.write_text(json.dumps(addresses, ensure_ascii=False), encoding="utf-8")
     np.savez_compressed(mat_file, duration=dur, distance=dist)
     if not quiet:
         print(f"  готово, кэш {fp} — {mat_file.stat().st_size / 1024:.0f} КБ")
@@ -889,7 +890,7 @@ def сеть_из_готовых(points, каталоги: list[Path], куда:
             if not mat.exists():
                 continue
             try:
-                saved = json.loads(pts.read_text())
+                saved = json.loads(pts.read_text(encoding="utf-8"))
             except (OSError, ValueError):
                 continue
             где = {(round(float(a["lat"]), 6), round(float(a["lon"]), 6)): i
@@ -911,9 +912,11 @@ def сеть_из_готовых(points, каталоги: list[Path], куда:
                         ломаные[f"{a}-{b}"] = линия
             цель = куда or root
             цель.mkdir(parents=True, exist_ok=True)
-            (цель / f"points-{fp}.json").write_text(json.dumps(addresses, ensure_ascii=False))
+            (цель / f"points-{fp}.json").write_text(
+                json.dumps(addresses, ensure_ascii=False), encoding="utf-8")
             np.savez_compressed(цель / f"matrix-{fp}.npz", duration=dur, distance=dist)
-            (цель / f"geometry-{fp}.json").write_text(json.dumps(ломаные, ensure_ascii=False))
+            (цель / f"geometry-{fp}.json").write_text(
+                json.dumps(ломаные, ensure_ascii=False), encoding="utf-8")
             if not quiet:
                 print(f"  сеть на {len(addresses)} узлов вырезана из готовой ({чужой})")
             return OSMNetwork(addresses=addresses, duration=dur, distance=dist,
@@ -959,7 +962,7 @@ if __name__ == "__main__":
         if len(sys.argv) < 3:
             print("укажите файл: python3 -m vrptw.core.osm points адреса.json")
             raise SystemExit(1)
-        raw = json.loads(Path(sys.argv[2]).read_text())
+        raw = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
         items = raw if isinstance(raw, list) else raw.get("points", [])
         net = network_for_points(items, refresh="--refresh" in sys.argv)
         print(f"  узлов {len(net.nodes)}, "

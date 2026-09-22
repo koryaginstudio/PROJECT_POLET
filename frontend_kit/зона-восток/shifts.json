@@ -31,32 +31,33 @@
    "13:00": 2,
    "14:00": 2
   },
-  "expected_coverage": 83.7
+  "expected_coverage": 84.6
  },
  "recommended": {
   "profile": {
    "07:00": 1,
    "08:00": 2,
-   "09:00": 3,
-   "10:00": 2,
-   "13:00": 6
+   "09:00": 4,
+   "10:00": 1,
+   "12:00": 1,
+   "13:00": 5
   },
-  "expected_coverage": 85.7,
+  "expected_coverage": 87.9,
   "starts_by_engineer": {
    "E00": "08:00",
    "E01": "09:00",
    "E02": "13:00",
    "E03": "13:00",
-   "E04": "13:00",
+   "E04": "12:00",
    "E05": "13:00",
    "E06": "13:00",
    "E07": "09:00",
-   "E08": "10:00",
-   "E09": "08:00",
+   "E08": "09:00",
+   "E09": "07:00",
    "E10": "13:00",
    "E11": "10:00",
    "E12": "09:00",
-   "E13": "07:00"
+   "E13": "08:00"
   }
  },
  "curve": [
@@ -135,7 +136,7 @@
    },
    "demand_total": 0.0,
    "supply_current": 3,
-   "supply_recommended": 6
+   "supply_recommended": 7
   },
   {
    "minute": 570,
@@ -146,7 +147,7 @@
    },
    "demand_total": 0.0,
    "supply_current": 3,
-   "supply_recommended": 6
+   "supply_recommended": 7
   },
   {
    "minute": 600,
@@ -201,7 +202,7 @@
    },
    "demand_total": 9.28,
    "supply_current": 10,
-   "supply_recommended": 8
+   "supply_recommended": 9
   },
   {
    "minute": 750,
@@ -212,7 +213,7 @@
    },
    "demand_total": 9.28,
    "supply_current": 10,
-   "supply_recommended": 8
+   "supply_recommended": 9
   },
   {
    "minute": 780,
@@ -267,7 +268,7 @@
    },
    "demand_total": 5.89,
    "supply_current": 14,
-   "supply_recommended": 13
+   "supply_recommended": 14
   },
   {
    "minute": 930,
@@ -278,7 +279,7 @@
    },
    "demand_total": 5.89,
    "supply_current": 14,
-   "supply_recommended": 13
+   "supply_recommended": 14
   },
   {
    "minute": 960,
@@ -289,7 +290,7 @@
    },
    "demand_total": 5.24,
    "supply_current": 14,
-   "supply_recommended": 13
+   "supply_recommended": 12
   },
   {
    "minute": 990,
@@ -300,7 +301,7 @@
    },
    "demand_total": 5.24,
    "supply_current": 14,
-   "supply_recommended": 13
+   "supply_recommended": 12
   },
   {
    "minute": 1020,
@@ -333,7 +334,7 @@
    },
    "demand_total": 5.46,
    "supply_current": 11,
-   "supply_recommended": 8
+   "supply_recommended": 7
   },
   {
    "minute": 1110,
@@ -344,7 +345,7 @@
    },
    "demand_total": 5.46,
    "supply_current": 11,
-   "supply_recommended": 8
+   "supply_recommended": 7
   },
   {
    "minute": 1140,
@@ -399,7 +400,7 @@
    },
    "demand_total": 4.91,
    "supply_current": 4,
-   "supply_recommended": 6
+   "supply_recommended": 5
   },
   {
    "minute": 1290,
@@ -410,7 +411,7 @@
    },
    "demand_total": 4.91,
    "supply_current": 4,
-   "supply_recommended": 6
+   "supply_recommended": 5
   }
  ]
 }

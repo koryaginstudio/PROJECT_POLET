@@ -74,10 +74,11 @@ def settings_file() -> Path:
 # полпути не должен оставить обрезанный архив. Переименование в пределах
 # одного каталога атомарно.
 
-import fcntl
 import json
 import tempfile
 from contextlib import contextmanager
+
+from .compat import запереть, отпереть
 
 
 @contextmanager
@@ -85,16 +86,17 @@ def _замок(path: Path):
     """Межпроцессная блокировка на отдельном файле-замке.
 
     Не на самом архиве: его подменяют `os.replace`, и блокировка,
-    взятая на старом inode, новый уже не защищает.
+    взятая на старом inode, новый уже не защищает. `fcntl` есть не везде —
+    на Windows замок берёт `msvcrt` (compat.py).
     """
     path.parent.mkdir(parents=True, exist_ok=True)
     файл = path.with_name(path.name + ".lock")
-    with open(файл, "w") as f:
-        fcntl.flock(f, fcntl.LOCK_EX)
+    with open(файл, "wb") as f:
+        запереть(f)
         try:
             yield
         finally:
-            fcntl.flock(f, fcntl.LOCK_UN)
+            отпереть(f)
 
 
 def прочитать_список(path: Path) -> list:
@@ -102,7 +104,7 @@ def прочитать_список(path: Path) -> list:
     if not path.exists():
         return []
     try:
-        прочитанное = json.loads(path.read_text())
+        прочитанное = json.loads(path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError):
         return []
     return прочитанное if isinstance(прочитанное, list) else []

@@ -444,6 +444,10 @@ def build_explain(day: Day, plan: Plan, params: improved.Params | None = None) -
                     summary = "все подходящие инженеры заняты в это время"
             else:
                 summary = "не влезла: место занято более срочными заявками"
+        elif not any(c["verdict"] == "chosen" for c in candidates):
+            # Назначен, но заново вставить его поиск не нашёл: сравнивать
+            # «дешевле остальных» не с чем — только факт.
+            summary = f"назначен {by_engineer[holder].name}"
         elif len(feasible) == 1:
             # «Дешевле всех остальных из 1 подходящих» — сравнение не с кем.
             summary = (f"назначен {by_engineer[holder].name}: единственный, кому "
@@ -639,7 +643,7 @@ def export_day(day_id: str = "1", out_dir: str = "fixtures", runs: int = 300,
     sizes = {}
     for name, payload in files.items():
         path = out / name
-        path.write_text(json.dumps(payload, ensure_ascii=False, indent=1))
+        path.write_text(json.dumps(payload, ensure_ascii=False, indent=1), encoding="utf-8")
         sizes[name] = path.stat().st_size
 
     # Настоящая геометрия дорог достаётся по сети; складываем её рядом с

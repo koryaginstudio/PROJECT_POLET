@@ -144,6 +144,76 @@ def _аварии_на_зонах(дни: dict, срочные=None) -> tuple[li
     return разброс, привязка
 
 
+def _без_кодировки() -> list[str]:
+    """Текстовый ввод-вывод движка без явной кодировки: «файл:строка».
+
+    На Windows кодировка по умолчанию — cp1251, и `read_text()` без
+    `encoding` ломался на кириллице готовых планов и сетей. Ищем по дереву
+    разбора, а не по тексту: вызов на три строки текстовый поиск не видит.
+    Текст — это `read_text`/`write_text`, `open`/`fdopen` без «b» в режиме и
+    `subprocess` с `text=True`."""
+    import ast
+
+    def ключ(вызов, имя):
+        return next((k for k in вызов.keywords if k.arg == имя), None)
+
+    def текстом(вызов, где):
+        режим = ключ(вызов, "mode")
+        узел = режим.value if режим else (вызов.args[где] if len(вызов.args) > где else None)
+        return not (isinstance(узел, ast.Constant) and isinstance(узел.value, str)
+                    and "b" in узел.value)
+
+    корень = Path(__file__).resolve().parent
+    плохие = []
+    for путь in sorted(корень.rglob("*.py")):
+        if "__pycache__" in путь.parts:
+            continue
+        for узел in ast.walk(ast.parse(путь.read_text(encoding="utf-8"))):
+            if not isinstance(узел, ast.Call) or ключ(узел, "encoding"):
+                continue
+            ф = узел.func
+            имя = ф.attr if isinstance(ф, ast.Attribute) else getattr(ф, "id", "")
+            if (имя in ("read_text", "write_text")
+                    or (имя in ("open", "fdopen") and текстом(узел, 1 if имя == "fdopen"
+                                                            or isinstance(ф, ast.Name) else 0))
+                    or any(k.arg in ("text", "universal_newlines")
+                           and getattr(k.value, "value", None) is True for k in узел.keywords)):
+                if имя == "open" and isinstance(ф, ast.Attribute) and \
+                        getattr(ф.value, "id", "") == "webbrowser":
+                    continue
+                плохие.append(f"{путь.relative_to(корень.parent)}:{узел.lineno}")
+    return плохие
+
+
+# Что делает дочерний процесс проверки «как на Windows»: в кодировке cp1251
+# и без `fcntl` загружает восток (сети с кириллицей), пишет архив под
+# замком, читает его обратно и печатает «✓» в канал. `msvcrt` подменён
+# записывающим: на Mac его нет, а иначе ветку замка для Windows не
+# проверяло бы ничто. Вывод не падает сам — `vrptw/__init__.py`.
+_КАК_НА_WINDOWS = """
+import sys, locale, tempfile, types
+sys.modules["fcntl"] = None
+import vrptw.compat as compat
+# msvcrt подменяем полем модуля, а не в sys.modules: по нему стандартная
+# библиотека решает, что это Windows, и лезет за `_winapi`.
+вызовы = []
+compat.msvcrt = types.SimpleNamespace(
+    LK_LOCK=1, LK_UNLCK=0,
+    locking=lambda fd, режим, сколько: вызовы.append((режим, сколько)))
+from vrptw.core.load import load_day
+from vrptw.state import use_state_dir, runs_path, изменить_список, прочитать_список
+день = load_day("восток", quiet=True)
+# cp1251 раскодирует почти любые байты: не упасть мало, район из файла
+# сети должен прочитаться тем же словом, а не кракозябрами.
+assert "Нижегородский" in {a.district for a in день.network.nodes}, "районы сети — не той кодировкой"
+use_state_dir(tempfile.mkdtemp(prefix="vrptw-check-cp1251-"))
+изменить_список(runs_path(), lambda список: список.append({"note": "проверка ✓ кириллицей"}))
+assert прочитать_список(runs_path())[0]["note"] == "проверка ✓ кириллицей"
+assert вызовы == [(1, 1), (0, 1)], f"замок msvcrt: {вызовы}"
+print("✓", len(день.orders), locale.getpreferredencoding(False))
+"""
+
+
 def main() -> int:
     t_all = time.time()
 
@@ -161,6 +231,40 @@ def main() -> int:
     except ImportError as e:
         bad(f"не хватает библиотеки: {e.name}. Поставьте: pip install numpy scipy")
         return 1
+
+    # Windows у проверяющих: `fcntl` там нет, кодировка по умолчанию —
+    # cp1251. Первое роняло импорт сервера, второе — чтение готовых планов
+    # и сетей (compat.py). Статически — явная кодировка везде; вживую —
+    # дочерний процесс в cp1251 и без `fcntl`.
+    без = _без_кодировки()
+    if без:
+        bad(f"текстовый ввод-вывод без encoding: {', '.join(без[:4])}"
+            f"{' …' if len(без) > 4 else ''} — на Windows это cp1251")
+    else:
+        ok("чтение и запись текста в движке — с явной кодировкой")
+    import os as _os
+    import subprocess as _sp
+    среда = {**_os.environ, "LC_ALL": "ru_RU.CP1251", "PYTHONUTF8": "0",
+             "PYTHONPATH": str(Path(__file__).resolve().parent.parent)}
+    среда.pop("PYTHONIOENCODING", None)
+    # Скрипт — через stdin, а не `-c`: на Linux аргументы командной строки
+    # расшифровываются по локали, и кириллица в cp1251 ломала сам скрипт.
+    дочерний = _sp.run([sys.executable, "-"], input=_КАК_НА_WINDOWS.encode("utf-8"),
+                       env=среда, capture_output=True, timeout=120)
+    ответ = дочерний.stdout.decode("cp1251", "replace").strip()
+    if дочерний.returncode == 0 and ответ.startswith(("✓", "?")):
+        кодировка = ответ.split()[-1]
+        ok(f"как на Windows: без fcntl (замок — msvcrt, подменённый), {кодировка} — "
+           f"день, архив и вывод целы"
+           + ("" if кодировка.lower().replace("-", "") == "cp1251"
+              else " (локали cp1251 здесь нет — проверено только без fcntl)"))
+    else:
+        try:                            # дочерний пишет в своей кодировке
+            ошибка = дочерний.stderr.decode("utf-8")
+        except UnicodeDecodeError:
+            ошибка = дочерний.stderr.decode("cp1251", "replace")
+        хвост = ошибка.strip().splitlines()[-1:]
+        bad(f"как на Windows (без fcntl, cp1251) не работает: {хвост}")
 
     # --- 2. дорожная сеть ---
     step("2. Дорожная сеть Москвы")
@@ -412,7 +516,7 @@ def main() -> int:
     # исчезает, и проверка выключалась флагом интерпретатора.
     import re as _re
     _голые = [f"{p.name}:{i}" for p in Path(__file__).parent.rglob("*.py")
-              for i, строка in enumerate(p.read_text().splitlines(), 1)
+              for i, строка in enumerate(p.read_text(encoding="utf-8").splitlines(), 1)
               if _re.match(r"\s*assert\b.*check_invariants", строка)]
     if len(остановили) == 4 and not _голые:
         ok("каждый солвер проверяет свой план сам; голых assert на инвариантах нет")
@@ -1032,9 +1136,15 @@ def main() -> int:
         сводки = [o["summary"] for o in объяснения["orders"].values()]
         кривые = [s for s in сводки
                   if (m := _re.search(r"из (\d+) (подходящих|подходящего)$", s))
-                  and (m.group(1) == "1" or (m.group(2) == "подходящего")
+                  and (m.group(1) in ("0", "1") or (m.group(2) == "подходящего")
                        != (int(m.group(1)) % 10 == 1 and int(m.group(1)) % 100 != 11))]
         единственных = sum("единственный, кому" in s for s in сводки)
+        # «Единственный» — только если подходящий один и это назначенный.
+        не_тот = [oid for oid, o in объяснения["orders"].items()
+                  if "единственный, кому" in o["summary"]
+                  and [c["verdict"] for c in o["candidates"]
+                       if c["verdict"] in ("chosen", "feasible")] != ["chosen"]]
+        кривые += не_тот
         if кривые or not единственных:
             bad(f"объяснения: кривые сводки {кривые[:2]}, «единственный» {единственных} "
                 f"(в синтетическом дне первом такие заявки есть)")

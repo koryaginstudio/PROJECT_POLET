@@ -28,7 +28,7 @@ def check(path: Path) -> list[str]:
         if not f.exists():
             bad.append(f"{name}: файла нет")
             return None
-        return json.loads(f.read_text())
+        return json.loads(f.read_text(encoding="utf-8"))
 
     plan = load("plan.json")
     explain = load("explain.json")

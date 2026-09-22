@@ -9,32 +9,40 @@
  "planned": 57,
  "orders_total": 80,
  "done": {
-  "mean": 50.88,
+  "mean": 50.8,
   "p10": 48,
   "p50": 51,
   "p90": 54,
-  "sd": 2.24
+  "sd": 2.13
  },
- "coverage": 63.6,
- "execution_rate": 89.3,
+ "coverage": 63.5,
+ "execution_rate": 89.1,
  "must_today": 40,
  "breaches": 10.03,
  "breach_rate": 25.1,
  "reasons": {
-  "no_show": 3.46,
-  "missed_window": 1.53,
-  "no_access": 1.08,
-  "dropped": 0.05
+  "no_show": 3.4,
+  "missed_window": 1.55,
+  "no_access": 1.19,
+  "dropped": 0.07
  },
- "overtime_minutes": 59.5,
- "idle_minutes": 1116.2,
+ "overtime_minutes": 60.4,
+ "idle_minutes": 1144.4,
  "fragile": [
   {
    "order_id": "R0063",
    "failure_rate": 32.7
   },
   {
+   "order_id": "R0031",
+   "failure_rate": 28.7
+  },
+  {
    "order_id": "R0045",
+   "failure_rate": 26.3
+  },
+  {
+   "order_id": "R0024",
    "failure_rate": 26.0
   },
   {
@@ -42,32 +50,24 @@
    "failure_rate": 25.0
   },
   {
-   "order_id": "R0031",
-   "failure_rate": 24.0
-  },
-  {
-   "order_id": "R0024",
-   "failure_rate": 24.0
-  },
-  {
-   "order_id": "R0028",
-   "failure_rate": 23.7
-  },
-  {
    "order_id": "R0057",
    "failure_rate": 21.3
   },
   {
-   "order_id": "R0062",
-   "failure_rate": 18.3
+   "order_id": "R0028",
+   "failure_rate": 20.3
+  },
+  {
+   "order_id": "R0051",
+   "failure_rate": 17.7
+  },
+  {
+   "order_id": "R0023",
+   "failure_rate": 15.0
   },
   {
    "order_id": "R0016",
    "failure_rate": 14.3
-  },
-  {
-   "order_id": "R0001",
-   "failure_rate": 14.0
   }
  ]
 }
