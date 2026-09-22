@@ -3,13 +3,17 @@ import { Icon } from '../ds/components/core/Icon.jsx';
 import { Badge } from '../ds/components/core/Badge.jsx';
 import type { Day } from '../data/contract.ts';
 import type { DayView } from '../data/derive.ts';
-import { buildLiveRoster, cutMinutes, dec } from '../data/derive.ts';
+import { buildLiveRoster, cutMinutes, dec, hhmm, replanAt } from '../data/derive.ts';
 import type { RunId, DaySummary } from '../data/load.ts';
 import { runCode } from '../data/load.ts';
 import type { SectionId } from '../app/nav.ts';
 
 interface Props {
   day: Day;
+  /** План, который сейчас на экране: с несохранённым пересчётом — его план
+      остатка дня, а не тот, что в архиве. `view` собран из него же, и числа
+      на плитках обязаны браться из одного плана с ним. */
+  plan: Day['plan'];
   view: DayView;
   runs: DaySummary[] | null;
   activeRun: RunId;
@@ -26,7 +30,7 @@ const percent = (share: number) => `${Math.round(share)}%`;
    происходит по нему прямо сейчас, и что считали до этого. Своих данных
    почти не заводит — читает то же, что и остальные экраны, только собирает
    в одном месте. */
-export function HomeScreen({ day, view, runs, activeRun, onGoSection, onOpenRun, onCreate }: Props) {
+export function HomeScreen({ day, plan, view, runs, activeRun, onGoSection, onOpenRun, onCreate }: Props) {
   const roster = useMemo(() => buildLiveRoster(view, cutMinutes()), [view]);
   const liveCounts = useMemo(() => {
     const working = roster.filter((r) => r.status === 'working').length;
@@ -35,6 +39,9 @@ export function HomeScreen({ day, view, runs, activeRun, onGoSection, onOpenRun,
     return { working, enroute, overdue };
   }, [roster]);
 
+  const restFrom = replanAt(plan);
+  const assignedShare =
+    plan.meta.orders_total > 0 ? (plan.meta.orders_assigned / plan.meta.orders_total) * 100 : 0;
   const recent = useMemo(() => (runs ?? []).slice(-3).reverse(), [runs]);
 
   return (
@@ -47,18 +54,32 @@ export function HomeScreen({ day, view, runs, activeRun, onGoSection, onOpenRun,
           </Badge>
         </div>
 
+        {/* Пересчёт — план остатка дня. Прогноз у него от плана дня: своего
+            нет, и «покрытие» из него рядом с заявками остатка читалось бы
+            итогом дня, которого на экране нет. Поэтому у пересчёта первая
+            плитка — его собственная доля разложенного, с моментом, от
+            которого он считан; остальные — из того же плана. */}
         <div className="dbstats">
           <div className="dbstat">
-            <span className="dbstat__value">{percent(day.simulation.coverage)}</span>
-            {/* Симуляции могло и не быть: тогда это доля назначенных, а не
-                доля тех, кто доедет, и называть её надо по-другому. */}
-            <span className="dbstat__label">
-              {day.simulation.meta.runs > 0 ? 'Покрытие по симуляции' : 'Заявок разложено, %'}
-            </span>
+            {restFrom !== null ? (
+              <>
+                <span className="dbstat__value">{percent(assignedShare)}</span>
+                <span className="dbstat__label">Разложено в остатке дня с {hhmm(restFrom)}</span>
+              </>
+            ) : (
+              <>
+                <span className="dbstat__value">{percent(day.simulation.coverage)}</span>
+                {/* Прогноза могло и не быть: тогда это доля назначенных, а не
+                    доля тех, кто доедет, и называть её надо по-другому. */}
+                <span className="dbstat__label">
+                  {day.simulation.meta.runs > 0 ? 'Покрытие по прогнозу' : 'Заявок разложено, %'}
+                </span>
+              </>
+            )}
           </div>
           <div className="dbstat">
             <span className="dbstat__value">
-              {day.plan.meta.orders_assigned} из {day.plan.meta.orders_total}
+              {plan.meta.orders_assigned} из {plan.meta.orders_total}
             </span>
             <span className="dbstat__label">Заявок разложено</span>
           </div>
@@ -67,7 +88,7 @@ export function HomeScreen({ day, view, runs, activeRun, onGoSection, onOpenRun,
             <span className="dbstat__label">Без инженера</span>
           </div>
           <div className="dbstat">
-            <span className="dbstat__value">{day.plan.meta.engineers_total}</span>
+            <span className="dbstat__value">{plan.meta.engineers_total}</span>
             <span className="dbstat__label">Инженеров в штате</span>
           </div>
         </div>

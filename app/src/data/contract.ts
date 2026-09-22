@@ -215,7 +215,9 @@ export interface Baseline {
   orders_assigned: number;
   engineers_used: number;
   distance_km_total: number | null;
-  travel_minutes_total: number;
+  /** Минут в пути у базового. `null` — не прислали: программа расчёта их не
+      отдаёт, в ТЗ это не метрика. Ноль здесь читался бы «в дороге не были». */
+  travel_minutes_total?: number | null;
 }
 
 export interface Plan {

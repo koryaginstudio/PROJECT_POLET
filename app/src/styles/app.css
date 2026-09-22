@@ -10015,6 +10015,26 @@ b.ccard__bad {
   cursor: pointer;
 }
 
+/* Сохранённый пересчёт — пояснение, а не тревога: та же полоса, что у
+   несохранённого, но в нейтральном тоне и основным кеглем списка. */
+.calc__replan {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+  padding: var(--sp-3);
+  border-radius: var(--r-sm);
+  background: var(--surface-muted);
+  color: var(--text-primary);
+  font-size: var(--fs-body-s);
+  line-height: 1.5;
+}
+
+.calc__replan > svg {
+  flex: none;
+  margin-top: 2px;
+}
+
 /* Сохранённое состояние — не кнопка, а пометка. Нажимать нечего: всё уже
    записано, и активная кнопка обещала бы действие, которого нет. */
 .calc__saved {
@@ -15230,6 +15250,26 @@ b.ccard__bad {
 .mapstat__draft > svg {
   flex: none;
   margin-top: 1px;
+}
+
+/* Пометка сохранённого пересчёта в колонке итогов: пояснения под плитками
+   здесь скрыты, и остаток дня называет только она. */
+.mapstat__replan {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-sm);
+  background: var(--surface-muted);
+  font-size: var(--fs-body-s);
+  line-height: 1.45;
+  color: var(--text-primary);
+}
+
+.mapstat__replan > svg {
+  flex: none;
+  margin-top: 2px;
 }
 
 /* Числа идут в столбец: колонка узкая, а подписи у них длинные — в два

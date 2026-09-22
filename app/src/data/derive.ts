@@ -935,7 +935,13 @@ export function buildDayView(day: Day): DayView {
           unit: '%',
           caption: `${rest}: ${plan.meta.orders_assigned} из ${plan.meta.orders_total} заявок`,
           group: 'metric:coverage',
-          flag: 'ok'
+          /* Те же пороги, что у покрытия: 60 % разложенного в остатке дня
+             заслуживают отметки не меньше, чем 60 % по прогнозу дня. */
+          ...mark(
+            assignedShare < limit.coverageBad,
+            assignedShare < limit.coverageWatch,
+            'В остатке дня часть заявок осталась без инженера'
+          )
         },
     {
       /* Нераспределённые стоят рядом с покрытием не случайно: это первая

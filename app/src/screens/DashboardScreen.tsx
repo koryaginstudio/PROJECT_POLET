@@ -10,6 +10,7 @@ import {
   crewStatus,
   ordersStatus,
   hhmm,
+  replanAt,
   orders as pluralOrders,
   engineers as pluralEngineers
 } from '../data/derive.ts';
@@ -221,6 +222,7 @@ export function DashboardScreen({
         onEdit={onEdit}
         engineLive={engineLive}
         draft={draft}
+        restFrom={replanAt(day.plan)}
         saving={saving}
         saveFailed={saveFailed}
         onSave={onSave}

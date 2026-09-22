@@ -1,7 +1,7 @@
 import { Button } from '../ds/components/core/Button.jsx';
 import { Icon } from '../ds/components/core/Icon.jsx';
 import type { Metric } from '../data/derive.ts';
-import { hhmm, visits } from '../data/derive.ts';
+import { hhmm, orders } from '../data/derive.ts';
 
 interface Props {
   /** Номер расчёта, который сейчас открыт: R001 и дальше. */
@@ -22,6 +22,9 @@ interface Props {
   /** Несохранённый пересчёт: что именно показано на экране. `null` — всё
       показанное лежит в архиве. */
   draft: { at: number; gain: number; what: string } | null;
+  /** Момент, с которого пересобран остаток дня, если открыт сохранённый
+      пересчёт; `null` — план дня целиком. */
+  restFrom?: number | null;
   /** Идёт сохранение. */
   saving: boolean;
   /** Чем кончилась неудачная попытка сохранить. */
@@ -72,6 +75,7 @@ export function CalcBoard({
   onEdit,
   engineLive,
   draft,
+  restFrom = null,
   saving,
   saveFailed,
   onSave,
@@ -203,13 +207,27 @@ export function CalcBoard({
           <span className="calc__draft-body">
             <b>Пересчёт не сохранён.</b> На экране остаток дня от {hhmm(draft.at)}: {draft.what}.
             {draft.gain > 0
-              ? ` Пересчёт добавил ${visits(draft.gain)}.`
-              : ' Пересчёт визитов не добавил.'}{' '}
+              ? ` Пересчёт добавил ${orders(draft.gain)}.`
+              : ' Пересчёт заявок не добавил.'}{' '}
             Прогноз дня и объяснения в разборе остались от исходного расчёта — они про прежний план.
           </span>
           <button type="button" className="calc__draft-drop" onClick={onDropDraft}>
             Вернуть как было
           </button>
+        </div>
+      )}
+
+      {/* Сохранённый пересчёт — план остатка дня, а не дня. Плитки говорят
+          об этом в своих подписях, но подпись читают, когда уже поверили
+          числу: общая строка над ними снимает вопрос сразу. Тон нейтральный —
+          это не тревога, а пояснение, что за числа ниже. */}
+      {!draft && restFrom !== null && (
+        <div className="calc__replan">
+          <Icon name="info" size={16} />
+          <span>
+            <b>Сохранённый пересчёт.</b> Числа ниже — за остаток дня с {hhmm(restFrom)}, без
+            сравнения с базовым вариантом.
+          </span>
         </div>
       )}
 

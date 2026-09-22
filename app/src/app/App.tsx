@@ -27,7 +27,7 @@ import type { IncidentKind, IncidentSpec, ReplanResult } from '../data/api.ts';
 import { loadRegistry } from '../data/registry.ts';
 import type { ShiftInput } from '../data/shift.ts';
 import type { Registry, RunRef } from '../data/registry.ts';
-import { buildDayView, dayStart, plural } from '../data/derive.ts';
+import { buildDayView, dayStart, plural, replanAt } from '../data/derive.ts';
 import { setPlanHorizon, useService } from '../data/service.ts';
 import { Header } from './Header.tsx';
 import { SubHeader } from './SubHeader.tsx';
@@ -899,6 +899,7 @@ export function App() {
       {section === 'home' && (
         <HomeScreen
           day={day}
+          plan={shownDay?.plan ?? day.plan}
           view={dayView}
           runs={runs}
           activeRun={runId}
@@ -949,6 +950,7 @@ export function App() {
       {onOverview && (
         <OverviewScreen
           view={dayView}
+          restFrom={replanAt(day.plan)}
           runId={runId}
           run={runCode(runId)}
           live={liveRoute}
