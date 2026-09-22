@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Badge } from '../ds/components/core/Badge.jsx';
 import { Button } from '../ds/components/core/Button.jsx';
 import { Icon } from '../ds/components/core/Icon.jsx';
@@ -19,7 +19,8 @@ export interface DispatcherActions {
   holders: Record<string, string> | null;
   /** Момент ползунка: на него запишется событие. */
   cut: number;
-  /** Начало смены — там ползунок стоит, пока его не трогали. */
+  /** Начало шкалы — там ползунок стоит, пока его не трогали. Запасное
+      значение: начало смены блок берёт у инженеров показанного дня. */
   dayStart: number;
   /** Идёт запись события. */
   busy: boolean;
@@ -48,7 +49,7 @@ const STATUS_VIEW: Record<string, { code: string; label?: string; tone: Tone }> 
   отправлено: { code: 'sent', tone: 'accent' },
   'в пути': { code: 'en_route', tone: 'accent' },
   выполнено: { code: 'done', tone: 'success' },
-  сорвано: { code: 'failed', tone: 'danger' }
+  сорвано: { code: 'failed', label: 'Сорвалось', tone: 'danger' }
 };
 
 /* Следующий шаг по ходу работы. Кнопка одна и главная: диспетчер не
@@ -61,6 +62,25 @@ const NEXT_STEP: Record<
   отправлено: { kind: 'en_route', label: 'Выехал', icon: 'navigation-arrow' },
   'в пути': { kind: 'done', label: 'Выполнено', icon: 'check-circle' }
 };
+
+/* Отказы движка, в словах которых уже есть «что делать» (journal.py,
+   _assign и _check): вместо общей фразы — человеческая строка с именем
+   вместо табельного. Неизвестный отказ — общая фраза, слова движка
+   остаются под «Подробностями». */
+function explainRefusal(message: string, nameOf: (id: string) => string): string | null {
+  let m = message.match(/(\S+) уже в пути к (\S+?);/);
+  if (m) return `${nameOf(m[1])} уже едет к другой заявке (${m[2]}) — сначала отметьте её выполненной или сорванной.`;
+  m = message.match(/исполнителя (\S+) сегодня нет/) ?? message.match(/инженера (\S+) сегодня не будет/);
+  if (m) return `${nameOf(m[1])} сегодня не работает — отдайте заявку другому инженеру.`;
+  m = message.match(/инженер (\S+) не может взять \S+: (.+)$/);
+  if (m) return `${nameOf(m[1])} не может взять эту заявку: ${m[2]}. Выберите другого инженера.`;
+  if (/уже отчитались/.test(message)) return 'По заявке уже отчитались — изменить её исход нельзя.';
+  if (/никому не назначена/.test(message)) return 'Заявка ни за кем не числится — сначала закрепите её за инженером.';
+  if (/исполнитель уже едет к/.test(message)) return 'Инженер уже едет к этой заявке — следующий шаг «Выполнено».';
+  m = message.match(/уже «([^»]+)»/);
+  if (m) return `Заявка уже в статусе «${m[1]}» — посмотрите статус выше и выберите следующий шаг.`;
+  return null;
+}
 
 /* Распоряжение диспетчера по одной заявке.
 
@@ -92,12 +112,13 @@ export function DispatcherBlock({
      «Сорвалось» не нажато, выбор причины только занимает место. */
   const [failing, setFailing] = useState(false);
   const [reason, setReason] = useState<FailReason | ''>('');
-  /* Событие, которое ждёт подтверждения записи на начало смены. */
+  /* Событие, которое ждёт подтверждения: запись на начало смены или
+     необратимое «Выполнено». */
   const [asking, setAsking] = useState<JournalEvent | null>(null);
+  /* Сдвинутый ползунок отменяет вопрос: иначе «Записать на начало смены»
+     уходило бы уже на новое время под старым текстом. */
+  useEffect(() => setAsking(null), [dispatcher.cut]);
 
-  const status =
-    dispatcher.statuses[order.id] ?? (order.assigned_to ? 'назначено' : 'без исполнителя');
-  const closed = status === 'выполнено' || status === 'сорвано';
   const busy = dispatcher.busy;
   const nameOf = (id: string) => view.engineerById.get(id)?.name ?? id;
 
@@ -107,7 +128,16 @@ export function DispatcherBlock({
      не пришло, верим плану. */
   const shown = order.assigned_to ?? null;
   const holder = dispatcher.holders ? (dispatcher.holders[order.id] ?? null) : shown;
-  const stale = dispatcher.holders !== null && !closed && holder !== shown;
+  /* Статус — после держателя: если по журналу заявка у кого-то, а событий
+     по ней не было, она «назначено», даже когда в показанном плане её нет. */
+  const status = dispatcher.statuses[order.id] ?? (holder ? 'назначено' : 'без исполнителя');
+  const closed = status === 'выполнено' || status === 'сорвано';
+  /* Заявка «в пути» в маршруты пересчёта не попадает (CONTRACT.md: она
+     только в meta.replan.underway), и после принятого пересчёта у неё нет
+     исполнителя в плане. Это не расхождение: человек едет, и закреплять её
+     заново нельзя — движок сбросил бы статус в «назначено». */
+  const riding = status === 'в пути' && holder !== null && shown === null;
+  const stale = dispatcher.holders !== null && !closed && !riding && holder !== shown;
   const held = holder !== null;
 
   /* Кого можно назвать: владеет навыком и ездит на том, что заявке нужно.
@@ -140,12 +170,21 @@ export function DispatcherBlock({
       .filter(Boolean)
       .join(' · ');
 
-  /* Событие пишется на момент ползунка. Если ползунок не трогали, это
-     начало смены, и «выполнено в 08:00» — почти всегда забытая шкала, а не
-     факт: переспрашиваем прямо здесь. */
-  const atStart = dispatcher.cut <= dispatcher.dayStart;
+  /* Событие пишется на момент ползунка. Начало смены — у держателя, а без
+     него самое раннее у инженеров дня: начало шкалы (07:00) раньше смены
+     (обычно 08:00), и сравнивать с ним значило молчать на настоящем начале
+     смены. «Выполнено в 08:00» — почти всегда забытая шкала, а не факт:
+     переспрашиваем прямо здесь. */
+  const starts = [...view.engineerById.values()].map((engineer) => engineer.shift_start);
+  const shiftStart =
+    (holder ? view.engineerById.get(holder)?.shift_start : undefined) ??
+    (starts.length ? Math.min(...starts) : dispatcher.dayStart);
+  const atStart = dispatcher.cut <= shiftStart;
+  const beforeShift = dispatcher.cut < shiftStart;
+  /* «Выполнено» необратимо: после него движок отвергает любое событие по
+     заявке. Поэтому его подтверждают всегда, не только на начале смены. */
   const send = (event: JournalEvent, confirmed = false) => {
-    if (atStart && !confirmed) {
+    if ((atStart || event.kind === 'done') && !confirmed) {
       setAsking(event);
       return;
     }
@@ -157,7 +196,12 @@ export function DispatcherBlock({
 
   const look = STATUS_VIEW[status];
   const next = NEXT_STEP[status];
+  /* Из «назначено» и «отправлено» движок позволяет сразу «выполнено»:
+     диспетчеру позвонили «сделал» — трёх событий подряд на одну минуту
+     не нужно. Кнопка вторичная: главная по-прежнему одна. */
+  const canFinishEarly = status === 'назначено' || status === 'отправлено';
   const failed = dispatcher.failed?.order === order.id ? dispatcher.failed.message : null;
+  const failedText = failed ? explainRefusal(failed, nameOf) : null;
 
   return (
     <section className="dispatch">
@@ -207,20 +251,27 @@ export function DispatcherBlock({
           <Icon name="clock" size={16} />
           <span>
             Событие запишется на {hhmm(dispatcher.cut)}
-            {atStart && ' — это начало смены. Если событие было позже, передвиньте время на шкале'}
+            {atStart &&
+              (beforeShift
+                ? ` — раньше начала смены (${hhmm(shiftStart)}). Если событие было позже, передвиньте время на шкале`
+                : ' — это начало смены. Если событие было позже, передвиньте время на шкале')}
           </span>
         </p>
       )}
 
       {asking && (
         <div className="dispatch__ask" role="alert">
-          <span>Записать на начало смены, {hhmm(dispatcher.cut)}?</span>
+          <span>
+            {asking.kind === 'done'
+              ? `Отметить выполненной на ${hhmm(dispatcher.cut)}${atStart ? ' (начало смены)' : ''}? Отменить будет нельзя`
+              : `Записать на ${beforeShift ? 'время до начала смены' : 'начало смены'}, ${hhmm(dispatcher.cut)}?`}
+          </span>
           <span className="dispatch__row">
             <Button variant="primary" size="sm" disabled={busy} onClick={() => send(asking, true)}>
-              Записать
+              {asking.kind === 'done' ? 'Выполнено' : 'Записать'}
             </Button>
             <Button variant="ghost" size="sm" onClick={() => setAsking(null)}>
-              Сначала выберу время
+              {atStart ? 'Сначала выберу время' : 'Отмена'}
             </Button>
           </span>
         </div>
@@ -246,6 +297,16 @@ export function DispatcherBlock({
           >
             Сорвалось
           </Button>
+          {canFinishEarly && (
+            <Button
+              variant="secondary"
+              disabled={busy || stale}
+              onClick={() => send({ kind: 'done', order: order.id })}
+              iconLeft={<Icon name="check-circle" size={16} />}
+            >
+              Уже выполнено
+            </Button>
+          )}
         </div>
       )}
 
@@ -274,7 +335,7 @@ export function DispatcherBlock({
         </div>
       )}
 
-      {!closed && !asking && (
+      {!closed && !riding && !asking && (
         <div className="dispatch__pin">
           <span className="dispatch__pin-label">
             {held ? 'Отдать другому' : 'Назначить вручную'}
@@ -305,8 +366,8 @@ export function DispatcherBlock({
         <div className="solvefail">
           <Icon name="alert-triangle" size={16} />
           <span>
-            <b>Событие не записано.</b> Проверьте статус заявки и время на шкале и попробуйте
-            ещё раз.
+            <b>Событие не записано.</b>{' '}
+            {failedText ?? 'Проверьте статус заявки и время на шкале и попробуйте ещё раз.'}
             <details className="dispatch__more">
               <summary>Подробности</summary>
               {failed}

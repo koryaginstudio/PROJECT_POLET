@@ -417,6 +417,11 @@ export function App() {
       });
   };
 
+  /* Смена основы — другой журнал: состояние прежнего расчёта до ответа
+     /api/state двигало бы канбан, воронку и мониторинг нового дня и давало
+     ложное «По журналу заявка у …». Эффект стоит до запроса и срабатывает
+     только на смену дня или базы, поэтому от ползунка статусы не мигают. */
+  useEffect(() => setDayState(null), [engineDay, engineBase]);
   useEffect(refreshDayState, [engineDay, engineBase, cut]);
 
   const sendEvent = async (event: JournalEvent) => {

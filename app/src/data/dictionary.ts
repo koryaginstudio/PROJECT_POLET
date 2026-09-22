@@ -188,7 +188,7 @@ const STATUS_NAMES: Record<string, string> = {
   /* Не из выгрузки, а из журнала дня: диспетчер отметил срыв. В порядок
      жизненного цикла (STATUS_ORDER) не входит — фильтры выгрузки его не
      знают, а карточка заявки показывает. */
-  failed: 'Сорвалась'
+  failed: 'Сорвалось'
 };
 
 const STATUS_ICONS: Record<string, string> = {
