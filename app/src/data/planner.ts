@@ -594,6 +594,20 @@ export function planDay(
       date,
       generated_at: Math.floor(Date.now() / 1000),
       time_format: 'minutes_from_midnight',
+      /* Граница суток — как у движка: без неё ось времени встаёт на
+         настройку 21:00, а переносимость на завтра считается по полуночи,
+         и браузерный план расходился бы с планом движка на тех же данных.
+         Не раньше 21:00 и не раньше концов смен вышедших и сегодняшних окон: у
+         выгрузки заказчика окна до 22:00, и граница выходит та же, что у
+         движка, — 1320. Окна за полночью (заявки на завтра) её не тянут. */
+      hard_end: Math.min(
+        24 * 60,
+        Math.max(
+          21 * 60,
+          ...crew.map((engineer) => engineer.shift_end),
+          ...orders.filter((order) => order.window_end < 24 * 60).map((order) => order.window_end)
+        )
+      ),
       solver: 'demo/greedy',
       orders_total: open.length,
       orders_assigned: placed.size,

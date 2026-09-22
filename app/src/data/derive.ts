@@ -1,9 +1,9 @@
 /* Всё, что интерфейс считает из контракта. Ни одного зашитого справочника:
    типы работ, навыки и районы перечисляются из того, что пришло в файле. */
 
-import type { Day, Engineer, Minutes, Order, Risk, Route, Stop } from './contract.ts';
+import type { Day, Engineer, Minutes, Order, Plan, Risk, Route, Stop } from './contract.ts';
 import { engineerOnShift, orderClosed, skillName } from './dictionary.ts';
-import { clampDay, dayEnd, service } from './service.ts';
+import { clampDay, service } from './service.ts';
 
 export const hhmm = (m: number) =>
   `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
@@ -129,12 +129,34 @@ export function deadline(m: number) {
   return `${hhmm(rest)} через ${days} дн.`;
 }
 
-/** Переносима ли заявка на завтра: её крайний срок уже за полночью. Граница
-    та же, по которой `deadline` пишет «завтра», — сутки, а не конец рабочего
-    дня из настроек: срок в 22:00 при дне до 21:00 всё ещё сегодняшний, и
-    переносить такую заявку значило бы сорвать его. */
-export const isDeferrable = (order: Pick<Order, 'sla_deadline'>) =>
-  order.sla_deadline >= 24 * 60;
+/** Переносима ли заявка на завтра. Правило одно на весь интерфейс — воронка,
+    карточка, колокольчик и выгрузка зовут только его, иначе одна и та же
+    заявка «горит» на пульте и «можно завтра» в карточке.
+
+    Если у плана есть граница суток (`meta.hard_end`, её пишут и движок, и
+    браузерный планировщик) — правило движка из CONTRACT.md: сегодня обязана
+    быть сделана заявка со сроком не позже границы, всё, что позже, можно на
+    завтра. На синтетике граница 21:00, и срок 21:30 там уже «завтра» — так
+    считает и сам движок, и число переносимых на пульте сходится с его.
+
+    Если границы нет (старая запись) — срок за полночью. Это та же граница,
+    по которой `deadline` пишет «завтра», а не конец оси из настроек: срок в
+    22:00 при оси до 21:00 всё ещё сегодняшний, и переносить такую заявку
+    значило бы сорвать его. */
+export const isDeferrable = (order: Pick<Order, 'sla_deadline'>, hardEnd?: Minutes) =>
+  hardEnd != null ? order.sla_deadline > hardEnd : order.sla_deadline >= 24 * 60;
+
+/** Граница суток плана для оси времени. Из плана, если он её знает; у старой
+    записи без поля — по самим данным, как Гант Антона: концы смен, маршрутов
+    и окон невзятых заявок. Не выше полуночи: ось — одни сутки. */
+export function planHorizon(plan: Plan): Minutes {
+  if (plan.meta.hard_end != null) return Math.min(24 * 60, plan.meta.hard_end);
+  let top = 0;
+  for (const e of plan.engineers) top = Math.max(top, e.shift_end);
+  for (const r of plan.routes) top = Math.max(top, r.totals.end);
+  for (const o of plan.orders) top = Math.max(top, o.window_end);
+  return Math.min(24 * 60, top);
+}
 
 /** Русский десятичный разделитель — запятая. */
 export const dec = (n: number, digits = 1) =>
@@ -361,8 +383,9 @@ export interface DayView {
       вещи: `dayEnd` — докуда рисовать ось времени, `hardEnd` — докуда
       заявку обязаны выполнить сегодня. Пока их путали, экран объявлял
       переносимыми на завтра 33 заявки из 205, у которых срок ровно 22:00
-      сегодня. */
-  hardEnd: Minutes;
+      сегодня. Нет у старой записи без поля — тогда граница полночь
+      (`isDeferrable`). */
+  hardEnd: Minutes | undefined;
 }
 
 /** Срез внутри рабочего дня. Данные — план на дату, поэтому «сейчас» берём
@@ -497,10 +520,12 @@ export function buildFunnel(
   deferrable: Order[],
   fragileIds: string[],
   cut: Minutes,
-  slaOf: (placement: Placement) => Minutes | null = () => null
+  slaOf: (placement: Placement) => Minutes | null = () => null,
+  hardEnd?: Minutes
 ): Funnel {
-  /* Горит та, у которой срок сегодняшний: переносимая на завтра подождёт. */
-  const urgent = unassigned.filter((o) => !isDeferrable(o));
+  /* Горит та, у которой срок сегодняшний: переносимая на завтра подождёт.
+     Граница суток — плана (`hardEnd`), правило то же, что в карточке. */
+  const urgent = unassigned.filter((o) => !isDeferrable(o, hardEnd));
   const attentionIds = [...new Set([...urgent.map((o) => o.id), ...fragileIds])];
 
   /* Заявка без инженера «горит», если её окно уже открыто: раздать её
@@ -776,11 +801,12 @@ export function buildDayView(day: Day): DayView {
     .map((id) => orderById.get(id))
     .filter((o): o is Order => o !== undefined && !orderClosed(o));
 
-  /* Жёсткая граница суток — из плана: докуда рисовать ось и что считать
-     сегодняшним. Переносимость — по сроку «не сегодня» (`isDeferrable`). */
-  const hardEnd = plan.meta.hard_end ?? dayEnd();
+  /* Жёсткая граница суток — из плана: что считать сегодняшним. Без поля
+     (старая запись) — неизвестна, и `isDeferrable` берёт полночь. Ось
+     времени от неё не зависит: её тянет `setPlanHorizon` в App. */
+  const hardEnd = plan.meta.hard_end;
 
-  const deferrable = unassigned.filter(isDeferrable);
+  const deferrable = unassigned.filter((o) => isDeferrable(o, hardEnd));
 
   const byType = new Map<string, { title: string; count: number }>();
   for (const order of plan.orders) {
@@ -808,7 +834,8 @@ export function buildDayView(day: Day): DayView {
     deferrable,
     fragile.map((f) => f.order.id),
     cutMinutes(),
-    slaOf
+    slaOf,
+    hardEnd
   );
 
   const spread = plan.meta.balance;
