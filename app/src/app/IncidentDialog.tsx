@@ -3,7 +3,7 @@ import { Button } from '../ds/components/core/Button.jsx';
 import { Icon } from '../ds/components/core/Icon.jsx';
 import { Select } from '../ds/components/forms/Select.jsx';
 import type { DayView } from '../data/derive.ts';
-import { hhmm, orders as ordersWord, pluralWord } from '../data/derive.ts';
+import { dec, hhmm, orders as ordersWord, pluralWord } from '../data/derive.ts';
 import type { IncidentKind, IncidentSpec, ReplanResult } from '../data/api.ts';
 import { loadEngineSettings } from '../data/api.ts';
 import { CHURN_PRESETS, ENGINE_DEFAULTS } from '../data/engine.ts';
@@ -374,7 +374,7 @@ export function IncidentDialog({
         {result && replan ? (
           <>
             <p className="engine__lede">
-              Остаток дня пересобран от {hhmm(replan.at)} за {replan.solve_seconds} с. Ниже —
+              Остаток дня пересобран от {hhmm(replan.at)} за {dec(replan.solve_seconds)} с. Ниже —
               чего это стоило.{' '}
               {replan.adopt_token
                 ? 'Это пересчёт от событий дня: журнал не тронут, пока вы не нажмёте «Принять», — тогда он станет назначением дня. «Сохранить» потом положит его в архив.'
@@ -386,7 +386,7 @@ export function IncidentDialog({
                 нужно ли. */}
             <div className="incident__gain">
               <span className={'incident__gain-value' + (gain > 0 ? '' : ' incident__gain-value--flat')}>
-                {gain > 0 ? `+${gain}` : gain}
+                {gain > 0 ? `+${gain}` : gain < 0 ? `−${-gain}` : gain}
               </span>
               <span className="incident__gain-label">
                 {gain > 0 ? (
@@ -394,10 +394,38 @@ export function IncidentDialog({
                     {pluralWord(gain, 'заявку', 'заявки', 'заявок')} выиграли пересчётом:{' '}
                     {replan.assigned_now} против {replan.assigned_as_is}, если бы поехали как ехали
                   </>
-                ) : (
+                ) : replan.urgent_assigned > 0 ? (
+                  /* Ноль здесь не значит «запас справился сам». «Как ехали»
+                     аварий не везёт вовсе: если они встали, а заявок не
+                     прибавилось, место им освободили, сняв заявки попроще. */
+                  <>
+                    {gain === 0
+                      ? `всего заявок столько же — ${replan.assigned_now}`
+                      : `всего на ${-gain} ${pluralWord(-gain, 'заявку', 'заявки', 'заявок')} меньше: ${replan.assigned_now} против ${replan.assigned_as_is}`}
+                    , но {replan.urgent_assigned}{' '}
+                    {pluralWord(replan.urgent_assigned, 'авария встала', 'аварии встали', 'аварий встали')} в
+                    план: ради {replan.urgent_assigned === 1 ? 'неё' : 'них'} пересчёт снял заявки
+                    попроще — авария важнее
+                  </>
+                ) : gain < 0 ? (
+                  <>
+                    после пересчёта на {-gain} {pluralWord(-gain, 'заявку', 'заявки', 'заявок')} меньше,
+                    чем если бы поехали как ехали: {replan.assigned_now} против {replan.assigned_as_is}
+                  </>
+                ) : replan.urgent_ids.length > 0 ? (
+                  /* Утром так и выходит: авария живёт три часа от прихода, а
+                     смены тех, кто умеет аварии, начинаются позже. */
                   <>
                     пересчёт ничего не добавил: {ordersWord(replan.assigned_now)} и так, и так.
-                    Запас времени в маршрутах справился сам
+                    Ни одна авария в план не встала
+                  </>
+                ) : (
+                  /* «Запас справился сам» — только про задержку. У выбытия
+                     ноль значит, что его заявки никто не подхватил, у отмены —
+                     что в освободившееся время ничего не влезло. */
+                  <>
+                    пересчёт ничего не добавил: {ordersWord(replan.assigned_now)} и так, и так
+                    {fates?.kind === 'delayed' && '. Запас времени в маршрутах справился сам'}
                   </>
                 )}
               </span>
