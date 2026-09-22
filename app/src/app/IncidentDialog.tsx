@@ -8,6 +8,8 @@ import type { IncidentKind, IncidentSpec, ReplanResult } from '../data/api.ts';
 import { loadEngineSettings } from '../data/api.ts';
 import { CHURN_PRESETS, ENGINE_DEFAULTS } from '../data/engine.ts';
 import { IMPACT, urgentFrom } from '../data/impact.ts';
+import { titleWithStop } from '../data/errors.ts';
+import type { HumanError } from '../data/errors.ts';
 import type { Order } from '../data/contract.ts';
 import { useModalFocus } from './modal.ts';
 import { pinnedRest } from './pinnedReason.ts';
@@ -31,7 +33,11 @@ interface Props {
   /** Момент, с которого пересобирается остаток. */
   cut: number;
   busy: boolean;
-  failed: string | null;
+  /** Чем кончился неудачный пересчёт или «Принять» — уже разобранное
+      (`humanError`): прежде окно разбирало готовую фразу заново по тексту,
+      при истёкшем сроке советовало «проверьте время и исполнителя», а слова
+      программы расчёта под «Подробностями» терялись. */
+  failed: HumanError | null;
   /** Что вернул пересчёт. Пока пусто — окно показывает форму события. */
   result: ReplanResult | null;
   onClose: () => void;
@@ -95,31 +101,6 @@ const KINDS: {
 ];
 
 const DELAYS = [20, 30, 40, 60, 90, 120];
-
-/* Ошибка пересчёта словами диспетчера: что случилось и что делать. Текст
-   ответа программы расчёта — технический, он нужен тому, кто будет
-   разбираться, и уходит под «Подробности». Общего разборщика ошибок в
-   интерфейсе пока нет, поэтому здесь свой, маленький: различает только
-   три случая, которые меняют совет. */
-function explainFailure(message: string): { what: string; todo: string } {
-  const text = message.toLowerCase();
-  if (text.includes('не ответил за')) {
-    return {
-      what: 'Расчёт идёт дольше обычного и не успел закончиться.',
-      todo: 'Подождите минуту и нажмите «Пересчитать» ещё раз. Если повторится — сообщите администратору.'
-    };
-  }
-  if (text.includes('не запущен') || text.includes('не отвечает')) {
-    return {
-      what: 'Программа расчёта не отвечает.',
-      todo: 'Проверьте, что она запущена, и нажмите «Пересчитать» ещё раз.'
-    };
-  }
-  return {
-    what: 'Пересчёт не получился.',
-    todo: 'Проверьте время события и исполнителя и нажмите «Пересчитать» ещё раз. Если повторится — передайте администратору текст из «Подробностей».'
-  };
-}
 
 export function IncidentDialog({
   open,
@@ -342,7 +323,6 @@ export function IncidentDialog({
       </div>
     );
 
-  const failure = failed ? explainFailure(failed) : null;
   /* Своё число в правилах, не совпадающее ни с одним вариантом, — отдельной
      карточкой: иначе, нажав вариант, к нему не вернуться, не закрыв окно. */
   const companyOwn =
@@ -725,7 +705,10 @@ export function IncidentDialog({
             {kind === 'urgent' && urgentStart === null && (
               <div className="ctrlnote">
                 <Icon name="alert-triangle" size={16} />
-                <span>В бригаде никто не умеет аварийные работы — авария не встанет ни в какое время.</span>
+                <span>
+                  В бригаде нет тех, кто умеет аварийные работы: аварию программа расчёта отдаст
+                  как работу, которую в бригаде кто-то умеет, — первой смены аварийщиков ждать некого.
+                </span>
               </div>
             )}
             {kind === 'urgent' && urgentStart !== null && typedAt === null && cut < urgentStart && (
@@ -812,18 +795,20 @@ export function IncidentDialog({
               </div>
             )}
 
-            {failure && (
+            {failed && (
               <div className="incident__fail" role="alert">
                 <Icon name="alert-triangle" size={16} />
                 <span>
-                  <b>{failure.what}</b> {failure.todo}
-                  <details className="incident__more">
-                    <summary>
-                      <Icon name="chevron-right" size={14} />
-                      Подробности
-                    </summary>
-                    <p className="incident__fail-detail">{failed}</p>
-                  </details>
+                  <b>{titleWithStop(failed.title)}</b> {failed.hint}
+                  {failed.detail && (
+                    <details className="incident__more">
+                      <summary>
+                        <Icon name="chevron-right" size={14} />
+                        Подробности
+                      </summary>
+                      <p className="incident__fail-detail">{failed.detail}</p>
+                    </details>
+                  )}
                 </span>
               </div>
             )}

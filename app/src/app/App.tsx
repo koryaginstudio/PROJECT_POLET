@@ -346,13 +346,13 @@ export function App() {
      диспетчер нажал «Инженер выбыл» — окно открывается на выбытии. */
   const [incidentKind, setIncidentKind] = useState<IncidentKind | undefined>(undefined);
   const [incidentBusy, setIncidentBusy] = useState(false);
-  const [incidentFailed, setIncidentFailed] = useState<string | null>(null);
+  const [incidentFailed, setIncidentFailed] = useState<HumanError | null>(null);
   const [replan, setReplan] = useState<ReplanResult | null>(null);
   /* Принятый, но не сохранённый пересчёт. Пока он здесь — экран показывает
      его план, а не тот, что лежит в архиве. */
   const [draft, setDraft] = useState<{ spec: IncidentSpec; result: ReplanResult } | null>(null);
   const [saving, setSaving] = useState(false);
-  const [saveFailed, setSaveFailed] = useState<string | null>(null);
+  const [saveFailed, setSaveFailed] = useState<{ text: string; detail: string } | null>(null);
 
   /* Билет пересчёта. Пересчёт идёт до минуты, и за это время диспетчер
      может открыть другой расчёт; ответ старого тогда лёг бы поверх нового
@@ -377,7 +377,7 @@ export function App() {
     } catch (failure) {
       if (ticket !== replanTicket.current) return;
       setIncidentFailed(
-        humanLine(failure, {
+        humanError(failure, {
           title: 'Пересчёт не получился',
           hint: 'Нажмите «Пересчитать» ещё раз.'
         })
@@ -557,7 +557,7 @@ export function App() {
       } catch (failure) {
         if (ticket !== replanTicket.current) return;
         setIncidentFailed(
-          humanLine(failure, { title: 'Принять не удалось', hint: 'Нажмите «Принять» ещё раз.' })
+          humanError(failure, { title: 'Принять не удалось', hint: 'Нажмите «Принять» ещё раз.' })
         );
         return;
       } finally {
@@ -631,7 +631,7 @@ export function App() {
             title: 'План устарел: пересчитайте заново',
             hint: 'Пока пересчёт был на экране, в дне что-то изменилось. Пересчитайте и сохраните заново.'
           }
-        }).text
+        })
       );
     } finally {
       setSaving(false);

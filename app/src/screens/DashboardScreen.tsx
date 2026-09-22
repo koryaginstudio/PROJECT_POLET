@@ -67,7 +67,7 @@ interface Props {
   /** Несохранённый пересчёт, показанный на экране. */
   draft: { at: number; gain: number; what: string } | null;
   saving: boolean;
-  saveFailed: string | null;
+  saveFailed: { text: string; detail: string } | null;
   onSave: () => void;
   onDropDraft: () => void;
 }

@@ -28,7 +28,8 @@ interface Props {
   /** Идёт сохранение. */
   saving: boolean;
   /** Чем кончилась неудачная попытка сохранить. */
-  saveFailed: string | null;
+  /** Почему не сохранилось: строка для человека и слова программы расчёта. */
+  saveFailed: { text: string; detail: string } | null;
   onSave: () => void;
   /** Отказаться от пересчёта и вернуться к сохранённому плану. */
   onDropDraft: () => void;
@@ -235,7 +236,13 @@ export function CalcBoard({
         <div className="solvefail">
           <Icon name="alert-triangle" size={16} />
           <span>
-            <b>Сохранить не вышло.</b> {saveFailed}
+            <b>Сохранить не вышло.</b> {saveFailed.text}
+            {saveFailed.detail && (
+              <details className="dispatch__more">
+                <summary>Подробности</summary>
+                {saveFailed.detail}
+              </details>
+            )}
           </span>
         </div>
       )}
