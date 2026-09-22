@@ -23,7 +23,7 @@
 import type { Day, Order } from './contract.ts';
 import { engineDayTitle, zoneTitle } from './load.ts';
 import type { RunEntry } from './load.ts';
-import { deadline, hhmm, isDeferrable, placeOf, homeOf } from './derive.ts';
+import { deadline, engineersUsed, hhmm, isDeferrable, kmTotal, placeOf, homeOf, replanAt } from './derive.ts';
 import {
   engineerStatusName,
   equipmentName,
@@ -85,7 +85,25 @@ export function buildReport(day: Day, run: RunEntry): Sheet[] {
      тогда границы разброса — не оценка, а то же число, что и среднее.
      Печатать их как p10 и p90 значило бы выдать одно значение за три. */
   const simulated = simulation.meta.runs > 0;
-  const baseline = plan.meta.baseline;
+
+  /* Пробег и базовый вариант — из полей после переходника (`fromEngine.ts`):
+     у движка они лежат в `meta.metrics` и в своей форме базового, а сюда
+     приходят уже как `distance_km_total` и `baseline`. Сумма та же, что на
+     пульте (`kmTotal`), — иначе книга и экран назвали бы разные километры
+     одним словом. Нет километража — прочерк, а не ноль. */
+  const km = kmTotal(plan);
+  const perOrder = (total: number | null | undefined, assigned: number): Cell =>
+    total != null && Number.isFinite(total) && assigned > 0 ? Math.round((total / assigned) * 100) / 100 : '—';
+
+  /* Пересчёт — план остатка дня. Базовый вариант считался на день целиком,
+     и ставить его рядом значило бы сравнить полдня с днём. А прогноз в
+     форме — от плана дня: своего у пересчёта нет, и итогом дня его
+     подписывать нельзя. «Плана дня», а не «исходного плана»: загрузка берёт
+     прогноз дня целиком (`loadEngineDay`), а не того расчёта, от которого
+     считали пересчёт, — правила у них могут различаться. */
+  const restFrom = replanAt(plan);
+  const baseline = restFrom === null ? plan.meta.baseline : null;
+  const forecastOf = restFrom === null ? '' : ' (плана дня, до пересчёта)';
 
   /* ─── сводка ───────────────────────────────────────────────────────────
      Две колонки, а не таблица: это карточка расчёта, и читают её сверху
@@ -100,6 +118,7 @@ export function buildReport(day: Day, run: RunEntry): Sheet[] {
          на экранах стоит то же слово, и в выгрузке оно обязано совпасть. */
       ['Участок', run.day ? engineDayTitle(run.day) : run.source ? zoneTitle(run.source) : '—'],
       ['Заметка', run.note ?? ''],
+      ...(restFrom === null ? [] : ([['Пересчёт: остаток дня с', hhmm(restFrom)]] as Cell[][])),
       [],
       ['Заявок в выгрузке', plan.orders.length],
       ['Закрыто до расчёта', closed],
@@ -107,12 +126,23 @@ export function buildReport(day: Day, run: RunEntry): Sheet[] {
       ['Разложено по инженерам', plan.meta.orders_assigned],
       ['Осталось без инженера', unassigned.length],
       ['Инженеров в штате', plan.meta.engineers_total],
-      ['Инженеров с маршрутом', new Set(plan.routes.map((r) => r.engineer_id)).size],
-      ['Пробег всего, км', num(plan.meta.distance_km_total)],
+      /* Маршрут в плане бывает и пустым: число маршрутов и число
+         задействованных исполнителей могут разойтись, и подписи обязаны
+         это говорить, а не звучать почти одинаково. */
+      ['Маршрутов в плане (в том числе пустых)', new Set(plan.routes.map((r) => r.engineer_id)).size],
+      ['Задействовано исполнителей', engineersUsed(plan)],
+      ['Пробег всего, км', num(km)],
+      ['Пробег на заявку, км', perOrder(km, plan.meta.orders_assigned)],
       [],
-      [simulated ? 'Покрытие по симуляции, %' : 'Заявок разложено, %', simulation.coverage],
-      ['Прогонов симуляции', simulation.meta.runs],
-      [simulated ? 'Выполнено визитов, среднее' : 'Разложено визитов', simulation.done.mean],
+      [
+        (simulated ? 'Покрытие по прогнозу' : 'Заявок разложено') + forecastOf + ', %',
+        simulation.coverage
+      ],
+      ['Сколько раз разыгран прогноз дня', simulation.meta.runs],
+      [
+        (simulated ? 'Выполнено заявок, среднее' : 'Разложено заявок') + forecastOf,
+        simulation.done.mean
+      ],
       ['Выполнено, нижняя граница (p10)', simulated ? simulation.done.p10 : 'не разыгрывалось'],
       ['Выполнено, верхняя граница (p90)', simulated ? simulation.done.p90 : 'не разыгрывалось'],
       [],
@@ -122,24 +152,25 @@ export function buildReport(day: Day, run: RunEntry): Sheet[] {
       ['Загрузка, среднее %', percent(plan.meta.balance.occupancy_mean)],
       ['Инженеров без маршрута', plan.meta.balance.idle_engineers],
       [],
-      ['Переработка всего, мин', simulation.overtime_minutes],
-      ['Простой всего, мин', simulation.idle_minutes],
+      ['Переработка всего, мин' + forecastOf, simulation.overtime_minutes],
+      ['Простой всего, мин' + forecastOf, simulation.idle_minutes],
       /* Базовый вариант ТЗ — вторая половина требования «сравните с
          базовым»: без него число разложенных не с чем сравнить. Пусто у
-         плана, который его не считал. */
+         плана, который его не считал, и у пересчёта (см. выше). */
       ...(baseline
         ? ([
             [],
-            ['— базовый вариант —', ''],
+            ['— базовый вариант (без планировщика) —', ''],
             ['Разложено базовым вариантом', baseline.orders_assigned],
-            ['Инженеров с маршрутом у базового', baseline.engineers_used],
+            ['Задействовано исполнителей у базового', baseline.engineers_used],
             ['Пробег базового, км', num(baseline.distance_km_total)],
-            ['В дороге у базового, мин', baseline.travel_minutes_total],
+            ['Пробег базового на заявку, км', perOrder(baseline.distance_km_total, baseline.orders_assigned)],
+            ['В дороге у базового, мин', num(baseline.travel_minutes_total)],
             ['Чем считали базовый', baseline.solver]
           ] as Cell[][])
         : []),
       [],
-      ['— переменные движка —', ''],
+      ['— правила расчёта —', ''],
       ['Запас по времени работ', run.params.duration_factor],
       ['Консервативность маршрута, мин', run.params.buffer_step],
       ['Зазор до первого визита, мин', run.params.buffer_base],

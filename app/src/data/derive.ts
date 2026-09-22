@@ -837,6 +837,36 @@ export const LIVE_STATUS_ORDER: LiveStatus[] = [
   'off'
 ];
 
+/* ─── обязательные метрики ТЗ и пересчёт ───────────────────────────────
+   Исполнители и пробег считаются одинаково на пульте, в разборе числа и в
+   книге Excel. Прежде каждый собирал их у себя, и книга брала только поле
+   движка: у браузерного плана, где поля нет, там стоял прочерк, а на
+   пульте — сумма по маршрутам. Одно имя, два числа. */
+
+/** Сколько исполнителей получили хотя бы одну заявку. Поле движка главнее:
+    метрику, которую сверяют по ТЗ, называет тот, кто её оптимизирует. */
+export function engineersUsed(plan: Day['plan']): number {
+  return plan.meta.engineers_used ?? plan.routes.filter((route) => route.stops.length > 0).length;
+}
+
+/** Пробег плана, км. `null` — километража нет ни в сводке, ни у каждого
+    маршрута: сумма по половине маршрутов выдала бы половину пробега за весь. */
+export function kmTotal(plan: Day['plan']): number | null {
+  if (plan.meta.distance_km_total != null) return plan.meta.distance_km_total;
+  const perRoute = plan.routes.map((route) => route.totals.distance_km);
+  if (!perRoute.every((value) => value != null)) return null;
+  return perRoute.reduce((acc: number, value) => acc + (value ?? 0), 0);
+}
+
+/** Момент, с которого пересобран остаток дня, либо `null`, если это план
+    дня целиком. Поле `meta.replan` движок кладёт в план пересчёта и хранит
+    в архиве вместе с ним; переходник его не трогает. В контракте плана его
+    нет — это блок ответа `/replan`, — поэтому читаем осторожно. */
+export function replanAt(plan: Day['plan']): Minutes | null {
+  const replan = (plan.meta as { replan?: { at?: unknown } | null }).replan;
+  return replan && typeof replan.at === 'number' ? replan.at : null;
+}
+
 /** `reported` — статусы журнала дня на срез (dayState.statuses): факты
     диспетчера поверх плана. Без журнала — пусто, и всё считается по плану. */
 export function buildDayView(day: Day, reported: Record<string, string> = {}): DayView {
@@ -944,7 +974,6 @@ export function buildDayView(day: Day, reported: Record<string, string> = {}): D
     (sum, route) => sum + Math.max(0, route.totals.end - route.totals.start),
     0
   );
-  const idleShare = routeMinutes > 0 ? simulation.idle_minutes / routeMinutes : 0;
   const lostShare = plan.meta.orders_total > 0 ? unassigned.length / plan.meta.orders_total : 0;
 
   /* Разрыв — между самым загруженным и самым свободным из тех, у кого
@@ -969,37 +998,68 @@ export function buildDayView(day: Day, reported: Record<string, string> = {}): D
   /* Две обязательные метрики ТЗ — задействованные исполнители и пробег — и
      базовый вариант ТЗ рядом. Прежде на пульте их не было вовсе: ни одного
      километра на экране, кроме масштаба карты, хотя именно по этим двум
-     числам ТЗ сравнивает планы. Пробег с базовым сравнивается на визит:
+     числам ТЗ сравнивает планы. Пробег с базовым сравнивается на заявку:
      план, назначивший вдвое больше заявок, и проедет больше. */
-  const used =
-    plan.meta.engineers_used ?? plan.routes.filter((route) => route.stops.length > 0).length;
-  const kmRoutes = plan.routes.map((route) => route.totals.distance_km);
-  const km =
-    plan.meta.distance_km_total ??
-    (kmRoutes.every((value) => value != null)
-      ? kmRoutes.reduce((acc: number, value) => acc + (value ?? 0), 0)
-      : null);
+  const used = engineersUsed(plan);
+  const km = kmTotal(plan);
   const perVisit = km !== null && plan.meta.orders_assigned > 0 ? km / plan.meta.orders_assigned : null;
-  const base = plan.meta.baseline ?? null;
+
+  /* Пересчёт — план остатка дня, а не дня. Сравнивать его с базовым
+     вариантом нечестно: базовый раскладывал день с утра, а пересчёт — только
+     то, что осталось после ЧП, и меньше километров у него просто потому, что
+     меньше дня. А прогноз рядом — от исходного плана: своего прогноза у
+     пересчёта нет (у сохранённого движок его и не отдаёт), и покрытие из
+     него на пульте пересчёта читалось бы итогом дня, которого на экране нет.
+     Поэтому у пересчёта каждая плитка говорит, про какой отрезок она, и
+     числа берутся из самого плана. */
+  const restFrom = replanAt(plan);
+  const rest = restFrom === null ? null : `Остаток дня с ${hhmm(restFrom)}`;
+  const base = rest === null ? plan.meta.baseline ?? null : null;
   const basePerVisit =
     base && base.distance_km_total != null && base.orders_assigned > 0
       ? base.distance_km_total / base.orders_assigned
       : null;
+  const idleMinutes =
+    rest === null
+      ? simulation.idle_minutes
+      : plan.routes.reduce((sum, route) => sum + route.totals.idle_minutes, 0);
+  const assignedShare =
+    plan.meta.orders_total > 0 ? (plan.meta.orders_assigned / plan.meta.orders_total) * 100 : 0;
+  const idleShare = routeMinutes > 0 ? idleMinutes / routeMinutes : 0;
 
   const metrics: Metric[] = [
-    {
-      key: 'coverage',
-      label: 'Покрытие',
-      value: pct(simulation.coverage),
-      unit: '%',
-      caption: `${simulation.done.p50} из ${simulation.orders_total} заявок`,
-      group: 'metric:coverage',
-      ...mark(
-        simulation.coverage < limit.coverageBad,
-        simulation.coverage < limit.coverageWatch,
-        'Итерации в среднем не закрывают смену целиком'
-      )
-    },
+    rest === null
+      ? {
+          key: 'coverage',
+          label: 'Покрытие',
+          value: pct(simulation.coverage),
+          unit: '%',
+          caption: `${simulation.done.p50} из ${simulation.orders_total} заявок`,
+          group: 'metric:coverage',
+          ...mark(
+            simulation.coverage < limit.coverageBad,
+            simulation.coverage < limit.coverageWatch,
+            'По прогнозу дня часть заявок в среднем не будет выполнена'
+          )
+        }
+      : {
+          /* У пересчёта на месте покрытия — доля разложенного в остатке дня:
+             это его собственное число. Прогноз исходного плана остаётся в
+             разборе плитки, подписанный как прогноз до пересчёта. */
+          key: 'coverage',
+          label: 'Разложено',
+          value: pct(assignedShare),
+          unit: '%',
+          caption: `${rest}: ${plan.meta.orders_assigned} из ${plan.meta.orders_total} заявок`,
+          group: 'metric:coverage',
+          /* Те же пороги, что у покрытия: 60 % разложенного в остатке дня
+             заслуживают отметки не меньше, чем 60 % по прогнозу дня. */
+          ...mark(
+            assignedShare < limit.coverageBad,
+            assignedShare < limit.coverageWatch,
+            'В остатке дня часть заявок осталась без инженера'
+          )
+        },
     {
       /* Нераспределённые стоят рядом с покрытием не случайно: это первая
          причина, по которой оно не сходится к сотне. */
@@ -1007,7 +1067,7 @@ export function buildDayView(day: Day, reported: Record<string, string> = {}): D
       label: 'Без инженера',
       value: String(unassigned.length),
       unit: 'з.',
-      caption: 'Не найден инженер',
+      caption: rest ?? 'Не найден инженер',
       group: 'unassigned',
       ...mark(lostShare > 0.1, unassigned.length > 0, 'Для этих заявок не найден инженер')
     },
@@ -1016,9 +1076,11 @@ export function buildDayView(day: Day, reported: Record<string, string> = {}): D
       label: 'Исполнителей',
       value: String(used),
       unit: 'чел.',
-      caption: base
-        ? `Базовый вариант ТЗ — ${base.engineers_used}`
-        : `Из ${plan.meta.engineers_total} в штате`,
+      caption:
+        rest ??
+        (base
+          ? `Базовый (без планировщика) — ${base.engineers_used}`
+          : `Из ${plan.meta.engineers_total} в штате`),
       group: 'metric:engineers',
       flag: 'ok'
     },
@@ -1028,19 +1090,20 @@ export function buildDayView(day: Day, reported: Record<string, string> = {}): D
       value: km === null ? '—' : String(Math.round(km)),
       unit: km === null ? undefined : 'км',
       caption:
-        perVisit === null
-          ? 'Движок не прислал километраж'
-          : `${dec(perVisit, 2)} км на визит` +
-            (basePerVisit !== null ? ` · базовый ${dec(basePerVisit, 2)}` : ''),
+        (rest === null ? '' : `${rest} · `) +
+        (perVisit === null
+          ? 'Километража в плане нет'
+          : `${dec(perVisit, 2)} км на заявку` +
+            (basePerVisit !== null ? ` · базовый ${dec(basePerVisit, 2)}` : '')),
       group: 'metric:km',
       flag: 'ok'
     },
     {
       key: 'idle',
       label: 'Общий простой',
-      value: dec(simulation.idle_minutes / 60),
+      value: dec(idleMinutes / 60),
       unit: 'ч',
-      caption: 'Ожидание свободных окон',
+      caption: rest ?? 'Ожидание свободных окон',
       group: 'metric:idle',
       ...mark(
         idleShare > limit.idleBad / 100,

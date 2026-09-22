@@ -700,6 +700,19 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* Причина «без инженера» в строке списка. Основным кеглем и основным цветом:
+   это не справка к строке, а ответ на вопрос, ради которого список открыли.
+   Длинную причину обрываем на второй строке — полностью она в карточке. */
+.row__why {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-size: var(--fs-body-s);
+  line-height: 1.35;
+  color: var(--text-primary);
+}
+
 /* Адрес в строке маршрута: он длиннее времени и номера, поэтому обрезается,
    а не растягивает строку. */
 .row__where {
@@ -5035,7 +5048,9 @@ button.bsq:focus-visible {
    в шапке блока, и разносить их по экрану было незачем. Плитки намеренно
    тихие: это часть пульта, а не заголовок экрана. */
 /* Плиток семь: пять прежних и две обязательные метрики ТЗ — исполнители и
-   пробег. Сетка на пять клала их рядами «пять плюс две». */
+   пробег. Сетка на пять клала их рядами «пять плюс две». До 1400 точек —
+   по четыре в ряд (ниже, в конце блока): семь колонок там сжимали подпись
+   до слога. Кегль при этом не уменьшаем — подписи переносятся. */
 .calc__metrics {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -5126,9 +5141,12 @@ button.bsq:focus-visible {
 }
 
 .cmetric__caption {
-  font-size: var(--fs-small);
+  /* Не мельче подписи: 12 пунктов остаются шкалам. У семи плиток в ряд
+     пояснение переносится на вторую строку — это дешевле, чем мелкий
+     кегль, который не прочтёшь с расстояния вытянутой руки. */
+  font-size: var(--fs-caption);
   line-height: 1.3;
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
 /* Стрелка стоит всегда, как на квадратах ниже: иначе плитка не выглядит
@@ -10010,6 +10028,26 @@ b.ccard__bad {
   text-decoration: underline;
   text-underline-offset: 2px;
   cursor: pointer;
+}
+
+/* Сохранённый пересчёт — пояснение, а не тревога: та же полоса, что у
+   несохранённого, но в нейтральном тоне и основным кеглем списка. */
+.calc__replan {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+  padding: var(--sp-3);
+  border-radius: var(--r-sm);
+  background: var(--surface-muted);
+  color: var(--text-primary);
+  font-size: var(--fs-body-s);
+  line-height: 1.5;
+}
+
+.calc__replan > svg {
+  flex: none;
+  margin-top: 2px;
 }
 
 /* Сохранённое состояние — не кнопка, а пометка. Нажимать нечего: всё уже
@@ -15272,6 +15310,26 @@ b.ccard__bad {
 .mapstat__draft > svg {
   flex: none;
   margin-top: 1px;
+}
+
+/* Пометка сохранённого пересчёта в колонке итогов: пояснения под плитками
+   здесь скрыты, и остаток дня называет только она. */
+.mapstat__replan {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-sm);
+  background: var(--surface-muted);
+  font-size: var(--fs-body-s);
+  line-height: 1.45;
+  color: var(--text-primary);
+}
+
+.mapstat__replan > svg {
+  flex: none;
+  margin-top: 2px;
 }
 
 /* Числа идут в столбец: колонка узкая, а подписи у них длинные — в два

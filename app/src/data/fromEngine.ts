@@ -90,8 +90,9 @@ function сводкаБазового(raw: EngineBaseline | Baseline | null | un
     orders_assigned: raw.assigned,
     engineers_used: raw.engineers_used,
     distance_km_total: raw.km_total,
-    /* Минут в пути у базового движок не отдаёт: в ТЗ это не метрика. */
-    travel_minutes_total: 0
+    /* Минут в пути у базового движок не отдаёт: в ТЗ это не метрика.
+       Пусто, а не ноль: ноль в книге читался как «в дороге не были». */
+    travel_minutes_total: null
   };
 }
 

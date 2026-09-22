@@ -3,7 +3,20 @@ import { Icon } from '../ds/components/core/Icon.jsx';
 import { Badge } from '../ds/components/core/Badge.jsx';
 import type { Day } from '../data/contract.ts';
 import type { DayView, StatusSplit } from '../data/derive.ts';
-import { buildCrewBoard, buildOrdersBoard, dec, hhmm, hoursText, orders as pluralOrders, placeOf, plural, visits } from '../data/derive.ts';
+import {
+  buildCrewBoard,
+  buildOrdersBoard,
+  dec,
+  engineersUsed,
+  hhmm,
+  hoursText,
+  kmTotal,
+  orders as pluralOrders,
+  placeOf,
+  plural,
+  replanAt,
+  visits
+} from '../data/derive.ts';
 import { Donut } from './Donut.tsx';
 import { photosFor } from '../data/photos.ts';
 import type { Selection } from './selection.ts';
@@ -52,12 +65,49 @@ export interface Shape {
 function metricShape(groupId: string, view: DayView, day: Day): Shape | null {
   const sum = (pick: (totals: { travel_minutes: number; work_minutes: number; idle_minutes: number }) => number) =>
     view.loads.reduce((acc, load) => acc + (load.route ? pick(load.route.totals) : 0), 0);
+  /* Пересчёт — план остатка дня: у него разбор говорит, про какой отрезок
+     числа, и не сравнивает их с базовым вариантом, считанным на день
+     целиком (см. `buildDayView`). */
+  const restFrom = replanAt(day.plan);
+  const rest = restFrom === null ? null : `Остаток дня с ${hhmm(restFrom)}`;
 
   switch (groupId) {
     case 'metric:coverage': {
       const total = day.plan.meta.orders_total;
       const done = Math.round(day.simulation.done.p50);
       const assigned = day.plan.meta.orders_assigned;
+      /* У пересчёта прогноз — от исходного плана: своего у него нет. Итогом
+         дня его не показываем — кольцо собрано из заявок самого пересчёта,
+         а прогноз стоит отдельной строкой и подписан, к чему он относится.
+         Смешать их в одном кольце значило бы делить заявки остатка дня на
+         исходы, разыгранные для утреннего плана. */
+      if (rest !== null) {
+        return {
+          eyebrow: rest,
+          title: 'Разложено в остатке дня',
+          chart: {
+            title: 'Как разложен остаток дня',
+            centerValue: total,
+            centerCaption: 'Заявок',
+            slices: [
+              { key: 'assigned', label: 'С инженером', count: assigned, ids: [], tone: 'ok' },
+              { key: 'free', label: 'Без инженера', count: total - assigned, ids: [], tone: 'wait' }
+            ]
+          },
+          facts: [
+            { key: 'assigned', label: 'С инженером', value: pluralOrders(assigned) },
+            { key: 'free', label: 'Без инженера', value: pluralOrders(total - assigned) },
+            {
+              key: 'forecast',
+              label: 'Покрытие по прогнозу плана дня, до пересчёта',
+              value: `${dec(day.simulation.coverage)} %`
+            }
+          ],
+          sections: [
+            { key: 'free', label: 'Не получили инженера', orderIds: view.unassigned.map((o) => o.id) }
+          ]
+        };
+      }
       return {
         eyebrow: 'Число расчёта',
         title: 'Покрытие',
@@ -101,7 +151,7 @@ function metricShape(groupId: string, view: DayView, day: Day): Shape | null {
       const travel = sum((t) => t.travel_minutes);
       const withRoute = view.loads.filter((load) => load.route).length;
       return {
-        eyebrow: 'Число расчёта',
+        eyebrow: rest ?? 'Число расчёта',
         title: 'Общий простой',
         chart: {
           title: 'Из чего сложилась смена',
@@ -129,7 +179,7 @@ function metricShape(groupId: string, view: DayView, day: Day): Shape | null {
         sections: [
           {
             key: 'free',
-            label: 'Совсем без визитов за день',
+            label: rest === null ? 'Без заявок' : 'Без заявок в остатке дня',
             engineerIds: view.loads.filter((load) => load.idle).map((load) => load.engineer.id)
           }
         ]
@@ -141,14 +191,76 @@ function metricShape(groupId: string, view: DayView, day: Day): Shape | null {
        сравнить, а сравнение ТЗ требует прямо. */
     case 'metric:engineers': {
       const plan = day.plan;
-      const base = plan.meta.baseline ?? null;
+      const base = rest === null ? plan.meta.baseline ?? null : null;
       const withRoute = view.loads.filter((load) => load.route && load.route.stops.length > 0);
+      /* У пересчёта «без заявок в остатке дня» — не значит «свободен»: тот,
+         кто сейчас едет к заявке или работает на ней, в маршрутах пересчёта
+         не стоит вовсе — эта заявка его, и пересчёт её не трогает
+         (`meta.replan.underway`, `{заявка: инженер}`). Такие люди заняты, и
+         в одном списке со свободными диспетчер принял бы их за резерв. */
+      const underway =
+        rest === null
+          ? new Set<string>()
+          : new Set(
+              Object.values(
+                (plan.meta as { replan?: { underway?: Record<string, string> } }).replan?.underway ?? {}
+              )
+            );
+      const without = view.loads.filter((load) => !(load.route && load.route.stops.length > 0));
+      const busy = without.filter((load) => underway.has(load.engineer.id));
+      const free = without.filter((load) => !underway.has(load.engineer.id));
+      const freeLabel = rest === null ? 'Без заявок' : 'Без новых заявок в остатке дня';
+      /* Кольцо — как у соседних чисел: из кого сложилась цифра. Делим штат
+         смены на тех, кто получил хоть одну заявку, и тех, кто нет. У плана
+         дня вторые — резерв на случай ЧП; у пересчёта среди них могут быть и
+         те, кто уже отработал утро, поэтому подпись осторожнее. */
       return {
-        eyebrow: 'Метрика ТЗ',
+        eyebrow: rest ?? 'Число расчёта',
         title: 'Исполнителей задействовано',
+        chart: {
+          title: 'Как занят штат смены',
+          centerValue: view.loads.length,
+          centerCaption: 'В штате',
+          slices: [
+            {
+              key: 'used',
+              label: 'Получили заявки',
+              count: withRoute.length,
+              ids: withRoute.map((load) => load.engineer.id),
+              tone: 'ok'
+            },
+            /* Занятые текущей заявкой — тоже на работе, отсюда тот же тон. */
+            ...(busy.length > 0
+              ? [
+                  {
+                    key: 'busy',
+                    label: 'Заняты текущей заявкой',
+                    count: busy.length,
+                    ids: busy.map((load) => load.engineer.id),
+                    tone: 'ok' as const
+                  }
+                ]
+              : []),
+            {
+              key: 'free',
+              label: freeLabel,
+              count: free.length,
+              ids: free.map((load) => load.engineer.id),
+              tone: 'wait'
+            }
+          ]
+        },
         facts: [
-          { key: 'used', label: 'В этом плане', value: String(withRoute.length) },
-          { key: 'base', label: 'Базовый вариант ТЗ', value: base ? String(base.engineers_used) : '—' },
+          { key: 'used', label: 'Задействовано в этом плане', value: String(engineersUsed(plan)) },
+          /* Строка базового не пропадает у пересчёта молча: сравнения с ним
+             требует ТЗ, и диспетчер должен видеть, почему его здесь нет. */
+          rest === null
+            ? {
+                key: 'base',
+                label: 'Базовый вариант (без планировщика)',
+                value: base ? String(base.engineers_used) : '—'
+              }
+            : { key: 'base', label: 'Базовый вариант (без планировщика)', value: 'для пересчёта не сравнивается' },
           { key: 'staff', label: 'В штате', value: String(plan.meta.engineers_total) },
           {
             key: 'assigned',
@@ -159,11 +271,14 @@ function metricShape(groupId: string, view: DayView, day: Day): Shape | null {
           }
         ],
         sections: [
-          { key: 'used', label: 'С маршрутом', engineerIds: withRoute.map((load) => load.engineer.id) },
+          { key: 'used', label: 'Получили заявки', engineerIds: withRoute.map((load) => load.engineer.id) },
+          ...(busy.length > 0
+            ? [{ key: 'busy', label: 'Заняты текущей заявкой', engineerIds: busy.map((load) => load.engineer.id) }]
+            : []),
           {
             key: 'free',
-            label: 'Без визитов за день',
-            engineerIds: view.loads.filter((load) => load.idle).map((load) => load.engineer.id)
+            label: freeLabel,
+            engineerIds: free.map((load) => load.engineer.id)
           }
         ]
       };
@@ -171,34 +286,43 @@ function metricShape(groupId: string, view: DayView, day: Day): Shape | null {
 
     case 'metric:km': {
       const plan = day.plan;
-      const base = plan.meta.baseline ?? null;
+      const base = rest === null ? plan.meta.baseline ?? null : null;
       const withKm = view.loads
         .filter((load) => load.route && load.route.totals.distance_km != null)
         .sort((a, b) => (b.route!.totals.distance_km ?? 0) - (a.route!.totals.distance_km ?? 0));
-      const total = plan.meta.distance_km_total ?? null;
+      /* Та же сумма, что на плитке: поле движка, а без него — по маршрутам. */
+      const total = kmTotal(plan);
       const perVisit = total !== null && plan.meta.orders_assigned > 0 ? total / plan.meta.orders_assigned : null;
       const basePerVisit =
         base && base.distance_km_total != null && base.orders_assigned > 0
           ? base.distance_km_total / base.orders_assigned
           : null;
       return {
-        eyebrow: 'Метрика ТЗ',
+        eyebrow: rest ?? 'Число расчёта',
         title: 'Пробег',
         facts: [
-          { key: 'total', label: 'Всего по плану', value: total === null ? '—' : `${dec(total, 0)} км` },
-          { key: 'visit', label: 'На назначенный визит', value: perVisit === null ? '—' : `${dec(perVisit, 2)} км` },
+          {
+            key: 'total',
+            label: rest === null ? 'Всего по плану' : 'Всего за остаток дня',
+            value: total === null ? '—' : `${dec(total, 0)} км`
+          },
+          { key: 'visit', label: 'На одну заявку', value: perVisit === null ? '—' : `${dec(perVisit, 2)} км` },
           {
             key: 'engineer',
-            label: 'На исполнителя',
+            label: 'На одного исполнителя',
             value: total === null || withKm.length === 0 ? '—' : `${dec(total / withKm.length, 1)} км`
           },
+          /* Базовый — только у плана дня: пересчёт с ним не сравнивается, и
+             строка говорит об этом, а не пропадает молча. */
           {
             key: 'base',
-            label: 'Базовый вариант ТЗ',
+            label: 'Базовый вариант (без планировщика)',
             value:
-              base && base.distance_km_total != null
-                ? `${dec(base.distance_km_total, 0)} км · ${basePerVisit === null ? '—' : dec(basePerVisit, 2)} на визит`
-                : '—'
+              rest !== null
+                ? 'для пересчёта не сравнивается'
+                : base && base.distance_km_total != null
+                  ? `${dec(base.distance_km_total, 0)} км · ${basePerVisit === null ? '—' : dec(basePerVisit, 2)} на заявку`
+                  : '—'
           }
         ],
         sections: [
@@ -525,6 +649,15 @@ export function GroupPanel({ day, groupId, shape: ready, view, cut, onSelect, on
                             окно {hhmm(order.window_start)}–{hhmm(order.window_end)}
                           </span>
                         </span>
+                        {/* Короткая причина прямо в строке: «почему без
+                            инженера» — первый вопрос к этому списку, и
+                            открывать ради него каждую заявку незачем. */}
+                        {!view.stopByOrder.has(id) && order.unassigned_reason?.text && (
+                          <span className="row__why">
+                            {order.unassigned_reason.text.charAt(0).toUpperCase() +
+                              order.unassigned_reason.text.slice(1)}
+                          </span>
+                        )}
                       </span>
                       <span className="row__side">
                         {fragile ? (

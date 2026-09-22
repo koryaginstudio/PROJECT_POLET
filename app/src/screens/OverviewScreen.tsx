@@ -41,6 +41,9 @@ interface Props {
   onOpenSummary: () => void;
   /** Несохранённый пересчёт: на карте показан он, а не то, что в архиве. */
   draft: { at: number; gain: number; what: string } | null;
+  /** Момент, с которого пересобран остаток дня, если открыт сохранённый
+      пересчёт; `null` — план дня целиком. */
+  restFrom?: number | null;
   /** Справочники: из них берутся карточки инженера и заявки, которые
       открываются поверх карты. Пока не загрузились — подписи в сводке не
       нажимаются. */
@@ -88,6 +91,7 @@ export function OverviewScreen({
   onOpenMetric,
   onOpenSummary,
   draft,
+  restFrom = null,
   registry,
   onOpenRun,
   onOpenMap,
@@ -284,6 +288,16 @@ export function OverviewScreen({
             сводке.
           </span>
         </button>
+      )}
+
+      {/* Сохранённый пересчёт. Пояснения под плитками в этой колонке
+          скрыты ради места, и без этой строки числа остатка дня читались бы
+          итогом дня. */}
+      {!draft && restFrom !== null && (
+        <p className="mapstat__replan">
+          <Icon name="info" size={14} />
+          <span>Пересчёт: числа за остаток дня с {hhmm(restFrom)}</span>
+        </p>
       )}
 
       <div className="mapstat__metrics">
