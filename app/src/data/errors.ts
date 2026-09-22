@@ -89,10 +89,19 @@ function byStatus(status: number | null): Fallback | null {
   return null;
 }
 
+/** Свои слова для кода ответа — у места, которое знает свой случай лучше.
+    409 при «Принять» значит «пересчитайте и примите», а при «Сохранить» —
+    «пересчитайте и сохраните»: одна подсказка на оба сбивала бы с толку. */
+export type ByStatus = Partial<Record<number, Fallback>>;
+
 const text = (e: unknown) => (e instanceof Error ? e.message || e.name : String(e ?? ''));
 
 /** Переводит пойманное в две фразы для человека и строку для того, кто чинит. */
-export function humanError(e: unknown, fallback: Fallback = UNKNOWN): HumanError {
+export function humanError(
+  e: unknown,
+  fallback: Fallback = UNKNOWN,
+  statuses: ByStatus = {}
+): HumanError {
   if (e instanceof HumanRefusal) return { title: e.title, hint: e.hint, detail: '' };
 
   if (e instanceof EngineError) {
@@ -106,7 +115,8 @@ export function humanError(e: unknown, fallback: Fallback = UNKNOWN): HumanError
         detail
       };
     }
-    return { ...(byStatus(e.status) ?? fallback), detail };
+    const own = e.status !== null ? statuses[e.status] : undefined;
+    return { ...(own ?? byStatus(e.status) ?? fallback), detail };
   }
 
   if (isContractError(e)) {
@@ -132,8 +142,14 @@ export function humanError(e: unknown, fallback: Fallback = UNKNOWN): HumanError
   return { ...fallback, detail: text(e) };
 }
 
+/** Заголовок с точкой в конце — если своего знака там ещё нет. Одно правило
+    для строки и для DayFail: иначе они разойдутся («…заново..»). */
+export function titleWithStop(title: string): string {
+  return /[.!?:…]$/.test(title) ? title : `${title}.`;
+}
+
 /** То же одной строкой — для мест, где под ошибку отведена строка текста. */
-export function humanLine(e: unknown, fallback?: Fallback): string {
-  const { title, hint } = humanError(e, fallback);
-  return `${/[.!?:]$/.test(title) ? title : `${title}.`} ${hint}`;
+export function humanLine(e: unknown, fallback?: Fallback, statuses?: ByStatus): string {
+  const { title, hint } = humanError(e, fallback, statuses);
+  return `${titleWithStop(title)} ${hint}`;
 }

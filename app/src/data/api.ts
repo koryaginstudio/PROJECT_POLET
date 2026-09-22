@@ -142,15 +142,22 @@ export interface EngineWarming {
   seconds: number;
 }
 
-/** Что движок ещё считает. `null` — всё готово (или движка нет). */
-export async function engineWarming(): Promise<EngineWarming | null> {
+/* Сколько ждём ответа о прогреве. Не секунду, как при поиске: пока движок
+   греется, фоновый поток занят днями, и /health может ответить медленнее. */
+const WARMING_TIMEOUT = 5000;
+
+/** Что движок ещё считает. `null` — всё готово (или движка нет);
+    `'unknown'` — не ответил вовремя: это не «готово», а «спросите ещё раз».
+    Спутать одно с другим — значит снять заставку и сеять в недогретый движок. */
+export async function engineWarming(): Promise<EngineWarming | null | 'unknown'> {
   if (base === null) return null;
   try {
-    const response = await fetch(`${base}/health`, { signal: AbortSignal.timeout(PROBE_TIMEOUT) });
+    const response = await fetch(`${base}/health`, { signal: AbortSignal.timeout(WARMING_TIMEOUT) });
+    if (!response.ok) return 'unknown';
     const body = (await response.json()) as { warming?: EngineWarming | null };
     return body.warming ?? null;
   } catch {
-    return null;
+    return 'unknown';
   }
 }
 

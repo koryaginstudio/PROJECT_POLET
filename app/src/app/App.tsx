@@ -499,18 +499,24 @@ export function App() {
        «Отменить правку» ничего не отменяла. */
     const token = replan.meta.replan.adopt_token;
     if (token) {
+      /* Принятие ждёт движок до минуты. Открыли за это время другой расчёт —
+         черновик старого не должен лечь на его экран, а занятость, которую
+         мог поставить уже новый пересчёт, снимать не нам. */
+      const ticket = replanTicket.current;
       setIncidentBusy(true);
       setIncidentFailed(null);
       try {
         await adoptJournal(lastSpec.day, token, lastSpec.base);
       } catch (failure) {
+        if (ticket !== replanTicket.current) return;
         setIncidentFailed(
           humanLine(failure, { title: 'Принять не удалось', hint: 'Нажмите «Принять» ещё раз.' })
         );
         return;
       } finally {
-        setIncidentBusy(false);
+        if (ticket === replanTicket.current) setIncidentBusy(false);
       }
+      if (ticket !== replanTicket.current) return;
       refreshDayState();
     }
     setDraft({ spec: token ? { ...lastSpec, adoptToken: token } : lastSpec, result: replan });
@@ -554,18 +560,30 @@ export function App() {
      она без вопроса: черновик только что стал записью, терять уже нечего. */
   const saveDraft = async () => {
     if (!draft || saving) return;
+    /* Сохранение ждёт движок до минуты. Если за это время диспетчер ушёл на
+       другой расчёт (и бросил черновик), запись в архиве всё равно
+       появится — список её подхватит, — но уводить его с нового расчёта
+       или показывать там чужую ошибку нельзя. */
+    const ticket = replanTicket.current;
     setSaving(true);
     setSaveFailed(null);
     try {
       const entry = adoptEngineRun(await saveReplan(draft.spec, `Правка расчёта ${runCode(runId)}`));
-      setDraft(null);
       refreshRuns();
+      if (ticket !== replanTicket.current) return;
+      setDraft(null);
       showRun(entry.id);
     } catch (failure) {
+      if (ticket !== replanTicket.current) return;
       setSaveFailed(
         humanLine(failure, {
           title: 'Запись не сохранилась',
           hint: 'Пересчёт остаётся на экране — повторите попытку.'
+        }, {
+          409: {
+            title: 'План устарел: пересчитайте заново',
+            hint: 'Пока пересчёт был на экране, в дне что-то изменилось. Пересчитайте и сохраните заново.'
+          }
         })
       );
     } finally {

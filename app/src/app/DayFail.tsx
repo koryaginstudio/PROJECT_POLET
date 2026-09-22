@@ -1,6 +1,7 @@
 import { Button } from '../ds/components/core/Button.jsx';
 import { Icon } from '../ds/components/core/Icon.jsx';
 import { SCHEMA } from '../data/contract.ts';
+import { titleWithStop } from '../data/errors.ts';
 import type { HumanError } from '../data/errors.ts';
 
 interface Props {
@@ -32,7 +33,7 @@ export function DayFail({ runCode, failure, onPickRun, onHome }: Props) {
     <div className="stub enter dayfail" role="alert">
       <h2 className="stub__title">Расчёт {runCode} не загрузился</h2>
       <p className="stub__body">
-        <b>{failure.title}.</b> {failure.hint}
+        <b>{titleWithStop(failure.title)}</b> {failure.hint}
       </p>
       <details className="fold">
         <summary className="fold__summary">

@@ -57,14 +57,14 @@ export class ErrorBoundary extends Component<Props, State> {
     if (!failure) return this.props.children;
 
     /* Незнакомая ошибка отрисовки — «Экран не открылся»; знакомая (связь,
-       ответ программы расчёта) — своими словами. Строка исключения уходит
+       ответ программы расчёта) — своим заголовком. Совет же всегда свой:
+       здесь всего две кнопки — перезагрузить и на главную, — и «проверьте,
+       что программа запущена» к ним не подходит. Строка исключения уходит
        под «Подробности»: диспетчеру она ничего не говорит. */
-    const human = humanError(failure, {
-      title: 'Экран не открылся',
-      hint:
-        'Программа наткнулась на ошибку и не смогла нарисовать этот экран. Данные при этом не ' +
-        'потеряны: расчёты и правки лежат там же, где лежали. Перезагрузите страницу или вернитесь на главную.'
-    });
+    const human = humanError(failure, { title: 'Экран не открылся', hint: '' });
+    const hint =
+      'Программа наткнулась на ошибку и не смогла нарисовать этот экран. Данные при этом не ' +
+      'потеряны: расчёты и правки лежат там же, где лежали. Перезагрузите страницу или вернитесь на главную.';
 
     return (
       <div className="crash" role="alert">
@@ -73,7 +73,7 @@ export class ErrorBoundary extends Component<Props, State> {
             <Icon name="alert-triangle" size={22} />
           </span>
           <h1 className="crash__title">{human.title}</h1>
-          <p className="crash__body">{human.hint}</p>
+          <p className="crash__body">{hint}</p>
           {human.detail && (
             <details className="fold">
               <summary className="fold__summary">

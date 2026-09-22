@@ -50,7 +50,16 @@ export function RunEditDialog({ run, onClose, onSave, onDelete }: Props) {
   const [note, setNote] = useState('');
   const [confirming, setConfirming] = useState(false);
   const card = useRef<HTMLDivElement>(null);
+  const noteField = useRef<HTMLTextAreaElement>(null);
   useModalFocus(run !== null, card);
+
+  /* У расчёта из архива программы расчёта править можно только заметку —
+     туда и ставим фокус, а не на номер, который только для чтения. Эффект
+     объявлен после `useModalFocus` и потому срабатывает после него. */
+  const archivedNow = run !== null && runEntry(run.id)?.source === null;
+  useEffect(() => {
+    if (archivedNow) noteField.current?.focus();
+  }, [run, archivedNow]);
 
   /* Поля наполняются при каждом открытии: окно одно на все записи, и
      оставшийся в нём чужой номер был бы худшим из возможных обманов. */
@@ -92,7 +101,9 @@ export function RunEditDialog({ run, onClose, onSave, onDelete }: Props) {
   const save = () => {
     if (!valid) return;
     if (archived) {
-      onSave({ note: note.trim() || undefined });
+      /* Пустая строка — не «заметку не трогать», а «стереть»: `updateRun`
+         передаст её программе расчёта, и та сотрёт свою копию. */
+      onSave({ note: note.trim() });
       return;
     }
     onSave({
@@ -132,6 +143,7 @@ export function RunEditDialog({ run, onClose, onSave, onDelete }: Props) {
             <input
               className="runedit__bare"
               readOnly={archived}
+              tabIndex={archived ? -1 : undefined}
               value={tail}
               onChange={(event) => setTail(tailOf(event.currentTarget.value))}
               placeholder="024"
@@ -155,6 +167,7 @@ export function RunEditDialog({ run, onClose, onSave, onDelete }: Props) {
               className="runedit__input"
               type="date"
               readOnly={archived}
+              tabIndex={archived ? -1 : undefined}
               value={date}
               onChange={(event) => setDate(event.currentTarget.value)}
             />
@@ -166,6 +179,7 @@ export function RunEditDialog({ run, onClose, onSave, onDelete }: Props) {
               className="runedit__input"
               type="time"
               readOnly={archived}
+              tabIndex={archived ? -1 : undefined}
               value={time}
               onChange={(event) => setTime(event.currentTarget.value)}
             />
@@ -175,6 +189,7 @@ export function RunEditDialog({ run, onClose, onSave, onDelete }: Props) {
         <label className="runedit__field">
           <span className="runedit__label">Заметка</span>
           <textarea
+            ref={noteField}
             className="runedit__input runedit__area"
             value={note}
             rows={2}

@@ -500,8 +500,19 @@ export function updateRun(id: RunId, patch: RunPatch): void {
   /* Расчёт движка живёт в его архиве, и номер с датой там свои: правка здесь
      прожила бы до перезагрузки, а потом архив вернул бы прежние — и «R003»
      на экране перестал бы совпадать с R003 в заметке «Правка расчёта R003».
-     У такой записи правится только заметка: её движок хранит сам. */
-  if (entry.source === null) patch = patch.note === undefined ? {} : { note: patch.note };
+     У такой записи правится только заметка: её движок хранит сам, рядом с
+     планом, — и она переживает не только перезагрузку, но и смену браузера. */
+  if (entry.source === null) {
+    if (!('note' in patch)) return;
+    /* Пустая заметка — «стереть»: хранить её пустой строкой незачем, а
+       программе расчёта уходит именно пустая строка, иначе её копия
+       осталась бы и вернулась при следующей загрузке. */
+    const note = patch.note?.trim() ?? '';
+    entry.note = note || undefined;
+    saveRuns();
+    if (engineAlive()) noteEngineRun(id, note).catch(() => undefined);
+    return;
+  }
 
   const before = RUN_BASE[id] ?? {};
   let snapped = false;
@@ -518,12 +529,6 @@ export function updateRun(id: RunId, patch: RunPatch): void {
 
   Object.assign(entry, patch);
   saveRuns();
-
-  /* Заметка к расчёту движка переживает не только перезагрузку, но и смену
-     браузера: движок хранит её рядом с планом. */
-  if (entry.source === null && engineAlive() && patch.note !== undefined) {
-    noteEngineRun(id, patch.note).catch(() => undefined);
-  }
 }
 
 /** Убирает запись из истории. Данные зоны при этом остаются на месте:

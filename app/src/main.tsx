@@ -42,7 +42,13 @@ async function waitForWarmup() {
   const started = Date.now();
   for (;;) {
     const warming = await engineWarming();
-    if (!warming || Date.now() - started > WARMUP_LIMIT) return;
+    if (warming === null || Date.now() - started > WARMUP_LIMIT) return;
+    /* Не ответил вовремя — он, скорее всего, занят счётом: ждём дальше, не
+       снимая того, что уже на экране. */
+    if (warming === 'unknown') {
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      continue;
+    }
     const всего = warming.ready.length + warming.pending.length;
     showBoot(
       `Готовим планы на сегодня: готово ${warming.ready.length} из ${всего}` +
