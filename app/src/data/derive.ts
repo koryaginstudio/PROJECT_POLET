@@ -297,6 +297,7 @@ export type StageKey =
   | 'working'
   | 'done'
   | 'overdue'
+  | 'failed'
   | 'unassigned'
   | 'closed';
 
@@ -356,6 +357,10 @@ export interface DayView {
   /** Сколько раз симуляция прогнала этот день. */
   runs: number;
   funnel: Funnel;
+  /** Заявка → статус по журналу дня на срез («отправлено», «в пути»,
+      «выполнено», «сорвано»). Пусто, пока расчёт открыт не на движке или
+      диспетчер ещё ничего не сообщил. */
+  reported: Record<string, string>;
   /** Жёсткая граница суток этого дня, минуты от полуночи: приходит планом
       от движка. Отдельно от настройки `dayEnd`, потому что это разные
       вещи: `dayEnd` — докуда рисовать ось времени, `hardEnd` — докуда
@@ -401,6 +406,14 @@ export const STAGE_META: Record<StageKey, { label: string; tone: Stage['tone']; 
     tone: 'danger',
     hint: 'Оценка движка, а не факт: по этим заявкам план выходит за крайний срок, и они сорвутся с той или иной вероятностью. Сколько на самом деле, покажет смена'
   },
+  /* Факт из журнала, а не оценка: диспетчер отметил, что заявка сорвалась.
+     В «Прогноз срыва» её класть нельзя — там вероятность, и факт в нём
+     растворился бы среди предположений. */
+  failed: {
+    label: 'Сорвалось',
+    tone: 'danger',
+    hint: 'По журналу: диспетчер отметил, что заявка сорвалась. Это уже случилось, в отличие от прогноза срыва'
+  },
   unassigned: { label: 'Без инженера', tone: 'idle' },
   closed: {
     label: 'Закрыта до расчёта',
@@ -414,6 +427,42 @@ export const STAGE_META: Record<StageKey, { label: string; tone: Stage['tone']; 
     «Закрыта до расчёта» — тоже: закрытая заявка в воронку дня не входит
     вовсе, воронка считает только то, что раскладывали. */
 const ROUTED_STAGES: StageKey[] = ['planned', 'enroute', 'working', 'done', 'overdue'];
+
+/** Этап, который диктует журнал дня, — поверх того, что выводится из плана
+    по часам. Журнал знает факты: заявку закрыли, по ней сорвалось, к ней
+    выехали. «Назначено» и «отправлено» этапа не меняют: человек ещё не
+    выехал, и план по часам знает о его дне больше. Строки — те же, что у
+    движка (journal.py, СТАТУСЫ). */
+export function reportedStage(status: string | undefined): StageKey | null {
+  if (status === 'выполнено') return 'done';
+  if (status === 'сорвано') return 'failed';
+  if (status === 'в пути') return 'enroute';
+  return null;
+}
+
+/** Этап заявки с учётом журнала. У журнала нет события «приехал», поэтому
+    «в пути» длится до «выполнено»: если план по часам говорит, что человек
+    уже на объекте, верим плану, иначе колонка «В работе» у дня с журналом
+    пустела бы целиком. Момент перехода по журналу неизвестен — прирост за
+    час по таким заявкам не считается. */
+function stageWithReport(
+  placement: Placement | undefined,
+  cut: Minutes,
+  slaDeadline: Minutes | null,
+  status: string | undefined
+): { key: StageKey; enteredAt: Minutes | null } | null {
+  const fact = reportedStage(status);
+  if (!fact) return placement ? stageOf(placement, cut, slaDeadline) : null;
+  if (fact === 'enroute' && placement) {
+    const planned = stageOf(placement, cut, slaDeadline);
+    if (planned.key === 'working' || planned.key === 'enroute') return planned;
+  }
+  return { key: fact, enteredAt: null };
+}
+
+/** Есть ли у дня журнал: только тогда этап «Сорвалось» вообще возможен и
+    показывается — у расчёта без журнала он всегда был бы пустым нулём. */
+const hasJournal = (reported: Record<string, string>) => Object.keys(reported).length > 0;
 
 const REASON_LABELS: Record<string, string> = {
   no_show: 'Абонента не было дома',
@@ -456,6 +505,7 @@ const emptyBuckets = (): Record<StageKey, Bucket> => ({
   working: { ids: [], delta: 0, atRisk: 0, crew: new Set() },
   done: { ids: [], delta: 0, atRisk: 0, crew: new Set() },
   overdue: { ids: [], delta: 0, atRisk: 0, crew: new Set() },
+  failed: { ids: [], delta: 0, atRisk: 0, crew: new Set() },
   unassigned: { ids: [], delta: 0, atRisk: 0, crew: new Set() },
   closed: { ids: [], delta: 0, atRisk: 0, crew: new Set() }
 });
@@ -463,18 +513,25 @@ const emptyBuckets = (): Record<StageKey, Bucket> => ({
 function stagesFrom(
   placements: Iterable<[string, Placement]>,
   cut: Minutes,
-  slaOf: (placement: Placement) => Minutes | null
+  slaOf: (placement: Placement) => Minutes | null,
+  reported: Record<string, string> = {},
+  /* Заявки без маршрута в показанном плане, о которых журнал сообщил факт:
+     их закрыли или по ним выехали после пересчёта. В «Без инженера» им не
+     место, а сумма этапов должна сойтись с числом заявок. */
+  extra: [string, StageKey][] = []
 ): Stage[] {
   const buckets = emptyBuckets();
   for (const [orderId, placement] of placements) {
-    const { key, enteredAt } = stageOf(placement, cut, slaOf(placement));
+    const { key, enteredAt } = stageWithReport(placement, cut, slaOf(placement), reported[orderId])!;
     const bucket = buckets[key];
     bucket.ids.push(orderId);
     bucket.crew.add(placement.engineerId);
     if (placement.stop.risk !== 'low') bucket.atRisk += 1;
     if (enteredAt !== null && cut >= enteredAt && cut - enteredAt <= 60) bucket.delta += 1;
   }
-  return ROUTED_STAGES.map((key) => ({
+  for (const [orderId, key] of extra) buckets[key].ids.push(orderId);
+  const keys: StageKey[] = hasJournal(reported) ? [...ROUTED_STAGES, 'failed'] : ROUTED_STAGES;
+  return keys.map((key) => ({
     key,
     label: STAGE_META[key].label,
     hint: STAGE_META[key].hint,
@@ -497,8 +554,21 @@ export function buildFunnel(
   deferrable: Order[],
   fragileIds: string[],
   cut: Minutes,
-  slaOf: (placement: Placement) => Minutes | null = () => null
+  slaOf: (placement: Placement) => Minutes | null = () => null,
+  reported: Record<string, string> = {}
 ): Funnel {
+  /* Без инженера в плане, но с фактом в журнале — уже не «без инженера»:
+     её закрыли или к ней едут. Такие уходят на свой этап. */
+  const tracked: [string, StageKey][] = [];
+  const waiting: Order[] = [];
+  for (const order of unassigned) {
+    const fact = reportedStage(reported[order.id]);
+    if (fact) tracked.push([order.id, fact]);
+    else waiting.push(order);
+  }
+  unassigned = waiting;
+  deferrable = deferrable.filter((order) => !reportedStage(reported[order.id]));
+
   /* Горит та, у которой срок сегодняшний: переносимая на завтра подождёт. */
   const urgent = unassigned.filter((o) => !isDeferrable(o));
   const attentionIds = [...new Set([...urgent.map((o) => o.id), ...fragileIds])];
@@ -520,7 +590,7 @@ export function buildFunnel(
   return {
     cut,
     total: ordersTotal,
-    stages: [...stagesFrom(stopByOrder, cut, slaOf), unassignedStage],
+    stages: [...stagesFrom(stopByOrder, cut, slaOf, reported, tracked), unassignedStage],
     lost: {
       count: unassigned.length,
       deferrable: deferrable.length,
@@ -540,10 +610,11 @@ export function engineerStages(
   stopByOrder: Map<string, Placement>,
   engineerId: string,
   cut: Minutes,
-  slaOf: (placement: Placement) => Minutes | null = () => null
+  slaOf: (placement: Placement) => Minutes | null = () => null,
+  reported: Record<string, string> = {}
 ): { total: number; stages: Stage[] } {
   const mine = [...stopByOrder.entries()].filter(([, p]) => p.engineerId === engineerId);
-  return { total: mine.length, stages: stagesFrom(mine, cut, slaOf) };
+  return { total: mine.length, stages: stagesFrom(mine, cut, slaOf, reported) };
 }
 
 /** Этап конкретной заявки на срез — для списков и таблиц. */
@@ -559,9 +630,11 @@ export function stageOfOrder(
      плане закрытая заявка может стоять и в маршруте, и тогда это ошибка
      плана, а не этап смены. */
   if (order && orderClosed(order)) return { key: 'closed', ...STAGE_META.closed };
-  if (!placement) return { key: 'unassigned', ...STAGE_META.unassigned };
-  const { key } = stageOf(placement, cut, order?.sla_deadline ?? null);
-  return { key, ...STAGE_META[key] };
+  /* Журнал — раньше маршрута: закрытая по журналу заявка закрыта, даже если
+     в показанном плане её нет. */
+  const stage = stageWithReport(placement, cut, order?.sla_deadline ?? null, view.reported[orderId]);
+  if (!stage) return { key: 'unassigned', ...STAGE_META.unassigned };
+  return { key: stage.key, ...STAGE_META[stage.key] };
 }
 
 export type SegmentKind = 'travel' | 'wait' | 'work' | 'idle' | 'lunch';
@@ -677,11 +750,21 @@ export function buildLiveRoster(view: DayView, cut: Minutes): LiveEngineer[] {
       return { ...base, status: 'before', ...LIVE_STATUS_META.before, visitsDone: 0, visitsTotal };
     }
 
-    const visitsDone = route.stops.filter((stop) => cut >= stop.finish).length;
+    /* Точка позади, если так говорит журнал («выполнено», «сорвано») или,
+       без его слова, часы плана. «В пути» по журналу держит точку открытой,
+       даже когда по плану визит уже кончился: человек не отчитался, и
+       «Свободен» про него было бы неправдой. */
+    const passed = (stop: Stop) => {
+      const said = view.reported[stop.order_id];
+      if (said === 'выполнено' || said === 'сорвано') return true;
+      if (said === 'в пути') return false;
+      return cut >= stop.finish;
+    };
+    const visitsDone = route.stops.filter(passed).length;
     /* Первая точка маршрута, которую срез ещё не закрыл: до неё все уже
        позади, а departure у неё — либо конец предыдущей, либо начало смены,
        и в обоих случаях он уже наступил, раз мы досюда дошли. */
-    const current = route.stops.find((stop) => cut < stop.finish);
+    const current = route.stops.find((stop) => !passed(stop));
     if (!current) {
       return {
         ...base,
@@ -725,7 +808,9 @@ export const LIVE_STATUS_ORDER: LiveStatus[] = [
   'off'
 ];
 
-export function buildDayView(day: Day): DayView {
+/** `reported` — статусы журнала дня на срез (dayState.statuses): факты
+    диспетчера поверх плана. Без журнала — пусто, и всё считается по плану. */
+export function buildDayView(day: Day, reported: Record<string, string> = {}): DayView {
   const { plan, simulation } = day;
 
   const orderById = new Map(plan.orders.map((o) => [o.id, o]));
@@ -808,7 +893,8 @@ export function buildDayView(day: Day): DayView {
     deferrable,
     fragile.map((f) => f.order.id),
     cutMinutes(),
-    slaOf
+    slaOf,
+    reported
   );
 
   const spread = plan.meta.balance;
@@ -980,6 +1066,7 @@ export function buildDayView(day: Day): DayView {
     reasons,
     runs: simulation.meta.runs,
     funnel,
+    reported,
     hardEnd
   };
 }

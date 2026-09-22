@@ -394,16 +394,27 @@ export function App() {
   const engineBase = engineDay ? runId : undefined;
   const [dayState, setDayState] = useState<DayState | null>(null);
   const [eventBusy, setEventBusy] = useState(false);
-  const [eventFailed, setEventFailed] = useState<string | null>(null);
+  /* Ошибка помнит, к какой заявке относится: иначе отказ по одной заявке
+     висел бы в карточке любой другой, открытой следом. */
+  const [eventFailed, setEventFailed] = useState<{ order: string; message: string } | null>(null);
+  /* Ползунок шлёт /api/state на каждом шаге, и ответы приходят не по
+     порядку: без номера запроса поздний ответ за 09:00 перетирал бы уже
+     пришедший за 11:00, и статусы на экране отставали от момента. */
+  const dayStateSeq = useRef(0);
 
   const refreshDayState = () => {
+    const seq = ++dayStateSeq.current;
     if (!engineDay) {
       setDayState(null);
       return;
     }
     loadDayState(engineDay, cut, engineBase)
-      .then(setDayState)
-      .catch(() => setDayState(null));
+      .then((state) => {
+        if (seq === dayStateSeq.current) setDayState(state);
+      })
+      .catch(() => {
+        if (seq === dayStateSeq.current) setDayState(null);
+      });
   };
 
   useEffect(refreshDayState, [engineDay, engineBase, cut]);
@@ -432,15 +443,34 @@ export function App() {
         });
       }
     } catch (failure) {
-      setEventFailed(failure instanceof Error ? failure.message : 'Событие не записалось');
+      setEventFailed({
+        order: 'order' in event ? event.order : '',
+        message: failure instanceof Error ? failure.message : 'Событие не записалось'
+      });
     } finally {
       setEventBusy(false);
     }
   };
 
+  /* У кого заявка по журналу: впереди в чьём-то списке (pending) или к ней
+     уже едут (underway). Без `underway` у заявок «в пути» держателя не
+     нашлось бы, и погасли бы «Выполнено» и «Сорвалось». Пока состояние дня
+     не пришло — null: «не знаем» не то же, что «ни у кого». */
+  const holders = useMemo(() => {
+    if (!dayState) return null;
+    const map: Record<string, string> = {};
+    for (const [engineer, ids] of Object.entries(dayState.pending ?? {})) {
+      for (const id of ids) map[id] = engineer;
+    }
+    return { ...map, ...dayState.underway };
+  }, [dayState]);
+
   const dispatcher: DispatcherActions | undefined = engineDay
     ? {
         statuses: dayState?.statuses ?? {},
+        holders,
+        cut,
+        dayStart: dayStart(),
         busy: eventBusy,
         failed: eventFailed,
         onEvent: sendEvent
@@ -552,13 +582,19 @@ export function App() {
   /* Пороги входят в зависимости памятки: день считается теми же данными, но
      «плохо» и «присмотреться» в нём расставлены по настройке, и подвинутый
      порог обязан перекрасить пульт немедленно. */
+  /* Статусы журнала — на канбан, воронку и мониторинг. Состояние дня
+     приходит заново на каждом шаге ползунка, и почти всегда с теми же
+     статусами: сравниваем по содержимому, иначе весь день пересчитывался
+     бы на каждый ответ сервера. */
+  const reportedKey = JSON.stringify(dayState?.statuses ?? {});
+  const reported = useMemo(() => JSON.parse(reportedKey) as Record<string, string>, [reportedKey]);
   const dayView = useMemo(() => {
     /* Ось времени обязана доходить до границы суток открытого плана: у
        выгрузки заказчика это 22:00, а настройка оси по умолчанию — 21:00,
        и визиты после девяти вечера выпадали с таймлайна. */
     setPlanHorizon(shownDay?.plan.meta.hard_end);
-    return shownDay ? buildDayView(shownDay) : null;
-  }, [shownDay, settings.thresholds, settings.dayStart, settings.dayEnd]);
+    return shownDay ? buildDayView(shownDay, reported) : null;
+  }, [shownDay, reported, settings.thresholds, settings.dayStart, settings.dayEnd]);
   /* Правая панель показывает список маршрутов вместо справочника там, где
      карта — основной способ смотреть на день: на вкладке «Карта» в
      диспетчерской и на всём мониторинге, который сам почти целиком карта. */

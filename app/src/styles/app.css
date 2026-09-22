@@ -2580,6 +2580,13 @@ body {
   align-items: stretch;
 }
 
+/* У дня с журналом есть восьмой этап — «Сорвалось». Правило стоит до
+   узкой раскладки ниже, чтобы на узком экране ряд так же переносился на
+   две строки по четыре. */
+.funnel__rail--wide {
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+}
+
 @media (max-width: 1500px) {
   .funnel__rail {
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -2720,7 +2727,8 @@ body {
   background: var(--danger-500);
 }
 
-.stage--overdue .stage__value {
+.stage--overdue .stage__value,
+.stage--failed .stage__value {
   color: var(--danger-600);
 }
 
@@ -5566,6 +5574,13 @@ button.bsq:focus-visible {
 .progress__seg--overdue,
 .progress__dot--overdue {
   background: var(--danger-500);
+}
+
+/* Факт срыва темнее прогноза: в полосе они стоят рядом, и различать их
+   надо без подписи. */
+.progress__seg--failed,
+.progress__dot--failed {
+  background: var(--danger-700);
 }
 
 .progress__seg--working,
@@ -15749,40 +15764,130 @@ b.ccard__bad {
   max-width: 220px;
 }
 
-/* Распоряжение диспетчера в карточке заявки: статусы и ручное
-   закрепление. Кнопки в ряд с переносом — панель узкая. */
-.dispatch__actions {
+/* Распоряжение диспетчера в карточке заявки: статус, следующий шаг и
+   ручное закрепление. Текст — 14px основным цветом: этим блоком работают
+   весь день, и мелкий серый в нём читался хуже всего остального. Кнопки в
+   ряд с переносом — панель узкая. */
+.dispatch {
+  font-size: var(--fs-body-s);
+  line-height: var(--lh-body-s);
+  color: var(--text-primary);
+}
+
+.dispatch__status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.dispatch__who {
+  font-weight: var(--fw-medium);
+}
+
+.dispatch__line {
+  margin: var(--sp-2) 0 0;
+}
+
+/* Время записи события — всегда на виду: событие пишется на момент
+   шкалы, и без этой строки «Выполнено» молча ложилось на 08:00. */
+.dispatch__when {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  margin: var(--sp-3) 0 0;
+}
+
+.dispatch__when svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.dispatch__when--warn {
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-sm);
+  background: var(--warning-50);
+  color: var(--warning-800);
+}
+
+/* Журнал разошёлся с планом на экране: статусы гаснут, и строка говорит,
+   что сделать, чтобы они вернулись. */
+.dispatch__stale {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-sm);
+  background: var(--warning-50);
+  color: var(--warning-800);
+}
+
+/* Подтверждение на месте — как «Удалить запись?» в окне правки расчёта. */
+.dispatch__ask {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+  padding: var(--sp-3);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--r-sm);
+  font-weight: var(--fw-medium);
+}
+
+.dispatch__row {
   display: flex;
   flex-wrap: wrap;
   gap: var(--sp-2);
+  align-items: center;
+}
+
+.dispatch__actions {
   margin-top: var(--sp-3);
 }
 
+/* Имя, транспорт и число заявок в подписи длинные — выбор забирает всю
+   свободную ширину ряда, кнопка переносится под него, если не влезает. */
+.dispatch__pick {
+  flex: 1 1 220px;
+}
+
 .dispatch__fail {
-  display: inline-flex;
+  display: flex;
+  flex-direction: column;
   gap: var(--sp-2);
-  align-items: center;
+  margin-top: var(--sp-3);
 }
 
 .dispatch__pin {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-top: var(--sp-3);
+  gap: var(--sp-2);
+  margin-top: var(--sp-4);
   padding-top: var(--sp-3);
   border-top: 1px solid var(--border-hairline);
 }
 
 .dispatch__pin-label {
-  font-size: 11px;
-  color: var(--text-muted);
+  font-size: var(--fs-body-s);
+  font-weight: var(--fw-medium);
+  color: var(--text-primary);
 }
 
-.dispatch__pin-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sp-2);
-  align-items: center;
+/* Слова программы расчёта — техническая подробность: под раскрывашкой,
+   чтобы первым читалось «что случилось» и «что делать». */
+.dispatch__more {
+  margin-top: var(--sp-2);
+}
+
+/* Высота строки плюс поля — 32px, цель нажатия не меньше кнопки. Не
+   flex: у summary с display:flex браузер прячет треугольник. */
+.dispatch__more summary {
+  padding: 6px 0;
+  line-height: 20px;
+  cursor: pointer;
+  font-weight: var(--fw-medium);
 }
 
 /* Перечень тех, кто выезжает из общего гнезда. Место одно, а путей из него

@@ -549,6 +549,10 @@ export interface DayState {
   statuses: Record<string, string>;
   /** Заявка → инженер, который к ней едет. */
   underway: Record<string, string>;
+  /** Инженер → заявки, которые у него впереди по журналу (назначенные и
+      отправленные, ещё не начатые). Вместе с `underway` отвечает, у кого
+      заявка на самом деле, — план на экране может быть старше журнала. */
+  pending: Record<string, string[]>;
   summary: { events: number; done: number; failed: number; absent: string[] };
 }
 

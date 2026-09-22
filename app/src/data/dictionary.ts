@@ -184,7 +184,11 @@ const STATUS_NAMES: Record<string, string> = {
   in_progress: 'В работе',
   done: 'Выполнена',
   cancelled: 'Отменена',
-  overdue: 'Просрочена'
+  overdue: 'Просрочена',
+  /* Не из выгрузки, а из журнала дня: диспетчер отметил срыв. В порядок
+     жизненного цикла (STATUS_ORDER) не входит — фильтры выгрузки его не
+     знают, а карточка заявки показывает. */
+  failed: 'Сорвалась'
 };
 
 const STATUS_ICONS: Record<string, string> = {
@@ -194,7 +198,8 @@ const STATUS_ICONS: Record<string, string> = {
   in_progress: 'wrench',
   done: 'check-circle',
   cancelled: 'x-circle',
-  overdue: 'alert-triangle'
+  overdue: 'alert-triangle',
+  failed: 'x-circle'
 };
 
 /** Порядок жизненного цикла: по нему сортируют списки и рисуют шкалу визита.
