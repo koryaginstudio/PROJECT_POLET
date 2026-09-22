@@ -112,6 +112,14 @@ let base: string | null = null;
 export const engineBase = () => base;
 export const engineAlive = () => base !== null;
 
+/* Промолчал ли движок на последний запрос. `engineAlive` помнит только
+   запуск: движок нашёлся — и всё. Замолчи он потом, «Воздействия» под
+   ошибкой «не отвечает» так и писали бы «Программа расчёта запущена».
+   Молчание — это упавшая сеть; отказ словами и истёкший срок молчанием не
+   считаются: движок на месте, просто занят или не согласен. */
+let silent = false;
+export const engineSilent = () => silent;
+
 /** Ищет движок по обоим адресам. Вызывается один раз при запуске.
 
     Отрицательный ответ — не ошибка и в консоль не пишется: отсутствие
@@ -197,8 +205,10 @@ async function call<T>(path: string, init?: RequestInit, timeout = CALL_TIMEOUT)
         'timeout'
       );
     }
+    silent = true;
     throw new EngineError('Программа расчёта не отвечает — подождите минуту и повторите.', 'offline');
   }
+  silent = false;
   let body: unknown;
   try {
     body = await response.json();

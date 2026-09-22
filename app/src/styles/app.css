@@ -5479,6 +5479,21 @@ button.bsq:focus-visible {
   box-shadow: var(--ring-focus);
 }
 
+/* На краю шкалы шаг некуда сделать — кнопка гаснет, как пункты ленты. */
+.stepper__btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.stepper__btn:disabled:hover {
+  color: var(--text-secondary);
+  background: transparent;
+}
+
+.stepper__btn:disabled:active {
+  transform: none;
+}
+
 /* Время набирается и руками: поле выглядит как та же цифра, но принимает
    ввод — ползунком в 15 минут не попасть в момент, на котором сорвался визит. */
 .stepper__clock {

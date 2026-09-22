@@ -7,6 +7,7 @@ import { dec, hhmm, orders as ordersWord, pluralWord } from '../data/derive.ts';
 import type { IncidentKind, IncidentSpec, ReplanResult } from '../data/api.ts';
 import { loadEngineSettings } from '../data/api.ts';
 import { CHURN_PRESETS, ENGINE_DEFAULTS } from '../data/engine.ts';
+import { IMPACT, urgentFrom } from '../data/impact.ts';
 import type { Order } from '../data/contract.ts';
 import { useModalFocus } from './modal.ts';
 import { pinnedRest } from './pinnedReason.ts';
@@ -45,13 +46,9 @@ interface Props {
 
 /* Внести правку: день пошёл не так, как посчитали.
 
-   Событий четыре, и это не удобство, а вывод из замеров на зонах
-   (`замеры-22-09/`). Выбытие инженера утром стоит дню 4,4 визита, и
-   пересчёт возвращает 2,9 — жать обязательно. Задержка на сорок минут
-   стоит 0,1–0,2, и пересчёт из неё не возвращает ничего: буферы съедают
-   её сами. Система, которая перетасовывает бригаду из-за
-   прокола колеса, хуже той, что не делает ничего — людям уже позвонили и
-   сказали ехать.
+   Событий четыре, и это не удобство, а вывод из замеров на зонах: выбытие
+   жать обязательно, задержку — чаще нет. Числа и вердикты — в
+   `src/data/impact.ts`, одни на это окно и на экран «Воздействия».
 
    Поэтому у каждого события стоит вердикт, а после пересчёта показывается
    его настоящая цена: сколько визитов выиграли против «поехали как ехали»,
@@ -68,32 +65,24 @@ const KINDS: {
   icon: string;
   title: string;
   what: string;
-  verdict: 'press' | 'skip';
-  verdictText: string;
 }[] = [
   {
     value: 'urgent',
     icon: 'alert-triangle',
     title: 'Авария',
-    what: 'Пришли срочные заявки, которых не было в плане. Можно указать, на чьём участке.',
-    verdict: 'press',
-    verdictText: 'Пересчитывать'
+    what: 'Пришли срочные заявки, которых не было в плане. Можно указать, на чьём участке.'
   },
   {
     value: 'disabled',
     icon: 'user',
     title: 'Инженер выбыл',
-    what: 'Сегодня его не будет: заболел, отозвали, машина не поехала.',
-    verdict: 'press',
-    verdictText: 'Пересчитывать'
+    what: 'Сегодня его не будет: заболел, отозвали, машина не поехала.'
   },
   {
     value: 'delayed',
     icon: 'clock',
     title: 'Инженер задержится',
-    what: 'Прокол, пробка, затянулась прошлая заявка — выйдет на маршрут позже.',
-    verdict: 'skip',
-    verdictText: 'Чаще не стоит'
+    what: 'Прокол, пробка, затянулась прошлая заявка — выйдет на маршрут позже.'
   },
   {
     /* Третье событие пересчёта из ТЗ. Тип в вёрстке был, а кнопки не было:
@@ -101,9 +90,7 @@ const KINDS: {
     value: 'cancel',
     icon: 'x-circle',
     title: 'Абонент отказался',
-    what: 'Заявку сняли: освободилось время, и в него может влезть то, что не влезало.',
-    verdict: 'press',
-    verdictText: 'Пересчитывать'
+    what: 'Заявку сняли: освободилось время, и в него может влезть то, что не влезало.'
   }
 ];
 
@@ -172,15 +159,17 @@ export function IncidentDialog({
   const [nearId, setNearId] = useState('');
   const [minutes, setMinutes] = useState(40);
   const [urgent, setUrgent] = useState(2);
-  const [at, setAt] = useState(cut);
+  /* Время, вписанное руками в «Когда случилось». Пусто — время по умолчанию
+     (ниже, `at`). */
+  const [typedAt, setTypedAt] = useState<number | null>(null);
   const card = useRef<HTMLDivElement>(null);
   useModalFocus(open, card);
 
   /* Момент открытия окна — момент, на котором стоит доска. Диспетчер
      подвинул ползунок к 13:40 и жмёт «внести правку»: пересчитывать надо
-     оттуда, а не с начала смены. */
+     оттуда, а не с начала смены. Вписанное в прошлый раз забывается. */
   useEffect(() => {
-    if (open) setAt(cut);
+    if (open) setTypedAt(null);
   }, [open, cut]);
 
   /* Выбор живёт до закрытия окна: следующий пересчёт снова начинается с
@@ -225,6 +214,18 @@ export function IncidentDialog({
   }, [open, busy, onClose]);
 
   if (!open) return null;
+
+  /* Время события. По умолчанию — момент доски, а у аварии не раньше, чем
+     её есть кому взять: самое раннее начало смены у тех, кто умеет аварии
+     (`urgentFrom`). Иначе авария в 07:00 давала «0 из 2» без объяснения —
+     на востоке и югоцентре аварийщики выходят в 10:00. Вписанное руками
+     побеждает: раньше этого времени тоже можно, но тогда ниже сказано,
+     почему авария может не встать. */
+  const urgentStart = urgentFrom(view.engineerById.values());
+  const suggested =
+    kind === 'urgent' && urgentStart !== null ? Math.max(cut, urgentStart) : cut;
+  const at = typedAt ?? suggested;
+  const urgentEarly = kind === 'urgent' && urgentStart !== null && at < urgentStart;
 
   /* Выбыть или задержаться может только тот, у кого после момента правки
      ещё есть работа. Не выбран никто — «самый загруженный сейчас», `auto`:
@@ -426,10 +427,14 @@ export function IncidentDialog({
                   </>
                 ) : replan.urgent_ids.length > 0 ? (
                   /* Утром так и выходит: авария живёт три часа от прихода, а
-                     смены тех, кто умеет аварии, начинаются позже. */
+                     смены тех, кто умеет аварии, начинаются позже. Если
+                     причина в этом — она названа; иначе только факт. */
                   <>
                     пересчёт ничего не добавил: {ordersWord(replan.assigned_now)} и так, и так.
                     Ни одна авария в план не встала
+                    {urgentStart !== null && replan.at < urgentStart
+                      ? `: в ${hhmm(replan.at)} на смене нет никого, кто умеет аварии, ближайший — с ${hhmm(urgentStart)}`
+                      : ''}
                   </>
                 ) : newcomers > 0 ? (
                   /* Ноль при вставших новых — не «ничего не изменилось»: новые
@@ -592,7 +597,7 @@ export function IncidentDialog({
             <h4 className="incident__subtitle">Причина</h4>
 
             <div className="incident__kinds">
-              {KINDS.map((item) => (
+              {KINDS.map((item) => ({ ...item, ...IMPACT[item.value] })).map((item) => (
                 <button
                   key={item.value}
                   type="button"
@@ -625,7 +630,7 @@ export function IncidentDialog({
                   value={hhmm(at)}
                   onChange={(e) => {
                     const [h, m] = e.currentTarget.value.split(':').map(Number);
-                    if (Number.isFinite(h) && Number.isFinite(m)) setAt(h * 60 + m);
+                    if (Number.isFinite(h) && Number.isFinite(m)) setTypedAt(h * 60 + m);
                   }}
                 />
               </label>
@@ -714,6 +719,33 @@ export function IncidentDialog({
                 </>
               )}
             </div>
+
+            {/* Время аварии — словами, когда оно не такое, как на доске, или
+                когда аварию в это время некому взять. */}
+            {kind === 'urgent' && urgentStart === null && (
+              <div className="ctrlnote">
+                <Icon name="alert-triangle" size={16} />
+                <span>В бригаде никто не умеет аварийные работы — авария не встанет ни в какое время.</span>
+              </div>
+            )}
+            {kind === 'urgent' && urgentStart !== null && typedAt === null && cut < urgentStart && (
+              <div className="ctrlnote">
+                <Icon name="clock" size={16} />
+                <span>
+                  Время аварии — {hhmm(urgentStart)}, а не {hhmm(cut)}: раньше её некому взять, у тех,
+                  кто умеет аварии, самая ранняя смена с {hhmm(urgentStart)}. Можно вписать другое время.
+                </span>
+              </div>
+            )}
+            {urgentEarly && urgentStart !== null && (
+              <div className="ctrlnote">
+                <Icon name="alert-triangle" size={16} />
+                <span>
+                  В {hhmm(at)} на смене нет никого, кто умеет аварии: ближайший выходит в{' '}
+                  {hhmm(urgentStart)}. Авария может его не дождаться — тогда ни одна не встанет.
+                </span>
+              </div>
+            )}
 
             {/* Живой контрол окна правки — одна из семи договорённых
                 настроек: насколько пересчёт держится за то, кому уже сказали

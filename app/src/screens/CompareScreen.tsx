@@ -6,7 +6,8 @@ import type { DaySummary, RunId } from '../data/load.ts';
 import { runCode, runEntry, stampOf, whenLabel } from '../data/load.ts';
 import { dec, plural } from '../data/derive.ts';
 import type { Registry, RunStat } from '../data/registry.ts';
-import { deleteCompare, engineAlive, listCompares, saveCompare, EngineError } from '../data/api.ts';
+import { deleteCompare, engineAlive, listCompares, saveCompare } from '../data/api.ts';
+import { humanAfter, humanLine } from '../data/errors.ts';
 import type { SavedCompare, SavedCompareRun } from '../data/api.ts';
 import { RunCard } from '../app/RunCard.tsx';
 import { RunMenu } from '../app/RunMenu.tsx';
@@ -177,9 +178,13 @@ export function CompareScreen({
       setSaved((prev) => (prev ?? []).filter((item) => item.id !== id));
       return null;
     } catch (error) {
-      return error instanceof EngineError
-        ? error.message
-        : 'Удалить не вышло: программа расчёта не ответила. Повторите попытку.';
+      /* Прежде сюда уходили слова движка как есть, а любая другая ошибка
+         называлась «не ответила» — даже если ответила отказом. */
+      return humanLine(
+        error,
+        { title: 'Удалить не вышло', hint: 'Повторите попытку.' },
+        { 404: { title: 'Этого сравнения в архиве уже нет', hint: 'Обновите страницу — список догонит архив.' } }
+      );
     }
   }
 
@@ -209,7 +214,9 @@ export function CompareScreen({
       const record = await saveCompare(rows.map(snapshot));
       setSaved((prev) => [...(prev ?? []), record]);
     } catch (error) {
-      setFailed(error instanceof EngineError ? error.message : 'Сравнение не сохранилось');
+      /* Заголовок «Сравнение не сохранилось» ставит сама плашка: прежде
+         незнакомая ошибка давала его дважды подряд. */
+      setFailed(humanAfter(error, 'Повторите ещё раз.').text);
     } finally {
       setBusy(false);
     }

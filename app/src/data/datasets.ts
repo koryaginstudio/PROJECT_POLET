@@ -20,6 +20,7 @@
    `dataset/build.py`, и он же ходит в геокодер за координатами. */
 
 import { SCHEMA, schemaAccepted } from './contract.ts';
+import { HumanRefusal } from './errors.ts';
 import type { Engineer, Order } from './contract.ts';
 
 export interface Dataset {
@@ -63,9 +64,9 @@ function persist(): void {
   } catch {
     /* Хранилище браузера кончилось. Набор остаётся в памяти до перезагрузки —
        это хуже, чем сохранить, но лучше, чем потерять прямо сейчас. */
-    throw new Error(
-      'Хранилище браузера переполнено: набор будет работать до перезагрузки страницы. ' +
-        'Удалите ненужные наборы в настройках.'
+    throw new HumanRefusal(
+      'Хранилище браузера переполнено',
+      'Набор будет работать до перезагрузки страницы. Удалите ненужные наборы в настройках.'
     );
   }
 }

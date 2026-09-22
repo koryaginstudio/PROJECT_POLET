@@ -78,6 +78,10 @@ export function Stepper({ cut, onCutChange }: { cut: number; onCutChange: (cut: 
   const [typed, setTyped] = useState<string | null>(null);
   const shift = (delta: number) =>
     onCutChange(clampDay(cut + delta));
+  /* На краю шкалы шагать некуда: кнопка гаснет, а не молчит на нажатие.
+     Прежде «+1 ч» на 22:00 выглядел живым и ничего не делал. */
+  const atFirst = cut <= dayStart();
+  const atLast = cut >= dayEnd();
 
   const commit = () => {
     if (typed === null) return;
@@ -88,10 +92,10 @@ export function Stepper({ cut, onCutChange }: { cut: number; onCutChange: (cut: 
 
   return (
     <div className="stepper">
-      <button type="button" className="stepper__btn" onClick={() => shift(-60)} title="На час назад">
+      <button type="button" className="stepper__btn" onClick={() => shift(-60)} title="На час назад" disabled={atFirst}>
         −1 ч
       </button>
-      <button type="button" className="stepper__btn" onClick={() => shift(-15)} title="На 15 минут назад">
+      <button type="button" className="stepper__btn" onClick={() => shift(-15)} title="На 15 минут назад" disabled={atFirst}>
         −15
       </button>
       <input
@@ -115,10 +119,10 @@ export function Stepper({ cut, onCutChange }: { cut: number; onCutChange: (cut: 
         aria-label="Момент расчёта, часы и минуты"
         title="Впишите время вручную: 14:30"
       />
-      <button type="button" className="stepper__btn" onClick={() => shift(15)} title="На 15 минут вперёд">
+      <button type="button" className="stepper__btn" onClick={() => shift(15)} title="На 15 минут вперёд" disabled={atLast}>
         +15
       </button>
-      <button type="button" className="stepper__btn" onClick={() => shift(60)} title="На час вперёд">
+      <button type="button" className="stepper__btn" onClick={() => shift(60)} title="На час вперёд" disabled={atLast}>
         +1 ч
       </button>
     </div>

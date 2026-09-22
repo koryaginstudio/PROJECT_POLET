@@ -153,3 +153,19 @@ export function humanLine(e: unknown, fallback?: Fallback, statuses?: ByStatus):
   const { title, hint } = humanError(e, fallback, statuses);
   return `${titleWithStop(title)} ${hint}`;
 }
+
+/** Строка после своего заголовка места («<b>Сравнение не сохранилось.</b> …»):
+    у знакомой ошибки — её заголовок и совет, у незнакомой — один совет.
+    Свой заголовок в запасном варианте повторил бы заголовок места:
+    «Сохранить не вышло. Запись не сохранилась. …». */
+export function humanAfter(
+  e: unknown,
+  hint: string,
+  statuses?: ByStatus
+): { text: string; detail: string } {
+  const human = humanError(e, { title: '', hint }, statuses);
+  return {
+    text: human.title ? `${titleWithStop(human.title)} ${human.hint}` : human.hint,
+    detail: human.detail
+  };
+}

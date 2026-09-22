@@ -5,6 +5,7 @@ import { Input } from '../ds/components/forms/Input.jsx';
 import { readDataset, saveDataset } from '../data/datasets.ts';
 import type { ReadResult } from '../data/datasets.ts';
 import { pluralWord } from '../data/derive.ts';
+import { humanLine } from '../data/errors.ts';
 
 interface Props {
   /** Набор загружен и сохранён: ключ нового источника. */
@@ -42,7 +43,15 @@ export function DatasetImport({ onLoaded }: Props) {
       setRead(result);
       setTitle(result.title);
     } catch (error) {
-      setFailed(error instanceof Error ? error.message : 'Файл не прочитался');
+      /* Разбор сам складывает свои находки в список; сюда падает только
+         то, чего он не ждал, — и вместо «NotReadableError: …» человек
+         читает, что делать. */
+      setFailed(
+        humanLine(error, {
+          title: 'Файл не прочитался',
+          hint: 'Выберите его ещё раз; если повторится — сохраните файл заново.'
+        })
+      );
     } finally {
       setBusy(false);
       /* Сбрасываем поле: иначе повторный выбор того же файла не даст события
@@ -59,7 +68,7 @@ export function DatasetImport({ onLoaded }: Props) {
       setTitle('');
       onLoaded(saved.key);
     } catch (error) {
-      setFailed(error instanceof Error ? error.message : 'Набор не сохранился');
+      setFailed(humanLine(error, { title: 'Набор не сохранился', hint: 'Повторите ещё раз.' }));
     }
   };
 

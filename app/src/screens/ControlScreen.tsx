@@ -5,7 +5,9 @@ import { Button } from '../ds/components/core/Button.jsx';
 import { StatTile } from '../ds/components/data/StatTile.jsx';
 import { hhmm, pluralWord } from '../data/derive.ts';
 import type { IncidentKind, Staffing } from '../data/api.ts';
-import { loadStaffing, resetJournal } from '../data/api.ts';
+import { engineSilent, loadStaffing, resetJournal } from '../data/api.ts';
+import { humanAfter } from '../data/errors.ts';
+import { IMPACT } from '../data/impact.ts';
 import { replanBlocked } from '../app/replanBlocked.ts';
 import '../styles/control.css';
 
@@ -32,6 +34,9 @@ interface Props {
   onJournalReset: () => void;
   /** Заявка словами диспетчера — адрес, а не код. Без открытого дня — код. */
   orderLabel?: (id: string) => string;
+  /** С какой минуты аварию есть кому взять (`urgentFrom`, impact.ts): окно
+      правки считает аварию не раньше неё, и кнопка карточки говорит то же. */
+  urgentStart?: number | null;
 }
 
 /* Управление воздействием — третий этап процесса.
@@ -41,13 +46,10 @@ interface Props {
    вмешивается: день пошёл не так, как посчитали, и надо решить, что делать.
 
    Ключевое решение экрана — событий четыре, а не одно. Соблазн сделать одну
-   кнопку «ЧП» велик, но он неверен, и это замерено на зонах заказчика
-   (`замеры-22-09/выбытие-на-зонах.txt`, `прокол-на-зонах.txt`): выбытие
-   инженера утром стоит дню 4,4 визита, и пересчёт возвращает 2,9 — жать
-   обязательно. Задержка на сорок минут стоит 0,1–0,2 визита, и пересчёт
-   из неё не возвращает ничего — буферы съедают её сами. Система, которая перетасовывает бригаду из-за прокола
-   колеса, хуже той, что не делает ничего: людям уже позвонили и сказали
-   ехать.
+   кнопку «ЧП» велик, но он неверен, и это замерено на зонах заказчика:
+   выбытие жать обязательно, задержку — чаще нет. Числа и вердикты — в
+   `src/data/impact.ts`: их правят после пересъёмки замеров, не трогая
+   экран.
 
    Поэтому экран обязан не просто уметь пересчитать, а сказать, стоит ли.
    Цена воздействия — разница между «пересчитали» и «поехали как ехали» — это
@@ -66,13 +68,6 @@ interface Kind {
   icon: string;
   title: string;
   what: string;
-  /** Во что событие обходится дню, если ничего не делать. */
-  cost: string;
-  /** Что возвращает пересчёт. */
-  back: string;
-  /** Стоит ли жать. Замерено, а не придумано. */
-  verdict: 'press' | 'skip';
-  verdictText: string;
 }
 
 const KINDS: Kind[] = [
@@ -80,42 +75,26 @@ const KINDS: Kind[] = [
     key: 'urgent',
     icon: 'alert-triangle',
     title: 'Авария',
-    what: 'В середине дня приходят срочные заявки, которых не было в плане.',
-    cost: 'Без пересчёта они просто не попадают в маршруты.',
-    back: 'Две аварии дают около +1,7 заявки за день: влезают почти обе.',
-    verdict: 'press',
-    verdictText: 'Пересчитывать'
+    what: 'В середине дня приходят срочные заявки, которых не было в плане.'
   },
   {
     key: 'disabled',
     icon: 'user',
     title: 'Инженер выбыл',
-    what: 'Сегодня его не будет — заболел, отозвали, машина не поехала.',
-    cost: 'Утром стоит дню 4,4 заявки, днём — 2,5–2,9.',
-    back: 'Пересчёт возвращает около 3 из них утром и около 2 днём.',
-    verdict: 'press',
-    verdictText: 'Пересчитывать'
+    what: 'Сегодня его не будет — заболел, отозвали, машина не поехала.'
   },
   {
     key: 'delayed',
     icon: 'clock',
     title: 'Инженер задержится',
-    what: 'Прокол, пробка, затянулась прошлая заявка — выйдет на маршрут позже.',
-    cost: 'Стоит дню 0,1–0,2 заявки — запас времени в маршрутах съедает её сам.',
-    back: 'Пересчёт из неё ничего не возвращает: ноль в пределах шума.',
-    verdict: 'skip',
-    verdictText: 'Чаще не стоит'
+    what: 'Прокол, пробка, затянулась прошлая заявка — выйдет на маршрут позже.'
   },
   {
     /* Третье событие пересчёта из ТЗ. Его здесь не было вовсе. */
     key: 'cancel',
     icon: 'x-circle',
     title: 'Абонент отказался',
-    what: 'Заявку сняли — по звонку или уже на месте. Освободилось время.',
-    cost: 'Ничего не стоит: работы стало меньше.',
-    back: 'Пересчёт ставит в освободившееся время то, что не влезало.',
-    verdict: 'press',
-    verdictText: 'Пересчитывать'
+    what: 'Заявку сняли — по звонку или уже на месте. Освободилось время.'
   }
 ];
 
@@ -140,36 +119,31 @@ function Lede({ text }: { text: string }) {
   );
 }
 
-/* Ошибка словами диспетчера: что случилось и что делать. Ответ программы
-   расчёта — технический, он уходит под «Подробности». Свой маленький
-   разборщик, как в окне правки: общего в интерфейсе пока нет. */
-function Failure({ what, todo, detail }: { what: string; todo: string; detail: string }) {
-  const tooLong = detail.toLowerCase().includes('не ответил за');
-  const down = detail.toLowerCase().includes('не запущен') || detail.toLowerCase().includes('не отвечает');
+/* Ошибка словами диспетчера: что случилось — своё, жирным; что делать —
+   общим разбором (`humanAfter`, errors.ts): по виду сбоя и коду ответа, а не
+   по тексту сообщения, как было здесь прежде. Ответ программы расчёта —
+   технический, он уходит под «Подробности». */
+type Failed = { text: string; detail: string };
+
+function Failure({ what, failed }: { what: string; failed: Failed }) {
   return (
     <div className="ctl__fail" role="alert">
       <Icon name="alert-triangle" size={16} />
       <span>
-        <b>{what}</b>{' '}
-        {down
-          ? 'Программа расчёта не отвечает — проверьте, что она запущена, и попробуйте ещё раз.'
-          : tooLong
-            ? 'Расчёт идёт дольше обычного — подождите минуту и попробуйте ещё раз.'
-            : todo}
-        <details className="ctl__more">
-          <summary>
-            <Icon name="chevron-right" size={14} />
-            Подробности
-          </summary>
-          <p className="ctl__fail-detail">{detail}</p>
-        </details>
+        <b>{what}</b> {failed.text}
+        {failed.detail && (
+          <details className="ctl__more">
+            <summary>
+              <Icon name="chevron-right" size={14} />
+              Подробности
+            </summary>
+            <p className="ctl__fail-detail">{failed.detail}</p>
+          </details>
+        )}
       </span>
     </div>
   );
 }
-
-const reason = (failure: unknown) =>
-  failure instanceof Error ? failure.message : 'нет ответа';
 
 export function ControlScreen({
   runCode,
@@ -181,7 +155,8 @@ export function ControlScreen({
   day,
   base,
   onJournalReset,
-  orderLabel = (id) => id
+  orderLabel = (id) => id,
+  urgentStart = null
 }: Props) {
   const blocked = replanBlocked(live, savedReplan, canReplan);
   /* «Сколько ещё людей нужно» — вопрос, который постановщик задал дважды и
@@ -189,12 +164,12 @@ export function ControlScreen({
      нужно ещё плюс N исполнителей». Считает движок — планировщиком, а не
      делением часов на смену, — и отвечает ещё и каких. */
   const [staffing, setStaffing] = useState<Staffing | null>(null);
-  const [staffingFailed, setStaffingFailed] = useState<string | null>(null);
+  const [staffingFailed, setStaffingFailed] = useState<Failed | null>(null);
   const [resetting, setResetting] = useState(false);
   /* Сброс журнала необратим: всё, что диспетчер отметил за день, пропадёт.
      Поэтому — вопрос на месте, как «Удалить запись?» в правке записи. */
   const [confirmReset, setConfirmReset] = useState(false);
-  const [resetFailed, setResetFailed] = useState<string | null>(null);
+  const [resetFailed, setResetFailed] = useState<Failed | null>(null);
   /* Сброс удался — сказать об этом. Прежде после «Да, сбросить» вопрос
      просто пропадал, и было не понять, стёрлось ли. */
   const [resetDone, setResetDone] = useState(false);
@@ -206,7 +181,16 @@ export function ControlScreen({
     let alive = true;
     loadStaffing(day, base)
       .then((answer) => alive && setStaffing(answer))
-      .catch((failure) => alive && setStaffingFailed(reason(failure)));
+      .catch(
+        (failure) =>
+          alive &&
+          setStaffingFailed(
+            humanAfter(
+              failure,
+              'Откройте экран ещё раз чуть позже; если повторится — сообщите администратору.'
+            )
+          )
+      );
     return () => {
       alive = false;
     };
@@ -224,7 +208,12 @@ export function ControlScreen({
     } catch (failure) {
       /* Прежде ошибка сброса терялась: кнопка возвращалась в покой, и было
          непонятно, сбросилось или нет. */
-      setResetFailed(reason(failure));
+      setResetFailed(
+        humanAfter(
+          failure,
+          'Нажмите «Сбросить события дня» ещё раз; если повторится — сообщите администратору.'
+        )
+      );
     } finally {
       setResetting(false);
     }
@@ -269,7 +258,7 @@ export function ControlScreen({
         )}
 
         <div className="actgrid">
-          {KINDS.map((kind) => (
+          {KINDS.map((kind) => ({ ...kind, ...IMPACT[kind.key] })).map((kind) => (
             <div key={kind.key} className="actcard">
               <span className="actcard__top">
                 <span className="actcard__icon">
@@ -298,7 +287,8 @@ export function ControlScreen({
                 disabled={blocked !== null}
                 iconRight={<Icon name="arrow-right" size={16} />}
               >
-                Пересчитать от {hhmm(cut)}
+                Пересчитать от{' '}
+                {hhmm(kind.key === 'urgent' && urgentStart !== null ? Math.max(cut, urgentStart) : cut)}
               </Button>
             </div>
           ))}
@@ -362,11 +352,7 @@ export function ControlScreen({
               </div>
             </div>
           ) : staffingFailed ? (
-            <Failure
-              what="Не получилось посчитать, сколько людей нужно."
-              todo="Откройте экран ещё раз чуть позже; если повторится — сообщите администратору."
-              detail={staffingFailed}
-            />
+            <Failure what="Не получилось посчитать, сколько людей нужно." failed={staffingFailed} />
           ) : (
             <p className="ctl__text">Считаю — несколько пересчётов дня, до полуминуты…</p>
           )}
@@ -467,27 +453,36 @@ export function ControlScreen({
             </div>
           )}
           {resetFailed && (
-            <Failure
-              what="События дня не сброшены — отметки остались как были."
-              todo="Нажмите «Сбросить события дня» ещё раз; если повторится — сообщите администратору."
-              detail={resetFailed}
-            />
+            <Failure what="События дня не сброшены — отметки остались как были." failed={resetFailed} />
           )}
         </section>
       )}
 
       {/* Готовность — внизу, одной строкой. Причины недоступности стоят
-          над карточками, рядом с серыми кнопками, и здесь не повторяются. */}
+          над карточками, рядом с серыми кнопками, и здесь не повторяются.
+          «Запущена» — только если движок ответил на последний запрос: флаг
+          `live` помнит запуск, и после неудачного сброса или пересчёта
+          строка спорила с ошибкой над ней. */}
       {!blocked && (
         <section className="panel">
-          <div className="ctrlnote">
-            <Icon name="lightning" size={16} />
-            <span>
-              <b>Программа расчёта запущена.</b> Выберите, что случилось: откроется окно правки,
-              остаток дня пересоберётся от {hhmm(cut)}, и вы увидите цену. Принятый пересчёт
-              откроется в диспетчерской — посмотреть до того, как сохранять.
-            </span>
-          </div>
+          {engineSilent() ? (
+            <div className="ctrlnote">
+              <Icon name="alert-triangle" size={16} />
+              <span>
+                <b>Программа расчёта не ответила на последний запрос.</b> Проверьте, что она
+                запущена, и выберите событие ещё раз.
+              </span>
+            </div>
+          ) : (
+            <div className="ctrlnote">
+              <Icon name="lightning" size={16} />
+              <span>
+                <b>Программа расчёта запущена.</b> Выберите, что случилось: откроется окно правки,
+                остаток дня пересоберётся от {hhmm(cut)}, и вы увидите цену. Принятый пересчёт
+                откроется в диспетчерской — посмотреть до того, как сохранять.
+              </span>
+            </div>
+          )}
         </section>
       )}
     </div>

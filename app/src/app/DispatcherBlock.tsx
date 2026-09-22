@@ -14,6 +14,8 @@ export interface DispatcherActions {
   /** Заявка → статус по журналу. Нет в словаре — «назначено», если у
       заявки есть исполнитель. */
   statuses: Record<string, string>;
+  /** Заявка → причина срыва по журналу, кодом движка (`no_show` …). */
+  reasons: Record<string, string>;
   /** Заявка → инженер, у которого она по журналу (впереди в его списке
       или он уже едет к ней). Null — состояние дня ещё не пришло. */
   holders: Record<string, string> | null;
@@ -196,6 +198,15 @@ export function DispatcherBlock({
   };
 
   const look = STATUS_VIEW[status];
+  /* Сорвалось — почему: диспетчер выбрал причину, движок её помнит
+     (/state, `failed`), а блок прежде показывал одно «Сорвалось». Подпись
+     та же, что в списке причин, — со строчной после двоеточия. */
+  const why = status === 'сорвано'
+    ? REASONS.find((item) => item.value === dispatcher.reasons[order.id])?.label
+    : undefined;
+  const badgeLabel = why
+    ? `Сорвалось: ${why.charAt(0).toLowerCase()}${why.slice(1)}`
+    : look?.label;
   const next = NEXT_STEP[status];
   /* Из «назначено» и «отправлено» движок позволяет сразу «выполнено»:
      диспетчеру позвонили «сделал» — трёх событий подряд на одну минуту
@@ -217,7 +228,7 @@ export function DispatcherBlock({
         {look ? (
           <Badge size="lg" tone={look.tone}>
             <Icon name={statusIcon(look.code)} size={14} />
-            {look.label ?? statusName(look.code)}
+            {badgeLabel ?? statusName(look.code)}
           </Badge>
         ) : (
           <Badge size="lg" tone="outline">

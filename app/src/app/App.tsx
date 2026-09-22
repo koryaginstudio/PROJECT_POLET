@@ -70,7 +70,8 @@ import { dropDuty } from '../data/duty.ts';
 import { OVERVIEW } from './selection.ts';
 import type { Selection } from './selection.ts';
 import { DayFail } from './DayFail.tsx';
-import { humanError, humanLine, titleWithStop } from '../data/errors.ts';
+import { humanAfter, humanError, humanLine, titleWithStop } from '../data/errors.ts';
+import { urgentFrom } from '../data/impact.ts';
 import type { HumanError } from '../data/errors.ts';
 import type { DayView } from '../data/derive.ts';
 import '../styles/screens.css';
@@ -526,6 +527,7 @@ export function App() {
   const dispatcher: DispatcherActions | undefined = engineDay
     ? {
         statuses: dayState?.statuses ?? {},
+        reasons: dayState?.failed ?? {},
         holders,
         cut,
         dayStart: dayStart(),
@@ -620,16 +622,16 @@ export function App() {
       showRun(entry.id);
     } catch (failure) {
       if (ticket !== replanTicket.current) return;
+      /* Заголовок «Сохранить не вышло» ставит сама плашка (CalcBoard):
+         свой запасной заголовок здесь давал «Сохранить не вышло. Запись не
+         сохранилась. …». */
       setSaveFailed(
-        humanLine(failure, {
-          title: 'Запись не сохранилась',
-          hint: 'Пересчёт остаётся на экране — повторите попытку.'
-        }, {
+        humanAfter(failure, 'Пересчёт остаётся на экране — повторите попытку.', {
           409: {
             title: 'План устарел: пересчитайте заново',
             hint: 'Пока пересчёт был на экране, в дне что-то изменилось. Пересчитайте и сохраните заново.'
           }
-        })
+        }).text
       );
     } finally {
       setSaving(false);
@@ -1120,6 +1122,7 @@ export function App() {
           day={engineDay}
           base={engineBase}
           onJournalReset={refreshDayState}
+          urgentStart={ready ? urgentFrom(ready.view.engineerById.values()) : null}
           orderLabel={(id) => {
             const order = ready?.view.orderById.get(id);
             return order ? order.address ?? `${order.work_title}, ${order.id}` : id;
