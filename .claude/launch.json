@@ -56,6 +56,21 @@
         "--strictPort"
       ],
       "port": 5191
+    },
+    {
+      "name": "polet-fixes",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "../PROJECT POLET — правки/app",
+        "run",
+        "dev",
+        "--",
+        "--port",
+        "5195",
+        "--strictPort"
+      ],
+      "port": 5195
     }
   ]
 }
