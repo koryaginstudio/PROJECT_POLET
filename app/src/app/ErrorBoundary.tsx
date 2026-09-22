@@ -72,7 +72,7 @@ export class ErrorBoundary extends Component<Props, State> {
               Перезагрузить страницу
             </Button>
             <Button variant="secondary" size="sm" onClick={this.home} iconLeft={<Icon name="house" size={14} />}>
-              На дашборд
+              На главную
             </Button>
           </div>
         </div>

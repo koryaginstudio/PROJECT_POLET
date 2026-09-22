@@ -107,9 +107,9 @@ export function buildReport(day: Day, run: RunEntry): Sheet[] {
       ['Инженеров с маршрутом', new Set(plan.routes.map((r) => r.engineer_id)).size],
       ['Пробег всего, км', num(plan.meta.distance_km_total)],
       [],
-      [simulated ? 'Покрытие по симуляции, %' : 'Заявок разложено, %', simulation.coverage],
-      ['Прогонов симуляции', simulation.meta.runs],
-      [simulated ? 'Выполнено визитов, среднее' : 'Разложено визитов', simulation.done.mean],
+      [simulated ? 'Покрытие по прогнозу дня, %' : 'Заявок разложено, %', simulation.coverage],
+      ['Вариантов в прогнозе дня', simulation.meta.runs],
+      [simulated ? 'Выполнено заявок, среднее' : 'Разложено заявок', simulation.done.mean],
       ['Выполнено, нижняя граница (p10)', simulated ? simulation.done.p10 : 'не разыгрывалось'],
       ['Выполнено, верхняя граница (p90)', simulated ? simulation.done.p90 : 'не разыгрывалось'],
       [],
@@ -136,10 +136,10 @@ export function buildReport(day: Day, run: RunEntry): Sheet[] {
           ] as Cell[][])
         : []),
       [],
-      ['— переменные движка —', ''],
+      ['— правила расчёта —', ''],
       ['Запас по времени работ', run.params.duration_factor],
       ['Консервативность маршрута, мин', run.params.buffer_step],
-      ['Зазор до первого визита, мин', run.params.buffer_base],
+      ['Зазор до первой заявки, мин', run.params.buffer_base],
       ['Равномерность загрузки', run.params.balance_weight],
       ['Держаться за объявленный план', run.params.churn_penalty],
       [],
@@ -159,9 +159,9 @@ export function buildReport(day: Day, run: RunEntry): Sheet[] {
         'Выезжает из',
         'Смена с',
         'Смена до',
-        'Визитов',
-        'Первый визит',
-        'Последний визит',
+        'Заявок',
+        'Первая заявка',
+        'Последняя заявка',
         'В дороге, мин',
         'В работе, мин',
         'Ожидание окон, мин',
@@ -241,7 +241,7 @@ export function buildReport(day: Day, run: RunEntry): Sheet[] {
         'Закреплена за',
         'В плане',
         'Инженер',
-        '№ визита',
+        '№ заявки',
         'Приезд',
         'Начало',
         'Конец',
@@ -305,11 +305,11 @@ export function buildReport(day: Day, run: RunEntry): Sheet[] {
      Лист, который печатают и раздают: строка — одна поездка, по порядку
      объезда, с адресом и часом. */
   const visits: Sheet = {
-    name: 'Визиты',
+    name: 'Порядок объезда',
     rows: [
       [
         'Инженер',
-        '№ визита',
+        '№ заявки',
         'Заявка',
         'Что делаем',
         'Адрес',
@@ -431,16 +431,16 @@ export function buildReport(day: Day, run: RunEntry): Sheet[] {
         'Широта',
         'Долгота',
         'Получил маршрут',
-        'Визитов',
-        'Первый визит',
-        'Последний визит',
+        'Заявок',
+        'Первая заявка',
+        'Последняя заявка',
         'В дороге, мин',
         'Пробег, км',
         'В работе, мин',
         'Ожидание окон, мин',
         'Переработка, мин',
         'Загрузка, %',
-        'Визитов под угрозой'
+        'Заявок под угрозой'
       ],
       ...plan.engineers.map((engineer) => {
         const route = plan.routes.find((r) => r.engineer_id === engineer.id);

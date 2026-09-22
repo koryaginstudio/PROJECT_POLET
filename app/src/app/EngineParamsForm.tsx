@@ -90,7 +90,7 @@ export function EngineParamsForm({ params, onChange, only }: Props) {
           <h2 className="dash__section-title">Стабильность плана</h2>
         </div>
         <p className="clients__lede">
-          Определяет, насколько движок сохраняет уже объявленный план при пересчёте в течение дня.
+          Определяет, насколько расчёт сохраняет уже объявленный план при пересчёте в течение дня.
         </p>
 
         <div className="presets">
@@ -114,7 +114,7 @@ export function EngineParamsForm({ params, onChange, only }: Props) {
         </div>
 
         <p className="knob__hint">
-          Фактическую долю визитов, сохранивших исполнителя, движок возвращает после пересчёта.
+          Фактическую долю заявок, сохранивших исполнителя, программа расчёта сообщает после пересчёта.
         </p>
       </section>
       )}
@@ -152,7 +152,7 @@ export function EngineParamsForm({ params, onChange, only }: Props) {
         </div>
 
         <p className="knob__hint">
-          Первый параметр задаёт время, закладываемое на работу, второй — зазор между визитами.
+          Первый параметр задаёт время, закладываемое на работу, второй — зазор между заявками.
         </p>
       </section>
       )}

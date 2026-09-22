@@ -230,7 +230,7 @@ export function FunnelBoard({ funnel, onCutChange, onPickStage, problems, onOpen
                 tone="attention"
                 icon="alert-triangle"
                 text={`${problems} под угрозой`}
-                tip={`${pluralOrders(problems)} назначены инженеру, но выполнение под угрозой: нарушен крайний срок, нет запаса времени или симуляция показывает срыв. Нажмите, чтобы посмотреть список`}
+                tip={`${pluralOrders(problems)} назначены инженеру, но выполнение под угрозой: нарушен крайний срок, нет запаса времени или прогноз дня показывает срыв. Нажмите, чтобы посмотреть список`}
                 onClick={onOpenProblems}
               />
             )}

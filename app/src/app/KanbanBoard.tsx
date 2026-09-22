@@ -56,7 +56,7 @@ export function KanbanBoard({
   return (
     <section className="panel">
       <div className="dash__section-head">
-        <h2 className="dash__section-title">Канбан смены</h2>
+        <h2 className="dash__section-title">Смена по этапам</h2>
         <span className="dash__section-note">
           Этапы на {hhmm(cut)} — карточки переезжают вместе с моментом
         </span>
@@ -64,7 +64,7 @@ export function KanbanBoard({
 
       {/* Шкала стоит над доской: без неё доска показывает только начало дня,
           и все карточки честно стоят в одной колонке. */}
-      <TimeScrub cut={cut} onCutChange={onCutChange} label="Момент на канбане" />
+      <TimeScrub cut={cut} onCutChange={onCutChange} label="Момент на доске" />
 
       <div className="kanban">
         {columns.map((column) => (

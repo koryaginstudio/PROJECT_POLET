@@ -162,7 +162,7 @@ export class EngineError extends Error {
 }
 
 async function call<T>(path: string, init?: RequestInit, timeout = CALL_TIMEOUT): Promise<T> {
-  if (!base) throw new EngineError('Движок не запущен');
+  if (!base) throw new EngineError('Программа расчёта не запущена');
   let response: Response;
   try {
     response = await fetch(`${base}${path}`, { ...init, signal: AbortSignal.timeout(timeout) });
@@ -171,19 +171,19 @@ async function call<T>(path: string, init?: RequestInit, timeout = CALL_TIMEOUT)
        движок есть, но занят или завис, и «проверьте, что запущен» здесь
        посылает искать не там. */
     if ((error as { name?: string })?.name === 'TimeoutError') {
-      throw new EngineError(`Движок не ответил за ${Math.round(timeout / 1000)} с`);
+      throw new EngineError(`Программа расчёта не ответила за ${Math.round(timeout / 1000)} с`);
     }
-    throw new EngineError('Движок не отвечает — проверьте, что он запущен');
+    throw new EngineError('Программа расчёта не отвечает — подождите минуту и повторите');
   }
   let body: unknown;
   try {
     body = await response.json();
   } catch {
-    throw new EngineError(`Движок ответил не JSON (${response.status})`);
+    throw new EngineError(`Программа расчёта ответила с ошибкой (${response.status})`);
   }
   if (!response.ok) {
     const said = (body as { error?: string }).error;
-    throw new EngineError(said ?? `Движок ответил ${response.status}`);
+    throw new EngineError(said ?? `Программа расчёта ответила с ошибкой ${response.status}`);
   }
   return body as T;
 }

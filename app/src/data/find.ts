@@ -170,7 +170,7 @@ const engineerHit = (engineer: EngineerRecord, found: Probe): Hit => ({
   title: engineer.name,
   meta:
     `смена ${hhmm(engineer.shiftStart)}–${hhmm(engineer.shiftEnd)} · ` +
-    `${engineer.visits} визитов в ${engineer.runs} расчётах`,
+    `${engineer.visits} заявок в ${engineer.runs} расчётах`,
   why: found.why,
   rank: found.rank
 });
@@ -181,7 +181,7 @@ const routeHit = (route: RouteRecord, found: Probe): Hit => ({
   code: route.code,
   title: route.engineerName,
   meta:
-    `расчёт ${route.run.code} · ${route.visits} визитов · ` +
+    `расчёт ${route.run.code} · ${route.visits} заявок · ` +
     `${hhmm(route.start)}–${hhmm(route.end)}`,
   why: found.why,
   rank: found.rank

@@ -28,7 +28,7 @@ export function DayFail({ runCode, message, onPickRun, onHome }: Props) {
       <h2 className="stub__title">Расчёт {runCode} не загрузился</h2>
       <p className="stub__body">{message}</p>
       <p className="stub__body">
-        Интерфейс собран под схему контракта {SCHEMA}. Если расчёт пришёл от движка, проверьте, что
+        Интерфейс собран под схему контракта {SCHEMA}. Если расчёт пришёл от программы расчёта, проверьте, что
         он отдаёт данные этой схемы; если он свой — обновите страницу.
       </p>
       <div className="dayfail__actions">
@@ -36,7 +36,7 @@ export function DayFail({ runCode, message, onPickRun, onHome }: Props) {
           Открыть другой расчёт
         </Button>
         <Button variant="secondary" size="sm" onClick={onHome} iconLeft={<Icon name="house" size={14} />}>
-          На дашборд
+          На главную
         </Button>
       </div>
     </div>

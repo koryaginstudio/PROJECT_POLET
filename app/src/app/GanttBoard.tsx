@@ -253,7 +253,7 @@ export function GanttBoard({ view, hotHour, onSelectOrder, onSelectEngineer }: P
   return (
     <section className="panel shiftplan">
       <div className="dash__section-head">
-        <h2 className="dash__section-title">Гант смены</h2>
+        <h2 className="dash__section-title">Смена по времени</h2>
       </div>
 
       {/* Легенда подсвечивает род наведённого отрезка — так же, как строка

@@ -246,7 +246,7 @@ export function ServiceProfile({ service, registry, onClose, onOpenOrder, onOpen
                   <tr>
                     <th>Инженер</th>
                     <th>Табельный</th>
-                    <th>Визитов</th>
+                    <th>Заявок</th>
                     <th>Часов работы</th>
                   </tr>
                 </thead>

@@ -56,14 +56,14 @@ const SORTS: (SortRule & { value: Sort; desc: boolean })[] = [
   {
     value: 'number',
     label: 'По номеру',
-    note: 'В порядке, в котором их завёл движок',
+    note: 'В порядке, в котором их завёл расчёт',
     desc: false,
     up: 'От первого к последнему',
     down: 'От последнего к первому'
   },
   {
     value: 'visits',
-    label: 'По визитам',
+    label: 'По заявкам',
     note: 'Сколько адресов в смене',
     desc: true,
     up: 'Сначала короткие маршруты',
@@ -373,7 +373,7 @@ export function DbRoutesScreen({
       {
         key: 'routes-count',
         title: 'Маршрутов',
-        note: 'Сколько маршрутов движок построил и сколько выходит на расчёт',
+        note: 'Сколько маршрутов построено и сколько выходит на расчёт',
         shape: 'number',
         data: {
           value: String(routes.length),
@@ -388,7 +388,7 @@ export function DbRoutesScreen({
       },
       {
         key: 'visits',
-        title: 'Визитов',
+        title: 'Заявок',
         note: 'Сколько адресов объехали и как это менялось',
         shape: 'number',
         data: {
@@ -399,7 +399,7 @@ export function DbRoutesScreen({
             `${Math.round(perRun(visits))} на расчёт`
           ],
           series: series((cell) => cell.visits),
-          legend: 'визитов'
+          legend: 'заявок'
         }
       },
       {
@@ -503,7 +503,7 @@ export function DbRoutesScreen({
       {
         key: 'risky',
         title: 'Рискованные остановки',
-        note: 'Визиты, к которым инженер по плану не успевает',
+        note: 'Заявки, к которым инженер по плану не успевает',
         shape: 'number',
         data: {
           value: String(risky),
@@ -526,7 +526,7 @@ export function DbRoutesScreen({
         shape: 'bars',
         data: {
           value: String(byVisits[0]?.visits ?? 0),
-          caption: 'визитов у самого длинного',
+          caption: 'заявок у самого длинного',
           tone: 'ok',
           parts: byVisits.map((route) => ({
             key: route.key,
@@ -534,7 +534,7 @@ export function DbRoutesScreen({
             value: route.visits,
             tone: 'ok' as const
           })),
-          legend: 'визитов в маршруте'
+          legend: 'заявок в маршруте'
         }
       },
       {
@@ -571,7 +571,7 @@ export function DbRoutesScreen({
       {
         key: 'crew',
         title: 'Инженеры с маршрутом',
-        note: 'Кому движок дал работу, а кто ни разу не выехал',
+        note: 'Кому расчёт дал работу, а кто ни разу не выехал',
         shape: 'donut',
         data: {
           value: String(registry.engineers.length),
@@ -667,7 +667,7 @@ export function DbRoutesScreen({
             <th>Маршрут</th>
             {withRun && <th>Расчёт</th>}
             <th>Инженер</th>
-            <th>Визитов</th>
+            <th>Заявок</th>
             <th>Окно маршрута</th>
             <th>В дороге</th>
             <th>В работе</th>
@@ -846,7 +846,7 @@ export function DbRoutesScreen({
       {rows.length === 0 ? (
         <DbEmpty
           miss="Под этот отбор не подошёл ни один маршрут."
-          blank="Маршрутов в базе пока нет: их строит движок, и до первого сохранённого расчёта база пуста."
+          blank="Маршрутов в базе пока нет: их строит программа расчёта, и до первого сохранённого расчёта база пуста."
           query={query.trim() !== ''}
           filtered={filter !== 'all' || run !== null}
           onReset={reset}
@@ -936,7 +936,7 @@ export function DbRoutesScreen({
                 </>
               ),
               cells: [
-                { label: 'Визитов', value: route.visits },
+                { label: 'Заявок', value: route.visits },
                 { label: 'В работе', value: hoursText(route.workMinutes) },
                 { label: 'В дороге', value: hoursText(route.travelMinutes) },
                 {

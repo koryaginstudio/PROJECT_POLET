@@ -324,7 +324,7 @@ body {
   padding: 0 14px;
   border: 0;
   border-radius: var(--r-pill);
-  background: var(--danger-500);
+  background: var(--danger-600);
   color: var(--white);
   font-family: var(--font-sans);
   font-size: var(--fs-caption);
@@ -334,7 +334,7 @@ body {
 }
 
 .profile__exit:hover {
-  background: var(--danger-600);
+  background: var(--danger-700);
 }
 
 .profile__exit:active {
@@ -2187,7 +2187,7 @@ body {
   align-items: center;
   justify-content: center;
   border-radius: var(--r-pill);
-  background: var(--danger-500);
+  background: var(--danger-600);
   color: var(--white);
   font-size: var(--fs-small);
   font-weight: var(--fw-bold);
@@ -2325,7 +2325,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  height: 26px;
+  height: var(--control-h-sm);
   padding: 0 12px;
   border: 0;
   border-radius: var(--r-pill);
@@ -3280,9 +3280,9 @@ button.ministage:hover:not(:disabled) {
 }
 
 .shiftplan__steps .stepper__btn {
-  height: 24px;
+  height: var(--control-h-sm);
   padding: 0 6px;
-  font-size: var(--fs-small);
+  font-size: var(--fs-caption);
   white-space: nowrap;
 }
 
@@ -3411,7 +3411,7 @@ button.ministage:hover:not(:disabled) {
 }
 
 .shiftplan__name {
-  font-size: var(--fs-caption);
+  font-size: var(--fs-body-s);
   font-weight: var(--fw-semibold);
   color: var(--text-primary);
   overflow: hidden;
@@ -3420,8 +3420,8 @@ button.ministage:hover:not(:disabled) {
 }
 
 .shiftplan__meta {
-  font-size: var(--fs-small);
-  color: var(--text-muted);
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -3439,7 +3439,9 @@ button.ministage:hover:not(:disabled) {
    день читался как лента состояний, а не как россыпь плиток разной высоты.
    Часовые линии нарисованы фоном: их четырнадцать в каждой из тридцати строк. */
 .shiftplan__track {
-  height: 20px;
+  /* 28px, а не 20: заявку на полосе ловят мышью и различают по цвету, и
+     тонкая лента на ноутбуке требовала прицеливания. */
+  height: 28px;
   margin: 0 var(--edge);
   border-radius: var(--r-xs);
   overflow: hidden;
@@ -4257,8 +4259,8 @@ button.ministage:hover:not(:disabled) {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: var(--control-h-sm);
+  height: var(--control-h-sm);
   border: 0;
   border-radius: var(--r-pill);
   background: var(--ink-100);
@@ -4405,8 +4407,8 @@ button.ministage:hover:not(:disabled) {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: var(--control-h-sm);
+  height: var(--control-h-sm);
   border: 1px solid var(--border-hairline);
   border-radius: var(--r-pill);
   background: var(--white);
@@ -4574,9 +4576,9 @@ button.ministage:hover:not(:disabled) {
 }
 
 .engine__note {
-  font-size: var(--fs-small);
+  font-size: var(--fs-caption);
   line-height: 1.45;
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
 .engine__note code {
@@ -4775,8 +4777,9 @@ button.ministage:hover:not(:disabled) {
 }
 
 .tag--alarm {
-  background: var(--danger-500);
+  background: var(--danger-600);
   color: var(--white);
+  font-size: var(--fs-caption);
 }
 
 .tag--action {
@@ -4789,7 +4792,7 @@ button.ministage:hover:not(:disabled) {
 }
 
 .tag--alarm.tag--action:hover {
-  background: var(--danger-600);
+  background: var(--danger-700);
 }
 
 .tag--action:focus-visible {
@@ -4911,8 +4914,8 @@ button.bsq:focus-visible {
 }
 
 .bsq--danger .bsq__icon {
-  background: var(--danger-500);
-  border-color: var(--danger-500);
+  background: var(--danger-600);
+  border-color: var(--danger-600);
   color: var(--white);
 }
 
@@ -5250,8 +5253,8 @@ button.bsq:focus-visible {
 
 .scrub__range::-webkit-slider-thumb {
   appearance: none;
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   background: var(--ink-1000);
   border: 3px solid var(--white);
@@ -5260,8 +5263,8 @@ button.bsq:focus-visible {
 }
 
 .scrub__range::-moz-range-thumb {
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   background: var(--ink-1000);
   border: 3px solid var(--white);
@@ -5404,7 +5407,7 @@ button.bsq:focus-visible {
 }
 
 .stepper__btn {
-  height: 26px;
+  height: var(--control-h-sm);
   padding: 0 10px;
   border: 0;
   border-radius: var(--r-pill);
@@ -6006,7 +6009,7 @@ button.bars__btn:focus-visible {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 28px;
+  height: var(--control-h-sm);
   padding: 0 10px;
   border: 1px solid var(--border-hairline);
   border-radius: var(--r-pill);
@@ -6076,7 +6079,9 @@ button.bars__btn:focus-visible {
 .tbl {
   width: 100%;
   border-collapse: collapse;
-  font-size: var(--fs-caption);
+  /* Основной текст рабочих списков — 14px основным цветом: таблицу читают
+     часами, а 13px серым на ноутбуке сливался в одну полосу. */
+  font-size: var(--fs-body-s);
 }
 
 /* Черта под шапкой — тенью, а не границей: в схлопнутой таблице границы
@@ -6095,7 +6100,7 @@ button.bars__btn:focus-visible {
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  font-size: var(--fs-small);
+  font-size: var(--fs-caption);
   line-height: 1.2;
   box-shadow: inset 0 -1px 0 var(--border-subtle);
 }
@@ -6121,7 +6126,7 @@ button.bars__btn:focus-visible {
 .tbl td {
   padding: var(--sp-2);
   border-bottom: 1px solid var(--border-hairline);
-  color: var(--text-secondary);
+  color: var(--text-primary);
   vertical-align: top;
 }
 
@@ -6157,8 +6162,8 @@ button.bars__btn:focus-visible {
 
 .tbl__sub {
   display: block;
-  font-size: var(--fs-small);
-  color: var(--text-muted);
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
 }
 
@@ -6707,7 +6712,7 @@ b.ccard__bad {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 28px;
+  height: var(--control-h-sm);
   padding: 0 10px;
   border: 1px solid var(--border-hairline);
   border-radius: var(--r-pill);
@@ -7019,7 +7024,7 @@ b.ccard__bad {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  height: 26px;
+  height: var(--control-h-sm);
   padding: 0 12px;
   border-radius: var(--r-pill);
   background: var(--ink-100);
@@ -7308,9 +7313,9 @@ b.ccard__bad {
   align-items: center;
   gap: 5px;
   min-width: 0;
-  font-size: var(--fs-small);
+  font-size: var(--fs-body-s);
   font-weight: var(--fw-regular);
-  color: var(--text-secondary);
+  color: var(--text-primary);
   overflow: hidden;
   white-space: nowrap;
 }
@@ -7323,15 +7328,15 @@ b.ccard__bad {
    телефону, поэтому он стоит первым и держит вес строки. */
 .kancard__id {
   flex: 0 0 auto;
-  font-size: var(--fs-small);
+  font-size: var(--fs-body-s);
   font-weight: var(--fw-semibold);
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
 }
 
 .kancard__where {
-  font-size: var(--fs-small);
-  color: var(--text-secondary);
+  font-size: var(--fs-body-s);
+  color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -7341,8 +7346,8 @@ b.ccard__bad {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: var(--fs-small);
-  color: var(--text-muted);
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
 }
 
@@ -7362,8 +7367,8 @@ b.ccard__bad {
   border-top: 1px solid var(--border-hairline);
   background: transparent;
   font-family: var(--font-sans);
-  font-size: var(--fs-small);
-  color: var(--text-secondary);
+  font-size: var(--fs-body-s);
+  color: var(--text-primary);
   cursor: pointer;
   text-align: left;
 }
@@ -7666,9 +7671,9 @@ b.ccard__bad {
 
 .knob__range::-webkit-slider-thumb {
   appearance: none;
-  width: 18px;
-  height: 18px;
-  margin-top: -6px;
+  width: 20px;
+  height: 20px;
+  margin-top: -7px;
   border-radius: 50%;
   background: var(--ink-1000);
   border: 3px solid var(--white);
@@ -7682,8 +7687,8 @@ b.ccard__bad {
 }
 
 .knob__range::-moz-range-thumb {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   background: var(--ink-1000);
   border: 3px solid var(--white);
@@ -7809,11 +7814,14 @@ b.ccard__bad {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  gap: var(--sp-1);
+  height: var(--control-h-sm);
+  padding: 0 var(--sp-3) 0 var(--sp-2);
   border: 1px solid var(--border-hairline);
   border-radius: var(--r-pill);
   background: var(--white);
+  font-family: var(--font-sans);
+  font-size: var(--fs-caption);
   color: var(--text-secondary);
   cursor: pointer;
   transition: border-color 120ms var(--ease-out-strong), color 120ms var(--ease-out-strong);
@@ -8879,7 +8887,7 @@ b.ccard__bad {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 28px;
+  height: var(--control-h-sm);
   padding: 0 12px;
   border: 1px solid var(--ink-1000);
   border-radius: var(--r-pill);
@@ -8911,8 +8919,8 @@ b.ccard__bad {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: var(--control-h-sm);
+  height: var(--control-h-sm);
   flex: 0 0 auto;
   border: 0;
   border-radius: var(--r-pill);
@@ -8945,6 +8953,15 @@ b.ccard__bad {
 .runcard__edit--drop:hover {
   background: var(--danger-100, var(--ink-100));
   color: var(--danger-600, var(--text-primary));
+}
+
+/* В карточке у карандаша есть слово «Изменить» — поле шире значка. */
+.runcard__edit--word {
+  width: auto;
+  gap: var(--sp-1);
+  padding: 0 var(--sp-3) 0 var(--sp-2);
+  font-family: var(--font-sans);
+  font-size: var(--fs-caption);
 }
 
 /* Номер, время и правка — одна ячейка: значок стоит у того, что правит. */
@@ -9116,9 +9133,9 @@ b.ccard__bad {
   align-items: center;
   gap: 5px;
   padding: 5px 11px;
-  border: 1px solid var(--danger-500);
+  border: 1px solid var(--danger-600);
   border-radius: var(--r-pill);
-  background: var(--danger-500);
+  background: var(--danger-600);
   font-family: var(--font-sans);
   font-size: var(--fs-caption);
   font-weight: var(--fw-semibold);
@@ -9139,7 +9156,7 @@ b.ccard__bad {
 
 .runedit__danger--quiet:hover {
   border-color: var(--danger-600);
-  background: var(--danger-500);
+  background: var(--danger-600);
   color: var(--white);
 }
 
@@ -9600,9 +9617,9 @@ b.ccard__bad {
   gap: 6px;
   margin: 0;
   max-width: 68ch;
-  font-size: var(--fs-small);
+  font-size: var(--fs-caption);
   line-height: 1.5;
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
 .rule__caution svg {
@@ -9661,8 +9678,8 @@ b.ccard__bad {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: var(--control-h-sm);
+  height: var(--control-h-sm);
   padding: 0;
   border: 0;
   border-radius: 50%;
@@ -9714,8 +9731,8 @@ b.ccard__bad {
 .geo__zoomrange::-webkit-slider-thumb {
   appearance: none;
   -webkit-appearance: none;
-  width: 14px;
-  height: 14px;
+  width: 20px;
+  height: 20px;
   border: 2px solid var(--white);
   border-radius: 50%;
   background: var(--ink-1000);
@@ -9724,8 +9741,8 @@ b.ccard__bad {
 }
 
 .geo__zoomrange::-moz-range-thumb {
-  width: 14px;
-  height: 14px;
+  width: 20px;
+  height: 20px;
   border: 2px solid var(--white);
   border-radius: 50%;
   background: var(--ink-1000);
@@ -9769,7 +9786,7 @@ b.ccard__bad {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  height: 28px;
+  height: var(--control-h-sm);
   padding: 0 var(--sp-3);
   border: 0;
   border-radius: var(--r-pill);
@@ -9907,7 +9924,7 @@ b.ccard__bad {
   height: 16px;
   border-radius: 50%;
   border: 1.5px solid var(--white);
-  background: var(--danger-500);
+  background: var(--danger-600);
   color: var(--white);
   font-family: var(--font-sans);
   font-size: var(--fs-small);
@@ -10089,7 +10106,7 @@ b.ccard__bad {
 .incident__verdict {
   padding: 1px 8px;
   border-radius: var(--r-pill);
-  font-size: var(--fs-small);
+  font-size: var(--fs-body-s);
   font-weight: var(--fw-semibold);
 }
 
@@ -10412,13 +10429,13 @@ b.ccard__bad {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  height: 24px;
+  height: var(--control-h-sm);
   padding: 0 8px;
   border: 1px solid var(--border-hairline);
   border-radius: var(--r-pill);
   background: var(--white);
   font-family: var(--font-sans);
-  font-size: var(--fs-small);
+  font-size: var(--fs-caption);
   color: var(--text-secondary);
   cursor: pointer;
   transition: var(--t-control);
@@ -10689,7 +10706,7 @@ b.ccard__bad {
 }
 
 .wperiod__item {
-  height: 26px;
+  height: var(--control-h-sm);
   padding: 0 13px;
   border: 0;
   border-radius: var(--r-pill);
@@ -10933,6 +10950,7 @@ b.ccard__bad {
   color: var(--text-muted);
   cursor: pointer;
   transition: var(--t-control);
+  position: relative;
 }
 
 .wtile:hover .wshape__btn,
@@ -11039,6 +11057,7 @@ b.ccard__bad {
   opacity: 0.45;
   cursor: pointer;
   transition: var(--t-control);
+  position: relative;
 }
 
 .wtile:hover .wtile__drop,
@@ -12872,8 +12891,8 @@ b.ccard__bad {
 /* Что не так с полем. Мелким и тревожным, под самим полем: ответ должен
    стоять там же, где вопрос. */
 .runedit__wrong {
-  font-size: var(--fs-small);
-  color: var(--danger-600);
+  font-size: var(--fs-body-s);
+  color: var(--danger-700);
 }
 
 /* Номер карточки в списке: «#004». Стоит первым в строке под именем — им
@@ -13506,72 +13525,32 @@ b.ccard__bad {
    оранжевым — «вот этот, с ним сейчас работают». */
 .subhdr__duty {
   flex: 0 0 auto;
+}
+
+/* Вопрос у кнопки «В работу»: встаёт на её место, пока не ответят. Текст
+   основного кегля — это решение про весь день, его должны прочесть. */
+.subhdr__ask {
+  flex: 0 1 auto;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  height: 26px;
-  padding: 0 10px;
-  border: 1px solid var(--border-hairline);
-  border-radius: var(--r-pill);
-  background: var(--white);
-  font-family: var(--font-sans);
-  font-size: var(--fs-caption);
-  color: var(--text-secondary);
-  white-space: nowrap;
-  cursor: pointer;
-  transition: var(--t-control);
+  gap: var(--sp-2);
+  min-width: 0;
 }
 
-.subhdr__duty:hover {
-  border-color: var(--ink-300);
+.subhdr__ask-text {
+  font-size: var(--fs-body-s);
   color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.subhdr__duty:focus-visible {
-  outline: none;
-  box-shadow: var(--ring-focus);
-}
-
-.subhdr__duty--on {
-  border-color: var(--accent-500);
-  background: var(--accent-500);
-  color: var(--ink-1000);
-  font-weight: var(--fw-semibold);
-}
-
-.subhdr__duty--on:hover {
-  border-color: var(--accent-600);
-  background: var(--accent-600);
-  color: var(--ink-1000);
-}
-
-/* Крестик «закрыть расчёт» в подшапке. Тихий: это служебный выход из плана, а
-   не действие с планом, — поэтому без рамки и в приглушённом цвете, пока на
-   него не навели. */
+/* «Закрыть» в подшапке. Тихий, без рамки: служебный выход из плана, а не
+   действие с планом. Отодвинут от «В работу» на шаг сетки, чтобы не
+   попадать в него вместо главной кнопки. */
 .subhdr__close {
   flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  margin-left: calc(var(--sp-2) * -1);
-  border: 0;
-  border-radius: var(--r-pill);
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: background 120ms var(--ease-out-strong), color 120ms var(--ease-out-strong);
-}
-
-.subhdr__close:hover {
-  background: var(--surface-tile);
-  color: var(--text-primary);
-}
-
-.subhdr__close:focus-visible {
-  outline: none;
-  box-shadow: var(--ring-focus);
+  margin-left: var(--sp-4);
 }
 
 /* Крестик у номера расчёта: закрывает открытый план и возвращает к выбору.
@@ -13581,8 +13560,8 @@ b.ccard__bad {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: var(--control-h-sm);
+  height: var(--control-h-sm);
   flex: 0 0 auto;
   border: 0;
   border-radius: var(--r-sm);
@@ -13857,8 +13836,8 @@ b.ccard__bad {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: var(--control-h-sm);
+  height: var(--control-h-sm);
   margin-right: var(--sp-2);
   vertical-align: middle;
   border: 1px solid var(--border-hairline);
@@ -14104,7 +14083,7 @@ b.ccard__bad {
   gap: 4px;
   padding: 3px 10px;
   border-radius: var(--r-pill);
-  background: var(--danger-500);
+  background: var(--danger-600);
   color: var(--white);
   font-family: var(--font-sans);
   font-size: var(--fs-caption);
@@ -14380,7 +14359,7 @@ b.ccard__bad {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 28px;
+  height: var(--control-h-sm);
   padding: 0 12px;
   border: 1px solid var(--border-hairline);
   border-radius: var(--r-pill);
@@ -14688,7 +14667,7 @@ b.ccard__bad {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  height: 28px;
+  height: var(--control-h-sm);
   padding: 0 10px;
   border: 0;
   border-radius: var(--r-pill);
@@ -14779,9 +14758,9 @@ b.ccard__bad {
   flex: none;
   padding: 2px 8px;
   border-radius: var(--r-pill);
-  background: var(--danger-500);
+  background: var(--danger-600);
   color: var(--white);
-  font-size: var(--fs-small);
+  font-size: var(--fs-caption);
   font-weight: var(--fw-bold);
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -15133,8 +15112,8 @@ b.ccard__bad {
   justify-content: center;
   align-self: center;
   margin-left: auto;
-  width: 24px;
-  height: 24px;
+  width: var(--control-h-sm);
+  height: var(--control-h-sm);
   padding: 0;
   border: 0;
   border-radius: var(--r-sm);
@@ -15512,12 +15491,15 @@ b.ccard__bad {
    полосой во всю ширину под картой вместе с легендой; легенда ушла совсем,
    а тумблеры перебрались к масштабу. */
 
-/* Пульт — полоска в ширину кластера масштаба: пять значков столбиком. Слова
-   ушли в подсказки: подписи «Маршруты», «Точки», «Спутник» занимали втрое
-   больше места, чем то, что они называют, и отъедали у карты левый угол. */
+/* Пульт — столбик под кластером масштаба. Подложки — значками: их три, и
+   выбирают их редко. А у переключателей «Маршруты» и «Точки» слово вернулось:
+   их жмут всё время, и смысл значка без подписи диспетчер узнавал только из
+   всплывающей подсказки. Поэтому пульт шире кластера масштаба — ровно на
+   слово, — и выступает над картой вправо. */
 .geo__deck {
   flex: 0 0 auto;
-  width: 100%;
+  width: max-content;
+  min-width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -15533,6 +15515,7 @@ b.ccard__bad {
 .geo__deck-group {
   display: flex;
   flex-direction: column;
+  align-self: stretch;
   gap: 4px;
 }
 
@@ -15552,8 +15535,8 @@ b.ccard__bad {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: var(--control-h-sm);
+  height: var(--control-h-sm);
   padding: 0;
   border: 1px solid transparent;
   border-radius: 50%;
@@ -15566,6 +15549,18 @@ b.ccard__bad {
 .geo__view:hover {
   background: var(--ink-100);
   color: var(--text-primary);
+}
+
+/* Переключатели «Маршруты» и «Точки» — со словом, поэтому пилюля, а не круг. */
+.geo__view--word {
+  width: auto;
+  justify-content: flex-start;
+  gap: var(--sp-1);
+  padding: 0 var(--sp-3) 0 var(--sp-2);
+  border-radius: var(--r-pill);
+  font-family: var(--font-sans);
+  font-size: var(--fs-caption);
+  white-space: nowrap;
 }
 
 /* Выбранный вид помечен так же, как всё выбранное в этом интерфейсе: светлая
@@ -15774,8 +15769,8 @@ b.ccard__bad {
 }
 
 .dispatch__pin-label {
-  font-size: 11px;
-  color: var(--text-muted);
+  font-size: var(--fs-small);
+  color: var(--text-secondary);
 }
 
 .dispatch__pin-row {
@@ -15833,4 +15828,16 @@ b.ccard__bad {
   font-size: var(--fs-small);
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
+}
+
+
+/* Цель нажатия не меньше 32px (--control-h-sm) у значков, которые сами по
+   себе мельче: видимый размер оставлен прежним — они стоят в строке текста
+   или в углу плитки, — а ловит мышь невидимое поле вокруг. */
+.why::before,
+.wshape__btn::before,
+.wtile__drop::before {
+  content: '';
+  position: absolute;
+  inset: -8px;
 }

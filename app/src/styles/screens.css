@@ -238,6 +238,62 @@
 /* ─── подсказка под полем номера в правке записи ───────────────────────── */
 
 .runedit__hint {
-  font-size: 11px;
+  /* Не мельче нижней границы системы (12px): подсказку читают, вводя номер. */
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+
+/* ─── пояснение с «Подробнее» (app/Lede.tsx) ───────────────────────────── */
+
+/* Видимая фраза — основным цветом и кеглем списков: это «что здесь делают»,
+   её читают. Свёрнутый остаток — вторичным цветом, как было всё пояснение. */
+.lede__first {
+  margin: 0;
+  font-size: var(--fs-body-s);
+  color: var(--text-primary);
+}
+
+.lede__more {
+  margin-top: var(--sp-1);
+}
+
+/* Цель нажатия — не ниже --control-h-sm: «Подробнее» ловят мышью на ходу. */
+.lede__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  min-height: var(--control-h-sm);
+  padding: 0 var(--sp-2);
+  margin-left: calc(var(--sp-2) * -1);
+  border-radius: var(--r-pill);
+  cursor: pointer;
+  list-style: none;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  color: var(--text-secondary);
+  transition: var(--t-control);
+}
+
+.lede__toggle::-webkit-details-marker {
+  display: none;
+}
+
+.lede__toggle:hover {
+  background: var(--ink-100);
+  color: var(--text-primary);
+}
+
+.lede__toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+
+.lede__more[open] .lede__toggle svg {
+  transform: rotate(180deg);
+}
+
+.lede__rest {
+  margin: var(--sp-1) 0 0;
+  font-size: var(--fs-caption);
   color: var(--text-secondary);
 }

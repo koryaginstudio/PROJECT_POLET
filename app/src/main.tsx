@@ -30,7 +30,7 @@ async function waitForWarmup() {
       const text = document.createElement('div');
       text.className = 'boot';
       text.textContent =
-        `Движок считает планы участков: готово ${warming.ready.length} из ${всего}` +
+        `Идёт расчёт планов участков: готово ${warming.ready.length} из ${всего}` +
         (warming.current ? `, сейчас — ${warming.current}` : '') +
         `. При первом запуске на новой машине это около трёх минут, дальше — ` +
         'секунды. Страница откроется сама.';

@@ -93,7 +93,7 @@ const SORTS: (SortRule & { value: Sort; desc: boolean })[] = [
 
 /* Отбор по тому, чего услуга требует от плана: нужна ли под неё машина, надо
    ли везти оборудование и пускают ли внутрь. Это и есть то, чем услуга
-   связывает движку руки. */
+   связывает расчёту руки. */
 type Filter = 'all' | 'car' | 'gear' | 'access' | 'urgent' | 'loose';
 
 const FILTERS: { value: Filter; label: string }[] = [
@@ -511,7 +511,7 @@ export function DbServicesScreen({ registry, mode, onOpenRun }: Props) {
       {
         key: 'transport',
         title: 'Требуют автомобиль',
-        note: 'Сколько услуг связывает движку руки: их возьмёт только инженер с машиной',
+        note: 'Сколько услуг связывает расчёту руки: их возьмёт только инженер с машиной',
         shape: 'number',
         data: {
           value: String(needCar.length),

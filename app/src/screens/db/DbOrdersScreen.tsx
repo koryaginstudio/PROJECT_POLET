@@ -487,8 +487,8 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
       },
       {
         key: 'status',
-        title: 'Состояние визитов',
-        note: 'Что говорит о заявках учётная система: статус визита из выгрузки',
+        title: 'Состояние заявок',
+        note: 'Что говорит о заявках учётная система: статус заявки из выгрузки',
         shape: 'bars',
         data: {
           value: String(byStatus.length),
@@ -883,7 +883,7 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
                   >
                     <td>
                       <span className="tbl__strong">{order.id}</span>
-                      {order.seq !== null && <span className="tbl__sub">Визит № {order.seq + 1}</span>}
+                      {order.seq !== null && <span className="tbl__sub">Заявка № {order.seq + 1}</span>}
                     </td>
                     <td>
                       <span className="tbl__strong">{order.run.code}</span>

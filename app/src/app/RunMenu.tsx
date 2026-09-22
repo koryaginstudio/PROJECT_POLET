@@ -131,7 +131,7 @@ export function RunMenu({
       aria-label="Все расчёты"
     >
       <div className="runmenu__head">
-        Расчёты движка
+        Все расчёты
         <span className="runmenu__count">
           {listed.length} из {runs.length}
         </span>

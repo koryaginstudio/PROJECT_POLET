@@ -57,8 +57,8 @@ export function Header({
           type="button"
           className="hdr__home"
           onClick={onHome}
-          title="На дашборд"
-          aria-label="PROJECT POLET — на дашборд"
+          title="На главную"
+          aria-label="PROJECT POLET — на главную"
         >
           <img className="hdr__logo" src={logo} alt="" />
         </button>

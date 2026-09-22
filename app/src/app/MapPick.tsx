@@ -196,7 +196,7 @@ export function MapPick({
       )}
 
       <div className="mpick__rows">
-        {row('Визитов', String(crew.visits))}
+        {row('Заявок', String(crew.visits))}
         {row('Загрузка', `${Math.round(crew.occupancy * 100)}%`)}
         {totals && row('В пути', spell(totals.travel_minutes))}
         {totals && row('Работа', spell(totals.work_minutes))}

@@ -148,7 +148,7 @@ export function RouteCard({
           <span className="runcard__value">
             {row.visits}
             <span className="runcard__unit">
-              {pluralWord(row.visits, 'визит', 'визита', 'визитов')}
+              {pluralWord(row.visits, 'заявка', 'заявки', 'заявок')}
             </span>
           </span>
           <span className="runcard__label">За смену</span>
@@ -163,7 +163,7 @@ export function RouteCard({
           <div className="engquick__tile engquick__tile--main">
             <span className="engquick__value">{row.visits}</span>
             <span className="engquick__label">
-              {capitalize(pluralWord(row.visits, 'визит', 'визита', 'визитов'))}
+              {capitalize(pluralWord(row.visits, 'заявка', 'заявки', 'заявок'))}
             </span>
           </div>
           <div
@@ -319,14 +319,14 @@ export function RouteCard({
                 key={id}
                 type="button"
                 className="chip chip--sm"
-                title={`Визит № ${index + 1} — открыть заявку ${id}`}
+                title={`Заявка № ${index + 1} — открыть заявку ${id}`}
                 onClick={() => onOpenOrder(id)}
               >
                 <Icon name="clipboard-list" size={12} />
                 {id}
               </button>
             ) : (
-              <span key={id} className="chip chip--sm" title={`Визит № ${index + 1} — заявка ${id}`}>
+              <span key={id} className="chip chip--sm" title={`Заявка № ${index + 1} — заявка ${id}`}>
                 <Icon name="clipboard-list" size={12} />
                 {id}
               </span>

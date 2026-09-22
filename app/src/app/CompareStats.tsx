@@ -45,7 +45,7 @@ const ROWS: Row[] = [
   },
   {
     key: 'visits',
-    label: 'Визитов',
+    label: 'Заявок',
     better: 'more',
     value: (row) => row.visits,
     text: (row) => String(row.visits)

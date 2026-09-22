@@ -142,7 +142,7 @@ export function EngineerCard({
           {idle && (
             <span
               className="runcard__open engcard__idle"
-              title={`Оставался без маршрута: ${row.idleRuns} из ${row.runs} прогонов`}
+              title={`Оставался без маршрута: ${row.idleRuns} из ${row.runs} расчётов`}
               aria-label="Оставался без маршрута"
             >
               <Icon name="clock" size={12} />
@@ -258,7 +258,7 @@ export function EngineerCard({
           <div className="engquick__tile">
             <span className="engquick__value">{row.visits}</span>
             <span className="engquick__label">
-              {capitalize(pluralWord(row.visits, 'визит', 'визита', 'визитов'))}
+              {capitalize(pluralWord(row.visits, 'заявка', 'заявки', 'заявок'))}
             </span>
           </div>
           <div className={'engquick__tile' + (row.overtimeMinutes > 0 ? ' engquick__tile--bad' : '')}>
@@ -278,7 +278,7 @@ export function EngineerCard({
       {dense ? (
         <div className="runcard__facts">
           <span className={'runcard__fact' + (idle ? ' runcard__fact--bad' : '')}>
-            <b>{row.visits}</b> визитов · <b>{row.routes}</b> из {row.runs} смен
+            <b>{row.visits}</b> заявок · <b>{row.routes}</b> из {row.runs} смен
           </span>
         </div>
       ) : (

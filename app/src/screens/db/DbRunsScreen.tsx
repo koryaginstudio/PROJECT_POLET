@@ -317,7 +317,7 @@ export function DbRunsScreen({
       {
         key: 'runs-count',
         title: 'Расчётов',
-        note: 'Сколько прогонов сделано и скольким хватило инженеров',
+        note: 'Сколько расчётов сделано и скольким хватило инженеров',
         shape: 'number',
         data: {
           value: String(runs.length),
@@ -328,17 +328,17 @@ export function DbRunsScreen({
             { key: 'clean', label: 'Без хвоста', value: clean, tone: 'ok' },
             { key: 'loose', label: 'С хвостом', value: runs.length - clean, tone: 'bad' }
           ],
-          legend: 'прогонов'
+          legend: 'расчётов'
         }
       },
       {
         key: 'orders',
         title: 'Заявок обработано',
-        note: 'Сколько заявок прошло через движок и что с ними стало',
+        note: 'Сколько заявок прошло через расчёт и что с ними стало',
         shape: 'number',
         data: {
           value: String(orders),
-          caption: 'прошло через движок',
+          caption: 'прошло через расчёт',
           facts: [`${Math.round(perRun(orders))} на расчёт`],
           whole: true,
           parts: [
@@ -352,7 +352,7 @@ export function DbRunsScreen({
       {
         key: 'assigned',
         title: 'Из них разложено',
-        note: 'Скольким заявкам движок нашёл инженера',
+        note: 'Скольким заявкам расчёт нашёл инженера',
         shape: 'number',
         data: {
           value: String(assigned),
@@ -400,21 +400,21 @@ export function DbRunsScreen({
       },
       {
         key: 'visits',
-        title: 'Визитов',
-        note: 'Сколько визитов движок расставил и как это менялось',
+        title: 'Заявок',
+        note: 'Сколько заявок расчёт расставил и как это менялось',
         shape: 'number',
         data: {
           value: String(visits),
           caption: 'расставлено',
           facts: [`${dec(visits / Math.max(routes.length, 1))} на маршрут`],
           series: runSeries((cell) => cell.visits),
-          legend: 'визитов'
+          legend: 'заявок'
         }
       },
       {
         key: 'coverage-trend',
         title: 'Покрытие по расчётам',
-        note: 'Как менялась доля закрытых заявок от прогона к прогону',
+        note: 'Как менялась доля закрытых заявок от расчёта к расчёту',
         shape: 'line',
         data: {
           value: dec(runs[runs.length - 1]?.coverage * 100 || 0),
@@ -428,7 +428,7 @@ export function DbRunsScreen({
       {
         key: 'assigned-split',
         title: 'Разложено и без инженера',
-        note: 'Что движок разобрал и что осталось лежать',
+        note: 'Что расчёт разобрал и что осталось лежать',
         shape: 'donut',
         data: {
           value: String(orders),
@@ -445,7 +445,7 @@ export function DbRunsScreen({
       {
         key: 'best-runs',
         title: 'Лучшие по покрытию',
-        note: 'Прогоны, где симуляция закрыла больше всего заявок',
+        note: 'Расчёты, где по прогнозу дня закрыто больше всего заявок',
         shape: 'bars',
         data: {
           value: percent(byCoverage[0]?.coverage ?? 0),
@@ -464,7 +464,7 @@ export function DbRunsScreen({
       {
         key: 'loose-runs',
         title: 'Больше всего без инженера',
-        note: 'Прогоны с самым длинным хвостом нераспределённого',
+        note: 'Расчёты с самым длинным хвостом нераспределённого',
         shape: 'bars',
         data: {
           value: String(byLoose[0] ? left(byLoose[0]) : 0),
@@ -476,7 +476,7 @@ export function DbRunsScreen({
             value: left(row),
             tone: 'bad' as const
           })),
-          legend: byLoose.length > 0 ? 'заявок осталось' : 'таких прогонов нет'
+          legend: byLoose.length > 0 ? 'заявок осталось' : 'таких расчётов нет'
         }
       },
       {
@@ -515,7 +515,7 @@ export function DbRunsScreen({
       {
         key: 'crew',
         title: 'Инженеры с маршрутом',
-        note: 'Кому движок дал работу, а кто ни разу не выехал',
+        note: 'Кому расчёт дал работу, а кто ни разу не выехал',
         shape: 'donut',
         data: {
           value: String(registry.engineers.length),
@@ -718,7 +718,7 @@ export function DbRunsScreen({
                 value: row.orders - row.assigned,
                 tone: row.orders - row.assigned > 0 ? ('warn' as const) : ('muted' as const)
               },
-              { label: 'Визитов', value: row.visits },
+              { label: 'Заявок', value: row.visits },
               { label: 'Занятость', value: percent(row.occupancy) },
               { label: 'В дороге', value: hoursText(row.travelMinutes) }
             ],
@@ -764,7 +764,7 @@ export function DbRunsScreen({
                   <th>Доля плана</th>
                   <th>Без инженера</th>
                   <th>Маршрутов</th>
-                  <th>Визитов</th>
+                  <th>Заявок</th>
                   <th>Инженеров с маршрутом</th>
                   <th>Занятость</th>
                   <th>В дороге</th>

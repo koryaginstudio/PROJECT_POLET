@@ -110,7 +110,7 @@ export function RunEditDialog({ run, onClose, onSave, onDelete }: Props) {
 
         <p className="runedit__lede">
           Правится то, что завели вы: номер, время создания и заметка. Цифры плана правке не
-          подлежат — их посчитал движок.
+          подлежат — их посчитала программа расчёта.
         </p>
 
         <label className="runedit__field">

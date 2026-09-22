@@ -129,7 +129,7 @@ function metricShape(groupId: string, view: DayView, day: Day): Shape | null {
         sections: [
           {
             key: 'free',
-            label: 'Совсем без визитов за день',
+            label: 'Совсем без заявок за день',
             engineerIds: view.loads.filter((load) => load.idle).map((load) => load.engineer.id)
           }
         ]
@@ -148,7 +148,7 @@ function metricShape(groupId: string, view: DayView, day: Day): Shape | null {
         title: 'Исполнителей задействовано',
         facts: [
           { key: 'used', label: 'В этом плане', value: String(withRoute.length) },
-          { key: 'base', label: 'Базовый вариант ТЗ', value: base ? String(base.engineers_used) : '—' },
+          { key: 'base', label: 'Базовый вариант (без планировщика)', value: base ? String(base.engineers_used) : '—' },
           { key: 'staff', label: 'В штате', value: String(plan.meta.engineers_total) },
           {
             key: 'assigned',
@@ -162,7 +162,7 @@ function metricShape(groupId: string, view: DayView, day: Day): Shape | null {
           { key: 'used', label: 'С маршрутом', engineerIds: withRoute.map((load) => load.engineer.id) },
           {
             key: 'free',
-            label: 'Без визитов за день',
+            label: 'Без заявок за день',
             engineerIds: view.loads.filter((load) => load.idle).map((load) => load.engineer.id)
           }
         ]
@@ -186,7 +186,7 @@ function metricShape(groupId: string, view: DayView, day: Day): Shape | null {
         title: 'Пробег',
         facts: [
           { key: 'total', label: 'Всего по плану', value: total === null ? '—' : `${dec(total, 0)} км` },
-          { key: 'visit', label: 'На назначенный визит', value: perVisit === null ? '—' : `${dec(perVisit, 2)} км` },
+          { key: 'visit', label: 'На назначенную заявку', value: perVisit === null ? '—' : `${dec(perVisit, 2)} км` },
           {
             key: 'engineer',
             label: 'На исполнителя',
@@ -194,10 +194,10 @@ function metricShape(groupId: string, view: DayView, day: Day): Shape | null {
           },
           {
             key: 'base',
-            label: 'Базовый вариант ТЗ',
+            label: 'Базовый вариант (без планировщика)',
             value:
               base && base.distance_km_total != null
-                ? `${dec(base.distance_km_total, 0)} км · ${basePerVisit === null ? '—' : dec(basePerVisit, 2)} на визит`
+                ? `${dec(base.distance_km_total, 0)} км · ${basePerVisit === null ? '—' : dec(basePerVisit, 2)} на заявку`
                 : '—'
           }
         ],
@@ -336,7 +336,7 @@ function shapeOf(groupId: string, view: DayView, cut: number, day: Day): Shape |
         eyebrow: 'Инженеры',
         title: 'Свободны',
         flat: true,
-        sections: [{ key: 'free', label: 'Ни одного визита за день', engineerIds: crew.freeIds }]
+        sections: [{ key: 'free', label: 'Ни одной заявки за день', engineerIds: crew.freeIds }]
       };
     case 'tight':
       return {
@@ -355,7 +355,7 @@ function shapeOf(groupId: string, view: DayView, cut: number, day: Day): Shape |
       };
     case 'fragile':
       return {
-        eyebrow: 'Симуляция',
+        eyebrow: 'Прогноз дня',
         title: 'Прозвонить на завтра',
         flat: true,
         sections: [
@@ -368,7 +368,7 @@ function shapeOf(groupId: string, view: DayView, cut: number, day: Day): Shape |
       };
     case 'reasons':
       return {
-        eyebrow: 'Симуляция',
+        eyebrow: 'Прогноз дня',
         title: 'Причины срывов',
         sections: [],
         facts: view.reasons.map((reason) => ({

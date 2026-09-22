@@ -193,12 +193,15 @@ export function RunCard({
         ) : (
           <button
             type="button"
-            className="runcard__edit"
+            className="runcard__edit runcard__edit--word"
             onClick={() => onEdit?.(row.run)}
             title={`Изменить запись ${row.run.code}: номер, время, заметка`}
             aria-label={`Изменить запись ${row.run.code}`}
           >
-            <Icon name="pencil" size={13} />
+            {/* В карточке место есть — значок со словом: карандаш без
+                подписи читался только по всплывающей подсказке. */}
+            <Icon name="pencil" size={14} />
+            <span>Изменить</span>
           </button>
         )}
       </div>
@@ -317,7 +320,7 @@ export function RunCard({
             <dd>{dec(row.coverage * 100)} %</dd>
           </div>
           <div className="engmetrics__row">
-            <dt>Визитов</dt>
+            <dt>Заявок</dt>
             <span className="engmetrics__leader" aria-hidden="true" />
             <dd>{row.visits}</dd>
           </div>
@@ -459,7 +462,7 @@ export function RunCard({
                   key={route.key}
                   type="button"
                   className="chip chip--sm"
-                  title={`${route.code} — ${route.engineerName}, ${route.visits} визитов. Показать на карте расчёта`}
+                  title={`${route.code} — ${route.engineerName}, ${route.visits} заявок. Показать на карте расчёта`}
                   onClick={() =>
                     onOpenRoute ? onOpenRoute(row.run.id, route.engineerId) : onOpenMap(row.run.id)
                   }

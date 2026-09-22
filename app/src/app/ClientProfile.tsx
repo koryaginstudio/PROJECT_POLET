@@ -250,7 +250,7 @@ export function ClientProfile({ client, registry, onClose, onOpenOrder, onOpenRu
                   <tr>
                     <th>Инженер</th>
                     <th>Табельный</th>
-                    <th>Визитов</th>
+                    <th>Заявок</th>
                     <th>В расчётах</th>
                   </tr>
                 </thead>

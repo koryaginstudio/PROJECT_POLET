@@ -243,7 +243,7 @@ export function OverviewScreen({
   ) : (
     <section className="mapstat" aria-label="Итоги расчёта">
       <div className="mapstat__head">
-        <span className="mapstat__run" title="Открытый расчёт движка">
+        <span className="mapstat__run" title="Открытый расчёт">
           {run}
         </span>
         <span className="mapstat__note">Итоги расчёта</span>

@@ -168,7 +168,7 @@ export function RunTabs({
         className={'runtabs__more' + (open ? ' runtabs__more--on' : '')}
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        title="Все расчёты движка"
+        title="Все расчёты"
       >
         <Icon name="stack" size={14} />
         <span className="runtabs__more-label">{rest > 0 ? `Ещё ${rest}` : 'Все'}</span>
