@@ -22,7 +22,7 @@ interface Props {
    как показываем посчитанное. */
 
 const START: { key: StartAt; label: string; note: string }[] = [
-  { key: 'home', label: 'Дашборд', note: 'общая сводка дня' },
+  { key: 'home', label: 'Главная', note: 'общая сводка дня' },
   { key: 'dispatch', label: 'Диспетчерская', note: 'сразу к выбору расчёта' },
   { key: 'last', label: 'Последний расчёт', note: 'открыть то, что считали последним' }
 ];

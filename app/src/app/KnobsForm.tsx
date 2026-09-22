@@ -1,4 +1,5 @@
 import { Icon } from '../ds/components/core/Icon.jsx';
+import { Lede } from './Lede.tsx';
 import type { Knob, KnobGroup } from '../data/knobs.ts';
 
 interface Props {
@@ -43,7 +44,7 @@ function Field({
         <span className="rule__label">{knob.label}</span>
         <code className="rule__name">{knob.key}</code>
         {showWiring && !knob.wired && (
-          <span className="rule__pending" title="Значение записано, но движок его пока не принимает">
+          <span className="rule__pending" title="Значение записано, но программа расчёта его пока не принимает">
             не подключено
           </span>
         )}
@@ -79,10 +80,10 @@ function Field({
               className="rule__factory rule__factory--on"
               onClick={() => onChange(factory)}
             >
-              <Icon name="arrow-left" size={12} />в движке {String(factory)}
+              <Icon name="arrow-left" size={12} />вернуть {String(factory)}
             </button>
           ) : (
-            <span className="rule__factory">как в движке</span>
+            <span className="rule__factory">заводское значение</span>
           )}
       </div>
 
@@ -96,10 +97,10 @@ export function KnobsForm({ group, values, onChange, showWiring = true }: Props)
       <div className="dash__section-head">
         <h2 className="dash__section-title">{group.title}</h2>
         <span className="dash__section-note">
-          {group.knobs.length} настроек, все доезжают до движка
+          {group.knobs.length} настроек, все учитываются в расчёте
         </span>
       </div>
-      <p className="clients__lede">{group.lede}</p>
+      <Lede text={group.lede} />
 
       <div className="rules">
         {group.knobs.map((knob) => (

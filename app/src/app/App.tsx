@@ -34,7 +34,6 @@ import { Header } from './Header.tsx';
 import { SubHeader } from './SubHeader.tsx';
 import { Sidebar } from './Sidebar.tsx';
 import { DetailPanel } from './DetailPanel.tsx';
-import { EngineDialog } from './EngineDialog.tsx';
 import { HomeScreen } from '../screens/HomeScreen.tsx';
 import { DispatchGate } from '../screens/DispatchGate.tsx';
 import { CreateRunScreen } from '../screens/CreateRunScreen.tsx';
@@ -112,9 +111,6 @@ export function App() {
   /* День всегда открывается с его начала: диспетчер сам ведёт момент
      вперёд и смотрит, как движок перестраивает остаток смены. */
   const [cut, setCut] = useState(dayStart);
-  /* Пересчёт запускается из любого раздела, поэтому окно живёт здесь, а не
-     внутри блока «Расчёт». */
-  const [rebuilding, setRebuilding] = useState(false);
   /* Наведение живёт отдельно от закрепления: мышь ушла — подсветка гаснет,
      а выбранный щелчком маршрут остаётся. */
   const [hoverRoute, setHoverRoute] = useState<string | null>(null);
@@ -1440,11 +1436,6 @@ export function App() {
           </aside>
         )}
       </div>
-
-      {/* Окно пересчёта само больше не всплывает: после расчёта день
-          открывается сразу. Открыть его будет чем, когда пересчёт от момента
-          подключат к движку. */}
-      <EngineDialog cut={cut} open={rebuilding} onClose={() => setRebuilding(false)} />
 
       {ready && (
         <IncidentDialog

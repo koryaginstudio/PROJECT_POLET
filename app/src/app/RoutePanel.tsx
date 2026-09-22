@@ -188,7 +188,7 @@ export function RoutePanel({
         </div>
         <p className="rpanel__note">
           {tab === 'routes'
-            ? 'День инженера по порядку визитов. Наведение подсвечивает путь на карте, щелчок приближает к нему.'
+            ? 'День инженера по порядку заявок. Наведение подсвечивает путь на карте, щелчок приближает к нему.'
             : 'Обратный вход: от заявки к тому, кто её везёт. Щелчок открывает карточку и подсвечивает её маршрут.'}
         </p>
       </div>
@@ -395,7 +395,7 @@ export function RoutePanel({
                   <span className="rlist__meta">
                     {placement ? (
                       <>
-                        {engineer?.name ?? placement.engineerId} · визит №{placement.stop.seq + 1}
+                        {engineer?.name ?? placement.engineerId} · заявка №{placement.stop.seq + 1}
                         {risky
                           ? placement.slaBreached
                             ? ' · срок нарушен'

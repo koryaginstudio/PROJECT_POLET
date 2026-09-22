@@ -1368,23 +1368,27 @@ export function MapBoard({
           <div className="geo__deck-group" role="group" aria-label="Что показывать на карте">
             <button
               type="button"
-              className={'geo__view' + (routesOn ? ' geo__view--on' : '')}
+              className={'geo__view geo__view--word' + (routesOn ? ' geo__view--on' : '')}
               onClick={() => setRoutesOn((v) => !v)}
               aria-pressed={routesOn}
               aria-label="Маршруты на карте"
               title={routesOn ? 'Убрать маршруты' : 'Показать маршруты'}
             >
               <Icon name="route" size={15} />
+              {/* Слово рядом со значком: что включает кнопка, видно сразу,
+                  а не через секунду во всплывающей подсказке. */}
+              <span>Маршруты</span>
             </button>
             <button
               type="button"
-              className={'geo__view' + (pinsOn ? ' geo__view--on' : '')}
+              className={'geo__view geo__view--word' + (pinsOn ? ' geo__view--on' : '')}
               onClick={() => setPinsOn((v) => !v)}
               aria-pressed={pinsOn}
               aria-label="Точки заявок и выезда"
               title={pinsOn ? 'Убрать точки' : 'Показать точки'}
             >
               <Icon name="map-pin" size={15} />
+              <span>Точки</span>
             </button>
           </div>
 
@@ -1486,7 +1490,7 @@ export function MapBoard({
                 {rideOf(pinnedLoad.engineer.transport)}
               </span>
               <span>
-                <b>{pinnedLoad.visits}</b> визитов
+                <b>{pinnedLoad.visits}</b> заявок
               </span>
               <span>
                 загрузка <b>{Math.round(pinnedLoad.occupancy * 100)}%</b>

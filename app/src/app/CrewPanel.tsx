@@ -71,8 +71,7 @@ export function CrewPanel({ view, cut, onCutChange, selected, onSelectOrder, onS
             движок. Разница принципиальная: одно описывает прошлое, другое
             обещание, и путать их на экране диспетчера нельзя. */}
         <p className="rpanel__note">
-          Сколько визитов инженер должен успеть закрыть к этому моменту — из тех, что рассчитал
-          движок. Момент двигают ползунком: он же над доской, он же здесь.
+          Сколько заявок инженер должен успеть закрыть к этому моменту — по расчёту. Момент двигают ползунком: он же над доской, он же здесь.
         </p>
       </div>
 
@@ -89,7 +88,7 @@ export function CrewPanel({ view, cut, onCutChange, selected, onSelectOrder, onS
       <div className="crewtotal">
         <span className="crewtotal__value">{closed}</span>
         <span className="crewtotal__label">
-          из {planned} визитов смены · {crew.length} инженеров на маршруте
+          из {planned} заявок смены · {crew.length} инженеров на маршруте
         </span>
       </div>
 
@@ -128,7 +127,7 @@ export function CrewPanel({ view, cut, onCutChange, selected, onSelectOrder, onS
                   )}
 
                   {row.done.length === 0 ? (
-                    <p className="hourlist__line">К этому моменту по плану ни одного визита.</p>
+                    <p className="hourlist__line">К этому моменту по плану ни одной заявки.</p>
                   ) : (
                     row.done.map((stop) => {
                       const order = view.orderById.get(stop.order_id);

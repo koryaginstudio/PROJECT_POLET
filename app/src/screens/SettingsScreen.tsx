@@ -17,6 +17,7 @@ import type { Registry } from '../data/registry.ts';
 import { skillIcon, skillName } from '../data/dictionary.ts';
 import { EngineParamsForm } from '../app/EngineParamsForm.tsx';
 import { KnobsForm } from '../app/KnobsForm.tsx';
+import { Lede } from '../app/Lede.tsx';
 import { ServiceForm } from '../app/ServiceForm.tsx';
 import {
   changedKnobs,
@@ -108,15 +109,14 @@ export function SettingsScreen({ mode, registry, onEditsCleared, onHistoryCleare
           <div className="dash__section-head">
             <h2 className="dash__section-title">Откуда берутся данные</h2>
           </div>
-          <p className="clients__lede">
-            План, смены и симуляция приходят по одному контракту из двух мест. Записанные дни
-            лежат файлами на диске — на них интерфейс открывается всегда, даже когда движок не
-            запущен. Живой движок считает день по-настоящему и хранит свои расчёты у себя;
-            найденные у него записи дописываются в конец истории, а не заменяют её.
-          </p>
+          <Lede first="План, смены и прогноз дня приходят по одному контракту из двух мест.">
+            Записанные дни лежат файлами на диске — на них интерфейс открывается всегда, даже когда
+            программа расчёта не запущена. Живая программа считает день по-настоящему и хранит свои
+            расчёты у себя; найденные у неё записи дописываются в конец истории, а не заменяют её.
+          </Lede>
 
           <div className="setrow">
-            <span className="setrow__key">Движок</span>
+            <span className="setrow__key">Программа расчёта</span>
             <span className="setrow__val">
               {live ? (
                 <>
@@ -156,8 +156,8 @@ export function SettingsScreen({ mode, registry, onEditsCleared, onHistoryCleare
               <h2 className="dash__section-title">Как включить живой расчёт</h2>
             </div>
             <p className="clients__lede">
-              Движок сейчас не запущен, и расчёты считаются в браузере. Включает его администратор:
-              интерфейс найдёт движок сам при следующем запуске, настраивать ничего не нужно.
+              Программа расчёта сейчас не запущена, и расчёты считаются в браузере. Включает её
+              администратор: интерфейс найдёт её сам при следующем запуске, настраивать ничего не нужно.
             </p>
             <details className="fold">
               <summary className="fold__summary">
@@ -166,7 +166,7 @@ export function SettingsScreen({ mode, registry, onEditsCleared, onHistoryCleare
               </summary>
               <div className="fold__body">
                 <p className="clients__lede">
-                  Интерфейс ищет движок сначала по своему же адресу, потом на localhost:8000.
+                  Интерфейс ищет программу расчёта сначала по своему же адресу, потом на localhost:8000.
                   Запуск на машине с Python:
                 </p>
                 <pre className="setcode">
@@ -185,12 +185,11 @@ export function SettingsScreen({ mode, registry, onEditsCleared, onHistoryCleare
           <div className="dash__section-head">
             <h2 className="dash__section-title">Правки записей</h2>
           </div>
-          <p className="clients__lede">
-            Номер, время создания и заметку у расчёта заводит человек, движок их не считает.
-            Такие правки хранятся в этом браузере, и на другом компьютере их не будет.
-            Исключение — заметка к настоящему расчёту: её движок кладёт к себе рядом с планом,
+          <Lede first="Правки номера, времени и заметки хранятся в этом браузере — на другом компьютере их не будет.">
+            Номер, время создания и заметку у расчёта заводит человек, программа расчёта их не считает.
+            Исключение — заметка к настоящему расчёту: её программа расчёта кладёт к себе рядом с планом,
             поэтому она переживает и смену браузера.
-          </p>
+          </Lede>
 
           <div className="setrow">
             <span className="setrow__key">Правленых записей</span>
@@ -214,7 +213,7 @@ export function SettingsScreen({ mode, registry, onEditsCleared, onHistoryCleare
               Снять все правки
             </Button>
             <span className="setbar__note">
-              Номер, время и заметка вернутся к тому, что посчитал движок. Сами расчёты остаются
+              Номер, время и заметка вернутся к тому, что посчитала программа расчёта. Сами расчёты остаются
               на месте — снимаются правки, а не история.
             </span>
           </div>
@@ -304,25 +303,24 @@ export function SettingsScreen({ mode, registry, onEditsCleared, onHistoryCleare
     <div className="dash enter">
       <section className="panel">
         <div className="dash__section-head">
-          <h2 className="dash__section-title">Настройки движка</h2>
+          <h2 className="dash__section-title">Правила расчёта</h2>
           <span className="dash__section-note">{factory ? 'заводские' : 'изменены'}</span>
         </div>
-        <p className="clients__lede">
-          Настроек семь, и это не сокращённый список, а весь. У каждой есть смысл на языке
-          диспетчера: насколько завышать оценку времени работ, сколько запаса закладывать, как
-          ровно делить нагрузку, при каком остатке предупреждать. Остальные переменные движка —
-          внутренние параметры поиска, откалиброванные на замерах: неудачное значение любой из
-          них тихо ухудшает план, и узнать об этом из интерфейса неоткуда. Поэтому их здесь нет
-          и не будет.
-        </p>
+        <Lede first="Семь настроек расчёта — весь список, который есть смысл менять.">
+          У каждой есть смысл на языке диспетчера: насколько завышать оценку времени работ,
+          сколько запаса закладывать, как ровно делить нагрузку, при каком остатке предупреждать.
+          Остальные параметры расчёта — внутренние параметры поиска, откалиброванные на замерах:
+          неудачное значение любой из них тихо ухудшает план, и узнать об этом из интерфейса
+          неоткуда.
+        </Lede>
         <div className="setrow">
-          <span className="setrow__key">Уведено от заводских</span>
+          <span className="setrow__key">Изменено настроек</span>
           <span className="setrow__val">
             {changed === 0 ? 'ничего' : `${changed} из ${TOTAL_COUNT}`}
           </span>
         </div>
         <div className="setrow">
-          <span className="setrow__key">Доезжает до движка</span>
+          <span className="setrow__key">Учитываются в расчёте</span>
           <span className="setrow__val">
             {WIRED_COUNT === TOTAL_COUNT ? 'все семь' : `${WIRED_COUNT} из ${TOTAL_COUNT}`}
           </span>
@@ -345,11 +343,10 @@ export function SettingsScreen({ mode, registry, onEditsCleared, onHistoryCleare
           <h2 className="dash__section-title">С чего открывается новый расчёт</h2>
           <span className="dash__section-note">те же значения, но словами</span>
         </div>
-        <p className="clients__lede">
-          Три настройки, которые диспетчер трогает чаще всего, здесь же показаны так, как он их
-          видит при создании расчёта: словами и пресетами, потому что решение принимается по
-          смыслу, а не по величине штрафа. Это те же самые числа — вид разный, значение одно.
-        </p>
+        <Lede first="Три настройки, которые трогают чаще всего, — так, как они выглядят при создании расчёта.">
+          Словами и готовыми вариантами, потому что решение принимается по смыслу, а не по
+          числу. Это те же самые значения — вид разный, значение одно.
+        </Lede>
       </section>
 
       <EngineParamsForm params={params} onChange={setParams} only={DISPATCH_KNOBS} />
@@ -359,7 +356,7 @@ export function SettingsScreen({ mode, registry, onEditsCleared, onHistoryCleare
           <span className="createbar__note">
             {saved
               ? factory
-                ? 'Стоят заводские значения движка.'
+                ? 'Стоят заводские значения.'
                 : 'Сохранено. Форма нового расчёта откроется с этими значениями.'
               : 'Изменения не сохранены.'}
           </span>

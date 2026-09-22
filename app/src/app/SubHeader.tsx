@@ -1,9 +1,10 @@
 import { SegmentedControl } from '../ds/components/forms/SegmentedControl.jsx';
+import { Button } from '../ds/components/core/Button.jsx';
 import { Icon } from '../ds/components/core/Icon.jsx';
 import { RunTabs } from './RunTabs.tsx';
 import type { RunId, DaySummary } from '../data/load.ts';
-import { runCode, runDate } from '../data/load.ts';
-import { holderOf, onDuty, toggleDuty, useDuty } from '../data/duty.ts';
+import { runDate } from '../data/load.ts';
+import { DutyButton } from './DutyButton.tsx';
 import { isCrossRun, isRunScoped, SUBHEADER } from './nav.ts';
 import type { SectionId } from './nav.ts';
 import { COMPARE_MAX } from './compare.ts';
@@ -49,18 +50,10 @@ export function SubHeader({
      расчёт, а набирает их несколько. Место у неё одно и то же — подшапка, —
      и это правильно: там её ищут глазами в любом разделе. */
   const picking = section === 'compare';
-  /* Взят ли открытый расчёт в работу на свой день. Кнопка стоит там же, где
-     диспетчер с планом и работает, — решение «этот и берём» принимают,
-     глядя на план, а не на карточку в справочнике. Обе кнопки правят одно и
-     то же хранилище, поэтому нажатая здесь тут же видна и в базе. */
-  /* Подписка нужна ради перерисовки: кто держит день, спрашивают у слоя
-     данных по расчёту и дате — день считается по участку, а не по календарю. */
-  useDuty();
+  /* Дата открытого расчёта: кнопке «В работу» нужен день, на который его
+     берут. Вопрос перед необратимым и сама логика — в DutyButton, общем с
+     карточкой расчёта в базе. */
   const date = onCloseRun ? runDate(activeRun) : '';
-  const working = onDuty(activeRun, date);
-  const heldBy = holderOf(activeRun, date);
-  const held = heldBy && heldBy !== activeRun ? runCode(heldBy) : null;
-  const dayText = date.split('-').reverse().join('.');
   return (
     <div className="subhdr">
       <span className="subhdr__title">{config.title}</span>
@@ -93,38 +86,23 @@ export function SubHeader({
           Подпись меняется с «В работу» на «В работе»: первое — что кнопка
           сделает, второе — что уже сделано. Оранжевый в этой системе значит
           «вот этот, с ним сейчас работают», и здесь он ровно об этом. */}
-      {onCloseRun && date && (
-        <button
-          type="button"
-          className={'subhdr__duty' + (working ? ' subhdr__duty--on' : '')}
-          onClick={() => toggleDuty(activeRun, date)}
-          aria-pressed={working}
-          title={
-            working
-              ? `Снять ${runCode(activeRun)} с работы: у ${dayText} не останется рабочего расчёта`
-              : held
-                ? `Взять ${runCode(activeRun)} в работу на ${dayText}: сейчас на этом дне работает ${held}`
-                : `Взять ${runCode(activeRun)} в работу на ${dayText}`
-          }
-        >
-          <Icon name={working ? 'check-circle' : 'calendar'} size={13} />
-          {working ? 'В работе' : 'В работу'}
-        </button>
-      )}
+      {onCloseRun && date && <DutyButton run={activeRun} date={date} place="bar" />}
 
       {/* Крестик закрывает расчёт и возвращает диспетчерскую к выбору
           действия. Стоит в конце строки, за лентой: это не работа с планом, а
-          выход из него, и мешаться с вкладками ему незачем. */}
+          выход из него, и мешаться с вкладками ему незачем. Отодвинут от
+          «В работу» и подписан словом: вплотную к главной кнопке крестик
+          26px ловил промахи. */}
       {onCloseRun && (
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="sm"
           className="subhdr__close"
-          title="Закрыть расчёт и вернуться к выбору действия"
-          aria-label="Закрыть расчёт"
           onClick={onCloseRun}
+          iconLeft={<Icon name="x" size={16} />}
         >
-          <Icon name="x" size={13} />
-        </button>
+          Закрыть расчёт
+        </Button>
       )}
     </div>
   );

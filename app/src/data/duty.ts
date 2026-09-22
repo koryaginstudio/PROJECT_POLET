@@ -155,12 +155,6 @@ export function dropDuty(id: RunId, date: string): void {
   save(next);
 }
 
-/** Переключатель под кнопку: взять, если не взят, и снять, если взят. */
-export function toggleDuty(id: RunId, date: string): void {
-  if (onDuty(id, date)) dropDuty(id, date);
-  else takeDuty(id, date);
-}
-
 function subscribe(watcher: () => void): () => void {
   watchers.add(watcher);
   return () => watchers.delete(watcher);

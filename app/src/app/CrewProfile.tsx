@@ -231,7 +231,7 @@ export function CrewProfile({
   const openRoute = (route: (typeof routes)[number]) =>
     setVisits({
       title: `Маршрут ${route.code}`,
-      lede: `${crew.name}, расчёт ${route.run.code} — визиты по порядку объезда`,
+      lede: `${crew.name}, расчёт ${route.run.code} — заявки по порядку объезда`,
       orders: orders.filter((order) => order.run.id === route.run.id && order.seq !== null)
     });
 
@@ -448,7 +448,7 @@ export function CrewProfile({
                  показываем — их всё равно не трогают, а место нужно форме. */
               <div className="crewpro__stats">
                 <Stat value={dec(worked / 60)} unit="ч" label="отработано всего" />
-                <Stat value={String(crew.visits)} label="визитов" />
+                <Stat value={String(crew.visits)} label="заявок" />
                 <Stat value={`${crew.routes} из ${crew.runs}`} label="смен с маршрутом" />
                 <Stat value={`${dec(crew.occupancyMean * 100)} %`} label="средняя занятость" />
                 <Stat value={hoursText(crew.travelMinutes)} label="в дороге" />
@@ -671,7 +671,7 @@ export function CrewProfile({
                       <thead>
                         <tr>
                           <th>Расчёт</th>
-                          <th>Визитов</th>
+                          <th>Заявок</th>
                           <th>В работе</th>
                           <th>В дороге</th>
                           <th>Занятость</th>
@@ -683,7 +683,7 @@ export function CrewProfile({
                           <tr
                             className="tbl__row"
                             key={shift.runId}
-                            title={`Визиты в расчёте ${shift.code}`}
+                            title={`Заявки в расчёте ${shift.code}`}
                             tabIndex={0}
                             role="button"
                             onClick={() => openShift(shift)}
@@ -726,7 +726,7 @@ export function CrewProfile({
                         <tr>
                           <th>Маршрут</th>
                           <th>Расчёт</th>
-                          <th>Визитов</th>
+                          <th>Заявок</th>
                           <th>Начало</th>
                           <th>Конец</th>
                           <th>Районы</th>
@@ -738,7 +738,7 @@ export function CrewProfile({
                           <tr
                             className="tbl__row"
                             key={route.key}
-                            title={`Визиты маршрута ${route.code}`}
+                            title={`Заявки маршрута ${route.code}`}
                             tabIndex={0}
                             role="button"
                             onClick={() => openRoute(route)}

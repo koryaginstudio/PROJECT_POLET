@@ -91,7 +91,7 @@ export function VisitsDialog({ scope, onClose, onOpenOrder }: Props) {
 
         <div className="visits__sum">
           <span>
-            <b>{rows.length}</b> {plural(rows.length, 'визит', 'визита', 'визитов').split(' ')[1]}
+            <b>{rows.length}</b> {plural(rows.length, 'заявка', 'заявки', 'заявок').split(' ')[1]}
           </span>
           {planned < rows.length && (
             <span className="visits__warn">

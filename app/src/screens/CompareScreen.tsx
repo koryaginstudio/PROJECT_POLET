@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Icon } from '../ds/components/core/Icon.jsx';
+import { Lede } from '../app/Lede.tsx';
 import { Button } from '../ds/components/core/Button.jsx';
 import type { DaySummary, RunId } from '../data/load.ts';
 import { runCode, runEntry, stampOf, whenLabel } from '../data/load.ts';
@@ -178,7 +179,7 @@ export function CompareScreen({
     } catch (error) {
       return error instanceof EngineError
         ? error.message
-        : 'Удалить не вышло: движок не ответил. Повторите попытку.';
+        : 'Удалить не вышло: программа расчёта не ответила. Повторите попытку.';
     }
   }
 
@@ -262,7 +263,7 @@ export function CompareScreen({
           <h2 className="dash__section-title">
             {code ? `Сравнение ${code}` : 'Сравнение'}
             {openedCode && <span className="dbrun__date">из архива</span>}
-            {!code && <span className="dbrun__date">без номера: движок не запущен</span>}
+            {!code && <span className="dbrun__date">без номера: программа расчёта не запущена</span>}
           </h2>
           {picks.length > 0 && (
             <button
@@ -362,7 +363,7 @@ export function CompareScreen({
                 собран и движок на месте, объяснять нечего: кнопка горит и
                 говорит за себя. */}
             {!engineAlive()
-              ? 'Сохранить сравнение некуда: архив сравнений ведёт движок, а он не запущен. Набор живёт до перезагрузки страницы.'
+              ? 'Сохранить сравнение некуда: архив сравнений ведёт программа расчёта, а она не запущена. Набор живёт до перезагрузки страницы.'
               : short
                 ? `Для сравнения нужно хотя бы ${COMPARE_MIN} расчёта.`
                 : null}
@@ -378,7 +379,7 @@ export function CompareScreen({
           <span
             title={
               !engineAlive()
-                ? 'Сохранение недоступно: архив сравнений ведёт движок, а он не запущен'
+                ? 'Сохранение недоступно: архив сравнений ведёт программа расчёта, а она не запущена'
                 : undefined
             }
           >
@@ -516,11 +517,10 @@ function CompareGate({
           </span>
         </div>
 
-        <p className="clients__lede">
-          Сравнение отвечает на вопрос «чем эти планы отличались»: итоги рядом и ход дня по часам,
-          наложенный друг на друга. Соберите новый набор из базы расчётов или откройте тот, что
-          сохранили раньше.
-        </p>
+        <Lede first="Соберите новый набор из базы расчётов или откройте тот, что сохранили раньше.">
+          Сравнение отвечает на вопрос «чем эти планы отличались»: итоги рядом и ход дня по
+          часам, наложенный друг на друга.
+        </Lede>
 
         <div className="gate">
           <button
@@ -556,7 +556,7 @@ function CompareGate({
               {list.length === 0
                 ? engineAlive()
                   ? 'Пока ничего не сохранено. Соберите набор и нажмите «Сохранить сравнение».'
-                  : 'Архив сравнений ведёт движок, а он не запущен: сохранённых сравнений нет.'
+                  : 'Архив сравнений ведёт программа расчёта, а она не запущена: сохранённых сравнений нет.'
                 : 'Снимок набора, каким он был в день сохранения.'}
             </span>
             <span className="gate__go">

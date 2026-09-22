@@ -92,7 +92,7 @@ export function ManualDialog({ open, runCode, params, busy, failed, onClose, onR
         </div>
 
         <p className="engine__lede">
-          Тот же день, те же заявки и тот же штат — другие переменные. Движок разложит его заново и
+          Тот же день, те же заявки и тот же штат — другие настройки. Программа расчёта разложит его заново и
           заведёт ещё один расчёт: этот останется в архиве, и два варианта можно положить рядом. На
           остальные расчёты правка не влияет.
         </p>
@@ -115,18 +115,18 @@ export function ManualDialog({ open, runCode, params, busy, failed, onClose, onR
             {busy ? (
               <span className="createbar__busy">
                 <span className="createbar__spin" aria-hidden="true" />
-                Движок раскладывает день заново — около восьми секунд.
+                Идёт расчёт: день раскладывается заново — около восьми секунд.
               </span>
             ) : touched ? (
               <>
-                Переменные изменены.
+                Настройки изменены.
                 <button type="button" className="createbar__reset" onClick={() => setDraft(params)}>
                   Вернуть как было
                 </button>
               </>
             ) : (
               <>
-                Переменные те же, что у {runCode}. Правила движка — в настройках, они общие для
+                Настройки те же, что у {runCode}. Правила расчёта — в настройках, они общие для
                 всех расчётов.
                 <button
                   type="button"

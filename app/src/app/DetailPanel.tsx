@@ -233,7 +233,7 @@ function SelectedCard({ day, view, selection, onSelect, dispatcher }: Props) {
             <div className="minifunnel">
               <div className="ministage ministage--total">
                 <span className="ministage__value">{totals.visits}</span>
-                <span className="ministage__label">Визитов за день</span>
+                <span className="ministage__label">Заявок за день</span>
               </div>
               <div className="ministage">
                 <span className="ministage__value">{Math.round(load.occupancy * 100)}%</span>
@@ -241,11 +241,11 @@ function SelectedCard({ day, view, selection, onSelect, dispatcher }: Props) {
               </div>
               <div className="ministage">
                 <span className="ministage__value">{hhmm(totals.start)}</span>
-                <span className="ministage__label">Первый визит</span>
+                <span className="ministage__label">Первая заявка</span>
               </div>
               <div className="ministage">
                 <span className="ministage__value">{hhmm(totals.end)}</span>
-                <span className="ministage__label">Последний визит</span>
+                <span className="ministage__label">Последняя заявка</span>
               </div>
               <div className="ministage">
                 <span className="ministage__value">{hoursText(totals.work_minutes)}</span>

@@ -154,7 +154,7 @@ export function StatsScreen({ registry, active, onOpenRun }: Props) {
           </div>
           <div className="dbstat">
             <span className="dbstat__value">{totals.visits}</span>
-            <span className="dbstat__label">Визитов запланировано</span>
+            <span className="dbstat__label">Заявок запланировано</span>
           </div>
           <div className="dbstat">
             <span className="dbstat__value">{hoursText(totals.work)}</span>
@@ -238,7 +238,7 @@ function RunRow({ row, isActive, onOpen }: { row: RunStat; isActive: boolean; on
       </span>
       <span className="statsrun__value">{percent(row.occupancy)}</span>
       <span className="statsrun__facts">
-        разложено {row.assigned} из {row.orders} · {plural(row.visits, 'визит', 'визита', 'визитов')} ·{' '}
+        разложено {row.assigned} из {row.orders} · {plural(row.visits, 'заявка', 'заявки', 'заявок')} ·{' '}
         {row.engineersOnRoute} из {row.engineersTotal} инженеров на маршрутах · {hoursText(row.travelMinutes)} в
         дороге
         {isActive && (

@@ -46,11 +46,11 @@ type Sort = 'visits' | 'occupancy' | 'idle' | 'overtime' | 'name';
 const SORTS: (SortRule & { value: Sort; desc: boolean })[] = [
   {
     value: 'visits',
-    label: 'По визитам',
+    label: 'По заявкам',
     note: 'Кто везёт смену',
     desc: true,
-    up: 'Сначала с малым числом визитов',
-    down: 'Сначала с большим числом визитов'
+    up: 'Сначала с малым числом заявок',
+    down: 'Сначала с большим числом заявок'
   },
   {
     value: 'occupancy',
@@ -507,8 +507,8 @@ export function DbEngineersScreen({
       },
       {
         key: 'visits',
-        title: 'Визитов',
-        note: 'Сколько визитов инженеры отработали и как это менялось',
+        title: 'Заявок',
+        note: 'Сколько заявок инженеры отработали и как это менялось',
         shape: 'number',
         data: {
           value: String(visits),
@@ -518,7 +518,7 @@ export function DbEngineersScreen({
             `${Math.round(perRun(visits))} на расчёт`
           ],
           series: series((cell) => cell.visits),
-          legend: 'визитов'
+          legend: 'заявок'
         }
       },
       {
@@ -637,7 +637,7 @@ export function DbEngineersScreen({
       },
       {
         key: 'busiest',
-        title: 'Больше всех визитов',
+        title: 'Больше всех заявок',
         note: 'Кто везёт смену — инженеры с самой длинной выработкой',
         shape: 'bars',
         data: {
@@ -650,13 +650,13 @@ export function DbEngineersScreen({
             value: one.visits,
             tone: 'ok' as const
           })),
-          legend: 'визитов за срок'
+          legend: 'заявок за срок'
         }
       },
       {
         key: 'idle-people',
         title: 'Чаще всех без маршрута',
-        note: 'Кого движок не берёт в план — и сколько раз',
+        note: 'Кого расчёт не берёт в план — и сколько раз',
         shape: 'bars',
         data: {
           value: String(byIdle[0]?.idle ?? 0),
@@ -902,7 +902,7 @@ export function DbEngineersScreen({
                   <th>Телефон</th>
                   <th>В расчётах</th>
                   <th>Маршрутов</th>
-                  <th>Визитов</th>
+                  <th>Заявок</th>
                   <th>В дороге</th>
                   <th>В работе</th>
                   <th>Сверх смены</th>
@@ -1078,7 +1078,7 @@ export function DbEngineersScreen({
               ),
               cells: [
                 { label: 'Смен', value: `${engineer.routes}/${engineer.runs}` },
-                { label: 'Визитов', value: engineer.visits },
+                { label: 'Заявок', value: engineer.visits },
                 { label: 'В работе', value: hoursText(engineer.workMinutes) },
                 { label: 'В дороге', value: hoursText(engineer.travelMinutes) },
                 {

@@ -82,7 +82,7 @@ export const NAV: NavGroup[] = [
   {
     title: 'Планирование',
     items: [
-      { id: 'home', label: 'Дашборд', icon: 'house' },
+      { id: 'home', label: 'Главная', icon: 'house' },
       { id: 'dispatch', label: 'Диспетчерская', icon: 'gauge' }
     ]
   },
@@ -135,7 +135,7 @@ export const SUBHEADER: Record<SectionId, { title: string; views: { value: strin
   /* У дашборда и мониторинга вид один: каждый — самостоятельный экран, а не
      набор вкладок над общей темой. Подшапка это понимает и переключатель
      тогда не рисует. */
-  home: { title: 'Дашборд', views: [] },
+  home: { title: 'Главная', views: [] },
   dispatch: {
     title: 'Диспетчерская',
     /* Обзор стоит первым и потому открывается сам: диспетчерская встречает
@@ -147,9 +147,9 @@ export const SUBHEADER: Record<SectionId, { title: string; views: { value: strin
     views: [
       { value: 'overview', label: 'Обзор' },
       { value: 'summary', label: 'Сводка' },
-      { value: 'timeline', label: 'Гант' },
+      { value: 'timeline', label: 'По времени' },
       { value: 'map', label: 'Карта' },
-      { value: 'kanban', label: 'Канбан' }
+      { value: 'kanban', label: 'По этапам' }
     ]
   },
   monitor: { title: 'Мониторинг', views: [] },
@@ -247,7 +247,7 @@ export const SUBHEADER: Record<SectionId, { title: string; views: { value: strin
   engine: {
     title: 'Настройки',
     views: [
-      { value: 'rules', label: 'Движок' },
+      { value: 'rules', label: 'Правила расчёта' },
       { value: 'service', label: 'Сервис' },
       { value: 'data', label: 'Данные' }
     ]

@@ -203,7 +203,7 @@ export function plural(n: number, one: string, few: string, many: string) {
   return `${n} ${pluralWord(n, one, few, many)}`;
 }
 
-export const visits = (n: number) => plural(n, 'визит', 'визита', 'визитов');
+export const visits = (n: number) => plural(n, 'заявка', 'заявки', 'заявок');
 export const stops = (n: number) => plural(n, 'остановка', 'остановки', 'остановок');
 export const engineers = (n: number) => plural(n, 'инженер', 'инженера', 'инженеров');
 export const orders = (n: number) => plural(n, 'заявка', 'заявки', 'заявок');
@@ -431,7 +431,7 @@ export const STAGE_META: Record<StageKey, { label: string; tone: Stage['tone']; 
   overdue: {
     label: 'Прогноз срыва',
     tone: 'danger',
-    hint: 'Оценка движка, а не факт: по этим заявкам план выходит за крайний срок, и они сорвутся с той или иной вероятностью. Сколько на самом деле, покажет смена'
+    hint: 'Оценка расчёта, а не факт: по этим заявкам план выходит за крайний срок, и они сорвутся с той или иной вероятностью. Сколько на самом деле, покажет смена'
   },
   /* Факт из журнала, а не оценка: диспетчер отметил, что заявка сорвалась.
      В «Прогноз срыва» её класть нельзя — там вероятность, и факт в нём
@@ -495,7 +495,7 @@ const REASON_LABELS: Record<string, string> = {
   no_show: 'Абонента не было дома',
   missed_window: 'Приехали после закрытия окна',
   no_access: 'Не попали в подъезд',
-  dropped: 'Смена кончилась раньше визита'
+  dropped: 'Не успели до конца смены'
 };
 
 /** Раскладывает назначенные заявки по взаимоисключающим этапам на момент среза.
@@ -1450,7 +1450,7 @@ export function buildCrewBoard(view: DayView): CrewBoard {
         label: 'С маршрутом',
         icon: 'check-circle',
         value: onShift.length,
-        note: 'Движок дал заявки',
+        note: 'Расчёт дал заявки',
         tone: 'success',
         groupKey: 'crew-onshift',
         orderIds: onShift.map((l) => l.engineer.id)
@@ -1470,7 +1470,7 @@ export function buildCrewBoard(view: DayView): CrewBoard {
         label: 'Свободны',
         icon: 'info',
         value: free.length,
-        note: 'Движок не дал ни одной заявки',
+        note: 'Расчёт не дал ни одной заявки',
         tone: 'accent',
         groupKey: 'crew-free',
         orderIds: free.map((l) => l.engineer.id)

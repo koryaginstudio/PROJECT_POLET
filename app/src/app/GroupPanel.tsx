@@ -460,7 +460,7 @@ function shapeOf(groupId: string, view: DayView, cut: number, day: Day): Shape |
         eyebrow: 'Инженеры',
         title: 'Свободны',
         flat: true,
-        sections: [{ key: 'free', label: 'Ни одного визита за день', engineerIds: crew.freeIds }]
+        sections: [{ key: 'free', label: 'Ни одной заявки за день', engineerIds: crew.freeIds }]
       };
     case 'tight':
       return {
@@ -479,7 +479,7 @@ function shapeOf(groupId: string, view: DayView, cut: number, day: Day): Shape |
       };
     case 'fragile':
       return {
-        eyebrow: 'Симуляция',
+        eyebrow: 'Прогноз дня',
         title: 'Прозвонить на завтра',
         flat: true,
         sections: [
@@ -492,7 +492,7 @@ function shapeOf(groupId: string, view: DayView, cut: number, day: Day): Shape |
       };
     case 'reasons':
       return {
-        eyebrow: 'Симуляция',
+        eyebrow: 'Прогноз дня',
         title: 'Причины срывов',
         sections: [],
         facts: view.reasons.map((reason) => ({

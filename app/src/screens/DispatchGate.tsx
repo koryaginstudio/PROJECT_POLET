@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Icon } from '../ds/components/core/Icon.jsx';
+import { Lede } from '../app/Lede.tsx';
 import { Badge } from '../ds/components/core/Badge.jsx';
 import type { RunId, DaySummary } from '../data/load.ts';
 import { whenLabel } from '../data/load.ts';
@@ -65,11 +66,10 @@ export function DispatchGate({ runs, activeRun, onCreate, onOpen }: Props) {
             </span>
           </div>
 
-          <p className="clients__lede">
-            Диспетчерская — это работа с планом: движок раскладывает заявки по инженерам, а вы
-            смотрите, что получилось, и правите. Начните с нового расчёта или откройте один из
-            посчитанных раньше.
-          </p>
+          <Lede first="Начните с нового расчёта или откройте один из посчитанных раньше.">
+            Диспетчерская — это работа с планом: программа расчёта раскладывает заявки по
+            инженерам, а вы смотрите, что получилось, и правите.
+          </Lede>
 
           <div className="gate">
             <button type="button" className="gate__card gate__card--accent" onClick={onCreate}>
@@ -78,7 +78,7 @@ export function DispatchGate({ runs, activeRun, onCreate, onOpen }: Props) {
               </span>
               <span className="gate__title">Создать расчёт</span>
               <span className="gate__note">
-                Задать переменные движка и разложить заявки по инженерам заново.
+                Задать правила расчёта и разложить заявки по инженерам заново.
               </span>
               <span className="gate__go">
                 Дальше
@@ -165,6 +165,7 @@ export function DispatchGate({ runs, activeRun, onCreate, onOpen }: Props) {
                     onClick={() => setSearching(true)}
                   >
                     <Icon name="search" size={14} />
+                    <span>Найти</span>
                   </button>
                 </>
               )}

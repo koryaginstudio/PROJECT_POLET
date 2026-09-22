@@ -511,7 +511,7 @@ export function DbServicesScreen({ registry, mode, onOpenRun }: Props) {
       {
         key: 'transport',
         title: 'Требуют автомобиль',
-        note: 'Сколько услуг связывает движку руки: их возьмёт только инженер с машиной',
+        note: 'Сколько услуг связывает расчёту руки: их возьмёт только инженер с машиной',
         shape: 'number',
         data: {
           value: String(needCar.length),
