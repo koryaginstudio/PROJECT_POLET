@@ -206,6 +206,13 @@ const serviceHit = (service: ServiceRecord, found: Probe): Hit => ({
     Запрос короче двух знаков не ищем: по одной букве находится половина
     базы, и список подсказок становится шумом. Исключение — цифры: «12» это
     уже осмысленный хвост номера. */
+/** Лучшая из двух находок. Запрос из одних цифр — и номер, и хвост
+    телефона: у заказчика номера заявок чисто цифровые («52405»), и прежде
+    такой запрос искался только среди телефонов — заявку по номеру было не
+    найти. Точный номер весит больше телефона и встаёт первым. */
+const лучшая = (a: Probe | null, b: Probe | null): Probe | null =>
+  !a ? b : !b ? a : a.rank <= b.rank ? a : b;
+
 export function findAll(registry: Registry | null, raw: string): Hit[] {
   const query = norm(raw.trim());
   if (!registry || query.length < 2) return [];
@@ -214,9 +221,9 @@ export function findAll(registry: Registry | null, raw: string): Hit[] {
   const found: Hit[] = [];
 
   for (const order of registry.orders) {
-    const hit = phone
-      ? probePhone(phone, [['телефон', order.contactPhone]])
-      : probe(query, order.id, order.workTitle, [
+    const hit = лучшая(
+      phone ? probePhone(phone, [['телефон', order.contactPhone]]) : null,
+      probe(query, order.id, order.workTitle, [
           ['адрес', order.address],
           ['клиент', order.company],
           ['контакт', order.contactName],
@@ -225,14 +232,13 @@ export function findAll(registry: Registry | null, raw: string): Hit[] {
           ['расчёт', order.run.code],
           ['район', order.district],
           ['навык', order.skill]
-        ]);
+        ])
+    );
     if (hit) found.push(orderHit(order, hit));
   }
 
   for (const client of registry.clients) {
-    const hit = phone
-      ? null
-      : probe(query, client.code, client.company, [
+    const hit = probe(query, client.code, client.company, [
           ['адрес', client.address],
           ['район', client.district]
         ]);
@@ -240,21 +246,20 @@ export function findAll(registry: Registry | null, raw: string): Hit[] {
   }
 
   for (const engineer of registry.engineers) {
-    const hit = phone
-      ? probePhone(phone, [['телефон', engineer.phone]])
-      : probe(query, engineer.code, engineer.name, [
+    const hit = лучшая(
+      phone ? probePhone(phone, [['телефон', engineer.phone]]) : null,
+      probe(query, engineer.code, engineer.name, [
           ['бригада', engineer.team],
           ['участок', engineer.zone],
           ['выезжает из', engineer.homeAddress],
           ['навык', engineer.skills.join(' ')]
-        ]);
+        ])
+    );
     if (hit) found.push(engineerHit(engineer, hit));
   }
 
   for (const route of registry.routes) {
-    const hit = phone
-      ? null
-      : probe(query, route.code, route.engineerName, [
+    const hit = probe(query, route.code, route.engineerName, [
           ['табельный', route.engineerId],
           ['расчёт', route.run.code],
           ['район', route.districts.join(' ')],
@@ -266,9 +271,7 @@ export function findAll(registry: Registry | null, raw: string): Hit[] {
   }
 
   for (const service of registry.services) {
-    const hit = phone
-      ? null
-      : probe(query, service.key, service.title, [
+    const hit = probe(query, service.key, service.title, [
           ['навык', service.skill],
           ['оборудование', service.equipment.join(' ')]
         ]);
@@ -276,7 +279,7 @@ export function findAll(registry: Registry | null, raw: string): Hit[] {
   }
 
   for (const run of registry.runs) {
-    const hit = phone ? null : probe(query, run.code, run.code, [['дата', run.date], ['заметка', run.note]]);
+    const hit = probe(query, run.code, run.code, [['дата', run.date], ['заметка', run.note]]);
     if (hit) {
       found.push({
         kind: 'run',
