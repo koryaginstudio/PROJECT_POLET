@@ -2,12 +2,12 @@ import { useState } from "react";
 import { Icon } from "../ds/components/core/Icon.jsx";
 import type { Bounds, RouteRecord, RunStat, RunRef } from "../data/registry.ts";
 import type { RunId } from "../data/load.ts";
-import { runCode, shortStamp, stampOf } from "../data/load.ts";
+import { shortStamp, stampOf } from "../data/load.ts";
 import { dec, hoursText } from "../data/derive.ts";
 import { RunMap } from "./RunMap.tsx";
 import { WhyMark } from "./WhyMark.tsx";
 import { service } from "../data/service.ts";
-import { toggleDuty, useDuty } from "../data/duty.ts";
+import { DutyButton } from "./DutyButton.tsx";
 
 interface Props {
   row: RunStat;
@@ -118,13 +118,6 @@ export function RunCard({
   /* Граница «плохо» — та же, что у покрытия в настройках сервиса: два числа
      об одном и том же не должны краснеть по разным правилам. */
   const poor = row.assignedShare * 100 < service().thresholds.coverageBad;
-  /* Взят ли этот расчёт в работу на свой день — и если нет, то кто взят.
-     Второе нужно подсказке: «взять» и «отобрать день у соседа» это разные
-     поступки, и кнопка обязана сказать, какой из них сейчас предлагает. */
-  const day = useDuty();
-  const working = Boolean(row.run.date) && day[row.run.date] === row.run.id;
-  const heldBy = row.run.date ? day[row.run.date] : undefined;
-  const held = heldBy && heldBy !== row.run.id ? runCode(heldBy) : null;
   /* Инженеры, которых расчёт поставил в дело: по одному маршруту на человека,
      поэтому список маршрутов и список занятых людей — одна и та же выборка с
      двух сторон. Вышедшие на смену, но оставшиеся без маршрута, сюда не
@@ -515,25 +508,9 @@ export function RunCard({
               Фирменный оранжевый в этой системе значит «вот этот, с ним
               сейчас работают», и взятый расчёт красится им: другого такого же
               в ряду не будет — день у расчёта один, и хозяин у дня один. */}
-          {showCompare && (
-            <button
-              type="button"
-              className={"runcard__act runcard__duty" + (working ? " runcard__duty--on" : "")}
-              onClick={() => toggleDuty(row.run.id, row.run.date)}
-              aria-pressed={working}
-              disabled={!row.run.date}
-              title={
-                working
-                  ? `Снять ${row.run.code} с работы: у ${dayOf(row.run.date)} не останется рабочего расчёта`
-                  : held
-                    ? `Взять ${row.run.code} в работу на ${dayOf(row.run.date)}: сейчас на этом дне работает ${held}`
-                    : `Взять ${row.run.code} в работу на ${dayOf(row.run.date)}`
-              }
-            >
-              <Icon name={working ? "check-circle" : "calendar"} size={13} />
-              {working ? "В работе" : "В работу"}
-            </button>
-          )}
+          {/* Вопрос перед снятием с работы и перехватом дня — тот же, что в
+              подшапке плана: одно действие ведёт себя одинаково везде. */}
+          {showCompare && <DutyButton run={row.run.id} date={row.run.date} place="card" />}
           {showCompare && (
             <button
               type="button"

@@ -93,7 +93,7 @@ const SORTS: (SortRule & { value: Sort; desc: boolean })[] = [
 
 /* Отбор по тому, чего услуга требует от плана: нужна ли под неё машина, надо
    ли везти оборудование и пускают ли внутрь. Это и есть то, чем услуга
-   связывает расчёту руки. */
+   связывает движку руки. */
 type Filter = 'all' | 'car' | 'gear' | 'access' | 'urgent' | 'loose';
 
 const FILTERS: { value: Filter; label: string }[] = [

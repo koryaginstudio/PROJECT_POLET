@@ -319,14 +319,14 @@ export function RouteCard({
                 key={id}
                 type="button"
                 className="chip chip--sm"
-                title={`Заявка № ${index + 1} — открыть заявку ${id}`}
+                title={`${index + 1}-я по порядку — открыть заявку ${id}`}
                 onClick={() => onOpenOrder(id)}
               >
                 <Icon name="clipboard-list" size={12} />
                 {id}
               </button>
             ) : (
-              <span key={id} className="chip chip--sm" title={`Заявка № ${index + 1} — заявка ${id}`}>
+              <span key={id} className="chip chip--sm" title={`${index + 1}-я по порядку — заявка ${id}`}>
                 <Icon name="clipboard-list" size={12} />
                 {id}
               </span>

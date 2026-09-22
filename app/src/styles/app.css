@@ -1093,6 +1093,8 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 5px;
+  /* Цель нажатия не ниже малой кнопки дизайн-системы. */
+  min-height: var(--control-h-sm);
   padding: 4px 10px;
   border: 1px solid var(--border-hairline);
   border-radius: var(--r-pill);
@@ -1689,34 +1691,56 @@ body {
   border-color: var(--ink-300);
 }
 
-/* Расчёт, взятый в работу на свой день.
-
-   Красится фирменным оранжевым, и это единственное оранжевое пятно в ряду:
-   день у расчёта один, хозяин у дня один, и двух таких кнопок подряд не
-   бывает. Тот же цвет и тот же смысл, что у «Перейти» в «Сравнении», —
-   «вот этот, с ним сейчас работают». Текст тёмный: белый по оранжевому не
-   читается.
-
-   Отбор к сравнению рядом остаётся тихим нарочно: отобранных бывает пять
-   сразу, и пять цветных плашек в ряду спорили бы с единственной, которая
-   говорит о деле. */
-.runcard__duty--on {
-  border-color: var(--accent-500);
-  background: var(--accent-500);
-  color: var(--ink-1000);
-  font-weight: var(--fw-semibold);
+/* Кнопка «В работу» с вопросом перед необратимым (DutyButton) — общая для
+   подшапки плана и карточки расчёта. Вопрос встаёт на место кнопки. Текст
+   вопроса основного кегля и не режется многоточием: главное в нём — кому
+   передаётся день, и это диспетчер должен прочесть целиком. */
+.duty {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
 }
 
-.runcard__duty--on:hover:not(:disabled) {
-  border-color: var(--accent-600);
-  background: var(--accent-600);
+.duty__main {
+  display: inline-flex;
 }
 
-/* Расчёт без дня в работу не берут: брать его не на что. Такого в наборах не
-   встречается, но запись без даты запрещена не жёстче прочих. */
-.runcard__duty:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
+.duty__ask {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.duty__ask-text {
+  font-size: var(--fs-body-s);
+  line-height: 1.3;
+  color: var(--text-primary);
+}
+
+.duty__ask-btns {
+  display: inline-flex;
+  gap: var(--sp-2);
+  flex: 0 0 auto;
+}
+
+/* В подшапке вопрос не ужимается: сжимается лента расчётов слева, а текст
+   при нехватке места переносится на вторую строку. */
+.duty--bar {
+  flex: 0 0 auto;
+}
+
+.duty--bar .duty__ask-text {
+  max-width: 40ch;
+}
+
+/* В карточке места мало: вопрос занимает всю строку под кнопками, текст
+   сверху, ответы под ним. */
+.duty--card:has(.duty__ask) {
+  flex: 1 0 100%;
+}
+
+.duty--card .duty__ask {
+  flex-wrap: wrap;
 }
 
 /* Сетка отобранных в «Сравнении»: ровно четыре места, сколько бы ни было
@@ -9570,11 +9594,14 @@ b.ccard__bad {
   background: transparent;
   padding: 0;
   font-family: var(--font-sans);
-  font-size: var(--fs-small);
+  font-size: var(--fs-caption);
   color: var(--text-muted);
 }
 
+/* «Вернуть заводское» — ссылка по виду, но цель нажатия полной высоты:
+   попасть по строчке текста в 13px трудно. */
 .rule__factory--on {
+  min-height: var(--control-h-sm);
   color: var(--text-primary);
   text-decoration: underline;
   text-underline-offset: 2px;
@@ -11464,7 +11491,7 @@ b.ccard__bad {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 28px;
+  height: var(--control-h-sm);
   padding: 0 12px;
   border: 1px solid var(--border-hairline);
   border-radius: var(--r-pill);
@@ -11840,7 +11867,7 @@ b.ccard__bad {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  height: 28px;
+  height: var(--control-h-sm);
   padding: 0 11px;
   border: 1px solid var(--border-hairline);
   border-radius: var(--r-pill);
@@ -13410,10 +13437,18 @@ b.ccard__bad {
 }
 
 .chip--sm {
-  height: 22px;
+  height: 24px;
   padding: 0 8px;
   gap: 4px;
-  font-size: var(--fs-small);
+  font-size: var(--fs-caption);
+}
+
+/* Нажимаемый малый чип — полной высоты цели нажатия: переход к маршруту и
+   выбор навыка делаются рукой пятидесятилетнего диспетчера, а не пинцетом.
+   Некликабельные метки остаются плотными — по ним не попадают. */
+button.chip--sm {
+  height: auto;
+  min-height: var(--control-h-sm);
 }
 
 /* Фотография на месте карты дня. Пропорция та же, что у карты в карточке
@@ -13523,28 +13558,6 @@ b.ccard__bad {
    кнопки в карточке расчёта: одно действие, один вид — где бы его ни нажали.
    В спокойном виде тихая, светлая; взятый расчёт красится фирменным
    оранжевым — «вот этот, с ним сейчас работают». */
-.subhdr__duty {
-  flex: 0 0 auto;
-}
-
-/* Вопрос у кнопки «В работу»: встаёт на её место, пока не ответят. Текст
-   основного кегля — это решение про весь день, его должны прочесть. */
-.subhdr__ask {
-  flex: 0 1 auto;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-2);
-  min-width: 0;
-}
-
-.subhdr__ask-text {
-  font-size: var(--fs-body-s);
-  color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 /* «Закрыть» в подшапке. Тихий, без рамки: служебный выход из плана, а не
    действие с планом. Отодвинут от «В работу» на шаг сетки, чтобы не
    попадать в него вместо главной кнопки. */
@@ -13875,7 +13888,7 @@ b.ccard__bad {
   display: inline-flex;
   align-items: center;
   gap: var(--sp-2);
-  height: 30px;
+  height: var(--control-h-sm);
   padding: 0 var(--sp-3);
   border: 1px solid var(--border-hairline);
   border-radius: var(--r-pill);

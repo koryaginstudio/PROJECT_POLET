@@ -883,7 +883,7 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
                   >
                     <td>
                       <span className="tbl__strong">{order.id}</span>
-                      {order.seq !== null && <span className="tbl__sub">Заявка № {order.seq + 1}</span>}
+                      {order.seq !== null && <span className="tbl__sub">№ {order.seq + 1} в маршруте</span>}
                     </td>
                     <td>
                       <span className="tbl__strong">{order.run.code}</span>

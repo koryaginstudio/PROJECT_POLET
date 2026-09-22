@@ -241,7 +241,7 @@ export function buildReport(day: Day, run: RunEntry): Sheet[] {
         'Закреплена за',
         'В плане',
         'Инженер',
-        '№ заявки',
+        '№ в маршруте',
         'Приезд',
         'Начало',
         'Конец',
@@ -309,7 +309,7 @@ export function buildReport(day: Day, run: RunEntry): Sheet[] {
     rows: [
       [
         'Инженер',
-        '№ заявки',
+        '№ в маршруте',
         'Заявка',
         'Что делаем',
         'Адрес',

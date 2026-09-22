@@ -155,14 +155,18 @@ export async function engineWarming(): Promise<EngineWarming | null> {
 }
 
 export class EngineError extends Error {
-  constructor(message: string) {
+  /** Техническое — код ответа и прочее — для «Подробностей», а не для
+      основного текста: диспетчеру нужно «что случилось» и «что делать». */
+  readonly detail?: string;
+  constructor(message: string, detail?: string) {
     super(message);
     this.name = 'EngineError';
+    this.detail = detail;
   }
 }
 
 async function call<T>(path: string, init?: RequestInit, timeout = CALL_TIMEOUT): Promise<T> {
-  if (!base) throw new EngineError('Программа расчёта не запущена');
+  if (!base) throw new EngineError('Программа расчёта не запущена. Попросите администратора запустить её и повторите.');
   let response: Response;
   try {
     response = await fetch(`${base}${path}`, { ...init, signal: AbortSignal.timeout(timeout) });
@@ -171,7 +175,7 @@ async function call<T>(path: string, init?: RequestInit, timeout = CALL_TIMEOUT)
        движок есть, но занят или завис, и «проверьте, что запущен» здесь
        посылает искать не там. */
     if ((error as { name?: string })?.name === 'TimeoutError') {
-      throw new EngineError(`Программа расчёта не ответила за ${Math.round(timeout / 1000)} с`);
+      throw new EngineError(`Программа расчёта не ответила за ${Math.round(timeout / 1000)} с. Подождите минуту и повторите.`);
     }
     throw new EngineError('Программа расчёта не отвечает — подождите минуту и повторите');
   }
@@ -179,11 +183,11 @@ async function call<T>(path: string, init?: RequestInit, timeout = CALL_TIMEOUT)
   try {
     body = await response.json();
   } catch {
-    throw new EngineError(`Программа расчёта ответила с ошибкой (${response.status})`);
+    throw new EngineError('Программа расчёта ответила с ошибкой. Повторите через минуту.', `код ответа ${response.status}, ответ не JSON`);
   }
   if (!response.ok) {
     const said = (body as { error?: string }).error;
-    throw new EngineError(said ?? `Программа расчёта ответила с ошибкой ${response.status}`);
+    throw new EngineError(said ?? 'Программа расчёта ответила с ошибкой. Повторите через минуту.', `код ответа ${response.status}`);
   }
   return body as T;
 }

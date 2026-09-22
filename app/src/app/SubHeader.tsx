@@ -1,11 +1,10 @@
-import { useState } from 'react';
 import { SegmentedControl } from '../ds/components/forms/SegmentedControl.jsx';
 import { Button } from '../ds/components/core/Button.jsx';
 import { Icon } from '../ds/components/core/Icon.jsx';
 import { RunTabs } from './RunTabs.tsx';
 import type { RunId, DaySummary } from '../data/load.ts';
-import { runCode, runDate } from '../data/load.ts';
-import { dropDuty, holderOf, onDuty, takeDuty, useDuty } from '../data/duty.ts';
+import { runDate } from '../data/load.ts';
+import { DutyButton } from './DutyButton.tsx';
 import { isCrossRun, isRunScoped, SUBHEADER } from './nav.ts';
 import type { SectionId } from './nav.ts';
 import { COMPARE_MAX } from './compare.ts';
@@ -51,36 +50,10 @@ export function SubHeader({
      расчёт, а набирает их несколько. Место у неё одно и то же — подшапка, —
      и это правильно: там её ищут глазами в любом разделе. */
   const picking = section === 'compare';
-  /* Взят ли открытый расчёт в работу на свой день. Кнопка стоит там же, где
-     диспетчер с планом и работает, — решение «этот и берём» принимают,
-     глядя на план, а не на карточку в справочнике. Обе кнопки правят одно и
-     то же хранилище, поэтому нажатая здесь тут же видна и в базе. */
-  /* Подписка нужна ради перерисовки: кто держит день, спрашивают у слоя
-     данных по расчёту и дате — день считается по участку, а не по календарю. */
-  useDuty();
+  /* Дата открытого расчёта: кнопке «В работу» нужен день, на который его
+     берут. Вопрос перед необратимым и сама логика — в DutyButton, общем с
+     карточкой расчёта в базе. */
   const date = onCloseRun ? runDate(activeRun) : '';
-  const working = onDuty(activeRun, date);
-  const heldBy = holderOf(activeRun, date);
-  const held = heldBy && heldBy !== activeRun ? runCode(heldBy) : null;
-  const dayText = date.split('-').reverse().join('.');
-  /* Что спрашиваем прямо у кнопки. Необратимое без вопроса не делается:
-     снять расчёт с работы — день останется без рабочего плана, взять чужой
-     день — прежний расчёт молча станет черновиком. Раньше обо всём этом
-     говорила только всплывающая подсказка, а её за секунду не прочтёшь.
-     Вопрос помнит, про какой расчёт задан: переключились на другой в
-     ленте — старый вопрос к нему не относится и пропадает сам. */
-  const [asking, setAsking] = useState<{ kind: 'drop' | 'take'; run: RunId } | null>(null);
-  const ask = asking && asking.run === activeRun ? asking.kind : null;
-  const onDutyClick = () => {
-    if (working) setAsking({ kind: 'drop', run: activeRun });
-    else if (held) setAsking({ kind: 'take', run: activeRun });
-    else takeDuty(activeRun, date);
-  };
-  const confirmDuty = () => {
-    if (ask === 'drop') dropDuty(activeRun, date);
-    else if (ask === 'take') takeDuty(activeRun, date);
-    setAsking(null);
-  };
   return (
     <div className="subhdr">
       <span className="subhdr__title">{config.title}</span>
@@ -113,35 +86,7 @@ export function SubHeader({
           Подпись меняется с «В работу» на «В работе»: первое — что кнопка
           сделает, второе — что уже сделано. Оранжевый в этой системе значит
           «вот этот, с ним сейчас работают», и здесь он ровно об этом. */}
-      {onCloseRun && date && ask && (
-        <span className="subhdr__ask" role="alertdialog" aria-live="polite">
-          <span className="subhdr__ask-text">
-            {ask === 'take'
-              ? `День ${dayText} сейчас ведёт ${held}. Передать его ${runCode(activeRun)}?`
-              : `Снять ${runCode(activeRun)} с работы? У ${dayText} не останется рабочего расчёта.`}
-          </span>
-          <Button variant="primary" size="sm" onClick={confirmDuty}>
-            {ask === 'take' ? 'Передать' : 'Снять'}
-          </Button>
-          <Button variant="secondary" size="sm" onClick={() => setAsking(null)}>
-            Отмена
-          </Button>
-        </span>
-      )}
-      {/* Главное действие дня — поэтому кнопка обычного размера дизайн-системы
-          (32px), а не служебная пилюля: до взятия — с рамкой, после — в
-          акцентной заливке с галочкой, чтобы «этот в работе» читалось издалека. */}
-      {onCloseRun && date && !ask && (
-        <Button
-          variant={working ? 'accent' : 'secondary'}
-          size="sm"
-          className="subhdr__duty"
-          onClick={onDutyClick}
-          iconLeft={<Icon name={working ? 'check-circle' : 'calendar'} size={16} />}
-        >
-          {working ? 'В работе' : 'В работу'}
-        </Button>
-      )}
+      {onCloseRun && date && <DutyButton run={activeRun} date={date} place="bar" />}
 
       {/* Крестик закрывает расчёт и возвращает диспетчерскую к выбору
           действия. Стоит в конце строки, за лентой: это не работа с планом, а
@@ -156,7 +101,7 @@ export function SubHeader({
           onClick={onCloseRun}
           iconLeft={<Icon name="x" size={16} />}
         >
-          Закрыть
+          Закрыть расчёт
         </Button>
       )}
     </div>

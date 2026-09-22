@@ -185,12 +185,11 @@ export function SettingsScreen({ mode, registry, onEditsCleared, onHistoryCleare
           <div className="dash__section-head">
             <h2 className="dash__section-title">Правки записей</h2>
           </div>
-          <p className="clients__lede">
+          <Lede first="Правки номера, времени и заметки хранятся в этом браузере — на другом компьютере их не будет.">
             Номер, время создания и заметку у расчёта заводит человек, программа расчёта их не считает.
-            Такие правки хранятся в этом браузере, и на другом компьютере их не будет.
             Исключение — заметка к настоящему расчёту: её программа расчёта кладёт к себе рядом с планом,
             поэтому она переживает и смену браузера.
-          </p>
+          </Lede>
 
           <div className="setrow">
             <span className="setrow__key">Правленых записей</span>
