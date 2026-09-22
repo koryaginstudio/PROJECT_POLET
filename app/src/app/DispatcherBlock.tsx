@@ -24,8 +24,9 @@ export interface DispatcherActions {
   dayStart: number;
   /** Идёт запись события. */
   busy: boolean;
-  /** Чем кончилась неудачная запись и по какой заявке — словами движка. */
-  failed: { order: string; message: string } | null;
+  /** Чем кончилась неудачная запись и по какой заявке: фраза для человека
+      и слова движка (по ним узнаются известные отказы). */
+  failed: { order: string; message: string; detail: string } | null;
   onEvent: (event: JournalEvent) => void;
 }
 
@@ -200,8 +201,11 @@ export function DispatcherBlock({
      диспетчеру позвонили «сделал» — трёх событий подряд на одну минуту
      не нужно. Кнопка вторичная: главная по-прежнему одна. */
   const canFinishEarly = status === 'назначено' || status === 'отправлено';
-  const failed = dispatcher.failed?.order === order.id ? dispatcher.failed.message : null;
-  const failedText = failed ? explainRefusal(failed, nameOf) : null;
+  const failed = dispatcher.failed?.order === order.id ? dispatcher.failed : null;
+  /* Известный отказ — его именем; иначе — фраза для человека: «программа
+     расчёта не отвечает» и есть то, что надо делать, а не «проверьте
+     статус». */
+  const failedText = failed ? explainRefusal(failed.detail, nameOf) ?? failed.message : null;
 
   return (
     <section className="dispatch">
@@ -224,9 +228,15 @@ export function DispatcherBlock({
         {holder && !stale && <span className="dispatch__who">{nameOf(holder)}</span>}
       </div>
 
+      {/* Имя — в именительном: «закреплена за Артём Белов» не по-русски, а
+          склонять фамилии в коде ненадёжно. Закреплённая, но не вставшая
+          заявка прежде читалась «пересчёт её не отнимет» — при том что в
+          маршруте её нет: движок не нашёл ей места у этого инженера. */}
       {order.locked_to && (
         <p className="dispatch__line">
-          Закреплена за {nameOf(order.locked_to)} — пересчёт её не отнимет
+          {order.assigned_to
+            ? `Закрепил диспетчер: ${nameOf(order.locked_to)} — пересчёт её не отнимет`
+            : `Закрепил диспетчер: ${nameOf(order.locked_to)}, но в маршрут она не встала — причина ниже. Отдайте её другому инженеру`}
         </p>
       )}
 
@@ -235,7 +245,9 @@ export function DispatcherBlock({
           <Icon name="alert-triangle" size={16} />
           <span>
             {holder
-              ? `По журналу заявка у ${nameOf(holder)}: сначала закрепите`
+              ? shown
+                ? `По журналу исполнитель — ${nameOf(holder)}, а в плане на экране стоит ${nameOf(shown)}: сначала закрепите, кто поедет`
+                : `По журналу исполнитель — ${nameOf(holder)}, а в плане на экране её нет: план посчитан раньше последних событий`
               : 'По журналу заявка ни за кем не числится: сначала закрепите'}
           </span>
           {canPickShown && shown && (
@@ -366,12 +378,13 @@ export function DispatcherBlock({
         <div className="solvefail">
           <Icon name="alert-triangle" size={16} />
           <span>
-            <b>Событие не записано.</b>{' '}
-            {failedText ?? 'Проверьте статус заявки и время на шкале и попробуйте ещё раз.'}
-            <details className="dispatch__more">
-              <summary>Подробности</summary>
-              {failed}
-            </details>
+            <b>Событие не записано.</b> {failedText}
+            {failed.detail && (
+              <details className="dispatch__more">
+                <summary>Подробности</summary>
+                {failed.detail}
+              </details>
+            )}
           </span>
         </div>
       )}

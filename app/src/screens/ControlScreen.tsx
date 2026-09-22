@@ -195,6 +195,9 @@ export function ControlScreen({
      Поэтому — вопрос на месте, как «Удалить запись?» в правке записи. */
   const [confirmReset, setConfirmReset] = useState(false);
   const [resetFailed, setResetFailed] = useState<string | null>(null);
+  /* Сброс удался — сказать об этом. Прежде после «Да, сбросить» вопрос
+     просто пропадал, и было не понять, стёрлось ли. */
+  const [resetDone, setResetDone] = useState(false);
 
   useEffect(() => {
     setStaffing(null);
@@ -216,6 +219,7 @@ export function ControlScreen({
     try {
       await resetJournal(day, base);
       setConfirmReset(false);
+      setResetDone(true);
       onJournalReset();
     } catch (failure) {
       /* Прежде ошибка сброса терялась: кнопка возвращалась в покой, и было
@@ -440,12 +444,19 @@ export function ControlScreen({
               size="sm"
               onClick={() => {
                 setResetFailed(null);
+                setResetDone(false);
                 setConfirmReset(true);
               }}
               iconLeft={<Icon name="trash" size={14} />}
             >
               Сбросить события дня
             </Button>
+          )}
+          {resetDone && !confirmReset && (
+            <div className="ctrlnote">
+              <Icon name="check-circle" size={16} />
+              <span>События дня сброшены: день вернулся к утреннему плану.</span>
+            </div>
           )}
           {resetFailed && (
             <Failure

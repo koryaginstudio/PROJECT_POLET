@@ -70,7 +70,7 @@ import { dropDuty } from '../data/duty.ts';
 import { OVERVIEW } from './selection.ts';
 import type { Selection } from './selection.ts';
 import { DayFail } from './DayFail.tsx';
-import { humanError, humanLine } from '../data/errors.ts';
+import { humanError, humanLine, titleWithStop } from '../data/errors.ts';
 import type { HumanError } from '../data/errors.ts';
 import type { DayView } from '../data/derive.ts';
 import '../styles/screens.css';
@@ -423,7 +423,11 @@ export function App() {
   const [eventBusy, setEventBusy] = useState(false);
   /* Ошибка помнит, к какой заявке относится: иначе отказ по одной заявке
      висел бы в карточке любой другой, открытой следом. */
-  const [eventFailed, setEventFailed] = useState<{ order: string; message: string } | null>(null);
+  const [eventFailed, setEventFailed] = useState<{
+    order: string;
+    message: string;
+    detail: string;
+  } | null>(null);
   /* Порядковый номер запроса /state. Ползунок времени шлёт запрос на каждый
      шаг, ответы приходят вразнобой, и поздний ответ на 10:00 затирал бы уже
      показанное 14:00. Кладём только ответ на последний запрос — и только если
@@ -487,9 +491,19 @@ export function App() {
       }
     } catch (failure) {
       if (ticket !== replanTicket.current) return;
+      /* Слова движка — отдельно от фразы для человека. Блок узнаёт по ним
+         известные отказы («E00 уже в пути к 34366; …») и говорит их именем,
+         а прежде сюда уходила только готовая фраза: слова движка терялись,
+         разбор отказов не срабатывал ни разу, и на отказ блок советовал
+         «проверьте статус и время», а под «Подробностями» стояло
+         «причина — в „Подробностях“». */
+      const human = humanError(failure, { title: '', hint: 'Повторите ещё раз.' });
       setEventFailed({
         order: 'order' in event ? event.order : '',
-        message: humanLine(failure, { title: 'Событие не записалось', hint: 'Повторите ещё раз.' })
+        /* Заголовок «Событие не записано» блок ставит сам; у незнакомой
+           ошибки своего заголовка нет — остаётся один совет. */
+        message: human.title ? `${titleWithStop(human.title)} ${human.hint}` : human.hint,
+        detail: human.detail
       });
     } finally {
       if (ticket === replanTicket.current) setEventBusy(false);

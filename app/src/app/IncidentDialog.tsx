@@ -9,6 +9,7 @@ import { loadEngineSettings } from '../data/api.ts';
 import { CHURN_PRESETS, ENGINE_DEFAULTS } from '../data/engine.ts';
 import type { Order } from '../data/contract.ts';
 import { useModalFocus } from './modal.ts';
+import { pinnedRest } from './pinnedReason.ts';
 import { replanBlocked } from './replanBlocked.ts';
 import '../styles/control.css';
 
@@ -304,10 +305,21 @@ export function IncidentDialog({
 
   const replan = result?.meta.replan;
   const gain = replan ? replan.assigned_now - replan.assigned_as_is : 0;
+  /* Закреплённые диспетчером заявки и встали ли они. Прежде после
+     «Закрепить и пересчитать» окно молчало о самой закреплённой заявке, а
+     движок мог её и не поставить: «в его смене для неё не нашлось места». */
+  const pinnedOrders = (result?.orders ?? []).filter((order) => order.locked_to);
   /* Разбор события: у ЧП с инженером — судьба его визитов, у отмены — что
      купила освободившаяся ёмкость. Формы разные, поэтому и ветки две. */
   const fates = replan?.incident && replan.incident.kind !== 'cancelled' ? replan.incident : null;
   const cancelled = replan?.incident && replan.incident.kind === 'cancelled' ? replan.incident : null;
+  /* Заявки, которых «как ехали» не везёт, а пересчёт поставил: у отмены —
+     вставшие в освободившееся время, у ЧП с инженером — его заявки,
+     подхваченные другими. */
+  const newcomers = cancelled ? cancelled.picked_up_count : fates ? fates.rescued.length : 0;
+  const newcomersText = cancelled
+    ? `в освободившееся время ${pluralWord(newcomers, 'встала', 'встали', 'встали')} ${ordersWord(newcomers)}`
+    : `другие подхватили ${ordersWord(newcomers)} ${fates?.kind === 'disabled' ? 'выбывшего' : 'задержавшегося'}`;
 
   /* Чей участок накрыло — на экране именем, а не кодом: код инженера
      диспетчер держать в голове не обязан. */
@@ -419,6 +431,14 @@ export function IncidentDialog({
                     пересчёт ничего не добавил: {ordersWord(replan.assigned_now)} и так, и так.
                     Ни одна авария в план не встала
                   </>
+                ) : newcomers > 0 ? (
+                  /* Ноль при вставших новых — не «ничего не изменилось»: новые
+                     встали, и ровно столько же прежних выпало. Иначе рядом
+                     стояли «ничего не добавил» и «влезло взамен: 1». */
+                  <>
+                    всего заявок столько же — {replan.assigned_now}: {newcomersText}, но столько же
+                    прежних выпало
+                  </>
                 ) : (
                   /* «Запас справился сам» — только про задержку. У выбытия
                      ноль значит, что его заявки никто не подхватил, у отмены —
@@ -442,6 +462,16 @@ export function IncidentDialog({
                 </span>
               </span>
             </div>
+
+            {names(
+              'Закрепил диспетчер',
+              pinnedOrders.map((order) => {
+                const who = engineerName(order.locked_to!);
+                if (takenBy.get(order.id) === order.locked_to) return `${orderLabel(order.id)} — едет ${who}`;
+                const why = order.unassigned_reason ? pinnedRest(order.unassigned_reason.text) : null;
+                return `${orderLabel(order.id)} — ${who}, не встала${why ? `: ${why.charAt(0).toLowerCase()}${why.slice(1)}` : ''}`;
+              })
+            )}
 
             {replan.urgent_ids.length > 0 && (
               <>
@@ -519,13 +549,13 @@ export function IncidentDialog({
                   ))}
                 </div>
                 {names(
-                  `Подхватили другие — у ${engineerName(fates.engineer_id)} их больше нет`,
+                  `Подхватили другие — ${engineerName(fates.engineer_id)} к ним больше не едет`,
                   fates.rescued.map((id) => {
                     const who = withWho(id);
                     return who ? `${orderLabel(id)} — едет ${who}` : orderLabel(id);
                   })
                 )}
-                {names(`Остались за ${engineerName(fates.engineer_id)}`, fates.kept.map(orderLabel))}
+                {names(`Остались в маршруте: ${engineerName(fates.engineer_id)}`, fates.kept.map(orderLabel))}
                 {names('Не влезли никуда — позвонить абоненту', fates.lost.map(orderLabel))}
               </>
             )}
@@ -534,7 +564,7 @@ export function IncidentDialog({
               <span className="manual__note">
                 {[
                   fates
-                    ? `Из ${ordersWord(fates.pending_was.length)}, что были впереди у ${engineerName(fates.engineer_id)}.`
+                    ? `${engineerName(fates.engineer_id)}: впереди в маршруте ${pluralWord(fates.pending_was.length, 'была', 'было', 'было')} ${ordersWord(fates.pending_was.length)}.`
                     : '',
                   replan.churn_penalty !== undefined
                     ? `Смену исполнителя считали так: ${usedPreset ? usedPreset.label.toLowerCase() : `как в правилах, штраф ${replan.churn_penalty}`}.`

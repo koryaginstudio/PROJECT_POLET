@@ -9,6 +9,7 @@ import type { DayView } from '../data/derive.ts';
 import { dayStart, dec, deadline, hhmm, homeOf, hoursText, isDeferrable, placeOf } from '../data/derive.ts';
 import { equipmentList, skillIcon, skillName, transportIcon, transportName } from '../data/dictionary.ts';
 import { DispatcherBlock } from './DispatcherBlock.tsx';
+import { pinnedReason } from './pinnedReason.ts';
 import type { DispatcherActions } from './DispatcherBlock.tsx';
 import { EngineerTimeline } from './EngineerTimeline.tsx';
 import { GroupPanel } from './GroupPanel.tsx';
@@ -455,8 +456,10 @@ function SelectedCard({ day, view, selection, onSelect, dispatcher }: Props) {
             <h3 className="detail__subtitle">Почему без исполнителя</h3>
           </div>
           <p className="detail__why">
-            {order.unassigned_reason.text.charAt(0).toUpperCase() +
-              order.unassigned_reason.text.slice(1)}
+            {pinnedReason(
+              order.unassigned_reason.text,
+              (id) => view.engineerById.get(id)?.name ?? id
+            )}
           </p>
         </section>
       )}
