@@ -413,6 +413,16 @@ export function App() {
     (opened.forms === undefined || opened.forms.includes('simulation'));
   const engineDay = wholeDay ? opened.day ?? null : null;
   const engineBase = engineDay ? runId : undefined;
+  /* Запись движка, у которой есть только план, — сохранённый пересчёт.
+     Окну правки и «Воздействию» это отдельная причина недоступности: совет
+     у неё другой. Старые записи без замысла (`forms: []`) сюда не попадают:
+     «откройте расчёт дня» им не поможет. */
+  const savedReplan =
+    opened !== undefined &&
+    opened.source === null &&
+    opened.forms !== undefined &&
+    opened.forms.includes('plan') &&
+    !opened.forms.includes('simulation');
   const [dayState, setDayState] = useState<DayState | null>(null);
   const [eventBusy, setEventBusy] = useState(false);
   /* Ошибка помнит, к какой заявке относится: иначе отказ по одной заявке
@@ -1090,6 +1100,7 @@ export function App() {
           cut={cut}
           live={engineReady()}
           canReplan={Boolean(engineDay)}
+          savedReplan={savedReplan}
           onPick={(kind) => {
             setIncidentKind(kind);
             setReplan(null);
@@ -1099,6 +1110,10 @@ export function App() {
           day={engineDay}
           base={engineBase}
           onJournalReset={refreshDayState}
+          orderLabel={(id) => {
+            const order = ready?.view.orderById.get(id);
+            return order ? order.address ?? `${order.work_title}, ${order.id}` : id;
+          }}
         />
       )}
 
@@ -1436,6 +1451,7 @@ export function App() {
           open={incidentOpen}
           view={ready.view}
           live={engineReady()}
+          savedReplan={savedReplan}
           runCode={runCode(runId)}
           /* День движка — только у расчёта целого дня: у сохранённого
              пересчёта (остатка дня) пересчитывать нечего. */
