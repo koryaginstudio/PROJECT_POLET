@@ -9299,25 +9299,6 @@ b.ccard__bad {
   background: var(--white);
 }
 
-/* Карточка события — кнопка: открывает окно правки на этом событии. */
-.actcard--button {
-  font: inherit;
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-  transition: border-color 120ms ease, box-shadow 120ms ease;
-}
-
-.actcard--button:hover:not(:disabled) {
-  border-color: var(--accent-500);
-  box-shadow: 0 0 0 1px var(--accent-500);
-}
-
-.actcard--button:disabled {
-  cursor: default;
-  opacity: 0.6;
-}
-
 .actcard__top {
   display: flex;
   align-items: center;
@@ -10124,18 +10105,6 @@ b.ccard__bad {
 .incident__field-label {
   font-size: var(--fs-small);
   color: var(--text-muted);
-}
-
-/* Ползунок штрафа за смену исполнителя: во всю ширину окна, под полями
-   события — это не часть события, а то, как на него отвечать. */
-.incident__field--wide {
-  margin-top: var(--sp-3);
-  width: 100%;
-}
-
-.incident__range {
-  width: 100%;
-  accent-color: var(--accent-500);
 }
 
 /* Цена пересчёта. Одно число крупно — то, ради чего окно и открывали. */

@@ -6,9 +6,10 @@ import type { DayView } from '../data/derive.ts';
 import { hhmm, orders as ordersWord, pluralWord } from '../data/derive.ts';
 import type { IncidentKind, IncidentSpec, ReplanResult } from '../data/api.ts';
 import { loadEngineSettings } from '../data/api.ts';
-import { CHURN_PRESETS } from '../data/engine.ts';
+import { CHURN_PRESETS, ENGINE_DEFAULTS } from '../data/engine.ts';
 import type { Order } from '../data/contract.ts';
 import { useModalFocus } from './modal.ts';
+import { replanBlocked } from './replanBlocked.ts';
 import '../styles/control.css';
 
 interface Props {
@@ -157,10 +158,12 @@ export function IncidentDialog({
      три готовых варианта, что в правилах расчёта (`CHURN_PRESETS`), а по
      умолчанию выбран тот, что совпадает с настройкой компании у программы
      расчёта. `companyChurn` — эта настройка, `null`, пока не прочитали;
-     `pickedChurn` — выбор диспетчера в этом окне, `null` — не трогал. Не
-     трогал и настройки не знаем — в запрос штраф не уходит, и программа
-     берёт свою. */
+     `pickedChurn` — выбор диспетчера в этом окне, `null` — не трогал.
+     Настройка не прочиталась — горит «Сбалансированно», умолчание самой
+     программы, и штраф уходит в запрос явно: группа, где ничего не
+     выбрано, не говорит, с чем будут считать. */
   const [companyChurn, setCompanyChurn] = useState<number | null>(null);
+  const [churnUnknown, setChurnUnknown] = useState(false);
   const [pickedChurn, setPickedChurn] = useState<number | null>(null);
   const [engineerId, setEngineerId] = useState('');
   /* У кого на участке авария. Пусто — «по городу»: так считалось раньше,
@@ -179,10 +182,16 @@ export function IncidentDialog({
     if (open) setAt(cut);
   }, [open, cut]);
 
-  /* Выбор варианта живёт до закрытия окна: следующий пересчёт снова
-     начинается с настройки компании, а не с того, что крутили в прошлый раз. */
+  /* Выбор живёт до закрытия окна: следующий пересчёт снова начинается с
+     настройки компании и «самого загруженного», а не с того, что выбирали в
+     прошлый раз. Прежде инженер оставался от прошлого открытия, и если у
+     него уже не было работы, список показывал одно, а уходило другое. */
   useEffect(() => {
-    if (open) setPickedChurn(null);
+    if (!open) return;
+    setPickedChurn(null);
+    setEngineerId('');
+    setNearId('');
+    setOrderId('');
   }, [open]);
 
   useEffect(() => {
@@ -194,11 +203,14 @@ export function IncidentDialog({
     let alive = true;
     loadEngineSettings()
       .then(({ settings }) => {
+        if (!alive) return;
         const setting = settings.churn_penalty;
-        if (!alive || !setting) return;
-        setCompanyChurn(setting.value);
+        setCompanyChurn(setting ? setting.value : null);
+        setChurnUnknown(!setting);
       })
-      .catch(() => undefined);
+      .catch(() => {
+        if (alive) setChurnUnknown(true);
+      });
     return () => {
       alive = false;
     };
@@ -217,30 +229,28 @@ export function IncidentDialog({
      ещё есть работа. Не выбран никто — «самый загруженный сейчас», `auto`:
      движок сам возьмёт того, у кого впереди больше всего. Это и умолчание:
      диспетчер, которому некогда листать список, получает самый тяжёлый
-     случай, а не первого по алфавиту. */
+     случай, а не первого по алфавиту.
+
+     Выбранный берётся, только если он ещё в списке: время «Когда
+     случилось» сдвинули — у него может не остаться работы, и тогда честнее
+     вернуться к «самому загруженному», чем молча считать по невидимому. */
   const crew = view.loads.filter(
     (load) => load.route && load.route.stops.some((stop) => stop.start >= at)
   );
-  const chosen = engineerId || 'auto';
+  const inCrew = (id: string) => crew.some((load) => load.engineer.id === id);
+  const chosen = engineerId && inCrew(engineerId) ? engineerId : 'auto';
+  const near = nearId && inCrew(nearId) ? nearId : '';
   const needsEngineer = kind === 'disabled' || kind === 'delayed';
 
-  /* Почему нельзя пересчитать — одной причиной, первой по порядку. Причин
-     три, и совет у каждой свой: включить программу, открыть расчёт дня,
-     завести расчёт у программы. Без дня кнопка недоступна всегда — чужой
+  /* Почему нельзя пересчитать. Без дня кнопка недоступна всегда — чужой
      день под видом нашего не подставляется. */
-  const blocked: string | null = !live
-    ? 'Пересчёт делает программа расчёта, а она сейчас не запущена. Как включить — в настройках, на вкладке «Данные». Пока можно пересобрать день другими правилами через «Ручное управление».'
-    : savedReplan
-      ? 'Это сохранённый пересчёт. Пересчитывать можно от расчёта дня — откройте его.'
-      : day === null
-        ? 'Этот расчёт посчитан в браузере, и дня у программы расчёта за ним нет — пересобирать нечего. Откройте или заведите расчёт у программы расчёта.'
-        : null;
-  const ready = blocked === null && (!needsEngineer || Boolean(chosen));
+  const blocked = replanBlocked(live, savedReplan, day !== null);
+  const ready = blocked === null;
 
   /* Штраф, с которым пойдёт пересчёт, и вариант, который горит. Настройка
-     компании может не совпасть ни с одним из трёх — тогда не горит ни один,
-     и пересчёт идёт с ней, пока диспетчер не выберет сам. */
-  const churn = pickedChurn ?? companyChurn;
+     компании может не совпасть ни с одним из трёх — тогда горит четвёртая
+     карточка «Как в правилах». Не прочиталась — умолчание программы. */
+  const churn = pickedChurn ?? companyChurn ?? ENGINE_DEFAULTS.churn_penalty;
 
   /* Что ещё можно снять: визиты, к которым по плану не выехали до момента
      правки. Начатое и сделанное отменять нечего, а к визиту, куда инженер
@@ -249,6 +259,9 @@ export function IncidentDialog({
     .flatMap((load) => (load.route ? load.route.stops : []))
     .filter((stop) => stop.arrive - stop.travel_minutes >= at)
     .sort((a, b) => a.start - b.start);
+  /* Та же защита, что у инженера: после сдвига времени выбранная заявка
+     могла уже начаться, и снимать её нечего. */
+  const cancelId = orderId && cancellable.some((stop) => stop.order_id === orderId) ? orderId : '';
 
   const spec: IncidentSpec = {
     /* Пустая строка, а не синтетический день 1: `ready` всё равно не даст
@@ -258,11 +271,11 @@ export function IncidentDialog({
     at,
     kind,
     urgent,
-    urgentNear: kind === 'urgent' && nearId ? nearId : undefined,
+    urgentNear: kind === 'urgent' && near ? near : undefined,
     engineerId: needsEngineer ? chosen : undefined,
     minutes,
-    orderId: kind === 'cancel' && orderId ? orderId : undefined,
-    churnPenalty: churn ?? undefined
+    orderId: kind === 'cancel' && cancelId ? cancelId : undefined,
+    churnPenalty: churn
   };
 
   /* Имена и адреса вместо кодов. Заявку ищем сначала в открытом дне, потом в
@@ -317,7 +330,12 @@ export function IncidentDialog({
     );
 
   const failure = failed ? explainFailure(failed) : null;
-  const churnInForm = churn !== null ? CHURN_PRESETS.find((p) => p.penalty === churn) : undefined;
+  /* Своё число в правилах, не совпадающее ни с одним вариантом, — отдельной
+     карточкой: иначе, нажав вариант, к нему не вернуться, не закрыв окно. */
+  const companyOwn =
+    companyChurn !== null && !CHURN_PRESETS.some((p) => p.penalty === companyChurn)
+      ? companyChurn
+      : null;
   const usedPreset =
     replan?.churn_penalty !== undefined
       ? CHURN_PRESETS.find((p) => p.penalty === replan.churn_penalty)
@@ -486,11 +504,16 @@ export function IncidentDialog({
 
             <div className="manual__foot">
               <span className="manual__note">
-                {fates
-                  ? `Из ${ordersWord(fates.pending_was.length)}, что были впереди у ${engineerName(fates.engineer_id)}.`
-                  : replan.churn_penalty !== undefined
-                    ? `Смену исполнителя считали так: ${usedPreset ? usedPreset.label.toLowerCase() : `штраф ${replan.churn_penalty}`}.`
-                    : ''}
+                {[
+                  fates
+                    ? `Из ${ordersWord(fates.pending_was.length)}, что были впереди у ${engineerName(fates.engineer_id)}.`
+                    : '',
+                  replan.churn_penalty !== undefined
+                    ? `Смену исполнителя считали так: ${usedPreset ? usedPreset.label.toLowerCase() : `как в правилах, штраф ${replan.churn_penalty}`}.`
+                    : ''
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
               </span>
               <span className="manual__actions">
                 <Button variant="secondary" size="sm" onClick={onClose}>
@@ -584,7 +607,7 @@ export function IncidentDialog({
                   <span className="incident__field-label">Какую заявку</span>
                   <Select
                     size="sm"
-                    value={orderId}
+                    value={cancelId}
                     onChange={(e) => setOrderId(e.target.value)}
                     options={[
                       { value: '', label: 'Ту, что освободит больше всего времени' },
@@ -619,7 +642,7 @@ export function IncidentDialog({
                     <span className="incident__field-label">У кого на участке</span>
                     <Select
                       size="sm"
-                      value={nearId}
+                      value={near}
                       onChange={(e) => setNearId(e.target.value)}
                       options={[
                         { value: '', label: 'По городу — без привязки' },
@@ -660,11 +683,27 @@ export function IncidentDialog({
                     <span className="preset__what">{item.what}</span>
                   </button>
                 ))}
+                {companyOwn !== null && (
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={churn === companyOwn}
+                    className={'preset' + (churn === companyOwn ? ' preset--on' : '')}
+                    onClick={() => setPickedChurn(null)}
+                  >
+                    <span className="preset__top">
+                      <span className="preset__label">Как в правилах</span>
+                    </span>
+                    <span className="preset__what">
+                      В правилах расчёта стоит свой штраф — {companyOwn}. Пересчёт пойдёт с ним,
+                      пока вы не выберете другой вариант.
+                    </span>
+                  </button>
+                )}
               </div>
-              {churn !== null && !churnInForm && (
+              {churnUnknown && (
                 <p className="manual__note">
-                  В правилах расчёта стоит свой штраф — {churn}. Пересчёт пойдёт с ним, пока вы не
-                  выберете вариант.
+                  Правила расчёта не прочитались — отмечен вариант по умолчанию программы.
                 </p>
               )}
             </div>
@@ -678,7 +717,7 @@ export function IncidentDialog({
               <div className="solvefail">
                 <Icon name="alert-triangle" size={16} />
                 <span>
-                  <b>Пересчёт по событию сейчас недоступен.</b> {blocked}
+                  <b>Пересчёт по событию сейчас недоступен. {blocked.what}</b> {blocked.todo}
                 </span>
               </div>
             )}
@@ -704,7 +743,7 @@ export function IncidentDialog({
                 {busy ? (
                   <span className="createbar__busy">
                     <span className="createbar__spin" aria-hidden="true" />
-                    Пересобираю маршруты — около полутора секунд.
+                    Пересобираю маршруты — обычно несколько секунд.
                   </span>
                 ) : blocked ? (
                   'Кнопка «Пересчитать» недоступна — причина выше.'

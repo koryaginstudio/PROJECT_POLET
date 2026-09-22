@@ -6,6 +6,7 @@ import { StatTile } from '../ds/components/data/StatTile.jsx';
 import { hhmm, pluralWord } from '../data/derive.ts';
 import type { IncidentKind, Staffing } from '../data/api.ts';
 import { loadStaffing, resetJournal } from '../data/api.ts';
+import { replanBlocked } from '../app/replanBlocked.ts';
 import '../styles/control.css';
 
 interface Props {
@@ -29,6 +30,8 @@ interface Props {
   base?: string;
   /** Журнал сброшен: состояние дня на экране надо перечитать. */
   onJournalReset: () => void;
+  /** Заявка словами диспетчера — адрес, а не код. Без открытого дня — код. */
+  orderLabel?: (id: string) => string;
 }
 
 /* Управление воздействием — третий этап процесса.
@@ -50,11 +53,13 @@ interface Props {
    Цена воздействия — разница между «пересчитали» и «поехали как ехали» — это
    то, ради чего сюда заходят, и она приходит числом в ответе движка.
 
-   Карточка события — кнопка: она открывает окно правки на этом событии,
-   движок пересобирает остаток дня, и окно показывает цену. Прежде экран
-   только описывал: кнопку, которая ничего не делает, честно не ставили, а
-   рабочий пересчёт жил в диспетчерской за «Внести правку». Шаги 5–6
-   сценария ТЗ теперь начинаются здесь. */
+   У каждой карточки события — видимая строка-кнопка «Пересчитать от
+   ЧЧ:ММ →»: она открывает окно правки на этом событии, движок пересобирает
+   остаток дня, и окно показывает цену. Прежде экран только описывал:
+   кнопку, которая ничего не делает, честно не ставили, а рабочий пересчёт
+   жил в диспетчерской за «Внести правку». Шаги 5–6 сценария ТЗ теперь
+   начинаются здесь. Если пересчитать нельзя, причина стоит над карточками,
+   а не в конце экрана: серые кнопки без объяснения рядом — загадка. */
 
 interface Kind {
   key: IncidentKind;
@@ -175,8 +180,10 @@ export function ControlScreen({
   onPick,
   day,
   base,
-  onJournalReset
+  onJournalReset,
+  orderLabel = (id) => id
 }: Props) {
+  const blocked = replanBlocked(live, savedReplan, canReplan);
   /* «Сколько ещё людей нужно» — вопрос, который постановщик задал дважды и
      продиктовал формат ответа: «для того чтобы выполнить оставшиеся заявки,
      нужно ещё плюс N исполнителей». Считает движок — планировщиком, а не
@@ -248,6 +255,15 @@ export function ControlScreen({
           <span className="dash__section-note">четыре разных события, не одно</span>
         </div>
 
+        {blocked && (
+          <div className="solvefail ctl__blocked">
+            <Icon name="alert-triangle" size={16} />
+            <span>
+              <b>Пересчитать сейчас нельзя. {blocked.what}</b> {blocked.todo}
+            </span>
+          </div>
+        )}
+
         <div className="actgrid">
           {KINDS.map((kind) => (
             <div key={kind.key} className="actcard">
@@ -275,7 +291,7 @@ export function ControlScreen({
                 className="actcard__go"
                 variant="secondary"
                 onClick={() => onPick(kind.key)}
-                disabled={!canReplan}
+                disabled={blocked !== null}
                 iconRight={<Icon name="arrow-right" size={16} />}
               >
                 Пересчитать от {hhmm(cut)}
@@ -294,18 +310,24 @@ export function ControlScreen({
           {staffing ? (
             <div className="ctl__staff">
               {/* Главное число — крупно, как просил постановщик: «+N
-                  исполнителей». Кого именно — строками справа. */}
+                  исполнителей». Кого именно — строками под ним. Подпись
+                  выбирается по данным: ноль при заявках без исполнителя —
+                  не «хватает», а «людьми не закрыть» (контракт, staffing). */}
               <StatTile
+                className="ctl__staff-tile"
                 label="Нужно ещё"
                 value={staffing.needed > 0 ? `+${staffing.needed}` : '0'}
                 unit={
-                  staffing.needed > 0
-                    ? pluralWord(staffing.needed, 'человек', 'человека', 'человек')
-                    : 'людей хватает'
+                  staffing.unassigned_now === 0
+                    ? 'никого не нужно'
+                    : staffing.needed > 0
+                      ? pluralWord(staffing.needed, 'человек', 'человека', 'человек')
+                      : 'людьми не закрыть'
                 }
                 caption={
                   staffing.unassigned_now > 0
-                    ? `без исполнителя сейчас: ${staffing.unassigned_now}`
+                    ? `без исполнителя сейчас: ${staffing.unassigned_now}` +
+                      (!staffing.closes_all && staffing.needed > 0 ? ' · не наверняка' : '')
                     : undefined
                 }
               />
@@ -324,9 +346,14 @@ export function ControlScreen({
                 ))}
                 {staffing.reliability && <p className="ctl__text">{staffing.reliability}</p>}
                 {staffing.still_unassigned.length > 0 && (
-                  <p className="ctl__text">
-                    Добавлением людей не закрыть: {staffing.still_unassigned.join(', ')}.
-                  </p>
+                  <>
+                    <p className="ctl__text">Добавлением людей не закрыть:</p>
+                    <ul className="ctl__list">
+                      {staffing.still_unassigned.map((id) => (
+                        <li key={id}>{orderLabel(id)}</li>
+                      ))}
+                    </ul>
+                  </>
                 )}
               </div>
             </div>
@@ -430,34 +457,20 @@ export function ControlScreen({
         </section>
       )}
 
-      <section className="panel">
-        <div className="ctrlnote">
-          <Icon name={live && canReplan ? 'lightning' : 'alert-triangle'} size={16} />
-          <span>
-            {live && canReplan ? (
-              <>
-                <b>Программа расчёта запущена.</b> Выберите, что случилось: откроется окно правки,
-                остаток дня пересоберётся от {hhmm(cut)}, и вы увидите цену. Принятый пересчёт
-                откроется в диспетчерской — посмотреть до того, как сохранять.
-              </>
-            ) : live && savedReplan ? (
-              <>
-                <b>Это сохранённый пересчёт.</b> Пересчитывать можно от расчёта дня — откройте его.
-              </>
-            ) : live ? (
-              <>
-                <b>Этот расчёт пересчитать нельзя.</b> Он посчитан в браузере, и дня у программы
-                расчёта за ним нет. Откройте или заведите расчёт у программы расчёта.
-              </>
-            ) : (
-              <>
-                <b>Программа расчёта не запущена.</b> Без неё воздействие посчитать нечем —
-                пересчёт это работа планировщика, а не заранее записанный файл.
-              </>
-            )}
-          </span>
-        </div>
-      </section>
+      {/* Готовность — внизу, одной строкой. Причины недоступности стоят
+          над карточками, рядом с серыми кнопками, и здесь не повторяются. */}
+      {!blocked && (
+        <section className="panel">
+          <div className="ctrlnote">
+            <Icon name="lightning" size={16} />
+            <span>
+              <b>Программа расчёта запущена.</b> Выберите, что случилось: откроется окно правки,
+              остаток дня пересоберётся от {hhmm(cut)}, и вы увидите цену. Принятый пересчёт
+              откроется в диспетчерской — посмотреть до того, как сохранять.
+            </span>
+          </div>
+        </section>
+      )}
     </div>
   );
 }

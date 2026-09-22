@@ -79,19 +79,44 @@
   margin: 0;
 }
 
-/* «Сколько ещё людей нужно»: плитка с главным числом, под ней — какие. */
+/* «Сколько ещё людей нужно»: плитка с главным числом, под ней — какие.
+   Столбиком, а не двумя колонками: сначала ответ, потом расшифровка. */
 .ctl .ctl__staff {
   display: grid;
-  grid-template-columns: minmax(220px, 300px) 1fr;
-  gap: var(--sp-4);
-  align-items: start;
+  grid-template-columns: 1fr;
+  gap: var(--sp-3);
   margin-top: var(--sp-3);
 }
 
-@media (max-width: 720px) {
-  .ctl .ctl__staff {
-    grid-template-columns: 1fr;
-  }
+.ctl .ctl__staff-tile {
+  max-width: 300px;
+}
+
+.ctl .ctl__list {
+  margin: var(--sp-1) 0 0;
+  padding-left: var(--sp-4);
+  font-size: var(--fs-body-s);
+  line-height: var(--lh-body-s);
+  color: var(--text-primary);
+}
+
+/* Причина, почему кнопки «Пересчитать» серые, — над карточками. */
+.ctl .ctl__blocked {
+  margin-bottom: var(--sp-3);
+}
+
+/* Приглушённая часть строки — всё равно рабочий текст: смена и транспорт
+   слота, «освободилось N мин», чей участок. Приглушать до --text-muted
+   нельзя — читается с трудом. */
+.ctl .setrow__note,
+.incident__card .setrow__note {
+  color: var(--text-secondary);
+}
+
+/* Вердикт «Пересчитывать» / «Чаще не стоит» — смысловая пометка, а не
+   подпись шкалы: 12px ему мало. */
+.incident__card .incident__verdict {
+  font-size: var(--fs-caption);
 }
 
 .ctl .ctl__staff-phrase {
