@@ -45,10 +45,11 @@ import {
   loadEngineForm,
   loadEngineForms,
   listRuns,
+  listUploads,
   noteEngineRun,
   probeEngine
 } from './api.ts';
-import type { EngineCatalogue, EngineRun } from './api.ts';
+import type { EngineCatalogue, EngineRun, EngineUpload } from './api.ts';
 import { изДвижка } from './fromEngine.ts';
 import { HumanRefusal } from './errors.ts';
 
@@ -86,16 +87,48 @@ const ENGINE_TITLES: Record<string, string> = {
   югоцентр: 'Югоцентр'
 };
 
+/* Выгрузки дня, которые принёс диспетчер (vrptw/uploads.py). День движка у
+   них — «выгрузка-…», и на экране он должен читаться названием файла и
+   датой, а не хэшем: расчёт по выгрузке стоит в истории рядом с зонами.
+   Список живёт здесь, в одном месте: его знают и форма расчёта, и история,
+   и отчёт. */
+const UPLOADS = new Map<string, EngineUpload>();
+
+/** Запомнить выгрузки — все или одну свежую. */
+export function rememberUploads(list: EngineUpload[], replace = false) {
+  if (replace) UPLOADS.clear();
+  for (const one of list) UPLOADS.set(one.day, one);
+}
+
+export const forgetUpload = (day: string) => UPLOADS.delete(day);
+
+/** Выгрузка по дню движка; `undefined` — это не выгрузка. */
+export const uploadOf = (day: string) => UPLOADS.get(day);
+
+/** Выгрузки, новые первыми. */
+export const engineUploads = () =>
+  [...UPLOADS.values()].sort((a, b) => b.created.localeCompare(a.created));
+
+/** Перечитать выгрузки у движка. Без движка — пусто, не ошибка. */
+export async function pullUploads(): Promise<EngineUpload[]> {
+  if (!engineOn) return [];
+  const list = await listUploads();
+  rememberUploads(list, true);
+  return list;
+}
+
 /** Как участок движка («югоцентр») называется на экране; синтетический
-    день — «день 7». Нужно и базам, и заставке прогрева в main.tsx. */
+    день — «день 7», выгрузка — «восток · 17.08.2026». Нужно и базам, и
+    заставке прогрева в main.tsx. */
 export const engineDayTitle = (day: string) =>
-  ENGINE_TITLES[day] ?? (/^\d+$/.test(day) ? `день ${day}` : day);
+  ENGINE_TITLES[day] ?? UPLOADS.get(day)?.title ?? (/^\d+$/.test(day) ? `день ${day}` : day);
 
 /** Как источник называется на экране. */
 export const zoneTitle = (zone: SourceId) =>
   (engineOn && ENGINE_ZONE[zone] ? engineDayTitle(ENGINE_ZONE[zone]) : null) ??
   BUILT_IN_TITLES[zone] ??
   datasetByKey(zone)?.title ??
+  UPLOADS.get(zone)?.title ??
   zone;
 
 /** Встроенный ли это источник. Загруженный можно удалить, встроенный нет. */
@@ -386,11 +419,12 @@ export async function createRun(
        движка зовёт сюда без зоны и с днём, а умолчание зоны — «восток», и
        прежде любой расчёт пересчитывался по востоку. Не назвали ни то, ни
        другое — отказ, а не синтетический день 1. */
-    const target = day ?? ENGINE_ZONE[zone];
+    /* Выгрузка, которую принесли кнопкой, — сама себе день движка. */
+    const target = day ?? ENGINE_ZONE[zone] ?? (UPLOADS.has(zone) ? zone : undefined);
     if (!target) {
       throw new HumanRefusal(
         `Набор «${zoneTitle(zone)}» программа расчёта не считает`,
-        'Выберите участок Восток, Юго-Восток или Центр.'
+        'Выберите участок Восток, Юго-Восток или Центр либо загрузите выгрузку дня.'
       );
     }
     return adoptEngineRun(await createEngineRun(target, params));
@@ -457,6 +491,10 @@ export async function seedRuns(): Promise<boolean> {
        Архив подтягивается всегда, а не только на пустом списке: иначе
        браузер, в котором уже были свои расчёты, архива движка не видел бы. */
     hideLocalRuns();
+    /* Выгрузки — до архива: расчёт по выгрузке в истории должен сразу
+       читаться названием файла, а не хэшем дня. Не прочитались — не беда:
+       история откроется и так, только с именами дней движка. */
+    await pullUploads().catch(() => undefined);
     /* Архив не прочитался — не сеем: иначе каждый сбой `GET /runs`
        дописывал бы в архив движка ещё три расчёта. Сеем, только если он
        прочитан и пуст. */
@@ -1000,6 +1038,10 @@ const engineZones = () => Promise.all(BUILT_IN.map((zone) => engineZone(zone)));
     При живом движке — по его плану: считать он будет на своей бригаде, и
     «56 заявок, 11 инженеров» из файла обещали бы не тот расчёт. */
 export async function zoneSize(zone: SourceId): Promise<{ orders: number; engineers: number }> {
+  /* Выгрузка: размер — из предпросмотра движка. План у неё может быть ещё
+     не посчитан, а размер известен сразу после разбора файла. */
+  const upload = engineOn ? UPLOADS.get(zone) : undefined;
+  if (upload) return { orders: upload.to_plan, engineers: upload.engineers };
   const engine = await engineZone(zone);
   if (engine) return { orders: engine.plan.orders.length, engineers: engine.plan.engineers.length };
   /* План не пришёл — к файлам не откатываемся: их размеры обещали бы чужую

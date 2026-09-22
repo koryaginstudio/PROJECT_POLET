@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Lede } from '../app/Lede.tsx';
 import { Button } from '../ds/components/core/Button.jsx';
 import { Icon } from '../ds/components/core/Icon.jsx';
@@ -10,9 +10,25 @@ import type { SourceChoice } from '../app/SourcePicker.tsx';
 import type { ShiftInput } from '../data/shift.ts';
 import { shiftSummary } from '../data/shift.ts';
 import type { SourceId } from '../data/load.ts';
-import { BUILT_IN, engineReady, isBuiltIn, loadZone, sources, zoneSize, zoneTitle } from '../data/load.ts';
+import {
+  BUILT_IN,
+  engineReady,
+  engineUploads,
+  forgetUpload,
+  isBuiltIn,
+  loadZone,
+  pullUploads,
+  rememberUploads,
+  sources,
+  zoneSize,
+  zoneTitle
+} from '../data/load.ts';
 import type { Engineer } from '../data/contract.ts';
 import { DatasetImport } from '../app/DatasetImport.tsx';
+import { DayUploadButton, DayUploadPreview } from '../app/DayUpload.tsx';
+import type { EngineUpload } from '../data/api.ts';
+import { prepareUpload, uploadState } from '../data/api.ts';
+import { humanLine } from '../data/errors.ts';
 import { plural } from '../data/derive.ts';
 
 interface Props {
@@ -71,7 +87,39 @@ export function CreateRunScreen({
      набор она не примет, и карточка его в ряду обещала бы расчёт, который
      упадёт с ошибкой. */
   const engine = engineReady();
-  const [list, setList] = useState<SourceId[]>(() => (engine ? [...BUILT_IN] : sources()));
+  /* Выгрузки дня, которые принесли кнопкой: при программе расчёта они стоят
+     в ряду рядом с участками. Состояние, а не чтение реестра на лету: после
+     загрузки, подготовки и удаления экран должен перерисоваться. */
+  const [uploads, setUploads] = useState<EngineUpload[]>(() => (engine ? engineUploads() : []));
+  const engineList = (list: EngineUpload[]): SourceId[] => [...BUILT_IN, ...list.map((one) => one.day)];
+  const [list, setList] = useState<SourceId[]>(() => (engine ? engineList(engineUploads()) : sources()));
+
+  /* Выгрузку могли принести или убрать из другого окна — перечитываем при
+     открытии формы. Не прочиталось — остаётся то, что было. */
+  useEffect(() => {
+    if (!engine) return;
+    let cancelled = false;
+    pullUploads()
+      .then((fresh) => {
+        if (cancelled) return;
+        setUploads(fresh);
+        setList(engineList(fresh));
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [engine]);
+
+  const refreshUploads = (changed?: EngineUpload) => {
+    if (changed) rememberUploads([changed]);
+    const fresh = engineUploads();
+    setUploads(fresh);
+    setList(engineList(fresh));
+    if (changed) {
+      setSizes((was) => ({ ...was, [changed.day]: { orders: changed.to_plan, engineers: changed.engineers } }));
+    }
+  };
 
   /* Размеры участков — от того, кто будет считать: при программе расчёта
      по её плану (своя бригада, 14 человек на участок), без неё — по файлам. */
@@ -152,6 +200,68 @@ export function CreateRunScreen({
     setZone(key);
   };
 
+  const selectedUpload = engine ? uploads.find((one) => one.day === zone) : undefined;
+
+  /* «Рассчитать» по выгрузке, которая ещё не готова: сперва подготовка —
+     адреса, сеть дорог, план, — потом обычный расчёт. Подготовка идёт у
+     программы расчёта в фоне и может занять минуты (новый адрес ищется
+     1,4 с), поэтому здесь не один долгий запрос, а опрос хода раз в
+     секунду: запрос, ждущий минуты, оборвался бы по сроку. */
+  const [preparing, setPreparing] = useState(false);
+  const [prepareFailed, setPrepareFailed] = useState<string | null>(null);
+  /* Флаг ставится при каждом монтировании, а не только начальным значением:
+     StrictMode монтирует эффект дважды, и после первой уборки флаг навсегда
+     оставался бы ложным — опрос хода не начинался, кнопка висела на
+     «Готовлю…». */
+  const alive = useRef(true);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
+
+  const create = async () => {
+    const upload = engine ? uploads.find((one) => one.day === zone) : undefined;
+    if (upload && upload.status !== 'готова') {
+      setPreparing(true);
+      setPrepareFailed(null);
+      try {
+        let state = await prepareUpload(upload.day);
+        while (alive.current && state.status === 'готовится') {
+          refreshUploads(state);
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          state = await uploadState(upload.day);
+        }
+        if (!alive.current) return;
+        refreshUploads(state);
+        if (state.status !== 'готова') {
+          setPrepareFailed(state.error ?? 'Выгрузка не подготовилась.');
+          return;
+        }
+      } catch (error) {
+        if (alive.current) {
+          setPrepareFailed(
+            humanLine(error, { title: 'Выгрузка не подготовилась', hint: 'Нажмите «Рассчитать» ещё раз.' })
+          );
+        }
+        return;
+      } finally {
+        if (alive.current) setPreparing(false);
+      }
+    }
+    onCreate(params, zone, shift);
+  };
+  const busy = solving || preparing;
+  const preparingText = (() => {
+    if (!preparing || !selectedUpload) return null;
+    const step = selectedUpload.stage ?? 'готовлю выгрузку';
+    const done = selectedUpload.progress
+      ? `: ${selectedUpload.progress.done} из ${selectedUpload.progress.total}`
+      : '';
+    return `Готовлю выгрузку — ${step}${done}…`;
+  })();
+
   return (
     <div className="dash enter">
       <section className="panel">
@@ -206,7 +316,8 @@ export function CreateRunScreen({
         >
           {engine
             ? 'Участки — это дни выгрузки «Билайн Бизнес»: свой офис, своя бригада и свой ' +
-              'район города у каждого.'
+              'район города у каждого. Выгрузку своего дня можно загрузить файлом — она встанет ' +
+              'в этот же ряд.'
             : 'Встроенные зоны — это дни выгрузки «Билайн Бизнес»: свой офис, свои бригады и ' +
               'свой район города у каждой. Свой набор можно загрузить файлом — он встанет в ' +
               'этот же ряд.'}
@@ -250,9 +361,38 @@ export function CreateRunScreen({
             <DatasetImport onLoaded={onLoaded} />
           </div>
         )}
+        {/* При программе расчёта загрузка одна — выгрузка дня файлом. Она
+            идёт программе как есть: разбор, адреса и сеть — её работа. */}
+        {engine && (
+          <div className="srcblock">
+            <div className="dash__section-head">
+              <h3 className="srcblock__title">Загрузить выгрузку дня</h3>
+            </div>
+            <DayUploadButton
+              current={selectedUpload}
+              onUploaded={(upload) => {
+                refreshUploads(upload);
+                setZone(upload.day);
+                setPrepareFailed(null);
+              }}
+            />
+          </div>
+        )}
       </section>
 
-      {engine && (
+      {engine && selectedUpload && (
+        <DayUploadPreview
+          upload={selectedUpload}
+          onDeleted={(day) => {
+            forgetUpload(day);
+            refreshUploads();
+            if (zone === day) setZone(BUILT_IN[0]);
+            setPrepareFailed(null);
+          }}
+        />
+      )}
+
+      {engine && !selectedUpload && (
         <EngineSourceNote
           orders={sizes[zone]?.orders}
           engineers={sizes[zone]?.engineers}
@@ -277,12 +417,12 @@ export function CreateRunScreen({
 
       {/* Отказ движка показываем на форме, а не уводим с неё: переменные
           остались набранными, и повторить расчёт — это один щелчок. */}
-      {failed && (
+      {(failed || prepareFailed) && (
         <section className="panel">
           <div className="solvefail">
             <Icon name="alert-triangle" size={16} />
             <span>
-              <b>Расчёт не пошёл.</b> {failed}
+              <b>Расчёт не пошёл.</b> {prepareFailed ?? failed}
             </span>
           </div>
         </section>
@@ -291,7 +431,12 @@ export function CreateRunScreen({
       <section className="panel">
         <div className="createbar">
           <span className="createbar__note">
-            {solving ? (
+            {preparingText ? (
+              <span className="createbar__busy">
+                <span className="createbar__spin" aria-hidden="true" />
+                {preparingText}
+              </span>
+            ) : solving ? (
               /* Пока солвер думает, подпись занята делом, а не состоянием
                  формы: восемь секунд молчания — это то, за что на защите
                  спрашивают «оно зависло?». */
@@ -326,7 +471,7 @@ export function CreateRunScreen({
           </span>
           <div className="createbar__actions">
             {!first && (
-              <Button variant="secondary" size="sm" onClick={onCancel} disabled={solving}>
+              <Button variant="secondary" size="sm" onClick={onCancel} disabled={busy}>
                 Отмена
               </Button>
             )}
@@ -334,11 +479,11 @@ export function CreateRunScreen({
               variant="accent"
               size="sm"
               className="engine__cta"
-              onClick={() => onCreate(params, zone, shift)}
-              disabled={solving}
+              onClick={() => void create()}
+              disabled={busy}
               iconLeft={<Icon name="shuffle" size={14} />}
             >
-              {solving ? 'Считаю…' : 'Рассчитать'}
+              {preparing ? 'Готовлю…' : solving ? 'Считаю…' : 'Рассчитать'}
             </Button>
           </div>
         </div>

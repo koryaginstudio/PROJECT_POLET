@@ -12379,6 +12379,82 @@ b.ccard__bad {
   justify-content: flex-end;
 }
 
+/* Выгрузка дня при программе расчёта: поле «Инженеров в смене» и кнопка
+   в одну строку — число задают до файла, потому что оно часть дня. */
+.dayupload__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 10px 12px;
+}
+
+/* Кнопки встают вровень с полем, а не с его подписью. */
+.dayupload__row > .pl-btn {
+  margin-top: 26px;
+}
+
+.dayupload__count {
+  width: 150px;
+}
+
+.dayupload__hint {
+  margin: 0;
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+
+.dayupload__preview {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dayupload__office {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: var(--fs-body-s);
+  color: var(--text-secondary);
+}
+
+/* Готова ли выгрузка к расчёту и нужен ли для этого интернет. Три тона:
+   всё на месте, придётся подождать, не выйдет. */
+.dayupload__ready {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-body-s);
+  line-height: var(--lh-body-s);
+}
+
+.dayupload__ready--ok {
+  background: var(--success-50);
+  color: var(--success-700);
+}
+
+.dayupload__ready--wait {
+  background: var(--warning-50);
+  color: var(--warning-800);
+}
+
+.dayupload__ready--bad {
+  background: var(--danger-50);
+  color: var(--danger-700);
+}
+
+.dayupload__skipped summary {
+  cursor: pointer;
+  font-size: var(--fs-body-s);
+  color: var(--text-primary);
+}
+
+.dayupload__skipped .dsimport__problems {
+  margin-top: 6px;
+}
+
 /* Пометка «загружен» на карточке источника: встроенные зоны от принесённых
    наборов отличать надо — первые лежат в репозитории и есть у всех, вторые
    живут в одном браузере. */

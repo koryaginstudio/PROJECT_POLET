@@ -315,6 +315,96 @@ export const loadEngineSettings = () =>
 export const listDays = () =>
   call<{ ready: string[]; available: string[] }>('/days');
 
+/* ─── выгрузка дня ───────────────────────────────────────────────────────
+
+   Диспетчер приносит выгрузку своего дня файлом, движок разбирает её и
+   считает (vrptw/uploads.py). Файл едет строкой base64: у движка одна
+   форма тела на все ручки, а cp1251 в JSON-строке не довезти без порчи —
+   кодировку определяет движок, а не браузер. */
+
+/** Выгрузка так, как её видит движок: предпросмотр и состояние. */
+export interface EngineUpload {
+  /** День движка: «выгрузка-…». Им же и заводится расчёт. */
+  day: string;
+  name: string;
+  /** «восток · 17.08.2026» — имя файла и дата дня. */
+  title: string;
+  created: string;
+  /** Дата дня, ISO: из колонки «Начало», а не из имени файла. */
+  date: string;
+  office: string;
+  engineers: number;
+  /** Строк заявок в файле, годных к разбору. */
+  orders: number;
+  /** Из них к расчёту: без тех, чей адрес геокодер не нашёл. */
+  to_plan: number;
+  encoding: string;
+  /** Отложенные строки: номер строки в файле и причина. */
+  skipped: { line: number; id: string; reason: string }[];
+  warnings: string[];
+  addresses: {
+    total: number;
+    known: number;
+    /** Ещё не искали: для них нужен интернет. */
+    to_search: number;
+    not_found: number;
+    approximate: number;
+    /** Сколько займёт поиск: 1,4 с на адрес. */
+    search_seconds: number;
+  };
+  office_found: boolean;
+  /** Сеть дорог: готова, построится по интернету, ждёт поиска адресов. */
+  network: 'готова' | 'нужен интернет' | 'после поиска адресов' | 'нет офиса';
+  status: 'принята' | 'готовится' | 'готова' | 'ошибка';
+  /** Что делает подготовка сейчас: «ищу адреса», «строю сеть дорог»… */
+  stage: string | null;
+  progress: { done: number; total: number } | null;
+  error: string | null;
+  prepared: string | null;
+}
+
+/** Байты файла строкой base64. Кусками: `String.fromCharCode(...все)` на
+    мегабайте падает переполнением стека аргументов. */
+function toBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let text = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    text += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  }
+  return btoa(text);
+}
+
+const JSON_HEADERS = { 'Content-Type': 'application/json' };
+
+/** Выгрузки, которые приносили, новые первыми. */
+export const listUploads = () =>
+  call<{ uploads: EngineUpload[] }>('/uploads').then((body) => body.uploads);
+
+/** Принять файл: движок разберёт его и вернёт предпросмотр. Сеть он при
+    этом не трогает — это делает подготовка. */
+export const sendUpload = (name: string, data: ArrayBuffer, engineers: number) =>
+  call<EngineUpload>('/uploads', {
+    method: 'POST',
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ name, data: toBase64(data), engineers })
+  });
+
+/** Подготовить выгрузку к расчёту: адреса, сеть, план. Идёт в фоне — ход
+    спрашивают `uploadState`. */
+export const prepareUpload = (day: string) =>
+  call<EngineUpload>(`/uploads/${encodeURIComponent(day)}/prepare`, {
+    method: 'POST',
+    headers: JSON_HEADERS,
+    body: '{}'
+  });
+
+export const uploadState = (day: string) =>
+  call<EngineUpload>(`/uploads/${encodeURIComponent(day)}`);
+
+/** Убрать выгрузку. Движок откажет (409), если по ней есть расчёты. */
+export const deleteUpload = (day: string) =>
+  call<{ deleted: string }>(`/uploads/${encodeURIComponent(day)}`, { method: 'DELETE' });
+
 /* ─── пересчёт внутри дня ────────────────────────────────────────────────
 
    То, ради чего движок и нужен на экране: день пошёл не так, как посчитали,
