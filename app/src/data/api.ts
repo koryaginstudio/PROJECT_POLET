@@ -601,5 +601,11 @@ export interface Staffing {
   still_unassigned: string[];
 }
 
+/* Предел — как у счёта, а не пятнадцать секунд: ответ — несколько
+   пересчётов дня, и первый, холодный, идёт до полуминуты. */
 export const loadStaffing = (day: string, base?: string) =>
-  call<Staffing>(`/staffing?day=${encodeURIComponent(day)}${baseQuery(base)}`);
+  call<Staffing>(
+    `/staffing?day=${encodeURIComponent(day)}${baseQuery(base)}`,
+    undefined,
+    SOLVE_TIMEOUT
+  );

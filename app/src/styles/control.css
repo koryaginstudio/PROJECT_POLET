@@ -1,0 +1,202 @@
+/* ─── «Воздействие» и окно правки ──────────────────────────────────────────
+
+   Отдельным файлом, а не в конце app.css: правила здесь поднимают кегль и
+   цвет только у этих двух экранов, и лежать им рядом с экранами проще, чем
+   искать их в десяти тысячах строк общего листа.
+
+   Селекторы двойные (`.ctl .actcard__row`, `.incident__card .…`) — не ради
+   красоты: этот лист может встать в сборке раньше app.css, и перебивать
+   общие правила он должен весом, а не порядком. */
+
+/* Читатель — диспетчер 40–50 лет. Всё, что он читает, чтобы решить, —
+   14px и основным цветом; 12px остаётся только подписям шкал. */
+.ctl .actcard__what,
+.ctl .actcard__row,
+.ctl .ctl__lede-first,
+.ctl .ctl__more-body,
+.incident__card .incident__kind-what,
+.incident__card .incident__field-label,
+.incident__card .incident__gain-label,
+.incident__card .engine__lede,
+.incident__card .manual__note,
+.incident__card .incident__fate-label {
+  font-size: var(--fs-body-s);
+  line-height: var(--lh-body-s);
+  color: var(--text-primary);
+}
+
+.ctl .actcard__row {
+  color: var(--text-secondary);
+}
+
+.ctl .actcard__row b {
+  color: var(--text-primary);
+}
+
+/* Строка-кнопка внизу карточки: карточка больше не кнопка целиком —
+   кнопка внутри кнопки недопустима, а видимая надпись «Пересчитать от …»
+   отвечает на вопрос «а что будет, если нажать», которого у безымянной
+   карточки не было. */
+.ctl .actcard__go {
+  margin-top: var(--sp-2);
+  align-self: flex-start;
+}
+
+/* Пояснение: первая фраза видна, остальное — под «Подробнее». */
+.ctl .ctl__lede {
+  margin: var(--sp-3) 0;
+  max-width: 78ch;
+}
+
+.ctl .ctl__lede-first {
+  margin: 0;
+}
+
+.ctl .ctl__more > summary,
+.incident__card .incident__more > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  min-height: var(--control-h-sm);
+  cursor: pointer;
+  list-style: none;
+  font-size: var(--fs-body-s);
+  font-weight: var(--fw-semibold);
+  color: var(--text-secondary);
+}
+
+.ctl .ctl__more > summary::-webkit-details-marker,
+.incident__card .incident__more > summary::-webkit-details-marker {
+  display: none;
+}
+
+.ctl .ctl__more[open] > summary svg,
+.incident__card .incident__more[open] > summary svg {
+  transform: rotate(90deg);
+}
+
+.ctl .ctl__more-body {
+  margin: 0;
+}
+
+/* «Сколько ещё людей нужно»: плитка с главным числом, под ней — какие. */
+.ctl .ctl__staff {
+  display: grid;
+  grid-template-columns: minmax(220px, 300px) 1fr;
+  gap: var(--sp-4);
+  align-items: start;
+  margin-top: var(--sp-3);
+}
+
+@media (max-width: 720px) {
+  .ctl .ctl__staff {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ctl .ctl__staff-phrase {
+  margin: 0 0 var(--sp-2);
+  font-size: var(--fs-body-s);
+  line-height: var(--lh-body-s);
+  color: var(--text-primary);
+}
+
+.ctl .ctl__text {
+  margin: var(--sp-2) 0 0;
+  font-size: var(--fs-body-s);
+  line-height: var(--lh-body-s);
+  color: var(--text-primary);
+}
+
+/* Подтверждение сброса на месте, как «Удалить запись?» в правке записи. */
+.ctl .ctl__ask {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+}
+
+.ctl .ctl__ask-text {
+  font-size: var(--fs-body-s);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+
+/* Ошибка: «что случилось» и «что делать» на виду, техническое — ниже. */
+.ctl .ctl__fail,
+.incident__card .incident__fail {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+  font-size: var(--fs-body-s);
+  line-height: var(--lh-body-s);
+  color: var(--text-primary);
+}
+
+.ctl .ctl__fail > svg,
+.incident__card .incident__fail > svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--danger-600);
+}
+
+.ctl .ctl__fail-detail,
+.incident__card .incident__fail-detail {
+  margin: 0;
+  font-size: var(--fs-body-s);
+  color: var(--text-secondary);
+  word-break: break-word;
+}
+
+/* Штраф за смену исполнителя в окне правки — те же три карточки, что в
+   правилах расчёта; в узком окне — в столбик. */
+.incident__card .incident__churn .presets {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  margin-top: var(--sp-2);
+}
+
+.incident__card .incident__churn .preset {
+  min-height: var(--control-h-sm);
+}
+
+.incident__card .incident__churn .preset__label,
+.incident__card .incident__churn .preset__what {
+  font-size: var(--fs-body-s);
+}
+
+.incident__card .incident__churn .preset__what {
+  color: var(--text-primary);
+}
+
+.incident__card .incident__churn .preset__default {
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+
+/* Кто и куда — списком имён и адресов. Коды диспетчеру не нужны. */
+.incident__card .incident__names {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.incident__card .incident__names-title {
+  margin: 0;
+  font-size: var(--fs-body-s);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+
+.incident__card .incident__names ul {
+  margin: 0;
+  padding-left: var(--sp-4);
+  font-size: var(--fs-body-s);
+  line-height: var(--lh-body-s);
+  color: var(--text-primary);
+}
+
+.incident__card .incident__names li span {
+  color: var(--text-secondary);
+}

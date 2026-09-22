@@ -392,6 +392,9 @@ export function App() {
     (opened.forms === undefined || opened.forms.includes('simulation'));
   const engineDay = wholeDay ? opened.day ?? null : null;
   const engineBase = engineDay ? runId : undefined;
+  /* Запись движка, но не целый день — сохранённый пересчёт. Окну правки и
+     «Воздействию» это отдельная причина недоступности: совет у неё другой. */
+  const savedReplan = opened !== undefined && opened.source === null && !wholeDay;
   const [dayState, setDayState] = useState<DayState | null>(null);
   const [eventBusy, setEventBusy] = useState(false);
   const [eventFailed, setEventFailed] = useState<string | null>(null);
@@ -931,6 +934,7 @@ export function App() {
           cut={cut}
           live={engineReady()}
           canReplan={Boolean(engineDay)}
+          savedReplan={savedReplan}
           onPick={(kind) => {
             setIncidentKind(kind);
             setReplan(null);
@@ -1269,6 +1273,7 @@ export function App() {
           open={incidentOpen}
           view={ready.view}
           live={engineReady()}
+          savedReplan={savedReplan}
           runCode={runCode(runId)}
           /* День движка — только у расчёта целого дня: у сохранённого
              пересчёта (остатка дня) пересчитывать нечего. */
