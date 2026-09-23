@@ -225,16 +225,19 @@ export function SettingsScreen({ mode, registry, onEditsCleared, onHistoryCleare
             звать промахнуться. */}
         <section className="panel">
           <div className="dash__section-head">
-            <h2 className="dash__section-title">История расчётов</h2>
-            <span className="dash__section-note">хранится в этом браузере</span>
+            <h2 className="dash__section-title">Расчёты этого браузера</h2>
+            <span className="dash__section-note">отдельно от архива программы расчёта</span>
           </div>
           <p className="clients__lede">
-            Все расчёты, посчитанные здесь, лежат в хранилище этого браузера. Данные зон это не
-            затрагивает: они лежат файлами, и посчитать день заново можно всегда.
+            Здесь — только то, что посчитано без программы расчёта, на записанных днях: свой
+            запасной архив браузера, а не общая история. Он не совпадает со «Записей в истории»
+            выше — то число включает и архив программы расчёта, а это стирает только своё. Пока
+            программа расчёта запущена, новых записей сюда не добавляется вовсе — оттого он и
+            может показывать ноль, когда выше стоит три.
           </p>
 
           <div className="setrow">
-            <span className="setrow__key">Расчётов в истории</span>
+            <span className="setrow__key">Расчётов в этом архиве</span>
             <span className="setrow__val">{history}</span>
           </div>
 
@@ -255,7 +258,7 @@ export function SettingsScreen({ mode, registry, onEditsCleared, onHistoryCleare
               }}
               iconLeft={<Icon name="trash" size={14} />}
             >
-              {wiping ? 'Да, стереть всё' : 'Стереть историю расчётов'}
+              {wiping ? 'Да, стереть всё' : 'Стереть архив браузера'}
             </Button>
             {wiping && (
               <Button variant="ghost" size="sm" onClick={() => setWiping(false)}>

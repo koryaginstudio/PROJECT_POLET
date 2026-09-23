@@ -119,9 +119,13 @@ interface Slice {
   /** Сколько раз услуга попадала в расчёты: «заявок» и «в расчётах» — разные
       числа, полный каталог шире того, что дошло до движка. */
   planned: number;
+  /** Сумма настоящих длительностей открытых заявок, минуты — не оценка по
+      границе диапазона. То же число, каким его считает база заявок, чтобы
+      «часов впереди» не расходилось между двумя базами за один срок. */
+  minutes: number;
 }
 
-const EMPTY: Slice = { orders: 0, assigned: 0, urgent: 0, access: 0, planned: 0 };
+const EMPTY: Slice = { orders: 0, assigned: 0, urgent: 0, access: 0, planned: 0, minutes: 0 };
 
 /* База услуг: что именно делают на объекте.
 
@@ -179,6 +183,7 @@ export function DbServicesScreen({ registry, mode, onOpenRun }: Props) {
       if (!withinPeriod(order.run.created, period)) continue;
       const cell = map.get(order.workType) ?? { ...EMPTY };
       cell.orders += 1;
+      cell.minutes += order.estMinutes;
       /* За срок «в расчётах» и «заявок» — одно и то же число: реестр заявок
          и собран из расчётов. Разойтись они могут только на «всём времени»,
          где заявки берутся из полного каталога. */
@@ -202,7 +207,8 @@ export function DbServicesScreen({ registry, mode, onOpenRun }: Props) {
           assigned: row.assigned,
           urgent: row.urgent,
           access: row.access,
-          planned: row.planned
+          planned: row.planned,
+          minutes: row.openMinutes
         }
       : (sliceBy.get(row.key) ?? EMPTY);
 
@@ -616,9 +622,11 @@ export function DbServicesScreen({ registry, mode, onOpenRun }: Props) {
             'заявки',
             'заявок'
           )} по ним`}
-          {` · ${dec(
-            rows.reduce((sum, row) => sum + sliceOf(row).orders * row.minutesTo, 0) / 60
-          )} ч работы`}
+          {/* Сумма настоящих длительностей, не оценка «сколько заявок» на
+              «верхнюю границу диапазона услуги»: граница — не среднее и тем
+              более не сумма, и счёт по ней расходился с базой заявок за тот
+              же срок на несколько часов. */}
+          {` · ${dec(rows.reduce((sum, row) => sum + sliceOf(row).minutes, 0) / 60)} ч работы`}
           {` · разложено ${percent(
             rows.reduce((sum, row) => sum + sliceOf(row).assigned, 0) /
               Math.max(rows.reduce((sum, row) => sum + sliceOf(row).planned, 0), 1)

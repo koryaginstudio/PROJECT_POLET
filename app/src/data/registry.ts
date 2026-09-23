@@ -159,6 +159,10 @@ export interface ServiceRecord {
       них разложено. */
   planned: number;
   assigned: number;
+  /** Сумма настоящих длительностей открытых заявок, минуты. Не `orders *
+      minutesTo` — граница диапазона не то же самое, что сумма фактических
+      значений внутри него. */
+  openMinutes: number;
 }
 
 export interface OrderRecord {
@@ -871,6 +875,7 @@ function buildServices(orders: Order[], plans: { plan: Plan }[]): ServiceRecord[
         access: 0,
         planned: 0,
         assigned: 0,
+        openMinutes: 0,
         equipSet: new Set<string>()
       };
       map.set(order.work_type, entry);
@@ -890,7 +895,15 @@ function buildServices(orders: Order[], plans: { plan: Plan }[]): ServiceRecord[
     /* Закрытые — отдельным числом: доля разложенных считается от открытых,
        и выполненная заявка в «не разложено» попадать не должна. */
     if (orderClosed(order)) entry.closed += 1;
-    else entry.orders += 1;
+    else {
+      entry.orders += 1;
+      /* Сумма настоящих длительностей открытых заявок — не «сколько их» на
+         «верхнюю границу диапазона». Услуга держит диапазон `minutes`—
+         `minutesTo`, а он у одного вида работ может расходиться в разы, и
+         счёт по границе завышал итог: база заявок называла одно число часов
+         впереди, база услуг за тот же срок — другое, побольше. */
+      entry.openMinutes += order.est_minutes;
+    }
     /* Срочность считаем тем же правилом, что и весь остальной интерфейс:
        есть `priority_class` — он и решает, нет — выводим из уровня. Своё
        правило здесь («класс срочный ИЛИ уровень от второго») расходилось с
