@@ -193,6 +193,12 @@ export function RouteCard({
         <div className="runcard__facts">
           <span className={'runcard__fact' + (overtime ? ' runcard__fact--bad' : '')}>
             {shortName(row.engineerName)} · <b>{hoursText(row.travelMinutes)}</b> в дороге
+            {row.distanceKm !== null && (
+              <>
+                {' · '}
+                <b>{dec(row.distanceKm)} км</b>
+              </>
+            )}
           </span>
         </div>
       ) : (
@@ -297,6 +303,10 @@ export function RouteCard({
               <dd>{dayOf(day)}</dd>
             </div>
           )}
+          <div className="engfacts__row">
+            <dt>Пробег</dt>
+            <dd>{row.distanceKm !== null ? `${dec(row.distanceKm)} км` : 'километража нет'}</dd>
+          </div>
         </dl>
       )}
 

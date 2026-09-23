@@ -280,6 +280,16 @@ export function ControlScreen({
                   <b>{kind.back}</b>
                 </span>
               </span>
+              {/* Числа выше — не факт, а оценка по замерам: сколько дней и
+                  прогонов за ней стоит, сказано прямо здесь, а не спрятано
+                  за ссылкой «подробнее» — так их не примут за точный расчёт
+                  этого конкретного дня. */}
+              {kind.basis && (
+                <p className="actcard__basis">
+                  <Icon name="info" size={12} />
+                  {kind.basis}
+                </p>
+              )}
               <Button
                 className="actcard__go"
                 variant="secondary"

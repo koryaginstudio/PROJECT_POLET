@@ -1431,6 +1431,27 @@ export function MapBoard({
           {BASEMAPS.find((one) => one.key === base)?.credit}
         </span>
 
+        {/* Условные обозначения — тихой строкой в углу, рядом с источником
+            подложки. Цвет на карте у каждого читается по-разному, пока не
+            сказано словами хоть раз: свой цвет маршрута — у инженера, белая
+            точка — не то же самое, что цветная. */}
+        {pinsOn && (
+          <div className="geo__legend" aria-hidden="true">
+            <span className="geo__legend-item">
+              <span className="geo__legend-dot" style={{ background: TONE.free, opacity: 0.55 }} />
+              Без инженера
+            </span>
+            <span className="geo__legend-item">
+              <span className="geo__legend-dot" style={{ background: '#8A8A8A' }} />
+              Маршрут — свой цвет у каждого
+            </span>
+            <span className="geo__legend-item">
+              <span className="geo__legend-dot" style={{ background: TONE.risk }} />
+              Выбрана, риск сорвать срок
+            </span>
+          </div>
+        )}
+
         {/* Выход из полноэкранной карты — там, где его ищут: крестиком в
             правом верхнем углу. Кнопка сворачивания в кластере масштаба
             слева остаётся, но найти её, не зная о ней, нельзя: значок в

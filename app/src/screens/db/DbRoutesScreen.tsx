@@ -41,6 +41,14 @@ const PAGE = 60;
 
 const percent = (share: number) => `${Math.round(share * 100)}%`;
 
+/* Сумма пробега по списку маршрутов — словами, а не числом, если хоть у
+   одного километража нет: складывать часть маршрутов и называть это суммой
+   всех значило бы соврать о количестве. */
+const kmSum = (list: RouteRecord[]) => {
+  if (list.some((r) => r.distanceKm === null)) return 'километраж есть не у всех';
+  return `${dec(list.reduce((sum, r) => sum + (r.distanceKm ?? 0), 0))} км`;
+};
+
 /* По чему упорядочены маршруты. Первым — номер: он сквозной на всю базу, и
    по нему маршрут находят, когда пришли с ним на руках.
 
@@ -672,6 +680,7 @@ export function DbRoutesScreen({
             <th>В дороге</th>
             <th>В работе</th>
             <th>Простой</th>
+            <th>Пробег</th>
             <th>Занятость</th>
             <th>Переработка</th>
             <th>Риск</th>
@@ -716,6 +725,7 @@ export function DbRoutesScreen({
               <td className="tbl__num">{hoursText(route.travelMinutes)}</td>
               <td className="tbl__num">{hoursText(route.workMinutes)}</td>
               <td className="tbl__num">{hoursText(route.idleMinutes)}</td>
+              <td className="tbl__num">{route.distanceKm !== null ? `${dec(route.distanceKm)} км` : '—'}</td>
               <td>
                 <span className={'pill pill--' + (route.occupancy < loose ? 'idle' : 'success')}>
                   {percent(route.occupancy)}
@@ -776,7 +786,7 @@ export function DbRoutesScreen({
       {rows.length > 0 &&
         ` · ${pluralVisits(rows.reduce((sum, one) => sum + one.visits, 0))} · ${hoursText(
           rows.reduce((sum, one) => sum + one.travelMinutes, 0)
-        )} в дороге`}
+        )} в дороге · ${kmSum(rows)}`}
     </>
   );
 
@@ -862,8 +872,8 @@ export function DbRoutesScreen({
                 </h2>
                 <span className="dbrun__facts">
                   {plural(entry.routes.length, 'маршрут', 'маршрута', 'маршрутов')} ·{' '}
-                  {pluralVisits(entry.visits)} · {hoursText(entry.travel)} в дороге · занятость{' '}
-                  {percent(entry.occupancy)}
+                  {pluralVisits(entry.visits)} · {hoursText(entry.travel)} в дороге ·{' '}
+                  {kmSum(entry.routes)} · занятость {percent(entry.occupancy)}
                   {entry.risky > 0
                     ? ` · ${plural(entry.risky, 'рискованная остановка', 'рискованные остановки', 'рискованных остановок')}`
                     : ''}
@@ -939,6 +949,11 @@ export function DbRoutesScreen({
                 { label: 'Заявок', value: route.visits },
                 { label: 'В работе', value: hoursText(route.workMinutes) },
                 { label: 'В дороге', value: hoursText(route.travelMinutes) },
+                {
+                  label: 'Пробег',
+                  value: route.distanceKm !== null ? `${dec(route.distanceKm)} км` : '—',
+                  tone: route.distanceKm === null ? ('muted' as const) : undefined
+                },
                 {
                   label: 'Занятость',
                   value: percent(route.occupancy),

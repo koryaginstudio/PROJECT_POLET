@@ -9552,6 +9552,24 @@ b.ccard__bad {
   color: var(--text-primary);
 }
 
+/* Чем измерено число выше — тихой строкой под ним, а не ссылкой «подробнее»
+   в углу: то, что цифра — оценка по замерам, а не факт этого дня, стоит
+   видеть сразу, не наводя и не нажимая. */
+.actcard__basis {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  margin: 0;
+  font-size: var(--fs-small);
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
+.actcard__basis svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
 .ctrlnote {
   display: flex;
   align-items: flex-start;
@@ -15973,6 +15991,56 @@ button.chip--sm {
   color: var(--ink-1000);
   opacity: 0.6;
   text-shadow: 0 1px 2px rgba(255, 255, 255, 0.7);
+}
+
+/* Условные обозначения — тем же голосом, что и сноска подложки: тихая
+   строка, не орган управления, поэтому pointer-events выключены и клика
+   не ждёт. Слева, а не справа, — credit уже занял правый угол. */
+.geo__legend {
+  position: absolute;
+  left: 8px;
+  bottom: 4px;
+  z-index: 520;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  pointer-events: none;
+}
+
+.geo__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--fs-small);
+  color: var(--white);
+  opacity: 0.7;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  white-space: nowrap;
+}
+
+.geo__plot--day .geo__legend-item {
+  color: var(--ink-1000);
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.7);
+}
+
+.geo__legend-dot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+}
+
+.geo__plot--day .geo__legend-dot {
+  border-color: rgba(0, 0, 0, 0.35);
+}
+
+/* На узкой карте (не в полноэкранном виде) легенда спорит за место с
+   тумблерами и сноской — прячем её, оставляя только сноску подложки. */
+@media (max-width: 900px) {
+  .geo__legend {
+    display: none;
+  }
 }
 
 /* Прорехи между плитками на светлой подложке закрашены светлым: иначе при

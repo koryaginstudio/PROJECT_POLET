@@ -306,6 +306,11 @@ export function EngineerCard({
             <dd>{hoursText(travelMinutes ?? row.travelMinutes)}</dd>
           </div>
           <div className="engmetrics__row">
+            <dt>Пробег</dt>
+            <span className="engmetrics__leader" aria-hidden="true" />
+            <dd>{row.distanceKm !== null ? `${dec(row.distanceKm)} км` : '—'}</dd>
+          </div>
+          <div className="engmetrics__row">
             <dt>Маршрутов</dt>
             <span className="engmetrics__leader" aria-hidden="true" />
             <dd>{row.routes}</dd>

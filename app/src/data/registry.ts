@@ -259,6 +259,10 @@ export interface RouteRecord {
   idleMinutes: number;
   overtimeMinutes: number;
   occupancy: number;
+  /** Пробег маршрута, км. `null` — движок его для этого плана не прислал
+      (старая схема без километража): показываем прочерк, а не ноль, чтобы
+      «не было» не читалось как «проехал ноль». */
+  distanceKm: number | null;
   start: number;
   end: number;
   /** Районы, которые маршрут прошёл, в порядке первого появления. */
@@ -306,6 +310,9 @@ export interface EngineerShift {
   overtimeMinutes: number;
   /** Занятость маршрута, доля 0…1. Без маршрута — ноль. */
   occupancy: number;
+  /** Пробег в этом прогоне, км. `null` — маршрута не было или движок
+      километраж не прислал. */
+  distanceKm: number | null;
 }
 
 export interface EngineerRecord {
@@ -323,6 +330,10 @@ export interface EngineerRecord {
   travelMinutes: number;
   workMinutes: number;
   overtimeMinutes: number;
+  /** Суммарный пробег по всем прогонам, км. `null` — хотя бы в одном
+      маршрутном прогоне движок километраж не прислал: складывать часть
+      значило бы называть неполную сумму итоговой. */
+  distanceKm: number | null;
   /** Средняя занятость по маршрутам, доля 0…1. */
   occupancyMean: number;
   /** Прогоны, где инженер вышел, но остался без маршрута. */
@@ -770,6 +781,7 @@ function buildRoutes(plans: { run: RunRef; plan: Plan }[]): RouteRecord[] {
         idleMinutes: route.totals.idle_minutes,
         overtimeMinutes: route.totals.overtime_minutes,
         occupancy: route.totals.occupancy,
+        distanceKm: route.totals.distance_km ?? null,
         start: route.totals.start,
         end: route.totals.end,
         districts,
@@ -813,6 +825,7 @@ function blank(
     travelMinutes: 0,
     workMinutes: 0,
     overtimeMinutes: 0,
+    distanceKm: 0,
     occupancyMean: 0,
     idleRuns: 0,
     shiftStart: engineer.shift_start,
@@ -974,7 +987,8 @@ function buildEngineers(
         travelMinutes: route?.totals.travel_minutes ?? 0,
         workMinutes: route ? workMinutesOf(route) : 0,
         overtimeMinutes: route?.totals.overtime_minutes ?? 0,
-        occupancy: route?.totals.occupancy ?? 0
+        occupancy: route?.totals.occupancy ?? 0,
+        distanceKm: route?.totals.distance_km ?? null
       });
 
       if (!route) {
@@ -986,6 +1000,12 @@ function buildEngineers(
       entry.travelMinutes += route.totals.travel_minutes;
       entry.workMinutes += workMinutesOf(route);
       entry.overtimeMinutes += route.totals.overtime_minutes;
+      /* Сумма рвётся в null, как только маршрут без километража, и обратно
+         уже не собирается: неполная сумма хуже честного прочерка. */
+      entry.distanceKm =
+        entry.distanceKm === null || route.totals.distance_km == null
+          ? null
+          : entry.distanceKm + route.totals.distance_km;
     }
   }
 
@@ -1001,6 +1021,7 @@ function buildEngineers(
       travelMinutes: entry.travelMinutes,
       workMinutes: entry.workMinutes,
       overtimeMinutes: entry.overtimeMinutes,
+      distanceKm: entry.distanceKm,
       /* Среднее — той же формулой, что и везде: по сменам с маршрутом. */
       occupancyMean: occupancyMean(entry.byRun.filter((shift) => shift.routed)),
       idleRuns: entry.idleRuns,

@@ -453,6 +453,11 @@ export function CrewProfile({
                 <Stat value={`${dec(crew.occupancyMean * 100)} %`} label="средняя занятость" />
                 <Stat value={hoursText(crew.travelMinutes)} label="в дороге" />
                 <Stat
+                  value={crew.distanceKm !== null ? dec(crew.distanceKm) : '—'}
+                  unit={crew.distanceKm !== null ? 'км' : undefined}
+                  label="пробег"
+                />
+                <Stat
                   value={crew.overtimeMinutes > 0 ? hoursText(crew.overtimeMinutes) : '—'}
                   label="сверх смены"
                   bad={crew.overtimeMinutes > 0}
@@ -674,6 +679,7 @@ export function CrewProfile({
                           <th>Заявок</th>
                           <th>В работе</th>
                           <th>В дороге</th>
+                          <th>Пробег</th>
                           <th>Занятость</th>
                           <th>Сверх смены</th>
                         </tr>
@@ -701,6 +707,9 @@ export function CrewProfile({
                             </td>
                             <td className="tbl__num">{hoursText(shift.workMinutes)}</td>
                             <td className="tbl__num">{hoursText(shift.travelMinutes)}</td>
+                            <td className="tbl__num">
+                              {shift.distanceKm !== null ? `${dec(shift.distanceKm)} км` : '—'}
+                            </td>
                             <td className="tbl__num">{dec(shift.occupancy * 100)} %</td>
                             <td className="tbl__num">
                               {shift.overtimeMinutes > 0 ? (
