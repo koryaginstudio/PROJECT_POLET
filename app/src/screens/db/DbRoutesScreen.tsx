@@ -16,6 +16,9 @@ import type { DbChip } from './DbBar.tsx';
 import { DbCrewProfile } from './DbCrew.tsx';
 import { DbList } from './DbList.tsx';
 
+/** За какой срок показывать маршруты. */
+type DaySpan = 'all' | 'today' | 'week' | 'range';
+
 /* День из ISO-даты выгрузки: «2026-08-17» → «17.08.2026». Тот же вид, что в
    базе расчётов: одна дата в двух базах не должна выглядеть по-разному. */
 const dayOf = (date: string) => {
@@ -163,15 +166,20 @@ export function DbRoutesScreen({
   const [desc, setDesc] = useState(false);
   const [filter, setFilter] = useState<Filter>('all');
   const [run, setRun] = useState<string | null>(null);
-  /* День, на который считали, — тот же, что стоит у расчёта. Не день, когда
-     расчёт завели: маршрут принадлежит рабочему дню, а не минуте, в которую
-     его посчитали, и оператор спрашивает «что у нас на сегодня», а не «что
-     мы считали вчера вечером».
+  /* Срок, за который показывать маршруты. День берётся тот, на который
+     считали (`run.date`), а не тот, когда расчёт завели: маршрут принадлежит
+     рабочему дню, а не минуте, в которую его посчитали.
 
-     Пусто — все дни. По умолчанию именно так: в нынешних данных разложен
-     один день выгрузки, и открывать базу на «сегодня» значило бы встречать
-     оператора пустым экраном. */
-  const [day, setDay] = useState<string | null>(null);
+     Три ответа на «за когда»: сегодня, последняя неделя и произвольный
+     отрезок. Отрезок отдельной кнопкой, потому что он не выбирает срок сам,
+     а открывает поля, где его задают, — тот же приём, что в списке расчётов.
+
+     По умолчанию «всё»: в нынешних данных разложен один день выгрузки, и
+     открывать базу на «сегодня» значило бы встречать оператора пустым
+     экраном. */
+  const [span, setSpan] = useState<DaySpan>('all');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
 
   /* Сегодняшний день в том же виде, в каком дата стоит у расчёта: «2026-09-23».
      Считается от часов машины, поэтому живёт в useMemo — не пересчитывать же
@@ -201,6 +209,54 @@ export function DbRoutesScreen({
 
   const all = registry.routes;
 
+  /* Начало последней недели — шесть суток назад, считая сегодняшние. Ровно
+     так «неделю» понимает срок доски (`withinPeriod`): одно слово в одном
+     экране не должно значить разное. */
+  const weekFrom = useMemo(() => {
+    const at = new Date();
+    at.setDate(at.getDate() - 6);
+    const два = (value: number) => String(value).padStart(2, '0');
+    return `${at.getFullYear()}-${два(at.getMonth() + 1)}-${два(at.getDate())}`;
+  }, []);
+
+  /* Попадает ли день расчёта в выбранный срок. Сравниваем строки ISO, а не
+     отметки времени: у дня выгрузки нет ни часа, ни пояса, и перевод его в
+     Date ради сравнения добавил бы к суткам смещение пояса. */
+  const inSpan = (date: string) => {
+    if (span === 'today') return date === today;
+    if (span === 'week') return date >= weekFrom && date <= today;
+    if (span === 'range') return (!from || date >= from) && (!to || date <= to);
+    return true;
+  };
+
+  /* Отрезок словами: «с 01.08.2026 по 31.08.2026», а при одной границе —
+     только она. */
+  const rangeWords =
+    from && to
+      ? `с ${dayOf(from)} по ${dayOf(to)}`
+      : from
+        ? `с ${dayOf(from)}`
+        : to
+          ? `по ${dayOf(to)}`
+          : 'без границ';
+
+  /* Чем срок назван в чипе — именительным: чип читается «Срок: неделя». */
+  const spanChip =
+    span === 'today'
+      ? `сегодня, ${dayOf(today)}`
+      : span === 'week'
+        ? `неделя, с ${dayOf(weekFrom)}`
+        : rangeWords;
+
+  /* И он же внутри фразы «За … маршрутов нет» — винительным. Две подписи, а
+     не одна на оба места: «Срок: последнюю неделю» читается как обрывок. */
+  const spanWords =
+    span === 'today'
+      ? `сегодня, ${dayOf(today)}`
+      : span === 'week'
+        ? `последнюю неделю, с ${dayOf(weekFrom)}`
+        : `период ${rangeWords}`;
+
   /* Дни, которые вообще есть в базе. Нужны двум местам: кнопке «Сегодня» —
      чтобы сказать, есть ли на сегодня хоть что-нибудь, — и пустому экрану,
      который иначе молчал бы о том, где маршруты всё-таки лежат. */
@@ -229,7 +285,7 @@ export function DbRoutesScreen({
     const needle = query.trim().toLowerCase();
     const picked = all.filter((route) => {
       if (run && route.run.id !== run) return false;
-      if (day && route.run.date !== day) return false;
+      if (!inSpan(route.run.date)) return false;
       if (filter === 'overtime' && route.overtimeMinutes === 0) return false;
       if (filter === 'risky' && route.risky === 0) return false;
       if (filter === 'busy' && route.occupancy < busy) return false;
@@ -282,7 +338,7 @@ export function DbRoutesScreen({
       const diff = rank(a) - rank(b);
       return side * (diff !== 0 ? diff : tie(a, b));
     });
-  }, [all, day, busy, desc, filter, loose, query, run, sort]);
+  }, [all, busy, desc, filter, from, loose, query, run, sort, span, to]);
 
   /* Сменили отбор или порядок — счётчик показанного начинается заново. */
   const narrow = <T,>(set: (value: T) => void) => (value: T) => {
@@ -311,7 +367,9 @@ export function DbRoutesScreen({
   const reset = () => {
     setFilter('all');
     setRun(null);
-    setDay(null);
+    setSpan('all');
+    setFrom('');
+    setTo('');
     setQuery('');
     paging.reset();
   };
@@ -790,16 +848,20 @@ export function DbRoutesScreen({
       onRemove: clear(() => setFilter('all'))
     });
   }
-  if (day) {
+  if (span !== 'all') {
     chips.push({
-      key: 'day',
+      key: 'span',
       label: (
         <>
-          <ChipKey>День</ChipKey>
-          {dayOf(day)}
+          <ChipKey>Срок</ChipKey>
+          {spanChip}
         </>
       ),
-      onRemove: clear(() => setDay(null))
+      onRemove: clear(() => {
+        setSpan('all');
+        setFrom('');
+        setTo('');
+      })
     });
   }
   if (run) {
@@ -860,47 +922,89 @@ export function DbRoutesScreen({
               />
             </div>
 
-            {/* День — первым в полосе: «что у нас на сегодня» спрашивают
+            {/* Срок — первым в полосе: «что у нас на сегодня» спрашивают
                 чаще, чем «какие маршруты вышли перегруженными».
 
-                Кнопка и календарь рядом, а не вместо друг друга: «сегодня»
-                нажимают не глядя, а любой другой день выбирают в календаре,
-                и заставлять искать сегодняшнее число в сетке — лишний шаг к
-                тому, что делают чаще всего. */}
-            <div className="filters__group">
+                «За период» не выбирает срок сам, а раскрывает поля, где его
+                задают, — и говорит это стрелкой. Тот же приём, что в списке
+                расчётов: там произвольный отрезок тоже стоит третьей кнопкой
+                рядом с готовыми сроками. */}
+            <div className="filters__group filters__group--wide">
               <span className="filters__label">День</span>
               <span className="filters__types">
                 <button
                   type="button"
-                  className={'chip' + (day === today ? ' chip--on' : '')}
-                  onClick={narrow(() => setDay(day === today ? null : today))}
-                  aria-pressed={day === today}
-                  title={
-                    days.includes(today)
-                      ? 'Маршруты, посчитанные на сегодняшний день'
-                      : 'На сегодня в базе маршрутов нет: разложены другие дни'
-                  }
+                  className={'chip' + (span === 'today' ? ' chip--on' : '')}
+                  onClick={narrow(() => setSpan(span === 'today' ? 'all' : 'today'))}
+                  aria-pressed={span === 'today'}
+                  title={`Маршруты, посчитанные на ${dayOf(today)}`}
                 >
                   Сегодня
-                  {day === today && <Icon name="x" size={12} />}
+                  {span === 'today' && <Icon name="x" size={12} />}
                 </button>
-                <input
-                  type="date"
-                  className="filters__date"
-                  value={day ?? ''}
-                  onChange={(event) => narrow(setDay)(event.target.value || null)}
-                  aria-label="День, за который показывать маршруты"
-                />
-                {day && (
-                  <button
-                    type="button"
-                    className="chip"
-                    onClick={narrow(() => setDay(null))}
-                  >
-                    Все дни
-                  </button>
-                )}
+                <button
+                  type="button"
+                  className={'chip' + (span === 'week' ? ' chip--on' : '')}
+                  onClick={narrow(() => setSpan(span === 'week' ? 'all' : 'week'))}
+                  aria-pressed={span === 'week'}
+                  title={`Последние семь суток, с ${dayOf(weekFrom)}`}
+                >
+                  Неделя
+                  {span === 'week' && <Icon name="x" size={12} />}
+                </button>
+                <button
+                  type="button"
+                  className={'chip' + (span === 'range' ? ' chip--on' : '')}
+                  onClick={narrow(() => setSpan(span === 'range' ? 'all' : 'range'))}
+                  aria-expanded={span === 'range'}
+                >
+                  За период
+                  <Icon name={span === 'range' ? 'chevron-up' : 'chevron-down'} size={12} />
+                </button>
               </span>
+
+              {/* Поля отрезка — строкой под кнопками, а не окошком поверх:
+                  их держат открытыми, пока подбирают границы, и окошко,
+                  закрывающееся от щелчка мимо, тут только мешало бы. */}
+              {span === 'range' && (
+                <div className="runmenu__range">
+                  <label className="runmenu__date">
+                    <span>с</span>
+                    <input
+                      type="date"
+                      value={from}
+                      max={to || undefined}
+                      onChange={(event) => narrow(setFrom)(event.currentTarget.value)}
+                    />
+                  </label>
+                  <label className="runmenu__date">
+                    <span>по</span>
+                    <input
+                      type="date"
+                      value={to}
+                      min={from || undefined}
+                      onChange={(event) => narrow(setTo)(event.currentTarget.value)}
+                    />
+                  </label>
+                  {from || to ? (
+                    <button
+                      type="button"
+                      className="createbar__reset"
+                      onClick={narrow(() => {
+                        setFrom('');
+                        setTo('');
+                      })}
+                    >
+                      Очистить
+                    </button>
+                  ) : (
+                    /* Без границ отрезок ничего не отсекает. Сказать это надо
+                       прямо: пустые поля читаются как «отбор стоит, но
+                       почему-то не работает». */
+                    <span className="runmenu__hint">пусто — показаны все</span>
+                  )}
+                </div>
+              )}
             </div>
 
             {registry.runs.length > 1 && (
@@ -938,8 +1042,8 @@ export function DbRoutesScreen({
       {rows.length === 0 ? (
         <DbEmpty
           miss={
-            day
-              ? `За ${dayOf(day)} маршрутов нет.` +
+            span !== 'all'
+              ? `За ${spanWords} маршрутов нет.` +
                 (days.length > 0
                   ? ` В базе разложены другие дни: ${days.map(dayOf).join(', ')}.`
                   : '')
@@ -947,7 +1051,7 @@ export function DbRoutesScreen({
           }
           blank="Маршрутов в базе пока нет: их строит программа расчёта, и до первого сохранённого расчёта база пуста."
           query={query.trim() !== ''}
-          filtered={filter !== 'all' || run !== null || day !== null}
+          filtered={filter !== 'all' || run !== null || span !== 'all'}
           onReset={reset}
         />
       ) : mode === 'runs' ? (
