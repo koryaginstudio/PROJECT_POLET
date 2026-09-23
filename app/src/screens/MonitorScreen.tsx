@@ -109,6 +109,20 @@ export function MonitorScreen({
     return map;
   }, [roster]);
 
+  /* На что нажали последним. Раньше выбранную заявку показывала правая
+     полоса — «Требуют внимания» вело в неё; полосы здесь больше нет, и без
+     этого нажатие на тревогу не отвечало ничем. Отвечает сама карта: точку
+     обводит и подъезжает к ней. Наверх выбор всё равно уходит — им живут
+     поиск и карточки справочника. */
+  const [atOrder, setAtOrder] = useState<string | null>(null);
+  const chooseOrder = useCallback(
+    (id: string) => {
+      setAtOrder(id);
+      onSelectOrder(id);
+    },
+    [onSelectOrder]
+  );
+
   /* Выбранное число — оно же фильтр карты. Пять чисел отвечали на вопрос
      «сколько», но не на следующий за ним — «а где они»; за ответом
      приходилось водить глазами по списку и искать те же фамилии на карте. */
@@ -211,7 +225,7 @@ export function MonitorScreen({
                   key={row.engineer.id}
                   type="button"
                   className="alert alert--danger"
-                  onClick={() => row.orderId && onSelectOrder(row.orderId)}
+                  onClick={() => row.orderId && chooseOrder(row.orderId)}
                   onMouseEnter={() => onLive(row.engineer.id)}
                   onMouseLeave={() => onLive(null)}
                 >
@@ -280,8 +294,9 @@ export function MonitorScreen({
         pinned={pinned}
         onPin={onPin}
         focus={focus}
-        onSelectOrder={onSelectOrder}
+        onSelectOrder={chooseOrder}
         onSelectEngineer={onSelectEngineer}
+        selectedOrder={atOrder}
         fill
         aside={panel}
       />
