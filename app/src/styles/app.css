@@ -10278,6 +10278,16 @@ b.ccard__bad {
   color: var(--text-secondary);
 }
 
+/* Граница формы — что она не собирает и почему. Тем же голосом, что и
+   разбор события ниже: не предупреждение, а прямой ответ на вопрос,
+   который диспетчер и так задаст. */
+.incident__hint {
+  margin: 0;
+  font-size: var(--fs-caption);
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
 .incident__params {
   display: flex;
   flex-wrap: wrap;
