@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Icon } from '../ds/components/core/Icon.jsx';
 import type { DayView } from '../data/derive.ts';
 import { buildLiveRoster, cutMinutes, dayEnd, dayStart, hhmm, LIVE_STATUS_ORDER, placeOf } from '../data/derive.ts';
 import type { LiveEngineer } from '../data/derive.ts';
 import { runDate } from '../data/load.ts';
 import { MapBoard } from '../app/MapBoard.tsx';
+import { canGoBack, DemoDialog, demoPending, markDemoShown } from '../app/DemoDialog.tsx';
+import { START, writeRoute } from '../app/route.ts';
 
 interface Props {
   /** Расчёт, чей план на карте: по нему у маршрутов их собственные номера. */
@@ -41,6 +43,23 @@ export function MonitorScreen({
 }: Props) {
   const [now, setNow] = useState(() => new Date());
 
+  /* Окно «это тестовый режим» — при первом входе в раздел за загрузку
+     страницы. Почему так, а не строкой наверху и не памятью браузера, —
+     у DemoDialog. */
+  const [demo, setDemo] = useState(demoPending);
+  const closeDemo = useCallback(() => {
+    markDemoShown();
+    setDemo(false);
+  }, []);
+
+  /* «Назад» — не согласие, а уход: окно показанным не помечаем, вернутся в
+     раздел — предупредим снова. Возвращает туда, откуда пришли, а если
+     программу открыли сразу на «Мониторинге» — на её начальный экран. */
+  const backFromDemo = useCallback(() => {
+    if (canGoBack()) window.history.back();
+    else window.location.hash = writeRoute(START());
+  }, []);
+
   /* Часы плана дискретны по минутам, поэтому раз в двадцать секунд достаточно:
      ничего чаще минуты в данных всё равно не изменится, а отметка «обновлено»
      живой оставаться должна. */
@@ -75,6 +94,8 @@ export function MonitorScreen({
 
   return (
     <div className="dash enter">
+      <DemoDialog open={demo} onClose={closeDemo} onBack={backFromDemo} />
+
       <section className="panel">
         <div className="dash__section-head">
           <h2 className="dash__section-title">Мониторинг</h2>
@@ -181,6 +202,7 @@ export function MonitorScreen({
       <section className="panel">
         <div className="dash__section-head">
           <h2 className="dash__section-title">Карта сейчас</h2>
+          <span className="dash__section-note">Положение по плану, не по связи с людьми</span>
         </div>
         <MapBoard
           view={view}

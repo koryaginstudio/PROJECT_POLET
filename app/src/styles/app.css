@@ -7176,6 +7176,39 @@ b.ccard__bad {
   color: var(--text-secondary);
 }
 
+/* Окно «тестовый режим мониторинга». Рисунок общий с .manual__card, только
+   уже: здесь читают два абзаца и нажимают одну кнопку. */
+.demo__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  width: min(560px, 100%);
+  max-height: 100%;
+  padding: var(--sp-5);
+  border-radius: var(--r-card);
+  background: var(--white);
+  box-shadow: var(--shadow-lg);
+  text-align: left;
+}
+
+/* Значок вровень с заголовком и тоном акцента: это пояснение, а не авария. */
+.demo__card .engine__title {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.demo__card .engine__title svg {
+  flex: 0 0 auto;
+  color: var(--accent-600);
+}
+
+.demo__foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sp-2);
+}
+
 .roster {
   display: flex;
   flex-direction: column;
