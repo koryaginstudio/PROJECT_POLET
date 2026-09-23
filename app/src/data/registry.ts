@@ -19,7 +19,7 @@ import { occupancyMean, placeOf, roadPath } from './derive.ts';
 import { isUrgent, orderClosed } from './dictionary.ts';
 import { routeLabel, routeNumbers } from './routeIds.ts';
 import { clientLabel, clientNumbers } from './clientIds.ts';
-import { companyOf } from './companies.ts';
+import { chainOf, companyOf } from './companies.ts';
 
 export interface RunRef {
   id: RunId;
@@ -89,6 +89,9 @@ export interface ClientRecord {
       нет — там точка обслуживания и контактное лицо, — поэтому название
       берётся из своего справочника по номеру точки, см. `companies.ts`. */
   company: string;
+  /** Сеть, которой точка принадлежит, — то же имя без номера филиала. По нему
+      считают, сколько в базе компаний: точек больше, чем сетей. */
+  chain: string;
   /** Как точку называют в интерфейсе: адрес дома либо район. */
   address: string;
   district: string;
@@ -560,7 +563,7 @@ function buildClients(plans: { run: RunRef; plan: Plan }[]): ClientRecord[] {
   /* Копится запись без номера и без заказчика: номер выдаётся в самом конце,
      всем адресам разом, а заказчик — по этому номеру, и до тех пор ни того,
      ни другого у точки просто нет. */
-  type Building = Omit<ClientRecord, 'code' | 'number' | 'company'> & {
+  type Building = Omit<ClientRecord, 'code' | 'number' | 'company' | 'chain'> & {
     minutes: number[];
     typeSet: Set<string>;
     runSet: Set<string>;
@@ -621,12 +624,13 @@ function buildClients(plans: { run: RunRef; plan: Plan }[]): ClientRecord[] {
      одинаков от загрузки к загрузке, так что и номера выйдут те же. */
   const numbers = clientNumbers([...map.keys()]);
 
-  const rows = [...map.values()]
+  return [...map.values()]
     .map((entry) => ({
       key: entry.key,
       code: clientLabel(numbers.get(entry.key) ?? 0),
       number: numbers.get(entry.key) ?? 0,
       company: companyOf(numbers.get(entry.key) ?? 0),
+      chain: chainOf(numbers.get(entry.key) ?? 0),
       address: entry.address,
       district: entry.district,
       lat: entry.lat,
@@ -642,31 +646,6 @@ function buildClients(plans: { run: RunRef; plan: Plan }[]): ClientRecord[] {
       firstWindow: entry.firstWindow
     }))
     .sort((a, b) => b.orders - a.orders || a.address.localeCompare(b.address, 'ru'));
-
-  /* Одно имя на две разные точки — не дубль записи, а промах раздачи имён.
-
-     Названий в справочнике шестьдесят пять, а номера точек идут подряд по
-     всей истории и уже перевалили за четыреста: номер выдаётся раз и
-     навсегда, а имя берётся по остатку от деления (`companyOf`). Точки, чьи
-     номера отличаются на кратное длине списка, получают одно имя — C0002 и
-     C0392 оба оказались «ТД „Северный ветер"». В базе это читается как две
-     записи об одном клиенте, хотя дома разные и общего у них нет ничего.
-
-     Имя не перевыдаём: оно закреплено за точкой и не должно меняться от
-     того, какие точки пришли рядом. Различаем районом — так и называют
-     соседние точки одной сети. Совпали и район с именем — различаем номером
-     точки: он уникален по построению. */
-  const сколько = new Map<string, number>();
-  for (const row of rows) сколько.set(row.company, (сколько.get(row.company) ?? 0) + 1);
-  const занято = new Set<string>();
-  for (const row of rows) {
-    if ((сколько.get(row.company) ?? 0) < 2) continue;
-    const сРайоном = `${row.company} — ${row.district}`;
-    row.company = занято.has(сРайоном) ? `${row.company} — ${row.code}` : сРайоном;
-    занято.add(сРайоном);
-  }
-
-  return rows;
 }
 
 function buildOrders(
