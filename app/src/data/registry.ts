@@ -440,12 +440,39 @@ export interface Registry {
   missingZones: string[];
 }
 
+/** Люди, а не записи справочника.
+
+    Движок отдаёт штат отдельно по каждому участку, и человек, который ходит
+    по трём, лежит в справочнике тремя записями: ключ у них «участок:номер»,
+    и для базы это три разные строки. Сейчас за расчётом из трёх участков
+    стоят 42 записи и 14 человек.
+
+    Считать по записям нельзя: «13 из 42» оператор прочтёт как тринадцать
+    человек, а их четверо. Один и тот же человек опознаётся по табельному и
+    имени сразу — табельный сам по себе не годится, у движка E00 есть на
+    каждом участке, и это разные люди.
+
+    Записи одного человека различаются только выработкой по участкам; навык
+    и транспорт у них одни и те же, поэтому какую из них взять — неважно. */
+export function distinctEngineers(engineers: EngineerRecord[]): EngineerRecord[] {
+  const map = new Map<string, EngineerRecord>();
+  for (const one of engineers) {
+    const кто = `${one.code} · ${one.name}`;
+    if (!map.has(кто)) map.set(кто, one);
+  }
+  return [...map.values()];
+}
+
 /** Кто может взять услугу. */
 export interface ServiceCrew {
   /** Может выполнить: есть навык и подходит транспорт. */
   able: EngineerRecord[];
   /** Есть навык — без оглядки на транспорт. */
   skilled: EngineerRecord[];
+  /** Навык есть, а транспорт не тот: взять не может, хотя работу знает.
+      Это единственная причина, по которой умеющий не может поехать, —
+      других жёстких условий у планировщика нет. */
+  blocked: EngineerRecord[];
   /** Известен ли транспорт инженеров. Движок 1.1 этого поля не отдаёт, и
       тогда считать по нему нельзя: пустое поле — это «неизвестно», а не
       «транспорта нет». */
@@ -464,13 +491,15 @@ export interface ServiceCrew {
     снимается: `able` равен `skilled`, а `transportKnown` говорит, что ответ
     посчитан без него. */
 export function serviceCrew(service: ServiceRecord, engineers: EngineerRecord[]): ServiceCrew {
-  const skilled = engineers.filter((one) => one.skills.includes(service.skill));
-  const transportKnown = engineers.some((one) => one.transport !== null);
+  const люди = distinctEngineers(engineers);
+  const skilled = люди.filter((one) => one.skills.includes(service.skill));
+  const transportKnown = люди.some((one) => one.transport !== null);
   const able =
     service.requiredTransport && transportKnown
       ? skilled.filter((one) => one.transport === service.requiredTransport)
       : skilled;
-  return { able, skilled, transportKnown };
+  const ableIds = new Set(able.map((one) => one.id));
+  return { able, skilled, blocked: skilled.filter((one) => !ableIds.has(one.id)), transportKnown };
 }
 
 /** Ключ точки обслуживания: адрес, а если его нет — район с координатами.

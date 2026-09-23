@@ -7460,6 +7460,12 @@ b.ccard__bad {
   color: var(--text-muted);
 }
 
+/* Свёрнутый список «не могут взять» в карточке услуги: отступ от чипов с
+   именами, чтобы две группы не слипались в одну. */
+.crewpro__blocked {
+  margin-top: var(--sp-3);
+}
+
 .roster {
   display: flex;
   flex-direction: column;

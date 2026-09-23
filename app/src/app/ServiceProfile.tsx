@@ -2,13 +2,15 @@ import { useEffect, useMemo, useState } from 'react';
 import { Icon } from '../ds/components/core/Icon.jsx';
 import { SegmentedControl } from '../ds/components/forms/SegmentedControl.jsx';
 import type { OrderRecord, Registry, ServiceRecord } from '../data/registry.ts';
-import { serviceCrew } from '../data/registry.ts';
+import { distinctEngineers, serviceCrew } from '../data/registry.ts';
 import { dec, hhmm, plural } from '../data/derive.ts';
 import {
   equipmentName,
   requiredTransportName,
   skillIcon,
   skillName,
+  transportIcon,
+  transportName,
   workTypeIcon
 } from '../data/dictionary.ts';
 
@@ -64,6 +66,8 @@ export function ServiceProfile({ service, registry, onClose, onOpenOrder, onOpen
     () => (service ? serviceCrew(service, registry.engineers) : null),
     [service?.key, registry]
   );
+  /* Знаменатель — люди, а не записи справочника: см. distinctEngineers. */
+  const staff = useMemo(() => distinctEngineers(registry.engineers).length, [registry]);
 
   /* Кто эту работу выполнял — по факту плана, а не по записи в кадрах. */
   const crew = useMemo(() => {
@@ -147,7 +151,7 @@ export function ServiceProfile({ service, registry, onClose, onOpenOrder, onOpen
                   кабелем» навык есть у двадцати восьми, а машина из них у
                   тринадцати — пятнадцать человек поехать не смогут. */}
               <span className="crewpro__muted">
-                · могут взять {able?.able.length ?? 0} из {registry.engineers.length}
+                · могут взять {able?.able.length ?? 0} из {staff}
               </span>
             </span>
 
@@ -183,15 +187,8 @@ export function ServiceProfile({ service, registry, onClose, onOpenOrder, onOpen
         {able && (
           <section className="crewpro__block">
             <h3 className="crewpro__title">
-              Кто может взять · {able.able.length} из {registry.engineers.length}
+              Кто может взять · {able.able.length} из {staff}
             </h3>
-            {able.skilled.length > able.able.length && (
-              <p className="crewpro__note">
-                Навык есть у {able.skilled.length}, но{' '}
-                {able.skilled.length - able.able.length} из них без нужного транспорта (
-                {requiredTransportName(service.requiredTransport)}).
-              </p>
-            )}
             {able.able.length === 0 ? (
               <p className="crewpro__empty">
                 Взять эту работу некому: подходящих по навыку и транспорту в справочнике нет.
@@ -205,6 +202,63 @@ export function ServiceProfile({ service, registry, onClose, onOpenOrder, onOpen
                   </span>
                 ))}
               </div>
+            )}
+
+            {/* Кому не хватает малого — отдельно и свёрнуто. Эти работу
+                знают, и в горячий час о них спрашивают вторым вопросом:
+                «а этих почему нельзя?». Наверху им не место — список
+                «кого послать» должен состоять из тех, кого можно послать
+                прямо сейчас, без оговорок. */}
+            {able.blocked.length > 0 && (
+              <details className="fold crewpro__blocked">
+                <summary className="fold__summary">
+                  <Icon name="chevron-right" size={13} />
+                  Не могут взять · {able.blocked.length}
+                </summary>
+                <div className="fold__body">
+                  <table className="tbl">
+                    <thead>
+                      <tr>
+                        <th>Инженер</th>
+                        <th>Табельный</th>
+                        <th>Транспорт</th>
+                        <th>Чего не хватает</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {able.blocked.map((one) => (
+                        <tr key={one.id}>
+                          <td>
+                            <span className="tbl__strong">{one.name}</span>
+                          </td>
+                          <td>{one.code}</td>
+                          {/* Что есть — отдельной клеткой, а не внутри фразы:
+                              «Пешеход» и «Общественный транспорт» — названия
+                              из словаря, и во фразу «у него ...» они не
+                              встают. */}
+                          <td>
+                            {one.transport ? (
+                              <span className="tbl__inline">
+                                <Icon name={transportIcon(one.transport)} size={13} />
+                                {transportName(one.transport)}
+                              </span>
+                            ) : (
+                              <span className="tbl__muted">не указан</span>
+                            )}
+                          </td>
+                          <td>
+                            {/* Навык у них есть — иначе их бы тут не было;
+                                не хватает только транспорта. */}
+                            <span className="tbl__warn">
+                              нужен {requiredTransportName(service.requiredTransport).toLowerCase()}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </details>
             )}
           </section>
         )}

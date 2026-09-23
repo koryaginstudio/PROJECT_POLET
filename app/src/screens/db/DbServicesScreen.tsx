@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Icon } from '../../ds/components/core/Icon.jsx';
 import { SegmentedControl } from '../../ds/components/forms/SegmentedControl.jsx';
 import type { OrderRecord, Registry, ServiceRecord } from '../../data/registry.ts';
-import { serviceCrew } from '../../data/registry.ts';
+import { distinctEngineers, serviceCrew } from '../../data/registry.ts';
 import { dec, plural } from '../../data/derive.ts';
 import {
   equipmentName,
@@ -570,7 +570,9 @@ export function DbServicesScreen({ registry, mode, onOpenRun }: Props) {
     for (const row of registry.services) map.set(row.key, serviceCrew(row, registry.engineers));
     return map;
   }, [registry]);
-  const staff = registry.engineers.length;
+  /* Людей, а не записей: человек с трёх участков лежит в справочнике трижды,
+     см. distinctEngineers. */
+  const staff = distinctEngineers(registry.engineers).length;
 
   const cards = (list: ServiceRecord[]) => (
     <div
