@@ -16,6 +16,13 @@ import type { DbChip } from './DbBar.tsx';
 import { DbCrewProfile } from './DbCrew.tsx';
 import { DbList } from './DbList.tsx';
 
+/* День из ISO-даты выгрузки: «2026-08-17» → «17.08.2026». Тот же вид, что в
+   базе расчётов: одна дата в двух базах не должна выглядеть по-разному. */
+const dayOf = (date: string) => {
+  const [year, month, day] = date.split('-');
+  return day ? `${day}.${month}.${year}` : date;
+};
+
 interface Props {
   registry: Registry;
   mode: string;
@@ -156,6 +163,25 @@ export function DbRoutesScreen({
   const [desc, setDesc] = useState(false);
   const [filter, setFilter] = useState<Filter>('all');
   const [run, setRun] = useState<string | null>(null);
+  /* День, на который считали, — тот же, что стоит у расчёта. Не день, когда
+     расчёт завели: маршрут принадлежит рабочему дню, а не минуте, в которую
+     его посчитали, и оператор спрашивает «что у нас на сегодня», а не «что
+     мы считали вчера вечером».
+
+     Пусто — все дни. По умолчанию именно так: в нынешних данных разложен
+     один день выгрузки, и открывать базу на «сегодня» значило бы встречать
+     оператора пустым экраном. */
+  const [day, setDay] = useState<string | null>(null);
+
+  /* Сегодняшний день в том же виде, в каком дата стоит у расчёта: «2026-09-23».
+     Считается от часов машины, поэтому живёт в useMemo — не пересчитывать же
+     его на каждую отрисовку списка. */
+  const today = useMemo(() => {
+    const now = new Date();
+    const два = (value: number) => String(value).padStart(2, '0');
+    return `${now.getFullYear()}-${два(now.getMonth() + 1)}-${два(now.getDate())}`;
+  }, []);
+
   const [query, setQuery] = useState('');
   const paging = usePaging(PAGE);
   const dense = perRow === '6';
@@ -174,6 +200,15 @@ export function DbRoutesScreen({
   );
 
   const all = registry.routes;
+
+  /* Дни, которые вообще есть в базе. Нужны двум местам: кнопке «Сегодня» —
+     чтобы сказать, есть ли на сегодня хоть что-нибудь, — и пустому экрану,
+     который иначе молчал бы о том, где маршруты всё-таки лежат. */
+  const days = useMemo(() => {
+    const set = new Set<string>();
+    for (const route of all) if (route.run.date) set.add(route.run.date);
+    return [...set].sort();
+  }, [all]);
 
   /* Маршруты, разложенные по расчётам. Нужны карте в карточке: линия соседей
      по расчёту рисуется под своей, а карточка видит одну запись и о соседях
@@ -194,6 +229,7 @@ export function DbRoutesScreen({
     const needle = query.trim().toLowerCase();
     const picked = all.filter((route) => {
       if (run && route.run.id !== run) return false;
+      if (day && route.run.date !== day) return false;
       if (filter === 'overtime' && route.overtimeMinutes === 0) return false;
       if (filter === 'risky' && route.risky === 0) return false;
       if (filter === 'busy' && route.occupancy < busy) return false;
@@ -246,7 +282,7 @@ export function DbRoutesScreen({
       const diff = rank(a) - rank(b);
       return side * (diff !== 0 ? diff : tie(a, b));
     });
-  }, [all, busy, desc, filter, loose, query, run, sort]);
+  }, [all, day, busy, desc, filter, loose, query, run, sort]);
 
   /* Сменили отбор или порядок — счётчик показанного начинается заново. */
   const narrow = <T,>(set: (value: T) => void) => (value: T) => {
@@ -275,6 +311,7 @@ export function DbRoutesScreen({
   const reset = () => {
     setFilter('all');
     setRun(null);
+    setDay(null);
     setQuery('');
     paging.reset();
   };
@@ -753,6 +790,18 @@ export function DbRoutesScreen({
       onRemove: clear(() => setFilter('all'))
     });
   }
+  if (day) {
+    chips.push({
+      key: 'day',
+      label: (
+        <>
+          <ChipKey>День</ChipKey>
+          {dayOf(day)}
+        </>
+      ),
+      onRemove: clear(() => setDay(null))
+    });
+  }
   if (run) {
     chips.push({
       key: 'run',
@@ -811,6 +860,49 @@ export function DbRoutesScreen({
               />
             </div>
 
+            {/* День — первым в полосе: «что у нас на сегодня» спрашивают
+                чаще, чем «какие маршруты вышли перегруженными».
+
+                Кнопка и календарь рядом, а не вместо друг друга: «сегодня»
+                нажимают не глядя, а любой другой день выбирают в календаре,
+                и заставлять искать сегодняшнее число в сетке — лишний шаг к
+                тому, что делают чаще всего. */}
+            <div className="filters__group">
+              <span className="filters__label">День</span>
+              <span className="filters__types">
+                <button
+                  type="button"
+                  className={'chip' + (day === today ? ' chip--on' : '')}
+                  onClick={narrow(() => setDay(day === today ? null : today))}
+                  aria-pressed={day === today}
+                  title={
+                    days.includes(today)
+                      ? 'Маршруты, посчитанные на сегодняшний день'
+                      : 'На сегодня в базе маршрутов нет: разложены другие дни'
+                  }
+                >
+                  Сегодня
+                  {day === today && <Icon name="x" size={12} />}
+                </button>
+                <input
+                  type="date"
+                  className="filters__date"
+                  value={day ?? ''}
+                  onChange={(event) => narrow(setDay)(event.target.value || null)}
+                  aria-label="День, за который показывать маршруты"
+                />
+                {day && (
+                  <button
+                    type="button"
+                    className="chip"
+                    onClick={narrow(() => setDay(null))}
+                  >
+                    Все дни
+                  </button>
+                )}
+              </span>
+            </div>
+
             {registry.runs.length > 1 && (
               <div className="filters__group filters__group--wide">
                 <span className="filters__label">Расчёт</span>
@@ -845,10 +937,17 @@ export function DbRoutesScreen({
 
       {rows.length === 0 ? (
         <DbEmpty
-          miss="Под этот отбор не подошёл ни один маршрут."
+          miss={
+            day
+              ? `За ${dayOf(day)} маршрутов нет.` +
+                (days.length > 0
+                  ? ` В базе разложены другие дни: ${days.map(dayOf).join(', ')}.`
+                  : '')
+              : 'Под этот отбор не подошёл ни один маршрут.'
+          }
           blank="Маршрутов в базе пока нет: их строит программа расчёта, и до первого сохранённого расчёта база пуста."
           query={query.trim() !== ''}
-          filtered={filter !== 'all' || run !== null}
+          filtered={filter !== 'all' || run !== null || day !== null}
           onReset={reset}
         />
       ) : mode === 'runs' ? (

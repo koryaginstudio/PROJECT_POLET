@@ -7495,6 +7495,28 @@ b.ccard__bad {
   line-height: 1.5;
 }
 
+/* Календарь в полосе отбора. Родное поле даты, а не своя сетка: у браузера
+   она уже есть, знает язык и первый день недели, и работает с клавиатуры. */
+.filters__date {
+  height: var(--control-h-sm);
+  padding: 0 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-control);
+  background: var(--white);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--fs-caption);
+}
+
+.filters__date:hover {
+  border-color: var(--border-strong);
+}
+
+.filters__date:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+
 .roster {
   display: flex;
   flex-direction: column;
