@@ -7209,6 +7209,152 @@ b.ccard__bad {
   gap: var(--sp-2);
 }
 
+/* ─── колонка мониторинга поверх карты ─────────────────────────────────── */
+
+/* Колонка занимает левый край целиком, поэтому зум и слои отходят вправо за
+   неё. В обзоре колонка низкая и стоит в углу, там рычагам места хватает; на
+   мониторинге панель во всю высоту, и они оказались бы под ней. */
+.mapview--monitor .geo__aside {
+  left: var(--sp-3);
+}
+
+.mapview--monitor .geo__side {
+  left: calc(var(--sp-3) * 2 + 340px);
+}
+
+/* Та же мысль, что у колонки обзора: место принадлежит городу, а колонка
+   платит за себя плотностью. Часы и пять чисел стоят намертво, тревоги и
+   люди прокручиваются внутри — так список из сорока человек не отнимает у
+   карты ни точки. */
+.monpanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  width: 340px;
+  max-width: 100%;
+  height: 100%;
+  padding: var(--sp-4);
+  border-radius: var(--r-lg);
+  background: var(--white);
+  box-shadow: var(--shadow-lg);
+}
+
+.monpanel__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+
+.monpanel__plan {
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+
+.monpanel__lede {
+  font-size: var(--fs-caption);
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+/* Пять чисел в две колонки. Три не влезли: «Освободились» — одно слово в
+   двенадцать букв, переносить его негде, и в стоточечной клетке оно
+   обрезалось. Пятое, самое редкое, занимает нижнюю строку целиком — иначе
+   рядом с ним пустовала бы клетка. */
+.monpanel__tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--r-md);
+  background: var(--border-hairline);
+  overflow: hidden;
+}
+
+.montile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  background: var(--white);
+}
+
+.montile:last-child {
+  grid-column: span 2;
+}
+
+.montile__value {
+  font-family: var(--font-display);
+  font-size: var(--fs-h4);
+  font-weight: var(--fw-extrabold);
+  letter-spacing: var(--ls-h4);
+  line-height: 1.1;
+}
+
+.montile__label {
+  font-size: var(--fs-small);
+  line-height: 1.2;
+  color: var(--text-secondary);
+}
+
+.monpanel__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.monpanel__block-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-2);
+}
+
+.monpanel__block-title {
+  font-family: var(--font-display);
+  font-size: var(--fs-body-s);
+  font-weight: var(--fw-extrabold);
+}
+
+.monpanel__block-note {
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+
+/* Строка инженера в колонке шириной в треть прежней: имя и состояние в
+   первой строке, чем занят и сколько сделал — во второй. */
+.monpanel .roster__row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "name pill"
+    "note visits";
+  gap: 2px var(--sp-2);
+  padding: 8px 10px;
+}
+
+.monpanel .roster__name {
+  grid-area: name;
+}
+
+.monpanel .roster__row > .pill {
+  grid-area: pill;
+  justify-self: end;
+}
+
+.monpanel .roster__note {
+  grid-area: note;
+}
+
+.monpanel .roster__visits {
+  grid-area: visits;
+  justify-self: end;
+}
+
 .roster {
   display: flex;
   flex-direction: column;

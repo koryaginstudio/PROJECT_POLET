@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Icon } from '../ds/components/core/Icon.jsx';
-import type { DayView } from '../data/derive.ts';
+import type { DayView, LiveEngineer, LiveStatus } from '../data/derive.ts';
 import { buildLiveRoster, cutMinutes, dayEnd, dayStart, hhmm, LIVE_STATUS_ORDER, placeOf } from '../data/derive.ts';
-import type { LiveEngineer } from '../data/derive.ts';
 import { runDate } from '../data/load.ts';
 import { MapBoard } from '../app/MapBoard.tsx';
 import { canGoBack, DemoDialog, demoPending, markDemoShown } from '../app/DemoDialog.tsx';
@@ -25,11 +24,29 @@ const RANK: Record<string, number> = Object.fromEntries(
   LIVE_STATUS_ORDER.map((key, index) => [key, index])
 );
 
+/* Пять чисел смены. «Ещё не в работе» — два состояния сразу: у одного смена
+   не началась, у другого нет маршрута; оператору это одно и то же — человек,
+   с которого сейчас нечего спросить. */
+const TILES: { key: string; label: string; of: LiveStatus[] }[] = [
+  { key: 'working', label: 'На объекте', of: ['working'] },
+  { key: 'enroute', label: 'В пути', of: ['enroute'] },
+  { key: 'overdue', label: 'Опаздывают', of: ['overdue'] },
+  { key: 'done', label: 'Освободились', of: ['done'] },
+  { key: 'idle', label: 'Ещё не в работе', of: ['before', 'no-route'] }
+];
+
 /* Мониторинг. Диспетчерская отвечает на «каким должен быть план» и живёт от
    среза, который двигает диспетчер; мониторинг отвечает на «что происходит
    сейчас» и читает то же время, что на часах, — сам, без ручки. Здесь нет
    пересчёта и нет пульта: только то, что план обещал, и то, что видно на
-   срезе прямо сейчас. */
+   срезе прямо сейчас.
+
+   Раздел собран как «Обзор»: карта — не блок на странице, а сам экран, а
+   числа, тревоги и люди стоят колонкой поверх неё. Лентой панелей он был
+   длиной в два с половиной экрана, и карта начиналась на исходе второго —
+   то есть в разделе про «где все сейчас» города не было видно вовсе, пока
+   не долистаешь. Колонка ещё и снимает второй список тех же инженеров:
+   правая полоса «Что на карте» на мониторинге больше не показывается. */
 export function MonitorScreen({
   view,
   runId,
@@ -92,130 +109,123 @@ export function MonitorScreen({
     return map;
   }, [roster]);
 
-  return (
-    <div className="dash enter">
-      <DemoDialog open={demo} onClose={closeDemo} onBack={backFromDemo} />
+  const panel = (
+    <div className="monpanel">
+      <div className="monpanel__head">
+        {/* Часы настенные и не замирают: срез плана прижат к границам
+            смены, и это сказано отдельной строкой ниже, а не подменой
+            времени — «21:00, обновлено 21:30» читалось как поломка. */}
+        <span
+          className="livenow"
+          title="Текущее время: раздел показывает состояние плана на эту минуту и обновляется сам"
+        >
+          <span className="livenow__dot" />
+          {hhmm(wall)}
+        </span>
+        <span className="monpanel__plan">план от {planDay}</span>
+      </div>
 
-      <section className="panel">
-        <div className="dash__section-head">
-          <h2 className="dash__section-title">Мониторинг</h2>
-          {/* Часы настенные и не замирают: срез плана прижат к границам
-              смены, и это сказано отдельной строкой ниже, а не подменой
-              времени — «21:00, обновлено 21:30» читалось как поломка. */}
-          <span className="livenow" title="Текущее время: раздел показывает состояние плана на эту минуту и обновляется сам">
-            <span className="livenow__dot" />
-            {hhmm(wall)}
-            <span className="livenow__stamp">
-              {planDay ? `план от ${planDay} · ` : ''}обновлено {hhmm(wall)}
-            </span>
-          </span>
-        </div>
-
-        {(beforeShift || afterShift) && (
-          <p className="clients__lede">
-            {beforeShift
-              ? `Смена по плану начинается в ${hhmm(dayStart())}: часы ещё вне рабочего окна, ниже показан план на его начало.`
-              : `Смена по плану закончилась в ${hhmm(dayEnd())}: часы уже вне рабочего окна, ниже показано положение на её конец.`}
-          </p>
-        )}
-
-        <div className="dbstats">
-          <div className="dbstat">
-            <span className="dbstat__value">{counts.get('working') ?? 0}</span>
-            <span className="dbstat__label">На объекте</span>
-          </div>
-          <div className="dbstat">
-            <span className="dbstat__value">{counts.get('enroute') ?? 0}</span>
-            <span className="dbstat__label">В пути</span>
-          </div>
-          <div className="dbstat">
-            <span className="dbstat__value">{counts.get('overdue') ?? 0}</span>
-            <span className="dbstat__label">Опаздывают</span>
-          </div>
-          <div className="dbstat">
-            <span className="dbstat__value">{counts.get('done') ?? 0}</span>
-            <span className="dbstat__label">Освободились</span>
-          </div>
-          <div className="dbstat">
-            <span className="dbstat__value">{(counts.get('before') ?? 0) + (counts.get('no-route') ?? 0)}</span>
-            <span className="dbstat__label">Ещё не в работе</span>
-          </div>
-        </div>
-      </section>
-
-      {alerts.length > 0 && (
-        <section className="panel">
-          <div className="dash__section-head">
-            <h2 className="dash__section-title">Требуют внимания</h2>
-            <span className="dash__section-note">{alerts.length} опаздывают прямо сейчас</span>
-          </div>
-          <div className="alerts">
-            {alerts.map((row) => (
-              <button
-                key={row.engineer.id}
-                type="button"
-                className="alert alert--danger"
-                onClick={() => row.orderId && onSelectOrder(row.orderId)}
-                onMouseEnter={() => onLive(row.engineer.id)}
-                onMouseLeave={() => onLive(null)}
-              >
-                <Icon name="alert-triangle" size={16} />
-                <span className="alert__body">
-                  <span className="alert__title">{row.engineer.name}</span>
-                  <span className="alert__note">
-                    Опаздывает на {row.lateMinutes} мин
-                    {row.orderId ? ` · заявка ${row.orderId}` : ''}
-                  </span>
-                </span>
-                <Icon name="chevron-right" size={14} />
-              </button>
-            ))}
-          </div>
-        </section>
+      {(beforeShift || afterShift) && (
+        <p className="monpanel__lede">
+          {beforeShift
+            ? `Смена по плану начинается в ${hhmm(dayStart())}: часы ещё вне рабочего окна, показан план на её начало.`
+            : `Смена по плану закончилась в ${hhmm(dayEnd())}: часы уже вне рабочего окна, показано положение на её конец.`}
+        </p>
       )}
 
-      <section className="panel">
-        <div className="dash__section-head">
-          <h2 className="dash__section-title">Инженеры на смене</h2>
-        </div>
-        {/* Пустой состав — словами: в расчёте без инженеров пустой список
-            читался бы как несработавший экран. */}
-        {sorted.length === 0 ? (
-          <p className="clients__lede">В этом расчёте на смене никого нет: план посчитан без инженеров.</p>
-        ) : (
-          <div className="roster">
-            {sorted.map((row) => (
-              <RosterRow
-                key={row.engineer.id}
-                row={row}
-                view={view}
-                active={live === row.engineer.id || pinned === row.engineer.id}
-                onLive={onLive}
-                onPin={onPin}
-                onSelectEngineer={onSelectEngineer}
-              />
-            ))}
+      <div className="monpanel__tiles">
+        {TILES.map((tile) => (
+          <div key={tile.key} className="montile">
+            <span className="montile__value">
+              {tile.of.reduce((sum, key) => sum + (counts.get(key) ?? 0), 0)}
+            </span>
+            <span className="montile__label">{tile.label}</span>
           </div>
-        )}
-      </section>
+        ))}
+      </div>
 
-      <section className="panel">
-        <div className="dash__section-head">
-          <h2 className="dash__section-title">Карта сейчас</h2>
-          <span className="dash__section-note">Положение по плану, не по связи с людьми</span>
-        </div>
-        <MapBoard
-          view={view}
-          runId={runId}
-          live={live}
-          onLive={onLive}
-          pinned={pinned}
-          onPin={onPin}
-          focus={focus}
-          onSelectOrder={onSelectOrder}
-          onSelectEngineer={onSelectEngineer}
-        />
-      </section>
+      {/* Тревоги и люди прокручиваются, часы и числа — нет: смотреть на них
+          оператор может в любую минуту, а искать их прокруткой незачем. */}
+      <div className="monpanel__body">
+        {alerts.length > 0 && (
+          <section className="monpanel__block">
+            <div className="monpanel__block-head">
+              <h2 className="monpanel__block-title">Требуют внимания</h2>
+              <span className="monpanel__block-note">{alerts.length}</span>
+            </div>
+            <div className="alerts">
+              {alerts.map((row) => (
+                <button
+                  key={row.engineer.id}
+                  type="button"
+                  className="alert alert--danger"
+                  onClick={() => row.orderId && onSelectOrder(row.orderId)}
+                  onMouseEnter={() => onLive(row.engineer.id)}
+                  onMouseLeave={() => onLive(null)}
+                >
+                  <Icon name="alert-triangle" size={16} />
+                  <span className="alert__body">
+                    <span className="alert__title">{row.engineer.name}</span>
+                    <span className="alert__note">
+                      Опаздывает на {row.lateMinutes} мин
+                      {row.orderId ? ` · заявка ${row.orderId}` : ''}
+                    </span>
+                  </span>
+                  <Icon name="chevron-right" size={14} />
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <section className="monpanel__block">
+          <div className="monpanel__block-head">
+            <h2 className="monpanel__block-title">Инженеры на смене</h2>
+            <span className="monpanel__block-note">{sorted.length}</span>
+          </div>
+          {/* Пустой состав — словами: в расчёте без инженеров пустой список
+              читался бы как несработавший экран. */}
+          {sorted.length === 0 ? (
+            <p className="monpanel__lede">
+              В этом расчёте на смене никого нет: план посчитан без инженеров.
+            </p>
+          ) : (
+            <div className="roster">
+              {sorted.map((row) => (
+                <RosterRow
+                  key={row.engineer.id}
+                  row={row}
+                  view={view}
+                  active={live === row.engineer.id || pinned === row.engineer.id}
+                  onLive={onLive}
+                  onPin={onPin}
+                  onSelectEngineer={onSelectEngineer}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="mapview mapview--monitor enter">
+      <DemoDialog open={demo} onClose={closeDemo} onBack={backFromDemo} />
+
+      <MapBoard
+        view={view}
+        runId={runId}
+        live={live}
+        onLive={onLive}
+        pinned={pinned}
+        onPin={onPin}
+        focus={focus}
+        onSelectOrder={onSelectOrder}
+        onSelectEngineer={onSelectEngineer}
+        fill
+        aside={panel}
+      />
     </div>
   );
 }
