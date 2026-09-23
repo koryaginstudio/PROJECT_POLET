@@ -25,7 +25,7 @@ import type { DayState, JournalEvent } from '../data/api.ts';
 import type { DispatcherActions } from './DispatcherBlock.tsx';
 import { изДвижка } from '../data/fromEngine.ts';
 import type { IncidentKind, IncidentSpec, ReplanResult } from '../data/api.ts';
-import { engineerInDay, loadRegistry } from '../data/registry.ts';
+import { engineerInDay, engineerKey, loadRegistry } from '../data/registry.ts';
 import type { ShiftInput } from '../data/shift.ts';
 import type { Registry, RunRef } from '../data/registry.ts';
 import { buildDayView, dayEnd, dayStart, planHorizon, plural, replanAt } from '../data/derive.ts';
@@ -102,6 +102,22 @@ export function App() {
      дерево, а не только экран настроек. */
   const settings = useService();
   const [navCollapsed, setNavCollapsed] = useState(settings.navCollapsed);
+  /* Узкое окно сворачивает меню само. Подписи разделов стоят 136 пикселей, и
+     на ноутбуке, где рабочей области остаётся пятьсот, они дороже себя: без
+     них всё помещается без горизонтальной прокрутки, а с ними кнопки уезжают
+     за край. Настройку диспетчера при этом не трогаем — окно вернётся, и
+     слова вернутся вместе с ним. */
+  const [narrowWindow, setNarrowWindow] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 1199px)').matches
+  );
+  useEffect(() => {
+    const probe = window.matchMedia('(max-width: 1199px)');
+    const sync = () => setNarrowWindow(probe.matches);
+    sync();
+    probe.addEventListener('change', sync);
+    return () => probe.removeEventListener('change', sync);
+  }, []);
+  const navTight = navCollapsed || narrowWindow;
   /* Список расчётов нужен переключателю в подшапке и сравнению — грузим один
      раз на сессию, он не зависит от открытого расчёта. */
   const [runs, setRuns] = useState<DaySummary[] | null>(null);
@@ -136,11 +152,26 @@ export function App() {
     });
   const liveRoute = hoverRoute ?? pinnedRoute;
   /* Выбор маршрута — переключатель: повторный щелчок по тому же снимает его,
-     и карта снова слушает все пути. */
+     и карта снова слушает все пути. Щелчок по другому маршруту просто
+     переводит выбор на него — снимать прежний отдельной кнопкой не нужно. */
   const pinRoute = (id: string | null) => {
     setPinnedRoute((prev) => (prev === id ? null : id));
     if (id) setRouteFocus((n) => n + 1);
   };
+  /* Выбранный маршрут живёт в пределах экрана, на котором его выбрали.
+     Прежде он переживал уход в другой раздел: диспетчер закреплял линию на
+     карте, шёл в мониторинг — и встречал там смену, где все, кроме одного,
+     погашены, без единого намёка почему. Переходы, которые ведут к
+     конкретному маршруту, поднимают флаг и один сброс пропускают. */
+  const keepRoute = useRef(false);
+  useEffect(() => {
+    if (keepRoute.current) {
+      keepRoute.current = false;
+      return;
+    }
+    setPinnedRoute(null);
+    setHoverRoute(null);
+  }, [section, runId]);
 
   /* Адрес ведёт: «назад», «вперёд» и вручную набранная ссылка меняют его, а
      состояние читается из него заново. Сравниваем по значениям — иначе
@@ -770,6 +801,7 @@ export function App() {
   const openRouteMap = (id: RunId, engineerId: string) => {
     if (id !== runId && !leaveDraft()) return;
     setCut(dayStart());
+    keepRoute.current = true;
     setPinnedRoute(engineerId);
     setRouteFocus((n) => n + 1);
     selectOnOpen(id, { kind: 'engineer', id: engineerId });
@@ -802,6 +834,7 @@ export function App() {
     /* Отказался уходить с несохранённого пересчёта — остаёмся в карточке. */
     if (latest.id !== runId && !leaveDraft()) return '';
     setCut(dayStart());
+    keepRoute.current = true;
     setPinnedRoute(code);
     setRouteFocus((n) => n + 1);
     selectOnOpen(latest.id, { kind: 'engineer', id: code });
@@ -828,6 +861,14 @@ export function App() {
   const [lookup, setLookup] = useState<{ kind: 'order' | 'client' | 'engineer' | 'service'; key: string } | null>(
     null
   );
+  /* Карточка записи по щелчку в плане. Ключи в справочниках собраны не так,
+     как номера в плане: заявка уникальна парой «расчёт + номер», инженер —
+     парой «участок + номер». Без этого перевода карточка не находится, и
+     щелчок оборачивается ничем. */
+  const openOrderCard = (orderId: string) => setLookup({ kind: 'order', key: `${runId}:${orderId}` });
+  const openEngineerCard = (engineerId: string) =>
+    setLookup({ kind: 'engineer', key: engineerKey(day?.plan.meta.day, engineerId) });
+
   /* Участки нужны карточке инженера — она даёт менять участок, а список
      мест лежит рядом с данными. Читаем один раз: он не меняется. */
   const [places, setPlaces] = useState<Place[]>([]);
@@ -1056,6 +1097,23 @@ export function App() {
      объекта не выбирает, поэтому тоже идёт без неё. */
   const withDetail = (onPlan && !onOverview) || section === 'monitor';
 
+  /* Правая панель показывает выбранное не везде: на карте её место занимает
+     список маршрутов, у ганта — часы, у канбана — бригада. Там щелчок по
+     заявке или инженеру обязан открывать карточку сам, иначе выбор уходит в
+     никуда: строка оформлена кнопкой, нажимается — и ничего не происходит.
+     Подпись в панели карты обещает ровно это: «щелчок открывает карточку». */
+  const pickOpensCard = onMap || (onPlan && (view === 'timeline' || view === 'kanban'));
+
+  const selectOrder = (id: string) => {
+    setSelection({ kind: 'order', id });
+    if (pickOpensCard) openOrderCard(id);
+  };
+
+  const selectEngineer = (id: string) => {
+    setSelection({ kind: 'engineer', id });
+    if (pickOpensCard) openEngineerCard(id);
+  };
+
   const registryPending = registryError ? (
     <div className="stub enter">
       <h2 className="stub__title">Данные не загрузились</h2>
@@ -1098,8 +1156,8 @@ export function App() {
           pinned={pinnedRoute}
           onPin={pinRoute}
           focus={routeFocus}
-          onSelectOrder={(id) => setSelection({ kind: 'order', id })}
-          onSelectEngineer={(id) => setSelection({ kind: 'engineer', id })}
+          onSelectOrder={selectOrder}
+          onSelectEngineer={selectEngineer}
         />
       )}
 
@@ -1197,8 +1255,8 @@ export function App() {
           focus={routeFocus}
           cut={cut}
           onCutChange={setCut}
-          onSelectOrder={(id) => setSelection({ kind: 'order', id })}
-          onSelectEngineer={(id) => setSelection({ kind: 'engineer', id })}
+          onSelectOrder={selectOrder}
+          onSelectEngineer={selectEngineer}
           onOpenGroup={(id) => setSelection({ kind: 'group', id })}
           onOpenList={setSelection}
           onExport={exportDay}
@@ -1224,7 +1282,7 @@ export function App() {
     <div
       className={
         'shell' +
-        (navCollapsed ? ' shell--nav-collapsed' : '') +
+        (navTight ? ' shell--nav-collapsed' : '') +
         (withDetail ? '' : ' shell--wide') +
         /* Обзор идёт без полей вокруг: карта в нём доходит до краёв, а
            рамка вокруг карты на весь экран — рамка вокруг пустоты. */
@@ -1235,7 +1293,7 @@ export function App() {
         collapsed={navCollapsed}
         onToggleNav={() => setNavCollapsed((v) => !v)}
         view={ready?.view ?? null}
-        onSelect={setSelection}
+        onPickOrder={openOrderCard}
         registry={registry}
         onFind={openHit}
         onHome={() => goSection('home')}
@@ -1259,7 +1317,7 @@ export function App() {
         <div className="shell__nav">
           <Sidebar
             active={section}
-            collapsed={navCollapsed}
+            collapsed={navTight}
             onSelect={goSection}
             counts={counts}
             alertKeys={['unassigned']}
@@ -1423,14 +1481,14 @@ export function App() {
                 onLive={setHoverRoute}
                 onFocus={pinRoute}
                 selectedOrder={selection.kind === 'order' ? selection.id : null}
-                onSelectOrder={(id) => setSelection({ kind: 'order', id })}
+                onSelectOrder={selectOrder}
               />
             ) : onPlan && view === 'timeline' ? (
               <HourPanel
                 view={ready.view}
                 onHoverHour={setHotHour}
-                onSelectOrder={(id) => setSelection({ kind: 'order', id })}
-                onSelectEngineer={(id) => setSelection({ kind: 'engineer', id })}
+                onSelectOrder={selectOrder}
+                onSelectEngineer={selectEngineer}
               />
             ) : onPlan && view === 'kanban' ? (
               <CrewPanel
@@ -1438,8 +1496,8 @@ export function App() {
                 cut={cut}
                 onCutChange={setCut}
                 selected={selection.kind === 'order' ? selection.id : null}
-                onSelectOrder={(id) => setSelection({ kind: 'order', id })}
-                onSelectEngineer={(id) => setSelection({ kind: 'engineer', id })}
+                onSelectOrder={selectOrder}
+                onSelectEngineer={selectEngineer}
               />
             ) : (
               <DetailPanel

@@ -319,10 +319,17 @@ export function SettingsScreen({ mode, registry, onEditsCleared, onHistoryCleare
             {changed === 0 ? 'ничего' : `${changed} из ${TOTAL_COUNT}`}
           </span>
         </div>
+        {/* Прежде здесь стояло «Учитываются в расчёте — 2 из 7», и это читалось
+            так, будто пять настроек ни на что не влияют. Влияют: расчёт берёт
+            их из формы нового расчёта. Разница не в том, учитываются ли они,
+            а в том, где их задают. */}
         <div className="setrow">
-          <span className="setrow__key">Учитываются в расчёте</span>
+          <span className="setrow__key">Меняются на этом экране</span>
           <span className="setrow__val">
             {WIRED_COUNT === TOTAL_COUNT ? 'все семь' : `${WIRED_COUNT} из ${TOTAL_COUNT}`}
+            {WIRED_COUNT !== TOTAL_COUNT && (
+              <span className="setrow__note"> остальные задаются при создании расчёта</span>
+            )}
           </span>
         </div>
         <div className="setrow">

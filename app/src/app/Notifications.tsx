@@ -2,16 +2,17 @@ import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../ds/components/core/Icon.jsx';
 import type { DayView } from '../data/derive.ts';
 import { dec, deadline, isDeferrable, placeOf } from '../data/derive.ts';
-import type { Selection } from './selection.ts';
-
 interface Props {
   view: DayView;
-  onSelect: (selection: Selection) => void;
+  /** Открыть заявку. Карточкой, а не выбором в правой панели: панели нет ни
+      на форме нового расчёта, ни в базах, а уведомления висят в шапке и
+      нажимаются отовсюду — прежде оттуда щелчок только закрывал меню. */
+  onPick: (orderId: string) => void;
 }
 
 /* Что требует диспетчера прямо сейчас: заявки без инженера с сегодняшним сроком
    и визиты, которые чаще всего срывались в итерациях. */
-export function Notifications({ view, onSelect }: Props) {
+export function Notifications({ view, onPick }: Props) {
   const [open, setOpen] = useState(false);
   const wrap = useRef<HTMLDivElement>(null);
 
@@ -35,7 +36,7 @@ export function Notifications({ view, onSelect }: Props) {
   }, [open]);
 
   const pick = (id: string) => {
-    onSelect({ kind: 'order', id });
+    onPick(id);
     setOpen(false);
   };
 

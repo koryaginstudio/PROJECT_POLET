@@ -1027,39 +1027,53 @@ export function buildDayView(day: Day, reported: Record<string, string> = {}): D
     plan.meta.orders_total > 0 ? (plan.meta.orders_assigned / plan.meta.orders_total) * 100 : 0;
   const idleShare = routeMinutes > 0 ? idleMinutes / routeMinutes : 0;
 
-  const metrics: Metric[] = [
+  /* Прогноз показывается только у плана на день целиком: своего прогноза у
+     пересчёта нет — движок его для остатка дня не считает. */
+  const forecast: Metric[] =
     rest === null
-      ? {
-          key: 'coverage',
-          label: 'Покрытие',
-          value: pct(simulation.coverage),
-          unit: '%',
-          caption: `${simulation.done.p50} из ${simulation.orders_total} заявок`,
-          group: 'metric:coverage',
-          ...mark(
-            simulation.coverage < limit.coverageBad,
-            simulation.coverage < limit.coverageWatch,
-            'По прогнозу дня часть заявок в среднем не будет выполнена'
-          )
-        }
-      : {
-          /* У пересчёта на месте покрытия — доля разложенного в остатке дня:
-             это его собственное число. Прогноз исходного плана остаётся в
-             разборе плитки, подписанный как прогноз до пересчёта. */
-          key: 'coverage',
-          label: 'Разложено',
-          value: pct(assignedShare),
-          unit: '%',
-          caption: `${rest}: ${plan.meta.orders_assigned} из ${plan.meta.orders_total} заявок`,
-          group: 'metric:coverage',
-          /* Те же пороги, что у покрытия: 60 % разложенного в остатке дня
-             заслуживают отметки не меньше, чем 60 % по прогнозу дня. */
-          ...mark(
-            assignedShare < limit.coverageBad,
-            assignedShare < limit.coverageWatch,
-            'В остатке дня часть заявок осталась без инженера'
-          )
-        },
+      ? [
+          {
+            /* Это прогноз, а не факт. Симуляция разыгрывает день много раз и
+               считает, сколько заявок доедет в среднем, поэтому и подпись
+               дробная: целое «49 из 56» обещало бы точность, которой нет, и
+               вдобавок не сходилось бы с процентом рядом. */
+            key: 'coverage',
+            label: 'Прогноз выполнения',
+            value: pct(simulation.coverage),
+            unit: '%',
+            caption: `В среднем ${dec(simulation.done.mean)} из ${simulation.orders_total} заявок`,
+            group: 'metric:coverage',
+            ...mark(
+              simulation.coverage < limit.coverageBad,
+              simulation.coverage < limit.coverageWatch,
+              'По прогнозу дня часть заявок в среднем не будет выполнена'
+            )
+          }
+        ]
+      : [];
+
+  const metrics: Metric[] = [
+    {
+      /* Твёрдое число дня: сколько заявок получили инженера. Доля и подпись
+         под ней считаются из одного и того же и сходятся между собой —
+         в отличие от прогноза, который приходит из симуляции. */
+      key: 'assigned',
+      label: 'Назначено',
+      value: pct(assignedShare),
+      unit: '%',
+      caption:
+        (rest === null ? '' : `${rest}: `) +
+        `${plan.meta.orders_assigned} из ${plan.meta.orders_total} заявок`,
+      group: 'metric:assigned',
+      ...mark(
+        assignedShare < limit.coverageBad,
+        assignedShare < limit.coverageWatch,
+        rest === null
+          ? 'Часть заявок осталась без инженера'
+          : 'В остатке дня часть заявок осталась без инженера'
+      )
+    },
+    ...forecast,
     {
       /* Нераспределённые стоят рядом с покрытием не случайно: это первая
          причина, по которой оно не сходится к сотне. */

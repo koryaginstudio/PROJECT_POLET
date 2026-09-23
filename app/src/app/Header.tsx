@@ -7,7 +7,6 @@ import { ServiceMenu } from './ServiceMenu.tsx';
 import type { DayView } from '../data/derive.ts';
 import type { Registry } from '../data/registry.ts';
 import type { Hit } from '../data/find.ts';
-import type { Selection } from './selection.ts';
 /* Простой знак: пчела контуром, заливка белая. Это присланный файл, а не
    производный — см. assets/logo/SOURCE.md, строка «lockup-h». */
 import logo from '../ds/assets/logo/lockup-h.svg';
@@ -18,7 +17,8 @@ interface Props {
   /** Открытый день. Пусто — расчёт ещё грузится или не загрузился; шапка
       тогда стоит без колокольчика: предупреждать не о чем. */
   view: DayView | null;
-  onSelect: (selection: Selection) => void;
+  /** Открыть заявку из колокольчика — карточкой, отовсюду. */
+  onPickOrder: (orderId: string) => void;
   /** Справочники — по ним ищет строка в шапке. Поиск живёт над расчётом:
       искать надо во всём, что есть, а не в том дне, который сейчас открыт. */
   registry: Registry | null;
@@ -36,7 +36,7 @@ export function Header({
   collapsed,
   onToggleNav,
   view,
-  onSelect,
+  onPickOrder,
   registry,
   onFind,
   onHome,
@@ -45,7 +45,11 @@ export function Header({
   return (
     <header className="hdr">
       <div className="hdr__left">
+        {/* На узком окне меню свёрнуто принудительно, и кнопка здесь
+            развернуть его не может — прятать её честнее, чем оставлять
+            нажимающейся впустую. */}
         <IconButton
+          className="hdr__navtoggle"
           label={collapsed ? 'Развернуть меню' : 'Свернуть меню до иконок'}
           variant="ghost"
           square
@@ -71,7 +75,7 @@ export function Header({
             настраивают вдумчиво и в своём разделе, а здесь то, как программа
             показывает посчитанное. */}
         <ServiceMenu onOpenAll={onOpenSettings} />
-        {view && <Notifications view={view} onSelect={onSelect} />}
+        {view && <Notifications view={view} onPick={onPickOrder} />}
         <ProfileMenu />
       </div>
     </header>

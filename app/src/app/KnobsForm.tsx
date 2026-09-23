@@ -6,9 +6,8 @@ interface Props {
   group: KnobGroup;
   values: Record<string, number>;
   onChange: (key: string, value: number) => void;
-  /** Показывать ли пометку «движок пока не принимает». Сейчас таких нет,
-      но механику оставляем: поле, которое молча ничего не делает, хуже
-      отсутствующего, и сказать об этом надо сразу, а не потом. */
+  /** Разделять ли правила на рабочие и справочные. Там, где форма и так
+      показывает только рабочие (настройки нового расчёта), делить нечего. */
   showWiring?: boolean;
 }
 
@@ -28,26 +27,24 @@ function Field({
   knob,
   value,
   onChange,
-  showWiring
+  locked
 }: {
   knob: Knob;
   value: number;
   onChange: (value: number) => void;
-  showWiring: boolean;
+  /** Правило показано только для справки: менять его здесь нельзя, потому
+      что расчёт берёт значение не отсюда. Поле остаётся видимым и читаемым,
+      но не притворяется рабочим. */
+  locked: boolean;
 }) {
   const factory = knob.factory;
   const changed = JSON.stringify(value) !== JSON.stringify(factory);
 
   return (
-    <div className="rule">
+    <div className={'rule' + (locked ? ' rule--locked' : '')}>
       <div className="rule__head">
         <span className="rule__label">{knob.label}</span>
         <code className="rule__name">{knob.key}</code>
-        {showWiring && !knob.wired && (
-          <span className="rule__pending" title="Значение записано, но программа расчёта его пока не принимает">
-            не подключено
-          </span>
-        )}
       </div>
       <p className="rule__what">{knob.what}</p>
 
@@ -61,7 +58,11 @@ function Field({
               min={knob.min}
               max={knob.max}
               step={knob.step}
+              readOnly={locked}
+              tabIndex={locked ? -1 : undefined}
+              aria-readonly={locked || undefined}
               onChange={(e) => {
+                if (locked) return;
                 const next = Number(e.currentTarget.value);
                 if (!Number.isFinite(next)) return;
                 const low = knob.min ?? -Infinity;
@@ -74,7 +75,9 @@ function Field({
           <span className="rule__limits">
             от {knob.min} до {knob.max}
           </span>
-          {changed ? (
+          {locked ? (
+            <span className="rule__factory">задаётся при создании расчёта</span>
+          ) : changed ? (
             <button
               type="button"
               className="rule__factory rule__factory--on"
@@ -92,27 +95,48 @@ function Field({
 }
 
 export function KnobsForm({ group, values, onChange, showWiring = true }: Props) {
+  /* Рабочие правила отдельно от справочных. Раньше они шли одним списком, и
+     подпись над ним обещала, что учитываются все, а у пяти из семи рядом
+     стояла пометка «не подключено» — экран спорил сам с собой. Значение,
+     которое нельзя изменить здесь, стоит ниже, отдельной группой и без
+     видимости рабочего поля. */
+  const live = showWiring ? group.knobs.filter((knob) => knob.wired) : group.knobs;
+  const shown = showWiring ? group.knobs.filter((knob) => !knob.wired) : [];
+
+  const field = (knob: Knob, locked: boolean) => (
+    <Field
+      key={knob.key}
+      knob={knob}
+      value={values[knob.key] ?? knob.factory}
+      onChange={(next) => onChange(knob.key, next)}
+      locked={locked}
+    />
+  );
+
   return (
     <section className="panel">
       <div className="dash__section-head">
         <h2 className="dash__section-title">{group.title}</h2>
         <span className="dash__section-note">
-          {group.knobs.length} настроек, все учитываются в расчёте
+          {live.length === group.knobs.length
+            ? `${group.knobs.length} настроек, все учитываются в расчёте`
+            : `${live.length} из ${group.knobs.length} меняются здесь`}
         </span>
       </div>
       <Lede text={group.lede} />
 
-      <div className="rules">
-        {group.knobs.map((knob) => (
-          <Field
-            key={knob.key}
-            knob={knob}
-            value={values[knob.key] ?? knob.factory}
-            onChange={(next) => onChange(knob.key, next)}
-            showWiring={showWiring}
-          />
-        ))}
-      </div>
+      <div className="rules">{live.map((knob) => field(knob, false))}</div>
+
+      {shown.length > 0 && (
+        <div className="rules__aside">
+          <h3 className="rules__aside-title">Задаются при создании расчёта</h3>
+          <p className="rules__aside-note">
+            Эти значения расчёт берёт из формы нового расчёта — там же, где выбирают участок и
+            дату. Здесь они показаны, чтобы было видно, с чем считали, но менять их отсюда нельзя.
+          </p>
+          <div className="rules">{shown.map((knob) => field(knob, true))}</div>
+        </div>
+      )}
     </section>
   );
 }

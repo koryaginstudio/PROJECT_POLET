@@ -141,7 +141,7 @@ export function RunTabs({
                 ? fullHint
                 : `${whenLabel(run.created)} · заявок ${run.ordersTotal}` +
                   ` · инженеров на маршрутах ${run.engineersOnShift}` +
-                  ` · покрытие ${dec(run.coverage)} %`
+                  ` · прогноз ${dec(run.coverage)} %`
             }
           >
             <span className="runtabs__code">{run.code}</span>

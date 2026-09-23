@@ -239,7 +239,7 @@ export function RunCard({
             {dec(row.coverage * 100)}
             <span className="runcard__unit">%</span>
           </span>
-          <span className="runcard__label">Покрытие</span>
+          <span className="runcard__label">Прогноз</span>
         </>
       ) : (
         /* Три числа в строке, как у инженера и у заявки, — но не итоги
@@ -305,10 +305,10 @@ export function RunCard({
             <span className="engmetrics__leader" aria-hidden="true" />
             <dd>{loose}</dd>
           </div>
-          {/* Покрытие и доля разложенных — не одно и то же: движок разложил,
+          {/* Прогноз и доля назначенных — не одно и то же: движок назначил,
               а симуляция говорит, сколько из этого доедет. */}
           <div className="engmetrics__row">
-            <dt>Покрытие</dt>
+            <dt>Прогноз выполнения</dt>
             <span className="engmetrics__leader" aria-hidden="true" />
             <dd>{dec(row.coverage * 100)} %</dd>
           </div>

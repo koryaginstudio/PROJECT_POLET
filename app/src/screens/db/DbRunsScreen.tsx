@@ -413,7 +413,7 @@ export function DbRunsScreen({
       },
       {
         key: 'coverage-trend',
-        title: 'Покрытие по расчётам',
+        title: 'Прогноз по расчётам',
         note: 'Как менялась доля закрытых заявок от расчёта к расчёту',
         shape: 'line',
         data: {
@@ -422,7 +422,7 @@ export function DbRunsScreen({
           caption: 'в последнем расчёте',
           tone: (runs[runs.length - 1]?.coverage ?? 1) < 0.8 ? 'bad' : 'ok',
           series: series((row) => Math.round(row.coverage * 1000) / 10),
-          legend: 'покрытие, %'
+          legend: 'прогноз выполнения, %'
         }
       },
       {
@@ -711,7 +711,7 @@ export function DbRunsScreen({
               </>
             ),
             cells: [
-              { label: 'Покрытие', value: percent(row.coverage), tone: row.coverage < 0.8 ? ('warn' as const) : undefined },
+              { label: 'Прогноз', value: percent(row.coverage), tone: row.coverage < 0.8 ? ('warn' as const) : undefined },
               { label: 'Разложено', value: `${row.assigned}/${row.orders}` },
               {
                 label: 'Без инженера',
@@ -759,7 +759,7 @@ export function DbRunsScreen({
               <thead>
                 <tr>
                   <th>Расчёт</th>
-                  <th>Покрытие</th>
+                  <th>Прогноз</th>
                   <th>Разложено</th>
                   <th>Доля плана</th>
                   <th>Без инженера</th>

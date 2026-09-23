@@ -280,7 +280,7 @@ export function DbClientsScreen({ registry, mode, onOpenRun }: Props) {
       },
       {
         key: 'coverage',
-        title: 'Покрытие',
+        title: 'Назначено',
         /* Числом, а не кольцом: в середине кольца этот интерфейс всегда
            показывает сумму долей, и «Покрытие» с цифрой 205 в центре
            отвечало бы не на свой вопрос. Кольцо у величины остаётся — его
@@ -538,7 +538,7 @@ export function DbClientsScreen({ registry, mode, onOpenRun }: Props) {
                   <th>Адрес обслуживания</th>
                   <th>Заявок</th>
                   <th>Обслужено</th>
-                  <th>Покрытие</th>
+                  <th>Назначено</th>
                   <th>Виды работ</th>
                   <th>Доступ</th>
                   <th>Срочных</th>
@@ -660,7 +660,7 @@ export function DbClientsScreen({ registry, mode, onOpenRun }: Props) {
                   { label: 'Заявок', value: client.orders },
                   { label: 'Обслужено', value: client.assigned },
                   {
-                    label: 'Покрытие',
+                    label: 'Назначено',
                     value: percent(rate),
                     tone: rate < poorRate ? ('warn' as const) : undefined
                   },

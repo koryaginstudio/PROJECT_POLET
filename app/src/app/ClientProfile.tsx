@@ -151,7 +151,7 @@ export function ClientProfile({ client, registry, onClose, onOpenOrder, onOpenRu
               <Stat value={String(client.assigned)} label="обслужено" />
               <Stat
                 value={`${Math.round(rate * 100)}%`}
-                label="покрытие"
+                label="назначено"
                 bad={rate < 0.8}
               />
               <Stat
@@ -288,7 +288,7 @@ export function ClientProfile({ client, registry, onClose, onOpenOrder, onOpenRu
                     <th>Дата</th>
                     <th>Заявок</th>
                     <th>Разложено</th>
-                    <th>Покрытие</th>
+                    <th>Назначено</th>
                   </tr>
                 </thead>
                 <tbody>

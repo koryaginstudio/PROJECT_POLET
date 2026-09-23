@@ -336,7 +336,7 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
       },
       {
         key: 'coverage',
-        title: 'Покрытие',
+        title: 'Прогноз выполнения',
         note: 'Какая доля заявок досталась инженерам',
         shape: 'number',
         data: {
@@ -346,7 +346,7 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
           tone: free > 0 ? 'warn' : 'ok',
           facts: [`${free} ${plural(free, 'заявка', 'заявки', 'заявок').replace(/^\d+\s/, '')} без инженера`],
           series: series((cell) => Math.round((cell.assigned / Math.max(cell.total, 1)) * 100)),
-          legend: 'покрытие расчёта, %'
+          legend: 'прогноз расчёта, %'
         }
       },
       {

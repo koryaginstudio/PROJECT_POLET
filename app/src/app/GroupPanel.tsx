@@ -72,45 +72,49 @@ function metricShape(groupId: string, view: DayView, day: Day): Shape | null {
   const rest = restFrom === null ? null : `Остаток дня с ${hhmm(restFrom)}`;
 
   switch (groupId) {
+    /* Назначено — твёрдый счёт: у скольких заявок есть инженер. Здесь нет
+       ни одного числа из симуляции, поэтому кольцо делится надвое и сходится
+       с подписью под плиткой. Прогноз стоит отдельной строкой и назван
+       прогнозом, чтобы его не прочитали как факт. */
+    case 'metric:assigned': {
+      const total = day.plan.meta.orders_total;
+      const assigned = day.plan.meta.orders_assigned;
+      return {
+        eyebrow: rest ?? 'Число расчёта',
+        title: rest === null ? 'Назначено' : 'Назначено в остатке дня',
+        chart: {
+          title: rest === null ? 'У скольких заявок есть инженер' : 'Как разложен остаток дня',
+          centerValue: total,
+          centerCaption: 'Заявок',
+          slices: [
+            { key: 'assigned', label: 'С инженером', count: assigned, ids: [], tone: 'ok' },
+            { key: 'free', label: 'Без инженера', count: total - assigned, ids: [], tone: 'wait' }
+          ]
+        },
+        facts: [
+          { key: 'assigned', label: 'С инженером', value: pluralOrders(assigned) },
+          { key: 'free', label: 'Без инженера', value: pluralOrders(total - assigned) },
+          {
+            key: 'forecast',
+            label:
+              rest === null
+                ? 'Прогноз выполнения — сколько из назначенных доедет'
+                : 'Прогноз выполнения плана дня, до пересчёта',
+            value: `${dec(day.simulation.coverage)} %`
+          }
+        ],
+        sections: [
+          { key: 'free', label: 'Не получили инженера', orderIds: view.unassigned.map((o) => o.id) }
+        ]
+      };
+    }
     case 'metric:coverage': {
       const total = day.plan.meta.orders_total;
       const done = Math.round(day.simulation.done.p50);
       const assigned = day.plan.meta.orders_assigned;
-      /* У пересчёта прогноз — от исходного плана: своего у него нет. Итогом
-         дня его не показываем — кольцо собрано из заявок самого пересчёта,
-         а прогноз стоит отдельной строкой и подписан, к чему он относится.
-         Смешать их в одном кольце значило бы делить заявки остатка дня на
-         исходы, разыгранные для утреннего плана. */
-      if (rest !== null) {
-        return {
-          eyebrow: rest,
-          title: 'Разложено в остатке дня',
-          chart: {
-            title: 'Как разложен остаток дня',
-            centerValue: total,
-            centerCaption: 'Заявок',
-            slices: [
-              { key: 'assigned', label: 'С инженером', count: assigned, ids: [], tone: 'ok' },
-              { key: 'free', label: 'Без инженера', count: total - assigned, ids: [], tone: 'wait' }
-            ]
-          },
-          facts: [
-            { key: 'assigned', label: 'С инженером', value: pluralOrders(assigned) },
-            { key: 'free', label: 'Без инженера', value: pluralOrders(total - assigned) },
-            {
-              key: 'forecast',
-              label: 'Покрытие по прогнозу плана дня, до пересчёта',
-              value: `${dec(day.simulation.coverage)} %`
-            }
-          ],
-          sections: [
-            { key: 'free', label: 'Не получили инженера', orderIds: view.unassigned.map((o) => o.id) }
-          ]
-        };
-      }
       return {
-        eyebrow: 'Число расчёта',
-        title: 'Покрытие',
+        eyebrow: 'Прогноз по симуляции',
+        title: 'Прогноз выполнения',
         chart: {
           title: 'Что будет с заявками',
           centerValue: total,

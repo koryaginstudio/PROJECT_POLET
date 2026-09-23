@@ -197,7 +197,6 @@ export function RoutePanel({
         <div className="rlist">
           {routes.map((load) => {
             const color = colorOf(load.engineer.id);
-            const locked = pinned !== null && pinned !== load.engineer.id;
             const open = pinned === load.engineer.id;
             const stops = load.route!.stops;
             return (
@@ -213,10 +212,13 @@ export function RoutePanel({
                   (live === load.engineer.id ? ' rlist__row--on' : '') +
                   (pinned === load.engineer.id ? ' rlist__row--pinned' : '')
                 }
-                disabled={locked}
-                onMouseEnter={() => !locked && onLive(load.engineer.id)}
+                /* Пока один маршрут закреплён, остальные строки прежде стояли
+                   выключенными: чтобы посмотреть соседний путь, приходилось
+                   сперва снимать выбор. Теперь щелчок по другой строке просто
+                   переводит выбор на неё. */
+                onMouseEnter={() => onLive(load.engineer.id)}
                 onMouseLeave={() => onLive(null)}
-                onFocus={() => !locked && onLive(load.engineer.id)}
+                onFocus={() => onLive(load.engineer.id)}
                 onBlur={() => onLive(null)}
                 onClick={() => onFocus(load.engineer.id)}
               >

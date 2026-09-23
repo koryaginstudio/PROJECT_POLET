@@ -128,7 +128,7 @@ export function StatsScreen({ registry, active, onOpenRun }: Props) {
         </div>
 
         <p className="clients__lede">
-          Все расчёты одним взглядом: те же покрытие и загрузка, что в карточках, но в ряд и в
+          Все расчёты одним взглядом: те же прогноз и загрузка, что в карточках, но в ряд и в
           среднем.
           {best && worst && best.run.id !== worst.run.id && (
             <>
@@ -146,7 +146,7 @@ export function StatsScreen({ registry, active, onOpenRun }: Props) {
           </div>
           <div className="dbstat">
             <span className="dbstat__value">{percent(totals.coverage)}</span>
-            <span className="dbstat__label">Среднее покрытие</span>
+            <span className="dbstat__label">Средний прогноз выполнения</span>
           </div>
           <div className="dbstat">
             <span className="dbstat__value">{percent(totals.occupancy)}</span>
@@ -170,12 +170,12 @@ export function StatsScreen({ registry, active, onOpenRun }: Props) {
       <section className="panel">
         <div className="dash__section-head">
           <h2 className="dash__section-title">Расчёты рядом</h2>
-          <span className="dash__section-note">покрытие и загрузка по каждому</span>
+          <span className="dash__section-note">прогноз и загрузка по каждому</span>
         </div>
 
         <div className="statsrun statsrun--head" aria-hidden="true">
           <span>Расчёт</span>
-          <span>Покрытие</span>
+          <span>Прогноз выполнения</span>
           <span />
           <span>Загрузка</span>
           <span />

@@ -135,7 +135,7 @@ export function buildReport(day: Day, run: RunEntry): Sheet[] {
       ['Пробег на заявку, км', perOrder(km, plan.meta.orders_assigned)],
       [],
       [
-        (simulated ? 'Покрытие по прогнозу' : 'Заявок разложено') + forecastOf + ', %',
+        (simulated ? 'Прогноз выполнения' : 'Заявок назначено') + forecastOf + ', %',
         simulation.coverage
       ],
       ['Сколько раз разыгран прогноз дня', simulation.meta.runs],

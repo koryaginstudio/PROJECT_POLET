@@ -176,7 +176,7 @@ export function ClientCard({
                 интерфейс, и одна величина не должна менять имя от экрана к
                 экрану. Оно же на две буквы короче, и в узкой плитке помещается
                 целиком, тогда как «обслужено» обрывалось на последней. */}
-            <span className="engquick__label">Покрытие</span>
+            <span className="engquick__label">Назначено</span>
           </div>
           <div className={'engquick__tile' + (row.urgent > 0 ? ' engquick__tile--bad' : '')}>
             <span className="engquick__value">{row.urgent}</span>

@@ -239,7 +239,7 @@ export function RunMenu({
             <span className="runmenu__code">{run.code}</span>
             <span className="runmenu__facts">
               <span className="runmenu__when">{whenLabel(run.created)}</span>
-              покрытие {dec(run.coverage)} % · без инженера {run.unassigned}
+              прогноз {dec(run.coverage)} % · без инженера {run.unassigned}
             </span>
             {isOn(run.id) ? (
               <span className="runmenu__mark">{markLabel}</span>

@@ -24,7 +24,7 @@ interface Row {
 const ROWS: Row[] = [
   {
     key: 'coverage',
-    label: 'Покрытие',
+    label: 'Прогноз выполнения',
     better: 'more',
     value: (row) => row.coverage,
     text: (row) => `${dec(row.coverage * 100)} %`

@@ -203,7 +203,7 @@ export function DispatchGate({ runs, activeRun, onCreate, onOpen }: Props) {
                   <span className="gaterow__code">{run.code}</span>
                   <span className="gaterow__when">{whenLabel(run.created)}</span>
                   <span className="gaterow__facts">
-                    покрытие {dec(run.coverage)} % · разложено {run.ordersAssigned} из{' '}
+                    прогноз {dec(run.coverage)} % · назначено {run.ordersAssigned} из{' '}
                     {run.ordersTotal} · без инженера {run.unassigned}
                   </span>
                   {run.id === activeRun ? (

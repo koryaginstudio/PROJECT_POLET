@@ -64,7 +64,7 @@ export function HomeScreen({ day, plan, view, runs, activeRun, onGoSection, onOp
             {restFrom !== null ? (
               <>
                 <span className="dbstat__value">{percent(assignedShare)}</span>
-                <span className="dbstat__label">Разложено в остатке дня с {hhmm(restFrom)}</span>
+                <span className="dbstat__label">Назначено в остатке дня с {hhmm(restFrom)}</span>
               </>
             ) : (
               <>
@@ -72,7 +72,7 @@ export function HomeScreen({ day, plan, view, runs, activeRun, onGoSection, onOp
                 {/* Прогноза могло и не быть: тогда это доля назначенных, а не
                     доля тех, кто доедет, и называть её надо по-другому. */}
                 <span className="dbstat__label">
-                  {day.simulation.meta.runs > 0 ? 'Покрытие по прогнозу' : 'Заявок разложено, %'}
+                  {day.simulation.meta.runs > 0 ? 'Прогноз выполнения' : 'Назначено, %'}
                 </span>
               </>
             )}
@@ -81,7 +81,7 @@ export function HomeScreen({ day, plan, view, runs, activeRun, onGoSection, onOp
             <span className="dbstat__value">
               {plan.meta.orders_assigned} из {plan.meta.orders_total}
             </span>
-            <span className="dbstat__label">Заявок разложено</span>
+            <span className="dbstat__label">Заявок назначено</span>
           </div>
           <div className="dbstat">
             <span className="dbstat__value">{view.unassigned.length}</span>
@@ -173,7 +173,7 @@ export function HomeScreen({ day, plan, view, runs, activeRun, onGoSection, onOp
                     {dec(run.coverage)}
                     <span className="runcard__unit">%</span>
                   </span>
-                  <span className="homerun__label">Покрытие</span>
+                  <span className="homerun__label">Прогноз</span>
                   <span className="homerun__fact">
                     {run.ordersAssigned} из {run.ordersTotal} · без инженера {run.unassigned}
                   </span>
