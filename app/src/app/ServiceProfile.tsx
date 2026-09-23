@@ -2,8 +2,15 @@ import { useEffect, useMemo, useState } from 'react';
 import { Icon } from '../ds/components/core/Icon.jsx';
 import { SegmentedControl } from '../ds/components/forms/SegmentedControl.jsx';
 import type { OrderRecord, Registry, ServiceRecord } from '../data/registry.ts';
+import { serviceCrew } from '../data/registry.ts';
 import { dec, hhmm, plural } from '../data/derive.ts';
-import { equipmentName, skillIcon, skillName, workTypeIcon } from '../data/dictionary.ts';
+import {
+  equipmentName,
+  requiredTransportName,
+  skillIcon,
+  skillName,
+  workTypeIcon
+} from '../data/dictionary.ts';
 
 interface Props {
   /** Какая услуга открыта. Пусто — карточки нет. */
@@ -49,6 +56,14 @@ export function ServiceProfile({ service, registry, onClose, onOpenOrder, onOpen
       .filter((order) => order.workType === service.key)
       .sort((a, b) => a.run.code.localeCompare(b.run.code, 'ru') || a.windowStart - b.windowStart);
   }, [service?.key, registry]);
+
+  /* Кто может её взять — по справочнику: навык и транспорт. Это не то же
+     самое, что «кто выполнял» ниже: там факт прошедших расчётов, здесь —
+     кого вообще можно послать. Оператор приходит с этим вопросом первым. */
+  const able = useMemo(
+    () => (service ? serviceCrew(service, registry.engineers) : null),
+    [service?.key, registry]
+  );
 
   /* Кто эту работу выполнял — по факту плана, а не по записи в кадрах. */
   const crew = useMemo(() => {
@@ -128,9 +143,11 @@ export function ServiceProfile({ service, registry, onClose, onOpenOrder, onOpen
               <span className="crewpro__transport-label">Навык</span>
               <Icon name={skillIcon(service.skill)} size={15} />
               {skillName(service.skill)}
+              {/* Счёт с транспортом, а не по одному навыку: у «Работы с
+                  кабелем» навык есть у двадцати восьми, а машина из них у
+                  тринадцати — пятнадцать человек поехать не смогут. */}
               <span className="crewpro__muted">
-                · умеют {registry.engineers.filter((one) => one.skills.includes(service.skill)).length}{' '}
-                из {registry.engineers.length}
+                · могут взять {able?.able.length ?? 0} из {registry.engineers.length}
               </span>
             </span>
 
@@ -160,6 +177,38 @@ export function ServiceProfile({ service, registry, onClose, onOpenOrder, onOpen
           </div>
         </div>
 
+        {/* Первым блоком записи — кого посылать. Имена, а не число: услугу
+            оператор знает и так, а вот кто её умеет, держать в голове на
+            сорок два человека нельзя. */}
+        {able && (
+          <section className="crewpro__block">
+            <h3 className="crewpro__title">
+              Кто может взять · {able.able.length} из {registry.engineers.length}
+            </h3>
+            {able.skilled.length > able.able.length && (
+              <p className="crewpro__note">
+                Навык есть у {able.skilled.length}, но{' '}
+                {able.skilled.length - able.able.length} из них без нужного транспорта (
+                {requiredTransportName(service.requiredTransport)}).
+              </p>
+            )}
+            {able.able.length === 0 ? (
+              <p className="crewpro__empty">
+                Взять эту работу некому: подходящих по навыку и транспорту в справочнике нет.
+              </p>
+            ) : (
+              <div className="skillrow">
+                {able.able.map((one) => (
+                  <span key={one.id} className="skillchip" title={one.code}>
+                    <Icon name="user" size={13} />
+                    {one.name}
+                  </span>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
         {(service.equipment.length > 0 || service.requiredTransport) && (
           <section className="crewpro__block">
             <h3 className="crewpro__title">Что нужно везти</h3>
@@ -173,7 +222,7 @@ export function ServiceProfile({ service, registry, onClose, onOpenOrder, onOpen
               {service.requiredTransport && (
                 <span className="skillchip">
                   <Icon name="car" size={13} />
-                  Транспорт: {service.requiredTransport}
+                  Транспорт: {requiredTransportName(service.requiredTransport)}
                 </span>
               )}
             </div>

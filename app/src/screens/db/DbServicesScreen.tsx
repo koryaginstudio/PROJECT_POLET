@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Icon } from '../../ds/components/core/Icon.jsx';
 import { SegmentedControl } from '../../ds/components/forms/SegmentedControl.jsx';
 import type { OrderRecord, Registry, ServiceRecord } from '../../data/registry.ts';
+import { serviceCrew } from '../../data/registry.ts';
 import { dec, plural } from '../../data/derive.ts';
 import {
   equipmentName,
@@ -561,6 +562,16 @@ export function DbServicesScreen({ registry, mode, onOpenRun }: Props) {
     )
   });
 
+  /* Кто может взять услугу — один счёт на все четыре вида. Считается по
+     справочнику целиком и от отбора наверху не зависит: «кто умеет» — это
+     свойство услуги и штата, а не выборки. */
+  const crewOf = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof serviceCrew>>();
+    for (const row of registry.services) map.set(row.key, serviceCrew(row, registry.engineers));
+    return map;
+  }, [registry]);
+  const staff = registry.engineers.length;
+
   const cards = (list: ServiceRecord[]) => (
     <div
       className={'runs__grid' + (dense ? ' runs__grid--dense' : '')}
@@ -574,6 +585,8 @@ export function DbServicesScreen({ registry, mode, onOpenRun }: Props) {
           slice={sliceOf(row)}
           dense={dense}
           skills={picks}
+          crew={crewOf.get(row.key)}
+          staff={staff}
           onOpen={() => setOpened(row)}
         />
       ))}
@@ -743,6 +756,7 @@ export function DbServicesScreen({ registry, mode, onOpenRun }: Props) {
           lead="Услуга"
           rows={rows.map((row) => {
             const slice = sliceOf(row);
+            const able = crewOf.get(row.key)?.able.length ?? 0;
             return {
               key: row.key,
               lead: <Icon name={skillIcon(row.skill)} size={15} />,
@@ -761,6 +775,14 @@ export function DbServicesScreen({ registry, mode, onOpenRun }: Props) {
                 </>
               ),
               cells: [
+                /* Первым числом — не «сколько заявок», а «кого посылать»:
+                   с этим вопросом в базу услуг и приходят. */
+                {
+                  label: 'Могут взять',
+                  value: `${able} из ${staff}`,
+                  wide: true,
+                  tone: able === 0 ? ('warn' as const) : undefined
+                },
                 { label: 'Длительность', value: minutesLabel(row), wide: true },
                 { label: 'Заявок', value: slice.orders },
                 {
@@ -790,6 +812,7 @@ export function DbServicesScreen({ registry, mode, onOpenRun }: Props) {
               <thead>
                 <tr>
                   <th>Услуга</th>
+                  <th>Могут взять</th>
                   <th>Навык</th>
                   <th>Класс заявки</th>
                   <th>Длительность</th>
@@ -824,6 +847,20 @@ export function DbServicesScreen({ registry, mode, onOpenRun }: Props) {
                             строки: в нынешней выгрузке они совпадают, и
                             подстрочник повторял бы саму ячейку. */}
                         {row.key !== row.title && <span className="tbl__sub">{row.key}</span>}
+                      </td>
+                      {/* «Кого посылать» — сразу за названием, раньше всех
+                          прочих колонок: в таблице их десяток, и до правого
+                          края этот ответ бы не дочитали. */}
+                      <td className="tbl__num">
+                        {(() => {
+                          const crew = crewOf.get(row.key);
+                          const able = crew?.able.length ?? 0;
+                          return (
+                            <span className={able === 0 ? 'tbl__warn' : undefined}>
+                              {able} из {staff}
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td>
                         <span className="tbl__inline">

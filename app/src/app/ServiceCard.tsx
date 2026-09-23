@@ -1,5 +1,5 @@
 import { Icon } from '../ds/components/core/Icon.jsx';
-import type { ServiceRecord } from '../data/registry.ts';
+import type { ServiceCrew, ServiceRecord } from '../data/registry.ts';
 import { pluralWord } from '../data/derive.ts';
 import {
   equipmentName,
@@ -25,6 +25,11 @@ interface Props {
   /** Навыки, отмеченные в полосе отбора: в карточке навык подсвечен, чтобы
       было видно, за что услуга сюда попала. */
   skills?: string[];
+  /** Кто может взять услугу и сколько всего инженеров в справочнике. Без
+      них карточка полосу «кто умеет» не рисует: врать числом хуже, чем
+      промолчать. */
+  crew?: ServiceCrew;
+  staff?: number;
   /** Щелчок по карточке открывает запись. Без него карточка только
       показывает: обещать открытие там, где открывать нечего, нельзя. */
   onOpen?: () => void;
@@ -42,7 +47,16 @@ interface Props {
    ниже, только длиной. Картинка, пересказывающая соседнюю цифру, — не
    картинка, а лишние полсантиметра высоты в каждой из восемнадцати
    карточек. */
-export function ServiceCard({ row, seat, slice, dense = false, skills = [], onOpen }: Props) {
+export function ServiceCard({
+  row,
+  seat,
+  slice,
+  dense = false,
+  skills = [],
+  crew,
+  staff,
+  onOpen
+}: Props) {
   const orders = slice ? slice.orders : row.orders;
   const urgent = slice ? slice.urgent : row.urgent;
   const access = slice ? slice.access : row.access;
@@ -125,6 +139,42 @@ export function ServiceCard({ row, seat, slice, dense = false, skills = [], onOp
           {skillShort(row.skill)}
         </span>
       </span>
+
+      {/* Кто это умеет — выше чисел и крупнее их.
+
+          Оператору, который услуги знает наизусть, карточка отвечала на
+          «сколько заявок» и «сколько занимает», но не на тот вопрос, с
+          которым к ней приходят: назвали работу — кого на неё посылать.
+          Навык под названием на него отвечает только тому, кто держит в
+          голове, у кого какой навык.
+
+          Считано и по транспорту: услуга с автомобилем недоступна тому, у
+          кого его нет, сколько бы навыков он ни имел. Имена — когда их
+          мало; тридцать три фамилии на карточке не читает никто, и вместо
+          них там счёт. */}
+      {!dense && crew && staff !== undefined && (
+        <div className={'srvcrew' + (crew.able.length <= staff / 3 ? ' srvcrew--few' : '')}>
+          <span className="srvcrew__top">
+            <Icon name="users" size={14} />
+            Могут взять <b>{crew.able.length}</b> из {staff}
+          </span>
+          {/* Второй строкой — то, чего не говорит счёт. Мало кого — имена;
+              много, но транспорт отсекает, — насколько; иначе насколько
+              навык редкий. «Почти весь штат» только когда это правда: у
+              аварийных работ тринадцать из сорока двух — не почти весь. */}
+          <span className="srvcrew__note">
+            {crew.able.length === 0
+              ? 'Взять эту работу некому'
+              : crew.able.length <= 8
+                ? crew.able.map((one) => one.name).join(', ')
+                : crew.skilled.length > crew.able.length
+                  ? `навык есть у ${crew.skilled.length}, но ${crew.skilled.length - crew.able.length} без нужного транспорта`
+                  : crew.able.length >= staff * 0.75
+                    ? 'почти весь штат'
+                    : `остальные ${staff - crew.able.length} этого не умеют`}
+          </span>
+        </div>
+      )}
 
       {dense ? (
         <>

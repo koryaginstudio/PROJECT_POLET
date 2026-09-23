@@ -440,6 +440,39 @@ export interface Registry {
   missingZones: string[];
 }
 
+/** Кто может взять услугу. */
+export interface ServiceCrew {
+  /** Может выполнить: есть навык и подходит транспорт. */
+  able: EngineerRecord[];
+  /** Есть навык — без оглядки на транспорт. */
+  skilled: EngineerRecord[];
+  /** Известен ли транспорт инженеров. Движок 1.1 этого поля не отдаёт, и
+      тогда считать по нему нельзя: пустое поле — это «неизвестно», а не
+      «транспорта нет». */
+  transportKnown: boolean;
+}
+
+/** Кто может выполнить услугу — по навыку и по транспорту сразу.
+
+    Оба условия жёсткие: планировщик отказывает и за навык (`no_skill`), и за
+    транспорт (`no_vehicle`), см. `planner.tryPlace`. Считать по одному навыку
+    нельзя — у «Работы с кабелем» навык есть у тридцати из тридцати пяти, а
+    автомобиль из них у двадцати двух: восемь человек поехать не смогут, и
+    обещать их оператору значит соврать.
+
+    Когда транспорт инженеров неизвестен целиком (движок 1.1), условие
+    снимается: `able` равен `skilled`, а `transportKnown` говорит, что ответ
+    посчитан без него. */
+export function serviceCrew(service: ServiceRecord, engineers: EngineerRecord[]): ServiceCrew {
+  const skilled = engineers.filter((one) => one.skills.includes(service.skill));
+  const transportKnown = engineers.some((one) => one.transport !== null);
+  const able =
+    service.requiredTransport && transportKnown
+      ? skilled.filter((one) => one.transport === service.requiredTransport)
+      : skilled;
+  return { able, skilled, transportKnown };
+}
+
 /** Ключ точки обслуживания: адрес, а если его нет — район с координатами.
 
     Одно правило на обе базы. Клиенты собираются по нему, заявки по нему же

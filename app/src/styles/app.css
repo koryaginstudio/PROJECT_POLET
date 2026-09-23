@@ -7420,6 +7420,46 @@ b.ccard__bad {
   justify-self: end;
 }
 
+/* ─── «кто умеет» на карточке услуги ───────────────────────────────────── */
+
+/* Ответ на «кого посылать» стоит выше чисел услуги и набран крупнее их: с
+   этим вопросом в базу услуг и приходят, а заявки и минуты читают потом. */
+.srvcrew {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: var(--r-md);
+  background: var(--ink-100);
+}
+
+/* Мало кто может — это уже не справка, а ограничение плана. */
+.srvcrew--few {
+  background: color-mix(in srgb, var(--accent-500) 10%, var(--white));
+}
+
+.srvcrew__top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-body-s);
+  color: var(--text-secondary);
+}
+
+.srvcrew__top b {
+  font-family: var(--font-display);
+  font-size: var(--fs-h4);
+  font-weight: var(--fw-extrabold);
+  letter-spacing: var(--ls-h4);
+  color: var(--text-primary);
+}
+
+.srvcrew__note {
+  font-size: var(--fs-small);
+  line-height: 1.35;
+  color: var(--text-muted);
+}
+
 .roster {
   display: flex;
   flex-direction: column;
