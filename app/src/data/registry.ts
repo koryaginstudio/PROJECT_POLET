@@ -621,7 +621,7 @@ function buildClients(plans: { run: RunRef; plan: Plan }[]): ClientRecord[] {
      одинаков от загрузки к загрузке, так что и номера выйдут те же. */
   const numbers = clientNumbers([...map.keys()]);
 
-  return [...map.values()]
+  const rows = [...map.values()]
     .map((entry) => ({
       key: entry.key,
       code: clientLabel(numbers.get(entry.key) ?? 0),
@@ -642,6 +642,31 @@ function buildClients(plans: { run: RunRef; plan: Plan }[]): ClientRecord[] {
       firstWindow: entry.firstWindow
     }))
     .sort((a, b) => b.orders - a.orders || a.address.localeCompare(b.address, 'ru'));
+
+  /* Одно имя на две разные точки — не дубль записи, а промах раздачи имён.
+
+     Названий в справочнике шестьдесят пять, а номера точек идут подряд по
+     всей истории и уже перевалили за четыреста: номер выдаётся раз и
+     навсегда, а имя берётся по остатку от деления (`companyOf`). Точки, чьи
+     номера отличаются на кратное длине списка, получают одно имя — C0002 и
+     C0392 оба оказались «ТД „Северный ветер"». В базе это читается как две
+     записи об одном клиенте, хотя дома разные и общего у них нет ничего.
+
+     Имя не перевыдаём: оно закреплено за точкой и не должно меняться от
+     того, какие точки пришли рядом. Различаем районом — так и называют
+     соседние точки одной сети. Совпали и район с именем — различаем номером
+     точки: он уникален по построению. */
+  const сколько = new Map<string, number>();
+  for (const row of rows) сколько.set(row.company, (сколько.get(row.company) ?? 0) + 1);
+  const занято = new Set<string>();
+  for (const row of rows) {
+    if ((сколько.get(row.company) ?? 0) < 2) continue;
+    const сРайоном = `${row.company} — ${row.district}`;
+    row.company = занято.has(сРайоном) ? `${row.company} — ${row.code}` : сРайоном;
+    занято.add(сРайоном);
+  }
+
+  return rows;
 }
 
 function buildOrders(
