@@ -80,7 +80,7 @@ export const SERVICE_DEFAULTS: ServiceSettings = {
     giniBad: 0.25,
     giniWatch: 0.12
   },
-  theme: 'light',
+  theme: 'system',
   startAt: 'home',
   navCollapsed: false,
   dbStats: 'hidden',
@@ -123,7 +123,20 @@ function read(): ServiceSettings {
   }
 }
 
+/* Тема ставится атрибутом на `<html>`, а не классом: три состояния, а не
+   переключатель. Системная — атрибута нет вовсе, и решает медиазапрос
+   `prefers-color-scheme` в colors.css; светлая и тёмная — атрибут стоит
+   явно и медиазапрос проигрывает ему. Ставится здесь же, при чтении
+   настроек, а не в компоненте: страница красится до первой отрисовки
+   React, а не мигает светлым на долю секунды. */
+function applyTheme(mode: ThemeMode): void {
+  if (typeof document === 'undefined') return;
+  if (mode === 'system') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', mode);
+}
+
 let current = read();
+applyTheme(current.theme);
 const watchers = new Set<() => void>();
 
 function announce(): void {
@@ -141,6 +154,7 @@ export function setService(patch: Partial<ServiceSettings>): void {
     thresholds: { ...current.thresholds, ...(patch.thresholds ?? {}) }
   });
   current = next;
+  applyTheme(next.theme);
   if (typeof localStorage !== 'undefined') {
     try {
       localStorage.setItem(STORE, JSON.stringify(next));

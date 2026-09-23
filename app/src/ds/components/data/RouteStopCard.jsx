@@ -7,7 +7,7 @@ const CSS = `
 .pl-stop--selected{border-color:var(--ink-1000);box-shadow:var(--shadow-inset-hairline)}
 .pl-stop__idx{flex:0 0 auto;display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:var(--r-pill);background:var(--ink-100);color:var(--text-primary);font-size:var(--fs-body-s);font-weight:var(--fw-bold);font-variant-numeric:tabular-nums}
 .pl-stop--done .pl-stop__idx{background:var(--success-100);color:var(--success-600)}
-.pl-stop--active .pl-stop__idx{background:var(--grad-brand);color:var(--ink-1000)}
+.pl-stop--active .pl-stop__idx{background:var(--grad-brand);color:var(--text-on-brand)}
 .pl-stop--risk .pl-stop__idx{background:var(--danger-100);color:var(--danger-600)}
 .pl-stop__body{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:6px}
 .pl-stop__title{font-size:var(--fs-body-s);font-weight:var(--fw-semibold);color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

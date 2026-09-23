@@ -10,6 +10,11 @@ import type { Hit } from '../data/find.ts';
 /* Простой знак: пчела контуром, заливка белая. Это присланный файл, а не
    производный — см. assets/logo/SOURCE.md, строка «lockup-h». */
 import logo from '../ds/assets/logo/lockup-h.svg';
+/* Тот же логотип для тёмного фона: чёрный на тёмном не виден вовсе. Контуры
+   взяты из «lockup-h-detail» без единой правки, цвет — тот, что задумал
+   автор в «lockup-h-gradient-word»: знак и слово «PROJECT» сплошные, «##
+   POLET» фирменным градиентом. См. assets/logo/SOURCE.md. */
+import logoOnDark from '../ds/assets/logo/lockup-h-on-dark.svg';
 
 interface Props {
   collapsed: boolean;
@@ -64,7 +69,10 @@ export function Header({
           title="На главную"
           aria-label="PROJECT POLET — на главную"
         >
-          <img className="hdr__logo" src={logo} alt="" />
+          {/* Оба варианта в разметке, нужный показывает тема: знать её
+              в разметке нечем — она может быть и системной. */}
+          <img className="hdr__logo hdr__logo--light" src={logo} alt="" />
+          <img className="hdr__logo hdr__logo--dark" src={logoOnDark} alt="" />
         </button>
       </div>
 

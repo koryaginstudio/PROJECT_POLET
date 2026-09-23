@@ -4,7 +4,7 @@ const CSS = `
 .pl-stat{display:flex;flex-direction:column;gap:10px;padding:var(--tile-pad);border-radius:var(--r-tile);background:var(--surface-tile);color:var(--text-primary);min-width:0}
 .pl-stat--white{background:var(--white);box-shadow:var(--shadow-inset-hairline)}
 .pl-stat--inverse{background:var(--surface-inverse);color:var(--text-inverse)}
-.pl-stat--gradient{background:var(--grad-brand-diag);color:var(--ink-1000)}
+.pl-stat--gradient{background:var(--grad-brand-diag);color:var(--text-on-brand)}
 .pl-stat__head{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .pl-stat__label{font-size:var(--fs-body-s);font-weight:var(--fw-medium);color:var(--text-secondary)}
 .pl-stat--inverse .pl-stat__label{color:var(--ink-400)}

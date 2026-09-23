@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../ds/components/core/Icon.jsx';
 import { Switch } from '../ds/components/forms/Switch.jsx';
 import { setService, useService } from '../data/service.ts';
-import type { HoursFormat, StartAt } from '../data/service.ts';
+import type { HoursFormat, StartAt, ThemeMode } from '../data/service.ts';
 
 interface Props {
   /** Ведёт к полному списку настроек сервиса. */
@@ -30,6 +30,12 @@ const START: { key: StartAt; label: string; note: string }[] = [
 const HOURS: { key: HoursFormat; label: string }[] = [
   { key: 'decimal', label: '4,9 ч' },
   { key: 'words', label: '4 ч 54 мин' }
+];
+
+const THEMES: { key: ThemeMode; label: string; icon: string }[] = [
+  { key: 'light', label: 'Светлая', icon: 'eye' },
+  { key: 'dark', label: 'Тёмная', icon: 'moon' },
+  { key: 'system', label: 'Как в системе', icon: 'sliders-horizontal' }
 ];
 
 export function ServiceMenu({ onOpenAll }: Props) {
@@ -110,12 +116,23 @@ export function ServiceMenu({ onOpenAll }: Props) {
             </div>
           </div>
 
-          {/* Выбора темы здесь нет намеренно. Палитра в системе одна —
-              светлая; переключатель её не перекрашивал, а только запоминал
-              выбор, и оговорка под ним этого не спасала: кнопка, которая
-              выглядит рабочей и ничего не делает, дороже отсутствующей.
-              Настройка `theme` осталась в сервисе — когда тёмная палитра
-              появится, блок вернётся на это место. */}
+          <div className="svc__block">
+            <span className="svc__label">Тема</span>
+            <div className="svc__pills">
+              {THEMES.map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  className={'svc__pill' + (settings.theme === item.key ? ' svc__pill--on' : '')}
+                  onClick={() => setService({ theme: item.key })}
+                  aria-pressed={settings.theme === item.key}
+                >
+                  <Icon name={item.icon} size={12} />
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
 
           <div className="svc__block svc__block--switch">
             <Switch

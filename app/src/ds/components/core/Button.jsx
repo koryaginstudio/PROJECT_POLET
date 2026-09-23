@@ -12,7 +12,7 @@ const CSS = `
 .pl-btn--primary{--pl-bg:var(--ink-1000);--pl-fg:var(--white);--pl-bg-h:var(--ink-700)}
 .pl-btn--secondary{--pl-bg:var(--white);--pl-fg:var(--ink-1000);--pl-bd:var(--border-subtle);--pl-bg-h:var(--ink-100);--pl-bd-h:var(--ink-300)}
 .pl-btn--ghost{--pl-bg:transparent;--pl-fg:var(--ink-1000);--pl-bg-h:var(--ink-100)}
-.pl-btn--accent{--pl-fg:var(--ink-1000);background:var(--grad-brand)}
+.pl-btn--accent{--pl-fg:var(--text-on-brand);background:var(--grad-brand)}
 .pl-btn--accent:hover{filter:saturate(1.08) brightness(.97)}
 .pl-btn--inverse{--pl-bg:var(--white);--pl-fg:var(--ink-1000);--pl-bg-h:var(--ink-150)}
 .pl-btn--inverse:focus-visible{box-shadow:var(--ring-focus-inverse)}

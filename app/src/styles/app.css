@@ -366,8 +366,8 @@ body {
   padding: 0 14px;
   border: 0;
   border-radius: var(--r-pill);
-  background: var(--danger-600);
-  color: var(--white);
+  background: var(--danger-solid);
+  color: var(--text-on-solid);
   font-family: var(--font-sans);
   font-size: var(--fs-caption);
   font-weight: var(--fw-semibold);
@@ -2331,8 +2331,8 @@ body {
   align-items: center;
   justify-content: center;
   border-radius: var(--r-pill);
-  background: var(--danger-600);
-  color: var(--white);
+  background: var(--danger-solid);
+  color: var(--text-on-solid);
   font-size: var(--fs-small);
   font-weight: var(--fw-bold);
   font-variant-numeric: tabular-nums;
@@ -4808,7 +4808,7 @@ button.ministage:hover:not(:disabled) {
   border: 0;
   border-radius: var(--r-control);
   background: var(--grad-brand);
-  color: var(--ink-1000);
+  color: var(--text-on-brand);
   font-family: var(--font-sans);
   font-size: var(--fs-body-s);
   font-weight: var(--fw-semibold);
@@ -4934,8 +4934,8 @@ button.ministage:hover:not(:disabled) {
 }
 
 .tag--alarm {
-  background: var(--danger-600);
-  color: var(--white);
+  background: var(--danger-solid);
+  color: var(--text-on-solid);
   font-size: var(--fs-caption);
 }
 
@@ -5067,13 +5067,13 @@ button.bsq:focus-visible {
 .bsq--success .bsq__icon {
   background: var(--success-500);
   border-color: var(--success-500);
-  color: var(--white);
+  color: var(--text-on-solid);
 }
 
 .bsq--danger .bsq__icon {
-  background: var(--danger-600);
-  border-color: var(--danger-600);
-  color: var(--white);
+  background: var(--danger-solid);
+  border-color: var(--danger-solid);
+  color: var(--text-on-solid);
 }
 
 .bsq--accent .bsq__icon {
@@ -9319,13 +9319,13 @@ b.ccard__bad {
   align-items: center;
   gap: 5px;
   padding: 5px 11px;
-  border: 1px solid var(--danger-600);
+  border: 1px solid var(--danger-solid);
   border-radius: var(--r-pill);
-  background: var(--danger-600);
+  background: var(--danger-solid);
   font-family: var(--font-sans);
   font-size: var(--fs-caption);
   font-weight: var(--fw-semibold);
-  color: var(--white);
+  color: var(--text-on-solid);
   cursor: pointer;
   transition: var(--t-control);
 }
@@ -9341,9 +9341,9 @@ b.ccard__bad {
 }
 
 .runedit__danger--quiet:hover {
-  border-color: var(--danger-600);
-  background: var(--danger-600);
-  color: var(--white);
+  border-color: var(--danger-solid);
+  background: var(--danger-solid);
+  color: var(--text-on-solid);
 }
 
 .runedit__danger:focus-visible,
@@ -10140,8 +10140,8 @@ b.ccard__bad {
   height: 16px;
   border-radius: 50%;
   border: 1.5px solid var(--white);
-  background: var(--danger-600);
-  color: var(--white);
+  background: var(--danger-solid);
+  color: var(--text-on-solid);
   font-family: var(--font-sans);
   font-size: var(--fs-small);
   font-weight: var(--fw-extrabold);
@@ -14427,8 +14427,8 @@ button.chip--sm {
   gap: 4px;
   padding: 3px 10px;
   border-radius: var(--r-pill);
-  background: var(--danger-600);
-  color: var(--white);
+  background: var(--danger-solid);
+  color: var(--text-on-solid);
   font-family: var(--font-sans);
   font-size: var(--fs-caption);
   font-weight: var(--fw-bold);
@@ -15102,8 +15102,8 @@ button.chip--sm {
   flex: none;
   padding: 2px 8px;
   border-radius: var(--r-pill);
-  background: var(--danger-600);
-  color: var(--white);
+  background: var(--danger-solid);
+  color: var(--text-on-solid);
   font-size: var(--fs-caption);
   font-weight: var(--fw-bold);
   letter-spacing: 0.02em;
@@ -15963,7 +15963,7 @@ button.chip--sm {
   bottom: 4px;
   z-index: 520;
   font-size: var(--fs-small);
-  color: var(--white);
+  color: var(--text-on-solid);
   opacity: 0.55;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
   pointer-events: none;
@@ -15971,7 +15971,7 @@ button.chip--sm {
 
 /* На светлой подложке белая сноска пропадает — там она тёмная. */
 .geo__plot--day .geo__credit {
-  color: var(--ink-1000);
+  color: var(--text-on-brand);
   opacity: 0.6;
   text-shadow: 0 1px 2px rgba(255, 255, 255, 0.7);
 }
@@ -15995,14 +15995,14 @@ button.chip--sm {
   align-items: center;
   gap: 5px;
   font-size: var(--fs-small);
-  color: var(--white);
+  color: var(--text-on-solid);
   opacity: 0.7;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
   white-space: nowrap;
 }
 
 .geo__plot--day .geo__legend-item {
-  color: var(--ink-1000);
+  color: var(--text-on-brand);
   text-shadow: 0 1px 2px rgba(255, 255, 255, 0.7);
 }
 

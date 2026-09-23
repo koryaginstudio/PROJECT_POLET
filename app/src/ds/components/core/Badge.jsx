@@ -8,7 +8,7 @@ const CSS = `
 .pl-badge--danger{background:var(--danger-100);color:var(--danger-600)}
 .pl-badge--inverse{background:var(--ink-1000);color:var(--white)}
 .pl-badge--outline{background:transparent;border-color:var(--border-subtle);color:var(--ink-700)}
-.pl-badge--gradient{background:var(--grad-brand);color:var(--ink-1000)}
+.pl-badge--gradient{background:var(--grad-brand);color:var(--text-on-brand)}
 .pl-badge__dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex:0 0 auto}
 `;
 let injected = false;

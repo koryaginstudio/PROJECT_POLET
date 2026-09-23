@@ -4,7 +4,7 @@ const CSS = `
 .pl-tile{position:relative;display:flex;flex-direction:column;gap:12px;background:var(--surface-tile);border-radius:var(--r-tile);padding:var(--tile-pad);color:var(--text-primary);overflow:hidden;transition:var(--t-surface);text-decoration:none;min-width:0}
 .pl-tile--white{background:var(--white);box-shadow:var(--shadow-inset-hairline)}
 .pl-tile--inverse{background:var(--surface-inverse);color:var(--text-inverse)}
-.pl-tile--gradient{background:var(--grad-brand-diag);color:var(--ink-1000)}
+.pl-tile--gradient{background:var(--grad-brand-diag);color:var(--text-on-brand)}
 .pl-tile--interactive{cursor:pointer}
 .pl-tile--interactive:hover{background:var(--surface-tile-hover)}
 .pl-tile--inverse.pl-tile--interactive:hover{background:var(--ink-800)}

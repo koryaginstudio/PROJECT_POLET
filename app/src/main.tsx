@@ -2,6 +2,12 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import './ds/styles.css';
 import './styles/app.css';
+/* Тема ставится на `<html>` при чтении настроек, в самом модуле — импорт
+   здесь только гарантирует, что это случится до первой отрисовки, а не
+   когда до `service.ts` дотянется первый компонент, которому он нужен
+   для другого. Без этого доля секунды могла бы промелькнуть светлым на
+   машине с тёмной системной темой. */
+import './data/service.ts';
 import { archiveRead, attachEngine, engineDayTitle, seedRuns } from './data/load.ts';
 import { ErrorBoundary } from './app/ErrorBoundary.tsx';
 import { migrateEngineDuty } from './data/duty.ts';

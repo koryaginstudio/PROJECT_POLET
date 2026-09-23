@@ -1,4 +1,4 @@
-/* Element defaults. Light theme only – never invert the page. */
+/* Element defaults. Тема — см. colors.css: светлая, тёмная, системная. */
 *,*::before,*::after{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--surface-page);color:var(--text-primary);font-family:var(--font-sans);font-size:var(--fs-body);line-height:var(--lh-body);font-weight:var(--fw-regular);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
@@ -17,5 +17,9 @@ small{font-size:var(--fs-body-s)}
 code,kbd{font-family:var(--font-mono);font-size:.92em}
 ::selection{background:var(--accent-200);color:var(--ink-1000)}
 :root{color-scheme:light}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { color-scheme: dark; }
+}
+:root[data-theme="dark"] { color-scheme: dark; }
 .num{font-variant-numeric:tabular-nums}
 .grad-text{background:var(--grad-brand);-webkit-background-clip:text;background-clip:text;color:transparent}
