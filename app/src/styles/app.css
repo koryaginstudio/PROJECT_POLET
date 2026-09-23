@@ -11277,27 +11277,10 @@ b.ccard__bad {
 
 /* Снять плитку можно там же, где на неё смотрят. В спокойном виде крестик
    приглушён: доска — про числа, а не про своё устройство. */
-/* Невидимая площадка нажатия вокруг мелких значков — см. `.wtile__drop`. */
-.wtile__drop::after,
-.wshape__btn::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 40px;
-  height: 40px;
-  transform: translate(-50%, -50%);
-}
-
-/* Цель нажатия у значка — 40 пикселей, хотя сам он 18. Рисунок остаётся
-   мелким и тихим, а попасть по нему можно не целясь: невидимая площадка
-   вокруг ловит промах. Рисуем её слоем, а не полями, — поля раздвинули бы
-   соседей в плотном ряду. */
 .wtile__drop {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  position: relative;
   width: 18px;
   height: 18px;
   flex: 0 0 auto;
@@ -16361,4 +16344,142 @@ button.chip--sm {
   content: '';
   position: absolute;
   inset: -8px;
+}
+
+/* Режим демонстрации: тихая кнопка в углу, пока свёрнут, и компактная
+   карточка поверх остального, пока открыт. Не оверлей во весь экран —
+   защита и так рискует утонуть в тридцати семи экранах, второй раз этого
+   делать незачем. */
+.demo__toggle {
+  position: fixed;
+  right: var(--sp-5);
+  bottom: var(--sp-5);
+  z-index: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: var(--control-h-sm);
+  padding: 0 14px;
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--r-pill);
+  background: var(--white);
+  box-shadow: var(--shadow-inset-hairline), 0 4px 16px rgba(0, 0, 0, 0.12);
+  font-family: var(--font-sans);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: var(--t-control);
+}
+
+.demo__toggle:hover {
+  border-color: var(--ink-300);
+  color: var(--text-primary);
+}
+
+.demo__card {
+  position: fixed;
+  right: var(--sp-5);
+  bottom: var(--sp-5);
+  z-index: 700;
+  width: 320px;
+  padding: var(--sp-4);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--r-lg);
+  background: var(--white);
+  box-shadow: var(--shadow-inset-hairline), 0 8px 28px rgba(0, 0, 0, 0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.demo__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+
+.demo__eyebrow {
+  font-family: var(--font-sans);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.demo__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  position: relative;
+}
+
+.demo__close::before {
+  content: '';
+  position: absolute;
+  inset: -8px;
+}
+
+.demo__close:hover {
+  background: var(--ink-100);
+  color: var(--text-primary);
+}
+
+.demo__title {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--fs-body-s);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+
+.demo__what {
+  margin: 0;
+  font-size: var(--fs-caption);
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.demo__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-top: 4px;
+}
+
+.demo__actions > :last-child {
+  margin-left: auto;
+}
+
+.demo__note {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  margin: 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-hairline);
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+}
+
+.demo__note svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+@media (max-width: 640px) {
+  .demo__card {
+    left: var(--sp-3);
+    right: var(--sp-3);
+    width: auto;
+  }
 }

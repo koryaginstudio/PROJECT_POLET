@@ -31,6 +31,7 @@ import type { Registry, RunRef } from '../data/registry.ts';
 import { buildDayView, dayEnd, dayStart, planHorizon, plural, replanAt } from '../data/derive.ts';
 import { setPlanHorizon, useService } from '../data/service.ts';
 import { Header } from './Header.tsx';
+import { DemoMode } from './DemoMode.tsx';
 import { SubHeader } from './SubHeader.tsx';
 import { Sidebar } from './Sidebar.tsx';
 import { DetailPanel } from './DetailPanel.tsx';
@@ -1640,6 +1641,19 @@ export function App() {
           locked={engineReady() ? CREW_ENGINE_LOCK : null}
         />
       )}
+
+      <DemoMode
+        hasRun={ready !== null}
+        firstOrderId={ready?.view.loads.find((load) => load.route)?.route?.stops[0]?.order_id ?? null}
+        goCreate={() => nav({ stage: 'create', section: 'dispatch', view: firstView('dispatch') })}
+        goOverview={() => nav({ stage: 'plan', section: 'dispatch', view: 'overview' })}
+        goSummary={() => nav({ stage: 'plan', section: 'dispatch', view: 'summary' })}
+        openOrder={openOrderCard}
+        openIncident={() => {
+          setIncidentKind('urgent');
+          setIncidentOpen(true);
+        }}
+      />
     </div>
   );
 }
