@@ -109,6 +109,38 @@ export function MonitorScreen({
     return map;
   }, [roster]);
 
+  /* Выбранное число — оно же фильтр карты. Пять чисел отвечали на вопрос
+     «сколько», но не на следующий за ним — «а где они»; за ответом
+     приходилось водить глазами по списку и искать те же фамилии на карте. */
+  const [picked, setPicked] = useState<string | null>(null);
+  const tile = TILES.find((one) => one.key === picked) ?? null;
+  const shown = useMemo(
+    () => (tile ? sorted.filter((row) => tile.of.includes(row.status)) : sorted),
+    [sorted, tile]
+  );
+
+  /* День, суженный до выбранных людей. Карта читает из него четыре вещи —
+     loads, orderById, stopByOrder, engineerById, — и согласованно сузить их
+     довольно, чтобы на карте остались только эти маршруты и только их точки.
+     Сам день не трогаем: колонка, подсказки и карточки читают его целиком.
+
+     Невзятые заявки при выбранном числе тоже уходят: вопрос «где те, кто
+     опаздывает» — не про них. */
+  const mapView = useMemo(() => {
+    if (!tile) return view;
+    const ids = new Set(shown.map((row) => row.engineer.id));
+    const stopByOrder = new Map(
+      [...view.stopByOrder].filter(([, placement]) => ids.has(placement.engineerId))
+    );
+    return {
+      ...view,
+      loads: view.loads.filter((load) => ids.has(load.engineer.id)),
+      stopByOrder,
+      orderById: new Map([...view.orderById].filter(([id]) => stopByOrder.has(id))),
+      engineerById: new Map([...view.engineerById].filter(([id]) => ids.has(id)))
+    };
+  }, [view, tile, shown]);
+
   const panel = (
     <div className="monpanel">
       <div className="monpanel__head">
@@ -134,15 +166,35 @@ export function MonitorScreen({
       )}
 
       <div className="monpanel__tiles">
-        {TILES.map((tile) => (
-          <div key={tile.key} className="montile">
-            <span className="montile__value">
-              {tile.of.reduce((sum, key) => sum + (counts.get(key) ?? 0), 0)}
-            </span>
-            <span className="montile__label">{tile.label}</span>
-          </div>
-        ))}
+        {TILES.map((one) => {
+          const value = one.of.reduce((sum, key) => sum + (counts.get(key) ?? 0), 0);
+          const on = picked === one.key;
+          return (
+            <button
+              key={one.key}
+              type="button"
+              className={'montile' + (on ? ' montile--on' : '')}
+              /* Пустое число нажимать незачем: фильтр по нему оставил бы
+                 пустую карту и пустой список. */
+              disabled={value === 0}
+              aria-pressed={on}
+              onClick={() => setPicked(on ? null : one.key)}
+            >
+              <span className="montile__value">{value}</span>
+              <span className="montile__label">{one.label}</span>
+            </button>
+          );
+        })}
       </div>
+
+      {tile && (
+        <p className="monpanel__filter">
+          На карте только «{tile.label}»
+          <button type="button" className="monpanel__reset" onClick={() => setPicked(null)}>
+            Показать всех
+          </button>
+        </p>
+      )}
 
       {/* Тревоги и люди прокручиваются, часы и числа — нет: смотреть на них
           оператор может в любую минуту, а искать их прокруткой незачем. */}
@@ -181,17 +233,24 @@ export function MonitorScreen({
         <section className="monpanel__block">
           <div className="monpanel__block-head">
             <h2 className="monpanel__block-title">Инженеры на смене</h2>
-            <span className="monpanel__block-note">{sorted.length}</span>
+            <span className="monpanel__block-note">
+              {tile ? `${shown.length} из ${sorted.length}` : sorted.length}
+            </span>
           </div>
           {/* Пустой состав — словами: в расчёте без инженеров пустой список
               читался бы как несработавший экран. */}
-          {sorted.length === 0 ? (
+          {shown.length === 0 ? (
+            /* Пусто бывает по двум разным причинам, и путать их нельзя:
+               в расчёте вовсе нет инженеров — или выбранное число обнулилось,
+               пока фильтр держали (часы идут, состояния меняются). */
             <p className="monpanel__lede">
-              В этом расчёте на смене никого нет: план посчитан без инженеров.
+              {tile
+                ? `Сейчас под «${tile.label}» никого: за то время, что фильтр держали, состояние сменилось.`
+                : 'В этом расчёте на смене никого нет: план посчитан без инженеров.'}
             </p>
           ) : (
             <div className="roster">
-              {sorted.map((row) => (
+              {shown.map((row) => (
                 <RosterRow
                   key={row.engineer.id}
                   row={row}
@@ -214,7 +273,7 @@ export function MonitorScreen({
       <DemoDialog open={demo} onClose={closeDemo} onBack={backFromDemo} />
 
       <MapBoard
-        view={view}
+        view={mapView}
         runId={runId}
         live={live}
         onLive={onLive}

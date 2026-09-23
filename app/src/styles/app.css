@@ -7271,12 +7271,49 @@ b.ccard__bad {
   overflow: hidden;
 }
 
+/* Плитка — кнопка: число отвечает «сколько», нажатие — «а где они».
+   Выбранная помечена заливкой и полосой слева, а не только цветом цифры:
+   на пяти одинаковых клетках один оттенок читается как случайность. */
 .montile {
   display: flex;
   flex-direction: column;
   gap: 2px;
   padding: 8px 10px;
+  border: 0;
+  border-left: 3px solid transparent;
   background: var(--white);
+  font-family: var(--font-sans);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 120ms var(--ease-out-strong);
+}
+
+.montile:hover:not(:disabled) {
+  background: var(--ink-100);
+}
+
+.montile:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+
+.montile--on {
+  border-left-color: var(--accent-500);
+  background: color-mix(in srgb, var(--accent-500) 8%, var(--white));
+}
+
+.montile--on:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent-500) 12%, var(--white));
+}
+
+/* Нуль не нажимают, но и не прячут: «в пути никого» — это ответ. */
+.montile:disabled {
+  cursor: default;
+  color: var(--text-muted);
+}
+
+.montile:disabled .montile__value {
+  color: var(--text-muted);
 }
 
 .montile:last-child {
@@ -7295,6 +7332,34 @@ b.ccard__bad {
   font-size: var(--fs-small);
   line-height: 1.2;
   color: var(--text-secondary);
+}
+
+/* Что именно сейчас на карте — словами, рядом с выходом из фильтра: по
+   одной подсвеченной плитке из пяти неочевидно, что город показан неполным. */
+.monpanel__filter {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+
+.monpanel__reset {
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: var(--font-sans);
+  font-size: var(--fs-caption);
+  color: var(--accent-700);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.monpanel__reset:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
 }
 
 .monpanel__body {
