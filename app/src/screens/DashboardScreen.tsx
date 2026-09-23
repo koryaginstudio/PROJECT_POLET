@@ -22,6 +22,7 @@ import { Icon } from '../ds/components/core/Icon.jsx';
 import { skillIcon, workTypeIcon } from '../data/dictionary.ts';
 import { FunnelBoard } from '../app/FunnelBoard.tsx';
 import { CalcBoard } from '../app/CalcBoard.tsx';
+import { BaselineCompare } from '../app/BaselineCompare.tsx';
 import { GanttBoard } from '../app/GanttBoard.tsx';
 import { KanbanBoard } from '../app/KanbanBoard.tsx';
 import { MapBoard } from '../app/MapBoard.tsx';
@@ -270,6 +271,10 @@ export function DashboardScreen({
         />
       ) : (
         <>
+      {/* Только у плана дня целиком: у пересчёта остатка своего базового
+          варианта нет, движок его считает лишь на весь день. */}
+      {replanAt(day.plan) === null && <BaselineCompare day={day} />}
+
       <FunnelBoard
         funnel={funnel}
         onCutChange={onCutChange}

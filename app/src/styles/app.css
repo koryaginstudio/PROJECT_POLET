@@ -656,6 +656,71 @@ body {
   padding: var(--sp-5);
 }
 
+/* Сравнение с базовым вариантом: тот же день, две колонки чисел и вывод
+   строкой над таблицей — тот же порядок чтения, что у плиток пульта:
+   сначала ответ, потом из чего он сложился. */
+.basecmp__verdict {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  margin: 0 0 var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-md);
+  background: var(--ink-50);
+  font-size: var(--fs-body-s);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+
+.basecmp__verdict svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  color: var(--text-muted);
+}
+
+.basecmp__table {
+  display: flex;
+  flex-direction: column;
+}
+
+.basecmp__row {
+  display: grid;
+  grid-template-columns: minmax(140px, 1.4fr) repeat(3, minmax(90px, 1fr));
+  gap: var(--sp-3);
+  align-items: center;
+  padding: var(--sp-3) 0;
+  border-top: 1px solid var(--border-hairline);
+  font-variant-numeric: tabular-nums;
+}
+
+.basecmp__row:first-child {
+  border-top: 0;
+}
+
+.basecmp__row--head {
+  padding-top: 0;
+  padding-bottom: var(--sp-2);
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+}
+
+.basecmp__key {
+  font-size: var(--fs-body-s);
+  color: var(--text-secondary);
+}
+
+.basecmp__val {
+  font-size: var(--fs-body-s);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+
+.basecmp__delta {
+  font-size: var(--fs-body-s);
+  font-weight: var(--fw-semibold);
+  color: var(--text-secondary);
+}
+
 .rowlist {
   display: flex;
   flex-direction: column;
