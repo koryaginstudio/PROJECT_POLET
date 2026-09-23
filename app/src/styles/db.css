@@ -145,3 +145,30 @@
 .dbempty .clients__lede {
   margin: 0;
 }
+
+/* ─── пометка «в работе» ──────────────────────────────────────────────────
+
+   Расчёт, взятый на свой день, и маршруты, которые из него вышли. Знак один
+   на все базы и на все виды: список, таблица, карточка и разрез по
+   состоянию говорят об этом одинаково. Зелёный — это не тревога и не
+   действие, а состояние записи. */
+.dutytag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 6px;
+  padding: 1px 6px 1px 5px;
+  border-radius: var(--r-pill);
+  background: var(--success-100);
+  color: var(--success-700);
+  font-family: var(--font-sans);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-semibold);
+  line-height: 1.4;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.dutytag svg {
+  flex: 0 0 auto;
+}

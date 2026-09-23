@@ -1111,7 +1111,13 @@ export function App() {
      Подпись в панели карты обещает ровно это: «щелчок открывает карточку». */
   const pickOpensCard = onMap || (onPlan && (view === 'timeline' || view === 'kanban'));
 
-  const selectOrder = (id: string) => {
+  /* Пусто — выбор сняли: щелчок по пустому месту карты возвращает экран к
+     тому, с чего он начинался. */
+  const selectOrder = (id: string | null) => {
+    if (!id) {
+      setSelection(OVERVIEW);
+      return;
+    }
     setSelection({ kind: 'order', id });
     if (pickOpensCard) openOrderCard(id);
   };
@@ -1201,6 +1207,7 @@ export function App() {
       {onOverview && (
         <OverviewScreen
           view={dayView}
+          day={day}
           restFrom={replanAt(day.plan)}
           runId={runId}
           run={runCode(runId)}
@@ -1216,12 +1223,6 @@ export function App() {
              «Карту», и человек терял и карту, и место, на которое
              смотрел. Пусто — выбор сняли, колонка возвращает итоги. */
           onSelectOrder={(id) => setSelection(id ? { kind: 'order', id } : OVERVIEW)}
-          /* Инженера показывает справочник в сводке — туда и ведём:
-             список маршрутов карточки человека не открывает. */
-          onSelectEngineer={(id) => {
-            setSelection({ kind: 'engineer', id });
-            nav({ view: 'summary' });
-          }}
           onOpenMetric={(group) => {
             setSelection({ kind: 'group', id: group });
             nav({ view: 'summary' });
@@ -1284,6 +1285,23 @@ export function App() {
       )}
     </>
   );
+
+  /* Пока режим не выбран, сервиса на экране нет совсем: приветствие стоит
+     на пустом светлом фоне, а не вуалью поверх интерфейса. Показывать
+     затемнённую диспетчерскую за спиной у вопроса «как продолжим» значит
+     показывать ответ раньше вопроса — и вдобавок отдавать экран тому, чего
+     ещё не выбрали. */
+  if (gateOpen) {
+    return (
+      <WelcomeGate
+        onDemo={() => {
+          setGateOpen(false);
+          setDemoOpen(true);
+        }}
+        onNormal={() => setGateOpen(false)}
+      />
+    );
+  }
 
   return (
     <div
@@ -1461,6 +1479,7 @@ export function App() {
                  Уводим на дашборд и забываем день: остаться на настройках
                  можно, но всё, что читает открытый расчёт — шапка, лента,
                  правая панель, — читало бы стёртую запись. */
+              onDemo={() => setDemoOpen(true)}
               onHistoryCleared={() => {
                 setDay(null);
                 setDraft(null);
@@ -1652,26 +1671,20 @@ export function App() {
         open={demoOpen}
         onOpenChange={setDemoOpen}
         hasRun={ready !== null}
-        firstOrderId={ready?.view.loads.find((load) => load.route)?.route?.stops[0]?.order_id ?? null}
+        goHome={() => nav({ section: 'home', view: '' })}
+        goDispatch={() => nav({ section: 'dispatch', view: firstView('dispatch'), stage: 'gate' })}
         goCreate={() => nav({ stage: 'create', section: 'dispatch', view: firstView('dispatch') })}
-        goOverview={() => nav({ stage: 'plan', section: 'dispatch', view: 'overview' })}
-        goSummary={() => nav({ stage: 'plan', section: 'dispatch', view: 'summary' })}
-        openOrder={openOrderCard}
+        goPlan={(view) => nav({ stage: 'plan', section: 'dispatch', view })}
+        goMonitor={() => nav({ section: 'monitor', view: firstView('monitor') })}
+        goControl={() => nav({ section: 'control', view: firstView('control') })}
+        goRuns={() => nav({ section: 'db-runs', view: firstView('db-runs') })}
+        goSettings={(mode) => nav({ section: 'engine', view: mode })}
         openIncident={() => {
           setIncidentKind('urgent');
           setIncidentOpen(true);
         }}
       />
 
-      {gateOpen && (
-        <WelcomeGate
-          onDemo={() => {
-            setGateOpen(false);
-            setDemoOpen(true);
-          }}
-          onNormal={() => setGateOpen(false)}
-        />
-      )}
     </div>
   );
 }

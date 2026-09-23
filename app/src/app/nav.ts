@@ -220,7 +220,8 @@ export const SUBHEADER: Record<SectionId, { title: string; views: { value: strin
       { value: 'list', label: 'Список' },
       { value: 'cards', label: 'Карточки' },
       { value: 'table', label: 'Таблица' },
-      { value: 'runs', label: 'По расчётам' }
+      { value: 'runs', label: 'По расчётам' },
+      { value: 'duty', label: 'По состоянию' }
     ]
   },
   'db-engineers': {
@@ -232,11 +233,15 @@ export const SUBHEADER: Record<SectionId, { title: string; views: { value: strin
     ]
   },
   'db-runs': {
+    /* «По состоянию» — за тремя видами. Расчёт, взятый в работу, и черновики
+       к нему — это два разных списка, которые до сих пор лежали одним: по
+       рабочему сегодня едут, остальные остались в истории как варианты. */
     title: 'База расчётов',
     views: [
       { value: 'list', label: 'Список' },
       { value: 'cards', label: 'Карточки' },
-      { value: 'table', label: 'Таблица' }
+      { value: 'table', label: 'Таблица' },
+      { value: 'duty', label: 'По состоянию' }
     ]
   },
   /* Настройки разделены по тому, чем управляют: «Движок» — чем открывается

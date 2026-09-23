@@ -15,7 +15,7 @@ interface Props {
   pinned: string | null;
   onPin: (engineerId: string | null) => void;
   focus: number;
-  onSelectOrder: (id: string) => void;
+  onSelectOrder: (id: string | null) => void;
   onSelectEngineer: (id: string) => void;
 }
 

@@ -225,6 +225,32 @@ body {
   flex: 0 0 auto;
 }
 
+/* Какой из двух вариантов знака показать, решает тема, а не разметка:
+   тема бывает и системной, и тогда в разметке о ней ничего не известно.
+   Высота у обоих одна, пропорции разнятся на полпроцента — ряд в шапке
+   от подмены не двигается. */
+.hdr__logo--dark {
+  display: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .hdr__logo--light {
+    display: none;
+  }
+
+  :root:not([data-theme="light"]) .hdr__logo--dark {
+    display: block;
+  }
+}
+
+:root[data-theme="dark"] .hdr__logo--light {
+  display: none;
+}
+
+:root[data-theme="dark"] .hdr__logo--dark {
+  display: block;
+}
+
 /* кружок диспетчера и карточка, которая из него раскрывается */
 .profile {
   position: relative;
@@ -500,7 +526,7 @@ body {
    Тянущаяся строка «Мониторинг и контроль» в две строки ломала ритм — на
    разрядке чуть плотнее она встаёт в одну. */
 .nav__group {
-  margin-top: var(--sp-6);
+  margin-top: var(--sp-5);
   /* Снизу почти вплотную: подпись принадлежит тому, что под ней, и зазор
      между нею и её же первым пунктом только ослаблял бы связь. Весь воздух
      собран сверху, на границе с чужой группой. */
@@ -527,6 +553,7 @@ body {
 }
 
 .nav__item {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--sp-3);
@@ -546,6 +573,20 @@ body {
   text-align: left;
   cursor: pointer;
   transition: background-color 120ms var(--ease-out-strong), color 120ms var(--ease-out-strong);
+}
+
+/* Просвет между пунктами. Без него двенадцать кнопок подряд читались одной
+   сплошной лентой: подсветка под курсором перетекала из пункта в пункт, и
+   граница между ними держалась только на тексте. Три точки — ровно столько,
+   чтобы пункты стали отдельными, и не столько, чтобы список перестал быть
+   списком.
+
+   Место под них взято у заголовков групп: они отступали от чужой группы на
+   24 точки, теперь на 20. Меню по-прежнему встаёт без прокрутки на
+   ноутбуке 1366×768 — четыре группы и двенадцать пунктов это около 650
+   точек при 655 доступных. */
+.nav__item + .nav__item {
+  margin-top: 3px;
 }
 
 .nav__item:hover {
@@ -581,15 +622,38 @@ body {
   box-shadow: var(--ring-focus);
 }
 
+/* Выбранный пункт — светлой плашкой с меткой у края, а не чёрным блоком.
+
+   Сплошная тёмная заливка во всю ширину пункта весила больше всего, что
+   есть на экране: колонка меню — служебная часть окна, а чёрный
+   прямоугольник в ней перетягивал взгляд с данных, ради которых раздел и
+   открыт. Тот же довод, по которому служебные кнопки здесь не заливаются
+   чёрным.
+
+   Различать выбранное от наведённого при этом всё равно надо: и то и другое
+   светлое. Различает метка — короткая тёмная черта у левого края: она
+   говорит «вы здесь» и не занимает собой пункт. Сама плашка на ступень
+   темнее наведения, начертание плотнее, цвет текста — основной. */
 .nav__item--active {
-  background: var(--ink-1000);
-  color: var(--white);
+  background: var(--ink-150);
+  color: var(--text-primary);
   font-weight: var(--fw-semibold);
 }
 
+.nav__item--active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 7px;
+  bottom: 7px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--ink-1000);
+}
+
 .nav__item--active:hover {
-  background: var(--ink-800);
-  color: var(--white);
+  background: var(--ink-200);
+  color: var(--text-primary);
 }
 
 .nav__label {
@@ -608,7 +672,7 @@ body {
 }
 
 .nav__item--active .nav__count {
-  color: var(--ink-400);
+  color: var(--text-muted);
 }
 
 .nav__count--alert {
@@ -616,7 +680,7 @@ body {
 }
 
 .nav__item--active .nav__count--alert {
-  color: var(--accent-400);
+  color: var(--danger-600);
 }
 
 /* ─── сетка дашборда ─────────────────────────────────────────────────── */
@@ -2497,6 +2561,12 @@ body {
   font-weight: var(--fw-regular);
   font-size: var(--fs-small);
   color: var(--text-muted);
+  /* Цифры в одну ширину: три величины через косую черту стоят в ленте
+     столбиками, и прыгающая ширина знака ломала бы их ряд. */
+  font-variant-numeric: tabular-nums;
+  /* Подсказка объясняет, какое число что означает, — курсор об этом
+     предупреждает. */
+  cursor: help;
 }
 
 .runtabs__item--active .runtabs__meta {
@@ -2620,15 +2690,23 @@ body {
   margin-bottom: var(--sp-2);
 }
 
+/* Три кнопки периода в ряд. «Сегодня» и «Неделя» делят место поровну, а
+   «За период» берёт столько, сколько нужно ей и её стрелке: слово там
+   длиннее, и в равной доле оно ломалось надвое. */
 .runmenu__periods {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: 1fr;
+  display: flex;
+  align-items: stretch;
   gap: 6px;
 }
 
-.runmenu__periods .chip {
+.runmenu__periods > .chip {
+  flex: 1 1 0;
   justify-content: center;
+}
+
+.runmenu__periods .runmenu__period .chip {
+  justify-content: center;
+  white-space: nowrap;
 }
 
 .runmenu__filters .dbsearch {
@@ -3773,31 +3851,6 @@ button.ministage:hover:not(:disabled) {
   flex-wrap: wrap;
 }
 
-/* Пять обозначений в строку, а на узкой карточке — по три в две строки. */
-/* Обозначения в строку. Сетка здесь только вредила: колонки одинаковой
-   ширины ужимали длинные подписи, и «Заявка под угрозой» ломалась пополам
-   на двух строках, хотя справа оставалась пустая половина ряда. Обычный
-   флекс с переносом кладёт их по ширине и переносит целиком, а не по
-   словам. */
-.geo__legend {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px var(--sp-5);
-  width: 100%;
-}
-
-.geo__key {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: var(--fs-caption);
-  color: var(--text-secondary);
-  /* Подпись обозначения не переносится: это короткая фраза целиком, а
-     разорванная пополам она перестаёт читаться как одна подпись. */
-  white-space: nowrap;
-}
-
 .geo__dot {
   width: 9px;
   height: 9px;
@@ -3948,8 +4001,10 @@ button.ministage:hover:not(:disabled) {
   width: min(280px, calc(100% - var(--sp-5)));
   padding: var(--sp-3) var(--sp-4) var(--sp-4);
   border-radius: var(--r-md);
-  background: var(--white);
-  box-shadow: var(--shadow-lg);
+  background: var(--glass);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-edge), var(--glass-line);
 }
 
 .geo__card-top {
@@ -4110,18 +4165,10 @@ button.ministage:hover:not(:disabled) {
   gap: 3px;
   padding: 9px 11px;
   border-radius: var(--r-md);
-  background: var(--white);
-  box-shadow: var(--shadow-lg), var(--shadow-inset-hairline);
-}
-
-/* Подпись наведённого маршрута: цвет линии и чей это путь — одной строкой.
-   Перенос разрешён нарочно: длинное имя с отчеством переносится на вторую
-   строку вместе с подложкой, а не вылезает из неё. */
-.gtip--tag {
-  flex-direction: row;
-  align-items: center;
-  gap: 6px;
-  white-space: normal;
+  background: var(--glass);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-edge), var(--glass-line);
 }
 
 /* Постоянная подпись точки: только имя объекта, без подробностей. */
@@ -9867,9 +9914,8 @@ b.ccard__bad {
   flex-direction: column;
   align-items: stretch;
   gap: 8px;
-  /* Ширина задана здесь, а не в каждой плашке: кластер масштаба и пульт под
-     ним — один столбик органов управления картой, и разъехаться по ширине им
-     нельзя. */
+  /* Ширина задана здесь, а не в самой плашке: столбик масштаба один, но
+     мерить его край другим плашкам карты надо по чему-то постоянному. */
   width: 46px;
   max-height: calc(100% - var(--sp-3) * 2);
 }
@@ -9883,8 +9929,13 @@ b.ccard__bad {
   gap: 6px;
   padding: 6px;
   border-radius: var(--r-control);
-  background: var(--white);
-  box-shadow: var(--shadow-sm), var(--shadow-inset-hairline);
+  background: var(--glass);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  /* Край и тень — общие для всех плашек карты. Здесь оставалась прежняя
+     светлая черта от белой плашки, и кластер масштаба единственный из всех
+     стоял в яркой обводке. */
+  box-shadow: var(--glass-edge), var(--glass-line);
 }
 
 /* Значки сидят в ровных кружках: в столбике органов управления круг читается
@@ -9947,19 +9998,18 @@ b.ccard__bad {
 .geo__zoomrange::-webkit-slider-thumb {
   appearance: none;
   -webkit-appearance: none;
-  width: 20px;
-  height: 20px;
-  border: 2px solid var(--white);
+  width: 14px;
+  height: 14px;
+  border: 0;
   border-radius: 50%;
   background: var(--ink-1000);
-  box-shadow: var(--shadow-sm);
   cursor: pointer;
 }
 
 .geo__zoomrange::-moz-range-thumb {
-  width: 20px;
-  height: 20px;
-  border: 2px solid var(--white);
+  width: 14px;
+  height: 14px;
+  border: 0;
   border-radius: 50%;
   background: var(--ink-1000);
   cursor: pointer;
@@ -10116,12 +10166,20 @@ b.ccard__bad {
 
 /* Кнопка разворота стоит в кластере масштаба, но отделена от плюса и
    минуса: те меняют масштаб на шаг, эта — размер самой карты. */
+/* Разворот на весь экран — за чертой от кнопок масштаба: это про другое,
+   не «на шаг ближе», а «сколько места под карту». Черта из того же ряда
+   стекла, что и все черты на карте: волосяная светлая линия на тёмной
+   плашке читалась как разрыв, а не как разделитель.
+
+   Скругление у кнопки полное, а не только снизу: подсветка под курсором
+   идёт по её собственной форме, и квадратные верхние углы на круглых
+   соседях смотрелись обрубком. */
 .geo__zoombtn--full {
-  margin-top: 2px;
-  border-top: 1px solid var(--border-hairline);
-  border-radius: 0 0 var(--r-sm) var(--r-sm);
-  padding-top: 2px;
-  height: 30px;
+  margin-top: 4px;
+  padding-top: 0;
+  border-top: 0;
+  border-radius: 50%;
+  box-shadow: 0 -3px 0 -2px var(--glass-hair);
 }
 
 /* Значок «под угрозой» на точке. Маленький, красный и без обводки точки:
@@ -10149,47 +10207,184 @@ b.ccard__bad {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
-/* Произвольный отрезок в списке расчётов: две даты и сброс. Показывается
-   только когда его выбрали — держать два поля ввода открытыми ради кнопки,
-   которой пользуются раз в месяц, значит загромождать список. */
-.runmenu__range {
+/* ─── отрезок дат в списке расчётов ───────────────────────────────────────
+
+   Кнопка «За период» со стрелкой: сама кнопка выбирает отбор по отрезку,
+   стрелка открывает окошко календаря. Заданный отрезок кнопка показывает
+   при себе — иначе о нём знает только закрытое окошко. */
+.runmenu__period {
+  position: relative;
+  display: inline-flex;
+  align-items: stretch;
+}
+
+/* Две кнопки читаются как одна: у левой скруглены левые углы, у правой —
+   правые, между ними волосяная черта. */
+.runmenu__period-pick {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.runmenu__period-more {
+  margin-left: -1px;
+  padding-left: 6px;
+  padding-right: 6px;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+/* Сам отрезок при кнопке — тише её подписи: это уточнение, а не название. */
+.runmenu__period-span {
+  margin-left: 4px;
+  font-weight: var(--fw-regular);
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+}
+
+/* Окошко календаря. Своё, а не браузерное: поля `input type="date"`
+   приходят со своим шрифтом, рамкой и календарём, которые ни размерами, ни
+   цветами не похожи ни на что остальное в программе. */
+.dates {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 30;
+  width: 252px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  border-radius: var(--r-md);
+  background: var(--white);
+  box-shadow: var(--shadow-lg), var(--shadow-inset-hairline);
+}
+
+.dates__head {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
+  justify-content: space-between;
   gap: var(--sp-2);
-  padding-top: 2px;
 }
 
-.runmenu__date {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: var(--fs-small);
-  color: var(--text-muted);
-}
-
-.runmenu__date input {
-  height: 28px;
-  padding: 0 8px;
-  border: 1px solid var(--border-hairline);
-  border-radius: var(--r-control);
-  background: var(--white);
-  font-family: var(--font-sans);
+.dates__month {
   font-size: var(--fs-caption);
-  font-variant-numeric: tabular-nums;
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+  text-transform: capitalize;
+}
+
+.dates__step {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: var(--t-control);
+}
+
+.dates__step:hover {
+  background: var(--ink-100);
   color: var(--text-primary);
 }
 
-/* Подсказка про пустой отрезок: он законен и означает «весь архив». */
-.runmenu__hint {
-  font-size: var(--fs-small);
-  color: var(--text-muted);
+.dates__step:focus-visible,
+.dates__day:focus-visible,
+.dates__clear:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
 }
 
-.runmenu__date input:focus-visible {
-  outline: none;
-  border-color: var(--ink-1000);
-  box-shadow: var(--ring-focus);
+.dates__week,
+.dates__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.dates__week {
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.dates__gap {
+  height: 28px;
+}
+
+.dates__day {
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--fs-caption);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: var(--t-control);
+}
+
+/* Подсветка под курсором не спорит с выбором: у выбранной даты своя
+   заливка, и наведение её не перекрашивает. */
+.dates__day:not(.dates__day--edge):hover {
+  background: var(--ink-150);
+}
+
+/* Сегодняшний день помечен точкой снизу, а не заливкой: заливка здесь
+   означает выбор, и два разных смысла одним приёмом читались бы как один. */
+.dates__day--today {
+  font-weight: var(--fw-semibold);
+  box-shadow: inset 0 -2px 0 -1px var(--ink-400);
+}
+
+/* Внутренность отрезка — светлая полоса, его концы — тёмные плашки: так
+   видно и границы, и что между ними. */
+.dates__day--in {
+  background: var(--ink-100);
+}
+
+.dates__day--edge {
+  background: var(--ink-1000);
+  color: var(--text-on-solid);
+  font-weight: var(--fw-semibold);
+}
+
+.dates__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding-top: var(--sp-2);
+  border-top: 1px solid var(--border-hairline);
+}
+
+.dates__picked {
+  font-size: var(--fs-small);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+
+.dates__clear {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+  font-size: var(--fs-small);
+  cursor: pointer;
+}
+
+.dates__clear:hover {
+  color: var(--text-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 /* ─── правка дня и несохранённое состояние ──────────────────────────────
@@ -15297,6 +15492,193 @@ button.chip--sm {
   height: 100%;
 }
 
+/* ─── стекло поверх карты ─────────────────────────────────────────────────
+
+   Всё, что лежит поверх карты, — масштаб, пульт, полоса итогов, метки
+   маршрутов, подсказки — стояло на сплошном белом. Белое пятно посреди
+   города весит столько же, сколько сам город: оно не пропускает под собой
+   ничего и читается как вырванный из карты кусок.
+
+   Здесь та же плашка, но полупрозрачная и с размытием под собой: под
+   подложкой видно, что там улица, а не дыра, — а текст на ней держится за
+   счёт размытия и лёгкой подсветки по краю. Размытие без прозрачности
+   бессмысленно, прозрачность без размытия нечитаема: работают они только
+   вместе.
+
+   Насыщенность поднята на полтора: размытая картинка под стеклом бледнеет,
+   и без поправки цветные линии маршрутов под ним выцветают в серое.
+
+   Значение одно на все плашки разом. Сперва мелкие органы управления были
+   прозрачнее крупных панелей — казалось, что подписи важнее кнопок. На
+   экране это читалось не как замысел, а как две разные подложки: полоса
+   итогов светлее пульта слева, хотя стекло у них должно быть одно. Стекло
+   бывает только одно; разную важность показывают размером и местом, а не
+   плотностью подложки.
+
+   Браузеру без `backdrop-filter` (старый Firefox без флага) достаётся
+   сплошная белая плашка, как было: читаемость важнее приёма. */
+.geo {
+  --glass: rgba(255, 255, 255, 0.68);
+  --glass-line: inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+  --glass-edge: 0 6px 22px rgba(10, 10, 10, 0.24);
+  /* Тень для мелких плашек: у метки в две строки текста и у подписи визита
+     тень большого блока весит больше их самих — под каждой висит тёмное
+     пятно вдвое шире её. */
+  --glass-edge-sm: 0 2px 8px rgba(10, 10, 10, 0.18);
+  --glass-blur: saturate(1.5) blur(16px);
+  /* Чем написано на стекле. На светлой подложке — обычными цветами текста;
+     на тёмной они переопределены ниже. */
+  --glass-ink: var(--text-primary);
+  --glass-ink-soft: var(--text-secondary);
+  --glass-ink-mute: var(--text-muted);
+  --glass-hair: var(--border-hairline);
+  --glass-hover: rgba(255, 255, 255, 0.45);
+  /* Имя человека на стекле: тот же фирменный оранжевый, что и везде. На
+     тёмном он берётся светлее — тёмно-оранжевый по тёмному не читается. */
+  --glass-name: var(--accent-700);
+  --glass-solid: rgba(255, 255, 255, 0.94);
+}
+
+/* Тёмная подложка: стекло тёмное, а не белое.
+
+   Белая плашка на тёмной карте — самое светлое пятно на экране, и взгляд
+   уходит к ней, а не к городу. Тёмное стекло весит куда меньше: под ним
+   виден тот же город, только приглушённый, а надпись держится белым по
+   тёмному. Прозрачности больше, размытия больше — плашка почти растворена,
+   и читается она за счёт размытия, а не за счёт плотности.
+
+   Светлая и спутниковая подложки пока остаются на белом стекле: там под
+   плашкой светлый фон, и белый текст на ней читаться не будет. */
+.geo__plot:not(.geo__plot--day) {
+  --glass: rgba(14, 14, 14, 0.42);
+  --glass-line: inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+  --glass-edge: 0 10px 30px rgba(0, 0, 0, 0.45);
+  --glass-edge-sm: 0 2px 10px rgba(0, 0, 0, 0.35);
+  --glass-blur: saturate(1.7) blur(26px);
+  --glass-ink: #ffffff;
+  --glass-ink-soft: rgba(255, 255, 255, 0.78);
+  --glass-ink-mute: rgba(255, 255, 255, 0.58);
+  --glass-hair: rgba(255, 255, 255, 0.16);
+  --glass-hover: rgba(255, 255, 255, 0.14);
+  --glass-name: var(--accent-500);
+  --glass-solid: rgba(16, 16, 16, 0.9);
+}
+
+/* ─── что написано на стекле ──────────────────────────────────────────────
+
+   Цвет текста и черт берётся из переменных стекла, а не из общих токенов:
+   на белой плашке они те же, что везде, а на тёмной — светлые. Иначе на
+   тёмном стекле оставался бы тёмный текст, то есть не оставалось бы
+   ничего.
+
+   Каждое правило начинается с рамки карты — и не ради порядка: собственные
+   описания этих кнопок и подписей стоят ниже по файлу, и без лишнего веса
+   они перебивали бы всё написанное здесь. */
+.geo__plot .geo__zoombtn,
+.geo__plot .geo__close,
+.geo__plot .mapstat__fold,
+.geo__plot .mapstat__go,
+.geo__plot .mapstat__unfold,
+.geo__plot .geo__end,
+.geo__plot .gtip__head,
+.geo__plot .mapstat__run,
+.geo__plot .cmetric__value,
+.geo__plot .mpick__value,
+.geo__plot .mpick__name,
+.geo__plot .mpick__one,
+.geo__plot .mpick__link,
+.geo__plot .geo__card-facts {
+  color: var(--glass-ink);
+}
+
+/* Фамилия и имя на стекле: фирменный оранжевый берётся из ряда стекла. */
+.geo__plot .pname__surname {
+  color: var(--glass-name);
+}
+
+.geo__plot .geo__view,
+.geo__plot .geo__zoomvalue,
+.geo__plot .cmetric__label,
+.geo__plot .cmetric__caption,
+.geo__plot .mpick__label,
+.geo__plot .mpick__note,
+.geo__plot .gtip__line,
+.geo__plot .geo__end svg {
+  color: var(--glass-ink-soft);
+}
+
+.geo__plot .cmetric__unit,
+.geo__plot .cmetric__chev,
+.geo__plot .mapstat__note,
+.geo__plot .mpick__none,
+.geo__plot .mpick__num {
+  color: var(--glass-ink-mute);
+}
+
+.geo__plot .geo__views,
+.geo__plot .geo__flat,
+.geo__plot .mpick__row,
+.geo__plot .mpick__crowd,
+.geo__plot .mapstat:not(.mpick) .cmetric {
+  border-color: var(--glass-hair);
+}
+
+.geo__plot .geo__zoombtn:hover,
+.geo__plot .geo__view:hover,
+.geo__plot .geo__close:hover,
+.geo__plot .mapstat__fold:hover,
+.geo__plot .mapstat__go:hover,
+.geo__plot .mpick__one:hover,
+.geo__plot .mapstat__unfold:hover,
+.geo__plot .mapstat:not(.mpick) .cmetric:hover {
+  background: var(--glass-hover);
+  color: var(--glass-ink);
+}
+
+/* Плашки, которые сами сделаны из стекла, под курсором не перекрашиваются,
+   а светлеют на ступень: заливка кладётся слоем поверх их собственного
+   стекла. Прежде наведение подменяло фон целиком, и свёрнутая таблетка
+   номера расчёта становилась белым пятном посреди карты. */
+.geo__plot .mapstat__unfold:hover,
+.geo__plot .geo__close:hover {
+  background-color: var(--glass);
+  background-image: linear-gradient(var(--glass-hover), var(--glass-hover));
+}
+
+/* Выбранная кнопка на стекле: заливка и рамка из того же светлого ряда —
+   тёмная рамка на тёмном стекле не видна вовсе. */
+.geo__plot .geo__view--on {
+  border-color: var(--glass-ink-soft);
+  background: var(--glass-hover);
+  color: var(--glass-ink);
+}
+
+/* Ползунок обзора: дорожка и бегунок тоже из ряда стекла. */
+.geo__plot:not(.geo__plot--day) .geo__zoomrange {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.geo__plot:not(.geo__plot--day) .geo__zoomrange::-webkit-slider-thumb {
+  background: var(--glass-ink-soft);
+}
+
+.geo__plot:not(.geo__plot--day) .geo__zoomrange::-moz-range-thumb {
+  background: var(--glass-ink-soft);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .geo {
+    --glass: var(--white);
+    --glass-line: var(--shadow-inset-hairline);
+  }
+
+  /* Без размытия прозрачная плашка нечитаема: подложка возвращается
+     сплошной, вместе с обычными цветами текста. */
+  .geo__plot:not(.geo__plot--day) {
+    --glass: rgba(20, 20, 20, 0.92);
+  }
+}
+
 .geo--fill {
   position: relative;
   height: 100%;
@@ -15332,17 +15714,6 @@ button.chip--sm {
   box-shadow: var(--shadow-lg);
 }
 
-/* Полоса поверх карты набрана мельче и плотнее обычной: она подписывает
-   карту, а не спорит с ней. На ширине ноутбука прежняя ломалась в две-три
-   строки и отнимала у карты пятую часть высоты. */
-.geo--fill .geo__legend {
-  gap: 4px 12px;
-}
-
-.geo--fill .geo__key {
-  font-size: var(--fs-small);
-}
-
 .geo--fill .geo__layers {
   gap: 12px;
 }
@@ -15350,15 +15721,6 @@ button.chip--sm {
 .geo--fill .geo__layers .pl-switch {
   gap: 6px;
   font-size: var(--fs-small);
-}
-
-/* Обе группы идут по своей ширине и переносятся целиком: на узком экране
-   обозначения встают строкой выше слоёв, а не ломаются пополам. */
-.geo--fill .geo__legend,
-.geo--fill .geo__controls {
-  flex: 0 1 auto;
-  width: auto;
-  justify-content: flex-end;
 }
 
 /* Внутри белой карточки рамка вокруг тумблеров лишняя: группу и так видно
@@ -15394,9 +15756,15 @@ button.chip--sm {
 .geo__aside {
   position: absolute;
   top: var(--sp-3);
-  right: var(--sp-3);
+  /* Справа внизу стоит пульт карты — полоса итогов до него не дотягивается
+     и переносит плитки на строку раньше. Перекрыть органы управления она не
+     может ни при какой ширине окна. */
+  right: calc(var(--sp-3) + 58px);
   bottom: var(--sp-3);
-  left: calc(var(--sp-3) + 58px);
+  /* К самому краю карты, вровень со столбиком масштаба: прежде полоса
+     отступала от края на ширину этого столбика, хотя стоит она внизу, где
+     столбик уже кончился, — и выглядела сдвинутой без причины. */
+  left: var(--sp-3);
   z-index: 500;
   display: flex;
   flex-direction: column;
@@ -15425,8 +15793,10 @@ button.chip--sm {
   overflow-y: auto;
   padding: 10px;
   border-radius: var(--r-md);
-  background: var(--white);
-  box-shadow: var(--shadow-lg);
+  background: var(--glass);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-edge), var(--glass-line);
 }
 
 .mapstat__head {
@@ -15489,8 +15859,10 @@ button.chip--sm {
   padding: 7px 12px;
   border: 0;
   border-radius: var(--r-pill);
-  background: var(--white);
-  box-shadow: var(--shadow-sm), var(--shadow-inset-hairline);
+  background: var(--glass);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-edge), var(--glass-line);
   font-family: var(--font-display);
   font-size: var(--fs-caption);
   font-weight: var(--fw-bold);
@@ -15773,6 +16145,27 @@ button.chip--sm {
   color: var(--text-muted);
 }
 
+/* Инженер под маршрутом: отдельный блок, а не строка среди чисел. Маршрут
+   отвечает на «каков этот путь», человек — на «кто его везёт», и смешивать
+   их в одном перечне значит отвечать на оба сразу и ни на один толком. */
+.mpick__crew {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 6px;
+  border-top: 1px solid var(--glass-hair);
+}
+
+.mpick__crew-label {
+  font-size: var(--fs-small);
+  color: var(--glass-ink-mute);
+}
+
+.mpick__crew-name {
+  font-size: var(--fs-body-s);
+  font-weight: var(--fw-semibold);
+}
+
 /* Квадрат общего выезда: место, откуда выезжают несколько инженеров. Серый,
    а не цветной, — цвет на карте принадлежит маршрутам, а гнездо общее. И на
    пару точек крупнее личного квадрата: за ним стоит не один человек. */
@@ -15804,11 +16197,13 @@ button.chip--sm {
   width: 32px;
   height: 32px;
   padding: 0;
-  border: 1px solid var(--border-hairline);
+  border: 0;
   border-radius: 50%;
-  background: var(--white);
+  background: var(--glass);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
   color: var(--text-secondary);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--glass-edge), var(--glass-line);
   cursor: pointer;
   transition: var(--t-control);
 }
@@ -15830,22 +16225,42 @@ button.chip--sm {
   background: var(--ink-800);
 }
 
-/* Колонку можно перетащить куда удобно: сдвиг едет переменными, а вёрстка
-   задаёт только угол, от которого он считается. */
+/* Угол, от которого стоят полоса итогов и карточки выбранного. Место у них
+   постоянное: перетаскивание убрано вместе с колонкой, ради которой оно
+   заводилось. */
 .mapdrag {
+  /* Ответ на щелчок бывает из двух карточек — маршрут и инженер под ним, —
+     и ставит их столбиком сама рамка. */
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  /* Полоса итогов не шире и не выше отведённого ей поля: без этого её
+     плитки уезжали за правый край карты, а длинный перечень выезда — за
+     нижний, потому что рамка тащилки росла по содержимому. */
+  max-width: 100%;
+  max-height: 100%;
+  min-height: 0;
   pointer-events: auto;
-  transform: translate3d(var(--stat-x, 0px), var(--stat-y, 0px), 0);
-  touch-action: none;
-  cursor: grab;
 }
 
-/* Пока колонку тащат, об этом говорят курсор и обводка. */
-.mapdrag--held {
-  cursor: grabbing;
-}
+/* Открытое на карте — в правом верхнем углу и без сдвига: место у него
+   своё, чтобы не спорить ни с полосой итогов, ни с пультом карты. Сдвиг
+   перетаскивания на него не переносится — он принадлежит полосе. */
+/* Ответ на щелчок стоит внизу слева, на месте полосы итогов: он и отвечает
+   вместо неё. В правом верхнем углу он спорил с перечнем маршрутов — две
+   плашки одна под другой, тень верхней ложилась на нижнюю.
 
-.mapdrag--held .mapstat {
-  box-shadow: var(--shadow-lg), 0 0 0 1px var(--ink-1000);
+   Маршрут и инженер стоят рядом, а не друг под другом: столбиком они
+   вытягивались на две трети высоты карты и закрывали город, а в ряд ложатся
+   в одну полосу над нижним краем. Перетаскивать их нельзя — место у них
+   своё и постоянное: ответ на щелчок должен появляться там, где его ждут, а
+   не там, куда однажды утащили полосу итогов. */
+.mapdrag--pick {
+  flex-direction: row;
+  align-items: flex-end;
+  transform: none;
+  cursor: default;
 }
 
 /* ─── пульт карты: слои и вид подложки ────────────────────────────────────
@@ -15861,9 +16276,15 @@ button.chip--sm {
    всплывающей подсказки. Поэтому пульт шире кластера масштаба — ровно на
    слово, — и выступает над картой вправо. */
 .geo__deck {
-  flex: 0 0 auto;
-  width: max-content;
-  min-width: 100%;
+  /* Правый нижний угол: слева внизу стоит полоса итогов и карточки
+     выбранного, и они прижаты к самому краю карты — столбик органов
+     управления там только мешал. Над сноской об источнике подложки:
+     она занимает у нижнего края одну строку. */
+  position: absolute;
+  right: var(--sp-3);
+  bottom: calc(var(--sp-3) + 14px);
+  z-index: 500;
+  width: 46px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -15872,8 +16293,10 @@ button.chip--sm {
      плашки читался как обрезанный. */
   padding: 10px 6px;
   border-radius: var(--r-control);
-  background: var(--white);
-  box-shadow: var(--shadow-sm), var(--shadow-inset-hairline);
+  background: var(--glass);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-edge), var(--glass-line);
 }
 
 .geo__deck-group {
@@ -15915,18 +16338,6 @@ button.chip--sm {
   color: var(--text-primary);
 }
 
-/* Переключатели «Маршруты» и «Точки» — со словом, поэтому пилюля, а не круг. */
-.geo__view--word {
-  width: auto;
-  justify-content: flex-start;
-  gap: var(--sp-1);
-  padding: 0 var(--sp-3) 0 var(--sp-2);
-  border-radius: var(--r-pill);
-  font-family: var(--font-sans);
-  font-size: var(--fs-caption);
-  white-space: nowrap;
-}
-
 /* Выбранный вид помечен так же, как всё выбранное в этом интерфейсе: светлая
    заливка, тёмная рамка, жирное начертание. */
 .geo__view--on {
@@ -15955,6 +16366,574 @@ button.chip--sm {
   cursor: help;
 }
 
+/* ─── метка маршрута у его последней точки ────────────────────────────────
+
+   Номер маршрута и средство передвижения стоят у той точки, куда инженер
+   приезжает последним. Сама метка ничего не весит в разметке: её место
+   держит точка, а сторону — раскладка в `MapBoard`, она же ставит сдвиг
+   переменными `--dx` и `--dy`. */
+/* ─── перечень маршрутов дня ──────────────────────────────────────────────
+
+   Столбик в правом верхнем углу карты: цвет, транспорт, номер и число
+   заявок. Наведение зажигает путь, щелчок оставляет его на карте одного.
+   Прокручивается: маршрутов в дне бывает и полсотни, а расти выше карты
+   перечню нельзя. */
+.georoutes {
+  position: absolute;
+  top: var(--sp-3);
+  right: var(--sp-3);
+  z-index: 505;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(50% - var(--sp-3));
+  padding: 6px;
+  border-radius: var(--r-control);
+  background: var(--glass);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-edge), var(--glass-line);
+}
+
+.georoutes__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: 2px 6px 6px;
+  font-size: var(--fs-small);
+  color: var(--glass-ink-soft);
+}
+
+.georoutes__count {
+  font-variant-numeric: tabular-nums;
+  color: var(--glass-ink-mute);
+}
+
+.georoutes__list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.georoutes__list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.georoutes__list::-webkit-scrollbar-thumb {
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.georoutes__item {
+  display: grid;
+  grid-template-columns: 8px 12px auto 1fr auto;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--glass-ink-soft);
+  font-family: var(--font-sans);
+  font-size: var(--fs-small);
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: var(--t-control);
+}
+
+.georoutes__item:hover,
+.georoutes__item--live {
+  background: var(--glass-hover);
+  color: var(--glass-ink);
+}
+
+.georoutes__item--on {
+  background: var(--glass-hover);
+  color: var(--glass-ink);
+  font-weight: var(--fw-semibold);
+  box-shadow: inset 0 0 0 1px var(--glass-ink-soft);
+}
+
+.georoutes__item:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+
+.georoutes__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.georoutes__who {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--glass-ink-mute);
+}
+
+.georoutes__item--on .georoutes__who,
+.georoutes__item:hover .georoutes__who {
+  color: var(--glass-ink-soft);
+}
+
+.georoutes__visits {
+  color: var(--glass-ink-mute);
+  font-variant-numeric: tabular-nums;
+}
+
+/* На полном экране в том же углу стоит крестик выхода — перечень
+   опускается под него. */
+.geo__plot--full .georoutes {
+  top: calc(var(--sp-3) + 40px);
+  max-height: calc(50% - var(--sp-3) - 40px);
+}
+
+/* Ответ на щелчок вернулся вниз слева, на место полосы итогов: в правом
+   верхнем углу он спорил с перечнем маршрутов — две плашки одна под
+   другой, тень первой ложилась на вторую, и читалось это как каша. */
+.mapdrag--pick {
+  /* Две карточки подряд могут не поместиться в высоту карты — тогда
+     прокручивается вся пара разом, а не каждая по себе. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Тихая строка-переход внутри карточки: под курсором она светлеет своей
+   плашкой со скруглением, а не белым прямоугольником во всю ширину.
+   Прежде подсветка бралась из общего правила для стекла и ложилась прямо
+   на текст — без полей и без скруглённых углов. */
+.geo__plot .mapstat__go {
+  margin: 2px -6px -2px;
+  padding: 6px;
+  border-top: 0;
+  border-radius: var(--r-sm);
+}
+
+.geo__plot .mapstat__go:hover {
+  background: var(--glass-hover);
+}
+
+/* Черта над переходом остаётся, но рисует её не сама кнопка: у кнопки со
+   скруглением граница обводила бы её целиком. */
+.geo__plot .mpick__rows + .mapstat__go,
+.geo__plot .mapstat__go + .mapstat__go {
+  margin-top: 6px;
+  box-shadow: 0 -7px 0 -6px var(--glass-hair);
+}
+
+.mapdrag--pick .mapstat {
+  flex: 0 0 auto;
+  max-height: none;
+  overflow: visible;
+}
+
+/* На узкой карте перечень уступает место городу: маршруты там разбирают
+   списком справа от карты. */
+@media (max-width: 900px) {
+  .georoutes {
+    display: none;
+  }
+}
+
+/* Слой плашек: метки маршрутов и подписи выбранного. Сам событий не ловит —
+   ловят их сами плашки. */
+.geo__plates {
+  position: absolute;
+  inset: 0;
+  /* Ниже полосы итогов и сводки о выбранном: те лежат на карте своим
+     слоем, и метка маршрута, всплывшая поверх чисел, читалась бы как их
+     часть. */
+  z-index: 495;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.geo__plates > * {
+  position: absolute;
+  pointer-events: auto;
+}
+
+.geo__end {
+  display: inline-flex;
+  border: 0;
+  font-family: var(--font-sans);
+  align-items: center;
+  gap: 4px;
+  height: 18px;
+  padding: 0 6px 0 5px;
+  border-radius: var(--r-pill);
+  background: var(--glass);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  color: var(--glass-ink);
+  font-size: var(--fs-small);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: var(--glass-edge-sm), var(--glass-line);
+  transform: translate(var(--dx, 9px), calc(var(--dy, 0px) - 50%));
+  cursor: pointer;
+  transition: opacity 120ms var(--ease-out-strong);
+}
+
+/* Постоянная подпись выбранного маршрута: выезд и каждый его визит. То же
+   стекло, что у метки, только тише и без действий. */
+.geo__stoptag {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 7px;
+  border-radius: var(--r-pill);
+  background: var(--glass);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  color: var(--glass-ink);
+  font-family: var(--font-sans);
+  font-size: var(--fs-small);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: var(--glass-edge-sm), var(--glass-line);
+  /* Место подписи считает раскладка: она обходит точки, метки маршрутов и
+     соседние подписи. */
+  transform: translate(var(--dx, -45px), var(--dy, -32px));
+  pointer-events: none;
+}
+
+/* Значок транспорта — тише номера: номер опознаёт маршрут, значок только
+   уточняет, на чём человек едет. */
+.geo__end svg {
+  flex: 0 0 auto;
+  display: block;
+  color: var(--text-secondary);
+}
+
+.geo__end b {
+  font-weight: var(--fw-semibold);
+}
+
+/* Цветная метка слева — тот же цвет, что у линии и у обводки её точек. */
+.geo__end-dot {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--tone);
+}
+
+/* Метка наведённого и выбранного маршрута выходит вперёд: тёмная рамка в
+   цвет метки, как у всего выбранного в интерфейсе. */
+/* Выбранная и наведённая метка — в обводке цвета своего маршрута. Правило
+   ищет её саму, а не родителя: после переноса плашек из слоя карты пометка
+   о выборе висит на самой кнопке, и обводка по старому правилу пропала. */
+.geo__end--on {
+  box-shadow: var(--glass-edge-sm), 0 0 0 1.5px var(--tone);
+}
+
+/* Линия маршрута с тенью.
+
+   Тень здесь работает вместо обводки. Обводка — тёмная кайма шире самой
+   линии — съедала на карте место и на чёрной подложке ничего не объясняла:
+   тёмное по тёмному. Тень мягкая и в пределах линии: она отделяет путь от
+   подложки и, главное, притемняет то, что под ним. Маршрут рисуется
+   перегонами по порядку, и на перекрёстке поздний проходит над ранним —
+   тень показывает, который сверху, а значит, куда инженер сворачивает. */
+.geo__road {
+  filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.7));
+}
+
+/* Точка заявки: белая середина, обводка цветом маршрута и тень под кружком.
+
+   Тень здесь не украшение: точка почти всегда стоит на своей же линии, и
+   без неё кружок и путь сливаются в одно пятно. Прежняя была вдвое слабее и
+   на тёмной подложке не читалась вовсе — её попросту не было видно. */
+.geo__pin {
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.9));
+}
+
+/* Кружок с номером у выбранного маршрута — с той же тенью: он стоит на той
+   же линии и на тех же координатах, что и точка, которую заменяет. */
+.geo__seq {
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.9));
+}
+
+/* Белая обводка у цветных меток — только на светлом стекле.
+
+   На нём цветное пятно теряет силу: под полупрозрачной белой плашкой
+   просвечивает город, и цвет уходит в серое — кольцо возвращает ему
+   собственный тон. На тёмном стекле всё наоборот: там цвет и так яркий, а
+   белое кольцо вокруг него читается как ореол и мельтешит. */
+.geo__plot--day .geo__end-dot,
+.geo__plot--day .gtip__dot,
+.geo__plot--day .mpick__mark,
+.geo__plot--day .geo__card-mark {
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.92);
+}
+
+/* Подробная карточка под курсором.
+
+   Живёт в рамке карты, а не в слое Leaflet, и это единственный способ дать
+   ей то же стекло, что у остального: слой карты сдвинут трансформацией, и
+   браузер не размывает под ним ничего — стекло там выходит плоской плашкой.
+   Здесь размытие работает, и карточка ничем не отличается от пульта, полосы
+   итогов и прочих плашек.
+
+   События не ловит: карточка отвечает на наведение, и попадать курсором в
+   неё не надо — а перехватив события, она снимала бы собственное наведение
+   и мигала. Место ей считает `MapBoard`: она всегда стоит рядом с тем, о
+   чём рассказывает, и никогда поверх него. */
+.geo__info {
+  position: absolute;
+  z-index: 540;
+  max-width: 320px;
+  pointer-events: none;
+}
+
+.geo__info .gtip {
+  box-shadow: var(--glass-edge), var(--glass-line);
+}
+
+/* ─── окно разбора поверх карты ──────────────────────────────────────────────────
+
+   Открывается щелчком по плитке в полосе итогов. Внутри — та же разборка,
+   что и в сводке: кольцо, числа и списки, собранные `GroupPanel`. */
+.mapwin {
+  display: flex;
+  flex-direction: column;
+  width: min(560px, 94vw);
+  max-height: 88vh;
+  overflow-y: auto;
+  border-radius: var(--r-md);
+  background: var(--white);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Дорога в сводку — тихой строкой внизу окна: это соседняя вкладка, а не
+   действие над расчётом, и звучать она должна тише разбора. */
+.mapwin__go {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 var(--sp-5) var(--sp-5);
+  padding: 8px 10px;
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--r-control);
+  background: var(--white);
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: var(--fs-caption);
+  cursor: pointer;
+  transition: var(--t-control);
+}
+
+.mapwin__go:hover {
+  background: var(--ink-100);
+  color: var(--text-primary);
+}
+
+.mapwin__go:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+
+/* Внутри окна разбор идёт без своей верхней отбивки: её роль играет край
+   самого окна. */
+.mapwin .detail {
+  padding-bottom: var(--sp-4);
+}
+
+/* ─── окно условных обозначений ───────────────────────────────────────────
+
+   Открывается кнопкой в пульте карты. Внутри — три группы по тому, о чём
+   спрашивают: пути, точки заявок и знаки выбранного маршрута. */
+.mapkeys {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  width: min(520px, 94vw);
+  max-height: 88vh;
+  padding: var(--sp-5);
+  border-radius: var(--r-md);
+  background: var(--white);
+  box-shadow: var(--shadow-lg);
+}
+
+.mapkeys__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h4);
+  font-weight: var(--fw-extrabold);
+  color: var(--text-primary);
+}
+
+.mapkeys__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.mapkeys__group-name {
+  font-size: var(--fs-small);
+  font-weight: var(--fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.mapkeys__row {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: 4px 0;
+  border-top: 1px solid var(--border-hairline);
+}
+
+.mapkeys__row:first-of-type {
+  border-top: 0;
+}
+
+/* Клетка образца: знак стоит по её центру, какого бы он ни был размера, —
+   иначе подписи справа разъезжаются по строкам. */
+.mapkeys__mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 20px;
+}
+
+.mapkeys__what {
+  font-size: var(--fs-body-s);
+  line-height: var(--lh-body-s);
+  color: var(--text-secondary);
+}
+
+.mapkeys__what b {
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+
+.mapkeys__line {
+  width: 26px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+/* Образцы штриховки: тот же рисунок, что у линий на карте, только
+   нарисованный градиентом — в клетке образца полилинии нет. */
+.mapkeys__line--bike,
+.mapkeys__line--walk,
+.mapkeys__line--transit {
+  background: none;
+  border-radius: 0;
+}
+
+/* Меры те же, что у линий на карте: точка 2, штрих 11, просвет 6. */
+.mapkeys__line--bike {
+  background-image: repeating-linear-gradient(
+    to right,
+    var(--tone) 0 11px,
+    transparent 11px 17px,
+    var(--tone) 17px 19px,
+    transparent 19px 25px
+  );
+}
+
+.mapkeys__line--walk {
+  background-image: repeating-linear-gradient(
+    to right,
+    var(--tone) 0 2px,
+    transparent 2px 8px
+  );
+}
+
+.mapkeys__line--transit {
+  background-image: repeating-linear-gradient(
+    to right,
+    var(--tone) 0 18px,
+    transparent 18px 24px
+  );
+}
+
+.mapkeys__square {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  box-shadow: 0 0 0 2px var(--white), 0 0 0 3px var(--border-hairline);
+}
+
+.mapkeys__square--nest {
+  width: 14px;
+  height: 14px;
+  background: var(--ink-400);
+}
+
+.mapkeys__dot {
+  width: 12px;
+  height: 12px;
+  border: 2.5px solid;
+  border-radius: 50%;
+  background: var(--white);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+/* Образец метки конца маршрута — та же плашка, что на карте, только без
+   сдвига: здесь ей некуда отходить от точки. */
+.mapkeys__end {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 18px;
+  padding: 0 6px 0 5px;
+  border-radius: var(--r-pill);
+  background: var(--white);
+  color: var(--text-primary);
+  font-size: var(--fs-small);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: var(--shadow-sm), 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+
+.mapkeys__end i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--tone);
+}
+
+.mapkeys__alarm {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--danger-500, #ff5b52);
+  color: #fff;
+  font-size: 10px;
+  font-weight: var(--fw-extrabold);
+  line-height: 1;
+}
+
+.mapkeys__seq {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  color: #0a0a0a;
+  font-size: 11px;
+  font-weight: var(--fw-bold);
+  line-height: 1;
+}
+
 /* Сноска об источнике подложки. Мелкой строкой в углу карты, без плашки:
    указание обязательно, но это сноска, а не орган управления. */
 .geo__credit {
@@ -15976,56 +16955,6 @@ button.chip--sm {
   text-shadow: 0 1px 2px rgba(255, 255, 255, 0.7);
 }
 
-/* Условные обозначения — тем же голосом, что и сноска подложки: тихая
-   строка, не орган управления, поэтому pointer-events выключены и клика
-   не ждёт. Слева, а не справа, — credit уже занял правый угол. */
-.geo__legend {
-  position: absolute;
-  left: 8px;
-  bottom: 4px;
-  z-index: 520;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px 12px;
-  pointer-events: none;
-}
-
-.geo__legend-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: var(--fs-small);
-  color: var(--text-on-solid);
-  opacity: 0.7;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
-  white-space: nowrap;
-}
-
-.geo__plot--day .geo__legend-item {
-  color: var(--text-on-brand);
-  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.7);
-}
-
-.geo__legend-dot {
-  flex: 0 0 auto;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.8);
-}
-
-.geo__plot--day .geo__legend-dot {
-  border-color: rgba(0, 0, 0, 0.35);
-}
-
-/* На узкой карте (не в полноэкранном виде) легенда спорит за место с
-   тумблерами и сноской — прячем её, оставляя только сноску подложки. */
-@media (max-width: 900px) {
-  .geo__legend {
-    display: none;
-  }
-}
-
 /* Прорехи между плитками на светлой подложке закрашены светлым: иначе при
    резкой прокрутке вместо карты мелькает тёмный провал. */
 .geo__plot--day .geo__map {
@@ -16036,29 +16965,6 @@ button.chip--sm {
    указано: пустая, но своё место держит — иначе колонка значков разъедется. */
 .rlist__ride--none {
   background: none;
-}
-
-/* Значок внутри подписи на карте: подпись собирает Leaflet строкой, значок
-   вклеен туда контуром из того же набора. */
-.gtip__ico {
-  flex: 0 0 auto;
-  display: block;
-  color: var(--text-secondary);
-}
-
-/* Тихая подпись маршрута — номер и средство передвижения у каждого пути, без
-   наведения. Их на карте дюжина, поэтому она мельче и бледнее подробной: это
-   метка, а не сообщение. */
-.leaflet-tooltip.geo__tt--quiet .gtip {
-  padding: 2px 6px;
-  gap: 4px;
-  font-size: var(--fs-small);
-  opacity: 0.92;
-}
-
-.leaflet-tooltip.geo__tt--quiet .gtip__dot {
-  width: 6px;
-  height: 6px;
 }
 
 /* ─── итоги расчёта полосой, а не колонкой ────────────────────────────────
@@ -16072,10 +16978,15 @@ button.chip--sm {
   position: relative;
   flex-direction: row;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
   width: auto;
   max-width: 100%;
-  padding: 8px 32px 8px 10px;
+  /* Отступы ровные со всех сторон. Справа они были вчетверо шире — там
+     стояла стрелка ухода в сводку, и после неё оставалось пустое поле, из-за
+     которого полоса читалась незаконченной. Стрелки нет: число раскрывается
+     окном на месте, а в сводку ведёт строка в самом окне. */
+  padding: 8px 10px;
   /* Номер расчёта стоит над полосой своей плашкой и выходит за её край. */
   overflow: visible;
 }
@@ -16093,8 +17004,10 @@ button.chip--sm {
   gap: 6px;
   padding: 3px 9px;
   border-radius: var(--r-sm);
-  background: var(--white);
-  box-shadow: var(--shadow-lg);
+  background: var(--glass);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-edge), var(--glass-line);
 }
 
 /* Подпись «Итоги расчёта» в мини-плашке лишняя: полоса под ней и есть итоги. */
@@ -16102,17 +17015,49 @@ button.chip--sm {
   display: none;
 }
 
+/* Плитки в полосе идут рядом и переносятся, когда ряд кончился.
+
+   Колонкой сетки они не переносились вовсе: восемь чисел выстраивались в
+   один ряд любой длины, и на ноутбуке последнее уезжало за край экрана —
+   «Неравномерность» оказывалась обрезана ровно посередине. Перенос кладёт
+   их во вторую строку: полоса становится выше на строку, но целой. */
 .mapstat:not(.mpick) .mapstat__metrics {
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(92px, auto);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+}
+
+.mapstat:not(.mpick) .mapstat__metrics .cmetric {
+  flex: 0 0 auto;
+  min-width: 92px;
+}
+
+/* Черта между итогом дня и его разбором. Тонкая и тихая: она делит ряд
+   чисел, а не объявляет второй раздел. В колонке (сводка о выбранном) её
+   нет — там ряда нет вовсе. */
+.mapstat__split {
+  flex: 0 0 auto;
+  align-self: stretch;
+  width: 1px;
+  margin: 2px 4px;
+  background: var(--glass-hair);
+}
+
+.mapstat.mpick .mapstat__split {
+  display: none;
 }
 
 /* В полосе плитка стоит столбиком: подпись, под ней число. Пояснения под
    числами сняты: в колонке они превращали число в вывод, а в полосе поверх
    карты каждое из них — ещё одна строка мелкого текста, отнятая у города.
    То, что они говорили, целиком есть в сводке, и полоса ведёт туда стрелкой. */
+/* Плитка на стекле своей заливки не носит вовсе: белый прямоугольник внутри
+   прозрачной полосы и делал её светлее остальных плашек — стекло переставало
+   быть одним. Клетку держит волосяная рамка, а под курсором она чуть
+   светлеет: этого хватает, чтобы число читалось нажимаемым. */
 .mapstat:not(.mpick) .cmetric {
   grid-template-columns: 1fr;
+  background: transparent;
 }
 
 .mapstat:not(.mpick) .cmetric__caption {
@@ -16127,30 +17072,15 @@ button.chip--sm {
   white-space: nowrap;
 }
 
-/* Уход в сводку — одной стрелкой: слова «Разобрать в сводке» занимали в
-   полосе больше места, чем иное число, а действие и так очевидно. */
-.mapstat:not(.mpick) .mapstat__go {
-  flex: 0 0 auto;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  border-radius: 50%;
-  font-size: 0;
-}
+/* Кнопка сворачивания стоит в плашке номера, рядом с ним.
 
-.mapstat:not(.mpick) .mapstat__go:hover {
-  background: var(--ink-100);
-}
-
-/* Кнопка сворачивания уходит в угол полосы: в ряду она встала бы шестой
-   плиткой. */
+   Прежде она объявлялась прижатой к верхнему правому углу полосы, но
+   ближайшей рамкой оказывалась сама плашка номера — и кнопка ложилась
+   поверх номера, наполовину его закрывая. Теперь она просто следующая за
+   номером: плашка — строка из двух вещей, «какой расчёт» и «свернуть». */
 .mapstat:not(.mpick) .mapstat__fold {
-  position: absolute;
-  top: 6px;
-  right: 6px;
+  position: static;
+  margin-left: 2px;
 }
 
 .mapstat:not(.mpick) .mapstat__draft {
@@ -16346,42 +17276,18 @@ button.chip--sm {
   inset: -8px;
 }
 
-/* Режим демонстрации: тихая кнопка в углу, пока свёрнут, и компактная
-   карточка поверх остального, пока открыт. Не оверлей во весь экран —
-   защита и так рискует утонуть в тридцати семи экранах, второй раз этого
-   делать незачем. */
-.demo__toggle {
-  position: fixed;
-  right: var(--sp-5);
-  bottom: var(--sp-5);
-  z-index: 700;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: var(--control-h-sm);
-  padding: 0 14px;
-  border: 1px solid var(--border-hairline);
-  border-radius: var(--r-pill);
-  background: var(--white);
-  box-shadow: var(--shadow-inset-hairline), 0 4px 16px rgba(0, 0, 0, 0.12);
-  font-family: var(--font-sans);
-  font-size: var(--fs-caption);
-  font-weight: var(--fw-semibold);
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: var(--t-control);
-}
+/* Режим демонстрации: компактная карточка в углу, пока показ идёт, и ничего
+   на экране, пока он выключен. Не оверлей во весь экран — защита и так
+   рискует утонуть в тридцати семи экранах, второй раз этого делать незачем.
 
-.demo__toggle:hover {
-  border-color: var(--ink-300);
-  color: var(--text-primary);
-}
-
+   Слои считаем от окон сервиса (`.modal`, 900). Демо ведёт и через окно
+   правки тоже, поэтому карточка и подсветка лежат выше любого окна; выше
+   самой карточки — только вопрос о выходе из показа. */
 .demo__card {
   position: fixed;
   right: var(--sp-5);
   bottom: var(--sp-5);
-  z-index: 700;
+  z-index: 970;
   width: 320px;
   padding: var(--sp-4);
   border: 1px solid var(--border-hairline);
@@ -16391,6 +17297,11 @@ button.chip--sm {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.demo__card--left {
+  left: var(--sp-5);
+  right: auto;
 }
 
 .demo__top {
@@ -16484,68 +17395,193 @@ button.chip--sm {
   }
 }
 
-/* Подсветка цели: рамка ровно по элементу, а всё остальное темнеет одним
-   приёмом — `box-shadow` на десять тысяч пикселей вместо реального фона у
-   самого элемента заливает весь экран, кроме дырки под рамкой. Дырка не
-   ловит клик сама (pointer-events: none) — под ней настоящая кнопка, и
-   нажатие должно доходить до неё, а не до подсветки. Пульс — на самой
-   рамке: она то шире, то у́же, глаз сам находит, куда смотреть. */
-.demo__spot {
+/* Подсветка цели: экран темнеет весь, кроме самой кнопки. Тьму рисует сам
+   вырез — тенью с большим разгоном, поэтому дырка выходит ровно по кнопке
+   и с её же скруглением, а не «примерно похожей» рамкой.
+
+   Скругление берётся у самой кнопки, а не задаётся здесь: пилюля, квадрат
+   и карточка скруглены по-разному, и общий радиус на всех давал вырез с
+   чужими углами.
+
+   Никаких рамок и пунктирных фреймов: подсвечена настоящая кнопка, а не
+   обводка вокруг неё. Пульсирует мягкий ореол — он лежит слоем выше тьмы,
+   иначе тьма закрасила бы его собой.
+
+   Переходов по координатам нет намеренно: цель ездит со скроллом, и любое
+   сглаживание читается как «подсветка отстаёт». Мышь пятно не ловит — под
+   ним настоящая кнопка, и нажатие должно доходить до неё. */
+.demo__dim {
   position: fixed;
-  z-index: 690;
-  border-radius: var(--r-md);
-  box-shadow: 0 0 0 9999px rgba(10, 10, 10, 0.55);
+  z-index: 940;
   pointer-events: none;
-  transition: top 120ms ease-out, left 120ms ease-out, width 120ms ease-out, height 120ms ease-out;
+  box-shadow: 0 0 0 9999px rgba(10, 10, 10, 0.55);
 }
 
-.demo__spot::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  border: 2px solid var(--accent-500);
-  animation: demo-pulse 1.4s ease-in-out infinite;
+.demo__pulse {
+  position: fixed;
+  pointer-events: none;
+  z-index: 941;
+  animation: demo-pulse 1.6s ease-in-out infinite;
 }
 
 @keyframes demo-pulse {
   0%, 100% {
-    box-shadow: 0 0 0 0 rgba(252, 166, 31, 0.55);
+    box-shadow: 0 0 16px 2px rgba(252, 166, 31, 0.45);
   }
   50% {
-    box-shadow: 0 0 0 6px rgba(252, 166, 31, 0);
+    box-shadow: 0 0 28px 10px rgba(252, 166, 31, 0.75);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .demo__spot::after {
+  .demo__pulse {
+    animation: none;
+    box-shadow: 0 0 22px 6px rgba(252, 166, 31, 0.6);
+  }
+}
+
+/* Кнопка уехала под сгиб — показ не гонится за ней и экран не прокручивает:
+   человек листает сам, а стрелка говорит, в какую сторону. Прокрутка
+   из-под пальца сбивает сильнее, чем поиск кнопки глазами. */
+.demo__away {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 975;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--r-pill);
+  background: var(--accent-500);
+  color: var(--ink-1000);
+  font-family: var(--font-sans);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+  animation: demo-away 1.6s ease-in-out infinite;
+}
+
+.demo__away--down {
+  bottom: var(--sp-5);
+}
+
+.demo__away--up {
+  top: var(--sp-5);
+}
+
+@keyframes demo-away {
+  0%, 100% {
+    transform: translate(-50%, 0);
+  }
+  50% {
+    transform: translate(-50%, 4px);
+  }
+}
+
+.demo__away--up {
+  animation-name: demo-away-up;
+}
+
+@keyframes demo-away-up {
+  0%, 100% {
+    transform: translate(-50%, 0);
+  }
+  50% {
+    transform: translate(-50%, -4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .demo__away {
     animation: none;
   }
 }
 
-/* Экран приветствия — та же развилка, что описана в тексте: демо или
-   обычная работа. Поверх абсолютно всего, включая режим демонстрации
-   (700) — приветствие решает, откроется ли демо вообще. */
-.gate {
+/* Вопрос о выходе — ровно по центру экрана и выше всего остального,
+   включая саму карточку демо. */
+.demoexit {
   position: fixed;
   inset: 0;
-  z-index: 950;
+  z-index: 990;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: var(--sp-5);
-  background: rgba(10, 10, 10, 0.55);
 }
 
-.gate__card {
-  width: min(480px, 100%);
-  padding: var(--sp-7) var(--sp-6);
+.demoexit__veil {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  padding: 0;
+  background: rgba(10, 10, 10, 0.45);
+  cursor: pointer;
+}
+
+.demoexit__card {
+  position: relative;
+  width: min(380px, 100%);
+  padding: var(--sp-5);
   border-radius: var(--r-lg);
   background: var(--white);
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.28);
 }
 
-.gate__eyebrow {
+.demoexit__title {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+
+.demoexit__what {
+  margin: 6px 0 0;
+  font-size: var(--fs-caption);
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.demoexit__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-top: var(--sp-4);
+}
+
+.demoexit__actions > :last-child {
+  margin-left: auto;
+}
+
+/* Экран приветствия. Собственные имена классов, не `gate*`: `gate` в этом
+   файле уже занят входом в диспетчерскую, и приветствие донашивало его
+   наведение и рамки за компанию — кнопка меняла вид сама по себе.
+
+   Светлый экран целиком, без вуали и без интерфейса за спиной: пока режим
+   не выбран, сервиса на экране нет. */
+.welcome {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-5);
+  background: var(--ink-50, #f6f6f5);
+  overflow: auto;
+}
+
+.welcome__card {
+  width: min(760px, 100%);
+  padding: var(--sp-7) var(--sp-6);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--r-lg);
+  background: var(--white);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.08);
+}
+
+.welcome__eyebrow {
   display: block;
   font-family: var(--font-sans);
   font-size: var(--fs-caption);
@@ -16555,100 +17591,94 @@ button.chip--sm {
   color: var(--text-muted);
 }
 
-.gate__title {
+.welcome__title {
   margin: var(--sp-2) 0 0;
   font-family: var(--font-sans);
   font-size: 28px;
-  font-weight: var(--fw-bold, 800);
+  font-weight: 800;
   letter-spacing: -0.01em;
   color: var(--text-primary);
 }
 
-.gate__lede {
+.welcome__lede {
   margin: var(--sp-1) 0 var(--sp-6);
   font-size: var(--fs-body-s);
   color: var(--text-secondary);
 }
 
-.gate__options {
-  display: flex;
-  flex-direction: column;
+/* Две двери рядом, а не одна под другой: они равны по весу, и вертикальная
+   стопка читалась бы как «сначала эта, потом та». */
+.welcome__options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: var(--sp-3);
+  align-items: stretch;
 }
 
-.gate__option {
+/* Обе кнопки — один и тот же вид, одно и то же наведение и одно и то же
+   нажатие. Выделять одну значило бы советовать, а это развилка, а не
+   рекомендация. */
+.welcome__option {
   display: flex;
+  flex-direction: column;
   align-items: flex-start;
-  gap: var(--sp-3);
+  gap: 6px;
+  height: 100%;
   padding: var(--sp-4);
   border: 1px solid var(--border-hairline);
   border-radius: var(--r-md);
   background: var(--white);
+  font-family: var(--font-sans);
   text-align: left;
   cursor: pointer;
-  transition: var(--t-control);
+  transition: border-color 120ms var(--ease-out-strong), background-color 120ms var(--ease-out-strong),
+    transform 120ms var(--ease-out-strong);
 }
 
-.gate__option:hover {
-  border-color: var(--ink-300);
+.welcome__option:hover {
+  border-color: var(--ink-1000);
   background: var(--ink-50);
 }
 
-.gate__option--accent {
-  border-color: var(--ink-1000);
+.welcome__option:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
 }
 
-.gate__option--accent:hover {
-  background: var(--ink-1000);
-}
-
-.gate__option--accent:hover .gate__option-title,
-.gate__option--accent:hover .gate__option-what,
-.gate__option--accent:hover svg {
-  color: var(--white);
-}
-
-.gate__option-icon {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: var(--r-md);
+.welcome__option:active {
+  transform: translateY(1px);
   background: var(--ink-100);
-  color: var(--text-primary);
 }
 
-.gate__option-body {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.gate__option-title {
+.welcome__option-title {
   font-family: var(--font-sans);
   font-size: var(--fs-body-s);
   font-weight: var(--fw-semibold);
   color: var(--text-primary);
 }
 
-.gate__option-what {
+.welcome__option-what {
+  flex: 1 1 auto;
   font-size: var(--fs-caption);
   line-height: 1.5;
   color: var(--text-secondary);
 }
 
-.gate__option > svg {
-  flex: 0 0 auto;
-  margin-top: 10px;
-  color: var(--text-muted);
+.welcome__option-go {
+  margin-top: var(--sp-2);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+
+@media (max-width: 720px) {
+  .welcome__options {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 480px) {
-  .gate__card {
+  .welcome__card {
     padding: var(--sp-5) var(--sp-4);
   }
 }

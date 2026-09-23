@@ -49,7 +49,7 @@ interface Props {
   focus: number;
   cut: number;
   onCutChange: (cut: number | ((prev: number) => number)) => void;
-  onSelectOrder: (id: string) => void;
+  onSelectOrder: (id: string | null) => void;
   onSelectEngineer: (id: string) => void;
   onOpenGroup: (groupId: string) => void;
   /** Открывает в правой панели список — снимок набора на момент щелчка. */

@@ -10,6 +10,8 @@ import type { SortRule } from '../../app/SortMenu.tsx';
 import { OrderProfile } from '../../app/OrderProfile.tsx';
 import { useWidgetBoard, WidgetPeriod, withinPeriod } from '../../app/DbWidgets.tsx';
 import type { PeriodKey, WidgetDef } from '../../app/DbWidgets.tsx';
+import { onDuty, useDuty } from '../../data/duty.ts';
+import { DutyTag } from '../../app/DutyTag.tsx';
 import { DbHead, DENSITY, occupancyTiers, usePerRow, useShares } from './DbHead.tsx';
 import { DbBar, ChipKey, DbEmpty, DbMore, usePaging } from './DbBar.tsx';
 import type { DbChip } from './DbBar.tsx';
@@ -133,6 +135,17 @@ const SORTS: (SortRule & { value: Sort; desc: boolean })[] = [
    настроек сервиса, а не написаны руками. */
 type Filter = 'all' | 'overtime' | 'risky' | 'busy' | 'loose' | 'idle';
 
+/* Отбор по состоянию расчёта: взят ли он в работу на свой день. Маршруты
+   рабочего расчёта — это сегодняшние маршруты, остальные остались в истории
+   как варианты, и мешать их в одном списке нельзя. */
+type State = 'all' | 'duty' | 'draft';
+
+const STATES: { value: State; label: string }[] = [
+  { value: 'all', label: 'Все' },
+  { value: 'duty', label: 'В работе' },
+  { value: 'draft', label: 'Черновики' }
+];
+
 const filtersFor = (busy: number, loose: number): { value: Filter; label: string }[] => [
   { value: 'all', label: 'Все' },
   { value: 'overtime', label: 'С переработкой' },
@@ -163,10 +176,20 @@ export function DbRoutesScreen({
   const [sort, setSort] = useState<Sort>('number');
   const [desc, setDesc] = useState(false);
   const [filter, setFilter] = useState<Filter>('all');
+  /* Состояние расчёта, из которого вышел маршрут: по рабочему расчёту сегодня
+     едут, маршруты остальных прогонов того же дня — варианты к нему. Отбор
+     тот же, что в базе расчётов, и слова у него те же. */
+  const [state, setState] = useState<State>('all');
   const [run, setRun] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const paging = usePaging(PAGE);
   const dense = perRow === '6';
+  /* Подписка на журнал «день участка → рабочий расчёт»: расчёт берут в работу
+     в другом разделе, а база маршрутов обязана показать это сразу. */
+  const duty = useDuty();
+  /* Маршрут в работе — тот, чей расчёт взят на свой день. Своего состояния у
+     маршрута нет и быть не должно: он часть расчёта целиком. */
+  const working = (route: RouteRecord) => onDuty(route.run.id as RunId, route.run.date);
   /* Пороги перегруза и недогруза — из настроек сервиса, одни на все базы. */
   const { busy, loose } = useShares();
   const FILTERS = filtersFor(busy, loose);
@@ -202,6 +225,9 @@ export function DbRoutesScreen({
     const needle = query.trim().toLowerCase();
     const picked = all.filter((route) => {
       if (run && route.run.id !== run) return false;
+      const live = onDuty(route.run.id as RunId, route.run.date);
+      if (state === 'duty' && !live) return false;
+      if (state === 'draft' && live) return false;
       if (filter === 'overtime' && route.overtimeMinutes === 0) return false;
       if (filter === 'risky' && route.risky === 0) return false;
       if (filter === 'busy' && route.occupancy < busy) return false;
@@ -254,7 +280,7 @@ export function DbRoutesScreen({
       const diff = rank(a) - rank(b);
       return side * (diff !== 0 ? diff : tie(a, b));
     });
-  }, [all, busy, desc, filter, loose, query, run, sort]);
+  }, [all, busy, desc, filter, state, duty, loose, query, run, sort]);
 
   /* Сменили отбор или порядок — счётчик показанного начинается заново. */
   const narrow = <T,>(set: (value: T) => void) => (value: T) => {
@@ -282,6 +308,7 @@ export function DbRoutesScreen({
 
   const reset = () => {
     setFilter('all');
+    setState('all');
     setRun(null);
     setQuery('');
     paging.reset();
@@ -706,7 +733,10 @@ export function DbRoutesScreen({
               }}
             >
               <td>
-                <span className="tbl__strong">{route.code}</span>
+                <span className="tbl__strong">
+                  {route.code}
+                  {working(route) && <DutyTag what="маршрут" />}
+                </span>
               </td>
               {withRun && (
                 <td>
@@ -754,6 +784,17 @@ export function DbRoutesScreen({
   const shown = rows.slice(0, paging.limit);
   const hidden = rows.length - shown.length;
 
+  /* Разрез по состоянию: маршруты рабочих расчётов и маршруты черновиков.
+
+     Считается по всей выборке, а не по показанному куску: рабочих маршрутов
+     в базе единицы на сотню, и в первую страницу списка они не попадают —
+     раздел «В работе» оказывался пуст при взятом в работу расчёте. Каждый
+     перечень при этом обрезан своей страницей, а «Показать ещё» добирает
+     оба. */
+  const dutyRoutes = rows.filter(working).slice(0, paging.limit);
+  const draftRoutes = rows.filter((route) => !working(route)).slice(0, paging.limit);
+  const dutyHidden = rows.length - dutyRoutes.length - draftRoutes.length;
+
   /* Активные отборы — чипами наверху. */
   const chips: DbChip[] = [];
   if (filter !== 'all') {
@@ -761,6 +802,13 @@ export function DbRoutesScreen({
       key: 'filter',
       label: FILTERS.find((item) => item.value === filter)?.label ?? filter,
       onRemove: clear(() => setFilter('all'))
+    });
+  }
+  if (state !== 'all') {
+    chips.push({
+      key: 'state',
+      label: STATES.find((item) => item.value === state)?.label ?? state,
+      onRemove: clear(() => setState('all'))
     });
   }
   if (run) {
@@ -821,6 +869,16 @@ export function DbRoutesScreen({
               />
             </div>
 
+            <div className="filters__group">
+              <span className="filters__label">Состояние</span>
+              <SegmentedControl
+                size="sm"
+                items={STATES}
+                value={state}
+                onChange={narrow((value: string) => setState(value as State))}
+              />
+            </div>
+
             {registry.runs.length > 1 && (
               <div className="filters__group filters__group--wide">
                 <span className="filters__label">Расчёт</span>
@@ -858,9 +916,48 @@ export function DbRoutesScreen({
           miss="Под этот отбор не подошёл ни один маршрут."
           blank="Маршрутов в базе пока нет: их строит программа расчёта, и до первого сохранённого расчёта база пуста."
           query={query.trim() !== ''}
-          filtered={filter !== 'all' || run !== null}
+          filtered={filter !== 'all' || state !== 'all' || run !== null}
           onReset={reset}
         />
+      ) : mode === 'duty' ? (
+        <>
+          <section className="panel">
+            <div className="dash__section-head">
+              <h2 className="dash__section-title">
+                <Icon name="check-circle" size={15} /> В работе
+              </h2>
+              <span className="dash__section-note">
+                {plural(dutyRoutes.length, 'маршрут', 'маршрута', 'маршрутов')}
+              </span>
+            </div>
+            {dutyRoutes.length === 0 ? (
+              <p className="runmenu__empty">
+                Ни один расчёт выборки не взят в работу. Берут кнопкой «В работу» — в карточке
+                расчёта или в подшапке диспетчерской.
+              </p>
+            ) : (
+              table(dutyRoutes)
+            )}
+          </section>
+
+          <section className="panel">
+            <div className="dash__section-head">
+              <h2 className="dash__section-title">
+                <Icon name="path" size={15} /> Не в работе
+              </h2>
+              <span className="dash__section-note">
+                {plural(draftRoutes.length, 'маршрут', 'маршрута', 'маршрутов')}
+              </span>
+            </div>
+            {draftRoutes.length === 0 ? (
+              <p className="runmenu__empty">Все маршруты выборки вышли из рабочих расчётов.</p>
+            ) : (
+              table(draftRoutes)
+            )}
+          </section>
+
+          <DbMore hidden={dutyHidden} page={PAGE} onMore={paging.more} />
+        </>
       ) : mode === 'runs' ? (
         <>
           {byRunShown.map((entry) => (
@@ -937,7 +1034,12 @@ export function DbRoutesScreen({
               key: route.key,
               lead: <Icon name="path" size={15} />,
               code: route.code,
-              title: route.engineerName,
+              title: (
+                <>
+                  {route.engineerName}
+                  {working(route) && <DutyTag what="маршрут" />}
+                </>
+              ),
               sub: (
                 <>
                   Расчёт {route.run.code} · {route.run.date} ·{' '}

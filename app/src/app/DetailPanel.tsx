@@ -75,8 +75,13 @@ function CloseCard({ onClose }: { onClose: () => void }) {
   );
 }
 
-/* Открытое поверх справочника: страница группы или карточка объекта. */
-function SelectedCard({ day, view, selection, onSelect, dispatcher }: Props) {
+/* Открытое поверх справочника: страница группы или карточка объекта.
+
+   Вынесено наружу: тем же самым отвечает окно поверх карты в обзоре. Число
+   расчёта, заявка и инженер обязаны раскрываться одинаково, где бы на них ни
+   нажали, — иначе один и тот же объект объясняется по-разному в двух местах
+   одной программы. */
+export function SelectedCard({ day, view, selection, onSelect, dispatcher }: Props) {
   const close = () => onSelect(OVERVIEW);
 
   if (selection.kind === 'overview') return null;

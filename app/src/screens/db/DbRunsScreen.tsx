@@ -10,6 +10,8 @@ import { RunCard } from '../../app/RunCard.tsx';
 import { COMPARE_MAX } from '../../app/compare.ts';
 import { useWidgetBoard, WidgetPeriod, withinPeriod } from '../../app/DbWidgets.tsx';
 import { service } from '../../data/service.ts';
+import { onDuty, useDuty } from '../../data/duty.ts';
+import { DutyTag } from '../../app/DutyTag.tsx';
 import type { PeriodKey } from '../../app/DbWidgets.tsx';
 import type { WidgetDef } from '../../app/DbWidgets.tsx';
 import { DbHead } from './DbHead.tsx';
@@ -117,6 +119,24 @@ const FILTERS: { value: Filter; label: string }[] = [
   { value: 'clean', label: 'Всё распределено' }
 ];
 
+/* Отбор по состоянию: взят ли расчёт в работу.
+
+   Кнопка «В работу» говорит, по какому из расчётов дня работают на самом
+   деле; остальные прогоны того же дня — черновики к нему. До сих пор это
+   знала только сама кнопка: в базе рабочий расчёт лежал вперемешку с
+   черновиками, и найти «тот, по которому сегодня едут» можно было, только
+   открыв каждый.
+
+   Отбор делит базу надвое и работает во всех видах сразу — в списке, в
+   карточках, в таблице и в разрезе по состоянию. */
+type State = 'all' | 'duty' | 'draft';
+
+const STATES: { value: State; label: string }[] = [
+  { value: 'all', label: 'Все' },
+  { value: 'duty', label: 'В работе' },
+  { value: 'draft', label: 'Черновики' }
+];
+
 /* База расчётов. Здесь они лежат как история, а не как выбор на сегодня:
    переключаться между прогонами удобнее в подшапке диспетчерской, а сюда
    приходят посмотреть, что вообще считали и с каким результатом. */
@@ -137,7 +157,12 @@ export function DbRunsScreen({
   const [sort, setSort] = useState<Sort>('date');
   const [desc, setDesc] = useState(true);
   const [filter, setFilter] = useState<Filter>('all');
+  const [state, setState] = useState<State>('all');
   const [query, setQuery] = useState('');
+  /* Список «день участка → рабочий расчёт». Подписка нужна затем, что
+     «В работу» нажимают прямо здесь, на карточке, — и база обязана тут же
+     переложить запись из черновиков в работу. */
+  const duty = useDuty();
   const paging = usePaging(PAGE);
 
   /* Сменили отбор или порядок — счётчик показанного начинается заново. */
@@ -154,9 +179,14 @@ export function DbRunsScreen({
 
   const reset = () => {
     setFilter('all');
+    setState('all');
     setQuery('');
     paging.reset();
   };
+
+  /* Взят ли расчёт в работу на свой день. Считается через общий журнал, а не
+     флажком на записи: у дня участка хозяин один, и знает об этом журнал. */
+  const working = (row: (typeof all)[number]) => onDuty(row.run.id, row.run.date);
   const dense = perRow === '6';
 
   const all = registry.stats.byRun;
@@ -187,6 +217,9 @@ export function DbRunsScreen({
       const left = row.orders - row.assigned;
       if (filter === 'loose' && left === 0) return false;
       if (filter === 'clean' && left > 0) return false;
+      const live = onDuty(row.run.id, row.run.date);
+      if (state === 'duty' && !live) return false;
+      if (state === 'draft' && live) return false;
       if (!needle) return true;
       return (
         row.run.code.toLowerCase().includes(needle) || row.run.created.toLowerCase().includes(needle)
@@ -213,7 +246,7 @@ export function DbRunsScreen({
       const diff = rank(a) - rank(b);
       return side * (diff !== 0 ? diff : a.run.code.localeCompare(b.run.code));
     });
-  }, [all, desc, filter, query, sort]);
+  }, [all, desc, filter, state, duty, query, sort]);
 
   /* Повторный щелчок по выбранному правилу переворачивает порядок; щелчок по
      другому — переключает правило и берёт его сторону по умолчанию. */
@@ -574,6 +607,38 @@ export function DbRunsScreen({
     )
   });
 
+  /* Карточки расчётов. Вынесены в одно место: ими рисует и обычный вид, и
+     разрез по состоянию, и расходиться этим двум нельзя. */
+  const cards = (list: typeof shown) => (
+    <div
+      className={'runs__grid' + (dense ? ' runs__grid--dense' : '')}
+      style={{ '--per-row': perRow } as React.CSSProperties}
+    >
+      {list.map((row) => (
+        <RunCard
+          key={row.run.id}
+          row={row}
+          bounds={registry.bounds}
+          routes={routesByRun.get(row.run.id) ?? []}
+          /* Кнопки «Открыть» в базе нет: карточка открывает расчёт целиком,
+             щелчком в любое своё место, и кнопка внизу была второй дорогой
+             туда же. Внизу осталось одно — отбор к сравнению и «В работу»:
+             они никуда не уводят, и сами собой карточка их не сделает. */
+          showOpen={false}
+          isActive={row.run.id === active}
+          picked={compare.includes(row.run.id)}
+          pickBlocked={compare.length >= COMPARE_MAX}
+          dense={dense}
+          onOpen={onOpen}
+          onOpenMap={onOpenMap}
+          onGo={onGo}
+          onCompare={onCompare}
+          onEdit={onEdit}
+        />
+      ))}
+    </div>
+  );
+
   /* Активные отборы — чипами наверху. Каждый снимается своим крестиком. */
   const chips: DbChip[] = [];
   if (filter !== 'all') {
@@ -584,8 +649,25 @@ export function DbRunsScreen({
     });
   }
 
+  if (state !== 'all') {
+    chips.push({
+      key: 'state',
+      label: STATES.find((item) => item.value === state)?.label ?? state,
+      onRemove: clear(() => setState('all'))
+    });
+  }
+
   const shown = rows.slice(0, paging.limit);
   const hidden = rows.length - shown.length;
+
+  /* Разрез по состоянию: рабочие расчёты и черновики — двумя перечнями.
+
+     Считается по всей выборке, а не по показанному куску: рабочий расчёт
+     дня один на десяток прогонов, и в первую страницу он попадает не
+     всегда — раздел «В работе» оказывался бы пуст при взятом в работу
+     расчёте. Каждый перечень обрезан своей страницей. */
+  const working_ = rows.filter(working).slice(0, paging.limit);
+  const drafts = rows.filter((row) => !working(row)).slice(0, paging.limit);
 
   /* Итог выборки — над списком, а не под ним: это ответ на «что дал отбор»,
      и внизу, за прокруткой, его никто не читает. Числа выбраны по вопросу
@@ -663,6 +745,19 @@ export function DbRunsScreen({
               />
             </div>
 
+            {/* Состояние — второй отбор, рядом с первым: «что вышло» и «по
+                какому из них работают» — разные вопросы, и складываются они
+                по «и». */}
+            <div className="filters__group">
+              <span className="filters__label">Состояние</span>
+              <SegmentedControl
+                size="sm"
+                items={STATES}
+                value={state}
+                onChange={narrow((value: string) => setState(value as State))}
+              />
+            </div>
+
             {/* Плотность строки — только у карточек: в таблице и в списке
                 строка одна и в строке она одна. */}
             {mode !== 'table' && mode !== 'list' && (
@@ -680,9 +775,46 @@ export function DbRunsScreen({
           miss="Под этот отбор не подошёл ни один расчёт."
           blank="Расчётов в истории пока нет: первый появится, когда день разложат в диспетчерской."
           query={query.trim() !== ''}
-          filtered={filter !== 'all'}
+          filtered={filter !== 'all' || state !== 'all'}
           onReset={reset}
         />
+      ) : mode === 'duty' ? (
+        <>
+          <section className="panel">
+            <div className="dash__section-head">
+              <h2 className="dash__section-title">
+                <Icon name="check-circle" size={15} /> В работе
+              </h2>
+              <span className="dash__section-note">
+                {plural(working_.length, 'расчёт', 'расчёта', 'расчётов')}
+              </span>
+            </div>
+            {working_.length === 0 ? (
+              <p className="runmenu__empty">
+                Ни один расчёт не взят в работу. Берут кнопкой «В работу» — в карточке расчёта или
+                в подшапке диспетчерской.
+              </p>
+            ) : (
+              cards(working_)
+            )}
+          </section>
+
+          <section className="panel">
+            <div className="dash__section-head">
+              <h2 className="dash__section-title">
+                <Icon name="stack" size={15} /> Не в работе
+              </h2>
+              <span className="dash__section-note">
+                {plural(drafts.length, 'расчёт', 'расчёта', 'расчётов')}
+              </span>
+            </div>
+            {drafts.length === 0 ? (
+              <p className="runmenu__empty">Все расчёты выборки взяты в работу.</p>
+            ) : (
+              cards(drafts)
+            )}
+          </section>
+        </>
       ) : mode === 'list' ? (
         /* Список: расчёт — строка, и в ней ровно то, ради чего в историю
            заходят. Покрытие первым: это ответ на «как посчиталось», всё
@@ -700,7 +832,12 @@ export function DbRunsScreen({
                один день различают именно временем записи, но это уже
                уточнение, а не имя. Заметка человека стоит перед числами: её
                писал не движок, и теряться среди них ей не следует. */
-            title: row.run.date ? dayOf(row.run.date) : `Расчёт ${row.run.code}`,
+            title: (
+              <>
+                {row.run.date ? dayOf(row.run.date) : `Расчёт ${row.run.code}`}
+                {working(row) && <DutyTag />}
+              </>
+            ),
             sub: (
               <>
                 {row.run.note ? `${row.run.note} · ` : ''}
@@ -777,7 +914,10 @@ export function DbRunsScreen({
                     <td>
                       <span className="tbl__run">
                         <span>
-                          <span className="tbl__strong">{row.run.code}</span>
+                          <span className="tbl__strong">
+                            {row.run.code}
+                            {working(row) && <DutyTag />}
+                          </span>
                           <span className="tbl__sub">{stampOf(row.run.created)}</span>
                         </span>
                         <button
@@ -838,36 +978,7 @@ export function DbRunsScreen({
           </div>
         </section>
       ) : (
-        <>
-          <div
-            className={'runs__grid' + (dense ? ' runs__grid--dense' : '')}
-            style={{ '--per-row': perRow } as React.CSSProperties}
-          >
-          {shown.map((row) => (
-            <RunCard
-              key={row.run.id}
-              row={row}
-              bounds={registry.bounds}
-              routes={routesByRun.get(row.run.id) ?? []}
-              /* Кнопки «Открыть» в базе нет: карточка открывает расчёт
-                 целиком, щелчком в любое своё место, и кнопка внизу была
-                 второй дорогой туда же. Внизу осталось одно — отбор к
-                 сравнению и «В работу»: они никуда не уводят, и сами собой
-                 карточка их не сделает. */
-              showOpen={false}
-              isActive={row.run.id === active}
-              picked={compare.includes(row.run.id)}
-              pickBlocked={compare.length >= COMPARE_MAX}
-              dense={dense}
-              onOpen={onOpen}
-              onOpenMap={onOpenMap}
-              onGo={onGo}
-              onCompare={onCompare}
-              onEdit={onEdit}
-            />
-          ))}
-          </div>
-        </>
+        cards(shown)
       )}
 
       {/* «Показать ещё» — одна на все три вида: обрезается отрисовка, а

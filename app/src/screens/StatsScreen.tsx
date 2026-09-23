@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Icon } from '../ds/components/core/Icon.jsx';
 import type { Registry, RunStat } from '../data/registry.ts';
 import type { Distribution, StatusSplit } from '../data/derive.ts';
@@ -6,6 +6,9 @@ import { dec, hoursText, occupancyMean, plural } from '../data/derive.ts';
 import { skillName } from '../data/dictionary.ts';
 import { whenLabel } from '../data/load.ts';
 import { BarChart } from '../app/BarChart.tsx';
+import { SortMenu } from '../app/SortMenu.tsx';
+import type { SortRule } from '../app/SortMenu.tsx';
+import { DbMore, usePaging } from './db/DbBar.tsx';
 import { Donut } from '../app/Donut.tsx';
 
 interface Props {
@@ -28,6 +31,42 @@ interface Props {
    показателям и разрезы по видам работ и навыкам. */
 
 const percent = (share: number) => `${dec(share * 100)} %`;
+
+/* Сколько расчётов показываем сразу. Столько же, сколько в базе расчётов:
+   один и тот же список не должен обрываться в двух местах по-разному. */
+const PAGE = 24;
+
+/* По чему упорядочен ряд. Те же правила и те же слова, что в базе расчётов:
+   один и тот же список, упорядоченный в двух местах по-разному, читался бы
+   как два разных. */
+type Sort = 'date' | 'coverage' | 'occupancy';
+
+const SORTS: (SortRule & { value: Sort; desc: boolean })[] = [
+  {
+    value: 'date',
+    label: 'По дате',
+    note: 'Когда расчёт завели',
+    desc: true,
+    up: 'Сначала давние',
+    down: 'Сначала свежие'
+  },
+  {
+    value: 'coverage',
+    label: 'По прогнозу',
+    note: 'Насколько полно разложился день',
+    desc: true,
+    up: 'Сначала слабые',
+    down: 'Сначала полные'
+  },
+  {
+    value: 'occupancy',
+    label: 'По загрузке',
+    note: 'Насколько плотно заняты инженеры',
+    desc: true,
+    up: 'Сначала свободные',
+    down: 'Сначала плотные'
+  }
+];
 
 /* Итоги по видам работ и навыкам приходят готовыми счётчиками, а полосы
    рисуются из распределения. Собираем распределение из счётчиков: каждая
@@ -81,9 +120,59 @@ export function StatsScreen({ registry, active, onOpenRun }: Props) {
     [runs]
   );
 
-  /* Ряд расчётов — от старого к свежему, как в истории: так виден ход, а
-     не рейтинг. */
-  const ordered = useMemo(() => [...runs].sort((a, b) => a.run.created.localeCompare(b.run.created)), [runs]);
+  /* Ряд расчётов. По умолчанию свежие сверху: к последнему расчёту
+     возвращаются чаще, чем к первому в архиве, — а ход от старого к свежему
+     показывают линии на плитках, а не этот список. */
+  const ordered = useMemo(
+    () => [...runs].sort((a, b) => a.run.created.localeCompare(b.run.created)),
+    [runs]
+  );
+
+  const [query, setQuery] = useState('');
+  const [sort, setSort] = useState<Sort>('date');
+  const [desc, setDesc] = useState(true);
+  const paging = usePaging(PAGE);
+
+  /* Повторный щелчок по выбранному правилу переворачивает порядок; щелчок по
+     другому — переключает правило и берёт его сторону по умолчанию. То же
+     самое и теми же словами, что и в базах. */
+  const pickSort = (value: Sort) => {
+    paging.reset();
+    if (value === sort) {
+      setDesc((was) => !was);
+      return;
+    }
+    setSort(value);
+    setDesc(SORTS.find((rule) => rule.value === value)?.desc ?? true);
+  };
+
+  const listed = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    const picked = ordered.filter(
+      (row) =>
+        !needle ||
+        row.run.code.toLowerCase().includes(needle) ||
+        row.run.created.toLowerCase().includes(needle) ||
+        whenLabel(row.run.created).toLowerCase().includes(needle)
+    );
+    const rank = (row: RunStat) => {
+      switch (sort) {
+        case 'coverage':
+          return row.coverage;
+        case 'occupancy':
+          return row.occupancy;
+        default:
+          return ordered.indexOf(row);
+      }
+    };
+    const side = desc ? -1 : 1;
+    return [...picked].sort((a, b) => {
+      const diff = rank(a) - rank(b);
+      return side * (diff !== 0 ? diff : a.run.code.localeCompare(b.run.code));
+    });
+  }, [ordered, query, sort, desc]);
+
+  const shown = listed.slice(0, paging.limit);
 
   const byWorkType = useMemo(
     () => tallyToDistribution(stats.byWorkType, (key) => registry.workTypeTitle[key] ?? key),
@@ -124,20 +213,15 @@ export function StatsScreen({ registry, active, onOpenRun }: Props) {
           <h2 className="dash__section-title">Статистика</h2>
           <span className="dash__section-note">
             {plural(runs.length, 'расчёт', 'расчёта', 'расчётов')} в истории
+            {best && worst && best.run.id !== worst.run.id && (
+              <>
+                {' · '}
+                лучший прогноз {best.run.code} — {percent(best.coverage)}, слабейший{' '}
+                {worst.run.code} — {percent(worst.coverage)}
+              </>
+            )}
           </span>
         </div>
-
-        <p className="clients__lede">
-          Все расчёты одним взглядом: те же прогноз и загрузка, что в карточках, но в ряд и в
-          среднем.
-          {best && worst && best.run.id !== worst.run.id && (
-            <>
-              {' '}
-              Лучше всех разложил {best.run.code} — {percent(best.coverage)}, хуже всех{' '}
-              {worst.run.code} — {percent(worst.coverage)}.
-            </>
-          )}
-        </p>
 
         <div className="dbstats">
           <div className="dbstat">
@@ -170,19 +254,77 @@ export function StatsScreen({ registry, active, onOpenRun }: Props) {
       <section className="panel">
         <div className="dash__section-head">
           <h2 className="dash__section-title">Расчёты рядом</h2>
-          <span className="dash__section-note">прогноз и загрузка по каждому</span>
+          <span className="dash__section-note">
+            {listed.length === ordered.length
+              ? `${plural(ordered.length, 'расчёт', 'расчёта', 'расчётов')}, свежие сверху`
+              : `${listed.length} из ${ordered.length} по отбору`}
+          </span>
         </div>
 
-        <div className="statsrun statsrun--head" aria-hidden="true">
-          <span>Расчёт</span>
-          <span>Прогноз выполнения</span>
-          <span />
-          <span>Загрузка</span>
-          <span />
+        {/* Поиск и порядок — над рядом. Расчётов в истории со временем станут
+            сотни, и «все подряд одним столбцом» перестаёт быть списком: нужный
+            находят по номеру или по дате, а не прокруткой до нужного места. */}
+        <div className="statsbar">
+          <label className="dbsearch">
+            <Icon name="search" size={14} />
+            <input
+              className="dbsearch__input"
+              value={query}
+              placeholder="Номер расчёта или дата"
+              onChange={(event) => {
+                setQuery(event.currentTarget.value);
+                paging.reset();
+              }}
+            />
+            {query && (
+              <button
+                type="button"
+                className="dbsearch__clear"
+                onClick={() => {
+                  setQuery('');
+                  paging.reset();
+                }}
+              >
+                <Icon name="x" size={12} />
+              </button>
+            )}
+          </label>
+          <SortMenu
+            rules={SORTS}
+            value={sort}
+            desc={desc}
+            onPick={(value: string) => pickSort(value as Sort)}
+            onOrder={(value: boolean) => {
+              setDesc(value);
+              paging.reset();
+            }}
+          />
         </div>
-        {ordered.map((row) => (
-          <RunRow key={row.run.id} row={row} isActive={row.run.id === active} onOpen={onOpenRun} />
-        ))}
+
+        {listed.length === 0 ? (
+          <p className="runmenu__empty">
+            Под этот отбор не подошёл ни один расчёт. Снимите поиск или поищите по другому номеру.
+          </p>
+        ) : (
+          <>
+            <div className="statsrun statsrun--head" aria-hidden="true">
+              <span>Расчёт</span>
+              <span>Прогноз выполнения</span>
+              <span />
+              <span>Загрузка</span>
+              <span />
+            </div>
+            {shown.map((row) => (
+              <RunRow
+                key={row.run.id}
+                row={row}
+                isActive={row.run.id === active}
+                onOpen={onOpenRun}
+              />
+            ))}
+            <DbMore hidden={listed.length - shown.length} page={PAGE} onMore={paging.more} />
+          </>
+        )}
       </section>
 
       <section className="panel">

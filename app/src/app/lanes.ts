@@ -57,16 +57,26 @@ const M_PER_DEG_LAT = 111320;
 export interface Lane {
   /** Ломаная маршрута как есть: по оси своей дороги, без сдвигов. */
   points: [number, number][];
+  /** Границы перегонов в этой ломаной: карта рисует их по очереди, чтобы на
+      перекрёстке было видно, какой из них проходит поверх. */
+  breaks: number[];
   /** Толщина: 0 — поверх всех и самый тонкий, дальше каждый следующий шире на
       кайму. Одна на весь путь. */
   rank: number;
   /** Делит ли маршрут дорогу хоть с кем-нибудь. */
   shared: boolean;
+  /** Место нитки поперёк дороги — по одному числу на вершину. Ноль: едет
+      один, линия лежит на оси дороги. Полушаги (−0,5 и +0,5) и целые (−1, 0,
+      +1) — общий участок: столько ниток, сколько там едет, и они разведены
+      вокруг оси симметрично. Сдвиг считается в пикселях экрана и потому
+      живёт не здесь, а на карте: здесь только место в ряду. */
+  slots: number[];
 }
 
 export interface RoutePath {
   id: string;
   points: [number, number][];
+  breaks: number[];
 }
 
 /** Накопленная длина пути по вершинам, метры. */
@@ -114,8 +124,15 @@ export function laneLayout(paths: RoutePath[], levels = 5): Map<string, Lane> {
      широтой, и сетка расползается на километры поперёк города. */
   const mPerDegLon = M_PER_DEG_LAT * Math.cos((usable[0].points[0][0] * Math.PI) / 180);
 
-  /* Клетки, по которым прошёл каждый путь. */
+  /* Клетка по координатам. Одна формула на разметку пути и на разведение
+     ниток: считай их по-разному — и вершина попадёт не в ту клетку, которую
+     сама же пометила. */
+  const cellOf = (lat: number, lon: number) =>
+    `${Math.round((lon * mPerDegLon) / CELL)}:${Math.round((lat * M_PER_DEG_LAT) / CELL)}`;
+
+  /* Клетки, по которым прошёл каждый путь, и кто в каждой клетке побывал. */
   const cells = new Map<string, Set<string>>();
+  const owners = new Map<string, string[]>();
   for (const { id, points } of usable) {
     const cum = measure(points, mPerDegLon);
     const total = cum[cum.length - 1];
@@ -123,11 +140,14 @@ export function laneLayout(paths: RoutePath[], levels = 5): Map<string, Lane> {
     const own = new Set<string>();
     for (let k = 0; k < steps; k += 1) {
       const [lat, lon] = at(points, cum, k * STEP);
-      own.add(
-        `${Math.round((lon * mPerDegLon) / CELL)}:${Math.round((lat * M_PER_DEG_LAT) / CELL)}`
-      );
+      own.add(cellOf(lat, lon));
     }
     cells.set(id, own);
+    for (const cell of own) {
+      const list = owners.get(cell) ?? [];
+      list.push(id);
+      owners.set(cell, list);
+    }
   }
 
   /* С кем каждый делит дорогу. Соседство считается общей длиной, а не фактом
@@ -180,7 +200,83 @@ export function laneLayout(paths: RoutePath[], levels = 5): Map<string, Lane> {
       }
     }
 
-    lanes.set(id, { points, rank, shared: neighbours.size > 0 });
+    const own = usable.find((path) => path.id === id);
+    lanes.set(id, {
+      points,
+      breaks: own?.breaks ?? [],
+      rank,
+      shared: neighbours.size > 0,
+      slots: []
+    });
+  }
+
+  /* Разведение ниток на общей дороге.
+
+     Пока все ехали строго по оси, на общем куске был виден только цвет
+     верхнего: дорога одна, линий несколько, и нижние лежали ровно под
+     верхней. Заказчик выбрал веер — на общем куске нитки расходятся и сразу
+     сходятся обратно.
+
+     Место в ряду считается по клетке: сколько путей её пометило, столько
+     ниток и разводим, а порядок берём из списка — тот же, что задаёт цвета.
+     Считается это одинаково для всех участников клетки, поэтому двое видят
+     одну и ту же раскладку и не наезжают друг на друга.
+
+     Короткие совпадения отбрасываются после разметки. На перекрёстке клетка
+     общая всегда, и без этого линия дёргалась бы вбок на каждом пересечении
+     с чужим путём — читалось бы это не как «здесь едут вместе», а как
+     кривая отрисовка. Оставляем только те участки, где вместе идут дольше
+     порога. */
+  /* Порог в вершинах, а не в метрах: ломаная приходит упрощённой, и шаг
+     между её вершинами куда крупнее шага разметки. Десяток вершин — это уже
+     заметный кусок улицы, а не перекрёсток. */
+  const minRun = 8;
+  for (const { id, points } of usable) {
+    const raw = points.map((point) => {
+      const list = owners.get(cellOf(point[0], point[1]));
+      if (!list || list.length < 2) return 0;
+      /* Порядок в клетке — порядок списка путей: он же задаёт цвета, и две
+         разные очереди на одни и те же маршруты только путали бы. */
+      const seats = usable.filter((path) => list.includes(path.id)).map((path) => path.id);
+      const seat = seats.indexOf(id);
+      if (seat < 0) return 0;
+      return seat - (seats.length - 1) / 2;
+    });
+
+    /* Дыры в разведении сперва затягиваем.
+
+       Вершина попадает в клетку, которую соседний путь пометил чуть в
+       стороне, — и посреди общей дороги оказывается одна вершина «еду
+       один». Раньше такие дыры рвали общий участок на куски короче порога,
+       и порог гасил их все: разведение не доживало до экрана почти нигде.
+       Здесь короткий провал между двумя одинаковыми местами в ряду
+       заполняется тем же местом. */
+    const slots = [...raw];
+    const GAP = 6;
+    for (let at2 = 0; at2 < slots.length; at2 += 1) {
+      if (slots[at2] !== 0) continue;
+      let back = at2 - 1;
+      while (back >= 0 && slots[back] === 0 && at2 - back <= GAP) back -= 1;
+      let next = at2 + 1;
+      while (next < slots.length && slots[next] === 0 && next - at2 <= GAP) next += 1;
+      if (back < 0 || next >= slots.length) continue;
+      if (slots[back] !== 0 && slots[back] === slots[next]) slots[at2] = slots[back];
+    }
+
+    /* Короткие расхождения гасим: на перекрёстке клетка общая всегда, и без
+       порога линия дёргалась бы вбок на каждом пересечении. */
+    let from = 0;
+    while (from < slots.length) {
+      let to = from;
+      while (to + 1 < slots.length && slots[to + 1] === slots[from]) to += 1;
+      if (slots[from] !== 0 && to - from + 1 < minRun) {
+        for (let at2 = from; at2 <= to; at2 += 1) slots[at2] = 0;
+      }
+      from = to + 1;
+    }
+
+    const lane = lanes.get(id);
+    if (lane) lane.slots = slots;
   }
 
   return lanes;

@@ -36,6 +36,9 @@ interface Props {
   registry: Registry | null;
   /** Правки истории сняли — экраны, читающие её, надо пересобрать. */
   onEditsCleared: () => void;
+  /** Пройти демонстрацию заново. Свёрнутой кнопки в углу у режима нет —
+      настройки сервиса и есть то единственное место, откуда его зовут. */
+  onDemo: () => void;
   /** Историю стёрли целиком. Открытого расчёта больше нет, и оболочка обязана
       увести экран туда, где он не нужен, — иначе она покажет план записи,
       которой не существует. */
@@ -57,7 +60,7 @@ interface Props {
    именно наша сторона держит у себя. Читать здесь можно всё, править —
    только то, что завели мы сами: справочники приходят из источника, и
    переписывать их в интерфейсе значило бы разойтись с ним. */
-export function SettingsScreen({ mode, registry, onEditsCleared, onHistoryCleared }: Props) {
+export function SettingsScreen({ mode, registry, onDemo, onEditsCleared, onHistoryCleared }: Props) {
   const [params, setParams] = useState<EngineParams>(engineDefaults());
   /* Счётчики читаются из хранилища, а не из состояния: снять правки можно и
      на этом же экране, и число под кнопкой должно после этого меняться. */
@@ -100,7 +103,36 @@ export function SettingsScreen({ mode, registry, onEditsCleared, onHistoryCleare
   /* Настройки сервиса стоят отдельной вкладкой, а не отдельным разделом:
      «настройки» должны быть одним местом, иначе их ищут в двух. Шестерёнка в
      шапке — быстрый доступ к паре переключателей и дорога сюда. */
-  if (mode === 'service') return <div className="dash enter"><ServiceForm /></div>;
+  if (mode === 'service')
+    return (
+      <div className="dash enter">
+        <ServiceForm />
+
+        {/* Демонстрация живёт здесь, а не кнопкой в углу рабочего экрана:
+            выключенный режим не должен напоминать о себе тому, кто работает.
+            Сюда же ведёт последний шаг самого показа. */}
+        <section className="panel">
+          <div className="dash__section-head">
+            <h2 className="dash__section-title">Режим демонстрации</h2>
+            <span className="dash__section-note">четырнадцать шагов, пять–семь минут</span>
+          </div>
+          <Lede first="Показанный маршрут по сервису: главная, настройки, расчёт дня, четыре вида плана, мониторинг смены и пересчёт по событию.">
+            Порядок тот же, что в работе: сначала как считать день, потом как его править, и только
+            в конце — чем всё это настроено. Показ ведёт по экранам и подсказывает, куда нажать, но
+            нажимает не сам. Пройти его можно сколько угодно раз, каждый — сначала.
+          </Lede>
+          <div className="setbar">
+            <Button variant="secondary" size="sm" onClick={onDemo} iconLeft={<Icon name="navigation-arrow" size={14} />}>
+              Пройти демонстрацию
+            </Button>
+            <span className="setbar__note">
+              Начнётся с главной и пройдёт по всем разделам. Выйти можно на любом шаге. Считает
+              показ по-настоящему: расчёт и пересчёт останутся в истории, как любые другие.
+            </span>
+          </div>
+        </section>
+      </div>
+    );
 
   if (mode === 'data') {
     return (

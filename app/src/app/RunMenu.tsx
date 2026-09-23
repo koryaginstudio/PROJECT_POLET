@@ -4,6 +4,7 @@ import { Icon } from '../ds/components/core/Icon.jsx';
 import type { RunId, DaySummary } from '../data/load.ts';
 import { dayOf, daysAgo, whenLabel } from '../data/load.ts';
 import { dec } from '../data/derive.ts';
+import { DateRange, rangeLabel } from './DateRange.tsx';
 
 /* Быстрые периоды в списке. «15 дней назад» — это не поиск по номеру, а
    поиск по времени, поэтому периоды стоят первыми, а строка поиска — рядом.
@@ -73,6 +74,10 @@ export function RunMenu({
      между двумя датами, и требовать вторую дату незачем. */
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
+  /* Открыто ли окошко календаря. Оно живёт отдельно от самого отбора:
+     «за период» можно выбрать и не трогая границ — тогда показан весь
+     архив, — а календарь открывают, когда границы нужны. */
+  const [dates, setDates] = useState(false);
 
   /* Список закрывается щелчком мимо и по Esc: он перекрывает содержимое, и
      выхода из него должно быть два. */
@@ -152,56 +157,58 @@ export function RunMenu({
               {p.label}
             </button>
           ))}
-          {/* Произвольный отрезок — третьей кнопкой: он не выбирает период
-              сам, а открывает поля, где его задают. */}
-          <button
-            type="button"
-            className={'chip' + (period === 'range' ? ' chip--on' : '')}
-            onClick={() => setPeriod('range')}
-          >
-            За период
-          </button>
-        </div>
+          {/* Произвольный отрезок — третьей кнопкой со стрелкой.
 
-        {period === 'range' && (
-          <div className="runmenu__range">
-            <label className="runmenu__date">
-              <span>с</span>
-              <input
-                type="date"
-                value={from}
-                max={to || undefined}
-                onChange={(e) => setFrom(e.currentTarget.value)}
-              />
-            </label>
-            <label className="runmenu__date">
-              <span>по</span>
-              <input
-                type="date"
-                value={to}
-                min={from || undefined}
-                onChange={(e) => setTo(e.currentTarget.value)}
-              />
-            </label>
-            {from || to ? (
-              <button
-                type="button"
-                className="createbar__reset"
-                onClick={() => {
-                  setFrom('');
-                  setTo('');
+              Прежде выбор «за период» раскрывал под собой строку с двумя
+              полями дат: она раздвигала список сверху, отнимала у него
+              строку записей и показывала календарь браузера — чужой по
+              шрифту, размерам и цветам. Стрелка открывает своё окошко
+              поверх, календарём сервиса; сама кнопка при этом остаётся
+              отбором «за период» без границ, то есть всем архивом.
+
+              Заданный отрезок кнопка показывает при себе: «01.09 — 15.09» —
+              иначе о нём знает только закрытое окошко. */}
+          <span className="runmenu__period">
+            <button
+              type="button"
+              className={'chip runmenu__period-pick' + (period === 'range' ? ' chip--on' : '')}
+              onClick={() => {
+                setPeriod('range');
+                setDates(true);
+              }}
+            >
+              За период
+              {period === 'range' && (from || to) && (
+                <span className="runmenu__period-span">{rangeLabel(from, to)}</span>
+              )}
+            </button>
+            <button
+              type="button"
+              className={'chip runmenu__period-more' + (period === 'range' ? ' chip--on' : '')}
+              onClick={() => {
+                setPeriod('range');
+                setDates((was) => !was);
+              }}
+              aria-expanded={dates}
+              aria-label="Задать даты"
+              title="Задать даты"
+            >
+              <Icon name={dates ? 'chevron-up' : 'chevron-down'} size={12} />
+            </button>
+
+            {dates && (
+              <DateRange
+                from={from}
+                to={to}
+                onChange={(nextFrom, nextTo) => {
+                  setFrom(nextFrom);
+                  setTo(nextTo);
                 }}
-              >
-                Очистить
-              </button>
-            ) : (
-              /* Без границ отрезок ничего не отсекает. Сказать это надо
-                 прямо: иначе пустые поля читаются как «фильтр стоит, но
-                 почему-то не работает». */
-              <span className="runmenu__hint">пусто — показаны все</span>
+                onClose={() => setDates(false)}
+              />
             )}
-          </div>
-        )}
+          </span>
+        </div>
         <label className="dbsearch">
           <Icon name="search" size={14} />
           <input

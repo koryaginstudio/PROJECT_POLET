@@ -253,7 +253,27 @@ export function roadPath(
   home: [number, number],
   pointOf: (orderId: string) => [number, number] | undefined
 ): [number, number][] {
+  return roadLegs(route, home, pointOf).path;
+}
+
+/** Ломаная маршрута вместе с границами перегонов.
+
+    Границы нужны карте: маршрут, дважды проходящий один перекрёсток, на
+    сплошной линии читается как развилка — по какой из веток инженер едет
+    сейчас, а по какой потом, не видно. Разрезав путь по перегонам и
+    нарисовав их по очереди, каждый со своей тёмной каймой, мы получаем то
+    же, что на дорожных схемах: поздний перегон проходит поверх раннего, и
+    поворот читается сам собой.
+
+    `breaks[i]` — номер вершины, на которой кончается i-й перегон; следующий
+    начинается с неё же, чтобы линия не рвалась. */
+export function roadLegs(
+  route: Route,
+  home: [number, number],
+  pointOf: (orderId: string) => [number, number] | undefined
+): { path: [number, number][]; breaks: number[] } {
   const path: [number, number][] = [home];
+  const breaks: number[] = [];
   const same = (a: [number, number], b: [number, number]) => a[0] === b[0] && a[1] === b[1];
 
   for (const stop of route.stops) {
@@ -263,6 +283,7 @@ export function roadPath(
         const last = path[path.length - 1];
         if (!last || !same(last, point)) path.push(point);
       }
+      breaks.push(path.length - 1);
       continue;
     }
     const point = pointOf(stop.order_id);
@@ -270,9 +291,10 @@ export function roadPath(
       const last = path[path.length - 1];
       if (!last || !same(last, point)) path.push(point);
     }
+    breaks.push(path.length - 1);
   }
 
-  return path;
+  return { path, breaks };
 }
 
 export interface EngineerLoad {
@@ -1087,7 +1109,10 @@ export function buildDayView(day: Day, reported: Record<string, string> = {}): D
     },
     {
       key: 'engineers',
-      label: 'Исполнителей',
+      /* «Инженеров», а не «Исполнителей»: в программе человек с маршрутом
+         зовётся инженером везде — в базе, в отборах, в подписи «без
+         инженера», — и второе слово для того же самого только сбивает. */
+      label: 'Инженеров',
       value: String(used),
       unit: 'чел.',
       caption:

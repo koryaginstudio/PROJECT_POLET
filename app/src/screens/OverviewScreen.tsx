@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Icon } from '../ds/components/core/Icon.jsx';
-import type { DayView } from '../data/derive.ts';
+import type { Day } from '../data/contract.ts';
+import type { DayView, Metric } from '../data/derive.ts';
 import { hhmm } from '../data/derive.ts';
 import type { Registry } from '../data/registry.ts';
 import { engineerKey } from '../data/registry.ts';
@@ -8,13 +9,18 @@ import { editCrew, removeCrew } from '../data/crew.ts';
 import { engineReady, loadPlaces } from '../data/load.ts';
 import type { Place } from '../data/load.ts';
 import { MapBoard } from '../app/MapBoard.tsx';
+import { MapWindow } from '../app/MapWindow.tsx';
 import { MapPick } from '../app/MapPick.tsx';
 import { MetricTile } from '../app/CalcBoard.tsx';
 import { CREW_ENGINE_LOCK, CrewProfile } from '../app/CrewProfile.tsx';
 import { OrderProfile } from '../app/OrderProfile.tsx';
+import type { Selection } from '../app/selection.ts';
 
 interface Props {
   view: DayView;
+  /** План расчёта целиком: из него окно числа собирает свой разбор — тот же,
+      что показывает сводка. */
+  day: Day;
   /** Номер открытого расчёта: R0001 и дальше. */
   /** Расчёт, чей план на карте: по нему у маршрутов их собственные номера. */
   runId: string;
@@ -34,8 +40,7 @@ interface Props {
   /** Щелчок по точке заявки. Обзор на него отвечает сводкой в правой
       колонке — на месте итогов расчёта; `null` закрывает её. */
   onSelectOrder: (id: string | null) => void;
-  onSelectEngineer: (id: string) => void;
-  /** Число раскрывается в сводке: там под ним разбор по строкам. */
+  /** Уйти в сводку целиком — из окна числа, где разбор показан кратко. */
   onOpenMetric: (group: string) => void;
   /** Уйти в сводку целиком. */
   onOpenSummary: () => void;
@@ -78,6 +83,7 @@ interface Props {
    только стоит перед ними. */
 export function OverviewScreen({
   view,
+  day,
   runId,
   run,
   live,
@@ -87,7 +93,6 @@ export function OverviewScreen({
   focus,
   selectedOrder,
   onSelectOrder,
-  onSelectEngineer,
   onOpenMetric,
   onOpenSummary,
   draft,
@@ -104,96 +109,22 @@ export function OverviewScreen({
      кнопку в том же углу — вернуть числа одним нажатием. */
   const [folded, setFolded] = useState(false);
 
-  /* Куда колонку перетащили. Хранится в браузере: это настройка рабочего
-     места — у одного город тянется вправо, у другого влево, и место, где
-     колонка не мешает, у каждого своё.
+  /* Что раскрыто окном поверх карты: число расчёта, заявка или инженер.
+     Пусто — окна нет. */
+  const [win, setWin] = useState<Selection | null>(null);
 
-     Тащат за любое место колонки, кроме кнопок: своей полоски-ручки у неё
-     нет, а заводить её ради одного жеста значит отнять строку у чисел.
-     Порог в три точки отделяет перетаскивание от щелчка — без него каждое
-     нажатие на плитку считалось бы попыткой сдвинуть. */
-  const [shift, setShift] = useState(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem('polet.mapstat') ?? 'null');
-      return saved && typeof saved.x === 'number' && typeof saved.y === 'number'
-        ? (saved as { x: number; y: number })
-        : { x: 0, y: 0 };
-    } catch {
-      return { x: 0, y: 0 };
-    }
-  });
   /* Кого показывает сводка, когда нажали на общее гнездо выезда. */
   const [nest, setNest] = useState<string[] | null>(null);
-  const [held, setHeld] = useState(false);
-  const grab = useRef<{ x: number; y: number; from: { x: number; y: number }; moved: boolean } | null>(
-    null
-  );
-  const wrap = useRef<HTMLDivElement>(null);
 
-  /* Колонку держим в рамке карты: вынести её за край нельзя ни рукой, ни
-     сохранённым сдвигом с прежнего, более широкого окна. */
-  const inside = (next: { x: number; y: number }) => {
-    const node = wrap.current;
-    const area = node?.closest('.geo__plot')?.getBoundingClientRect();
-    if (!node || !area) return next;
-    const box = node.getBoundingClientRect();
-    const pad = 12;
-    /* Где колонка стояла бы без сдвига: рамка уже сдвинута, поэтому вычитаем
-       то, что к ней применено сейчас. */
-    const left = box.left - shift.x;
-    const top = box.top - shift.y;
-    const min = { x: area.left + pad - left, y: area.top + pad - top };
-    const max = {
-      x: area.right - pad - (left + box.width),
-      y: area.bottom - pad - (top + box.height)
-    };
-    return {
-      x: Math.min(Math.max(next.x, Math.min(min.x, max.x)), Math.max(min.x, max.x)),
-      y: Math.min(Math.max(next.y, Math.min(min.y, max.y)), Math.max(min.y, max.y))
-    };
-  };
+  /* Место у полосы итогов постоянное, перетащить её нельзя.
 
-  /* Окно сузилось — колонка возвращается в рамку сама. */
-  useEffect(() => {
-    const fit = () => setShift((was) => inside(was));
-    const id = requestAnimationFrame(fit);
-    window.addEventListener('resize', fit);
-    return () => {
-      cancelAnimationFrame(id);
-      window.removeEventListener('resize', fit);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const onGrab = (event: React.PointerEvent<HTMLDivElement>) => {
-    if ((event.target as HTMLElement).closest('button, a, input')) return;
-    grab.current = { x: event.clientX, y: event.clientY, from: shift, moved: false };
-    event.currentTarget.setPointerCapture(event.pointerId);
-  };
-
-  const onDrag = (event: React.PointerEvent<HTMLDivElement>) => {
-    const from = grab.current;
-    if (!from) return;
-    const dx = event.clientX - from.x;
-    const dy = event.clientY - from.y;
-    if (!from.moved && Math.hypot(dx, dy) < 3) return;
-    from.moved = true;
-    setHeld(true);
-    setShift(inside({ x: from.from.x + dx, y: from.from.y + dy }));
-  };
-
-  const onDrop = (event: React.PointerEvent<HTMLDivElement>) => {
-    const from = grab.current;
-    grab.current = null;
-    setHeld(false);
-    event.currentTarget.releasePointerCapture?.(event.pointerId);
-    if (!from?.moved) return;
-    try {
-      localStorage.setItem('polet.mapstat', JSON.stringify(shift));
-    } catch {
-      /* Приватное окно: место колонки просто не запомнится. */
-    }
-  };
+     Перетаскивание было заведено, когда полоса стояла колонкой посреди
+     карты и у каждого своё место, где она не мешает. Теперь она лежит
+     внизу слева, вровень с краем карты, в углу, который ничем другим не
+     занят, — двигать её оттуда некуда, а сохранённый сдвиг только уводил
+     ответ на щелчок туда, где его не ждут. Заодно ушла и морока с
+     границами: полоса не может уехать за край, потому что никуда не
+     едет. */
 
   /* Карточка справочника поверх карты: чью открыли и какую. Открывается из
      сводки — по имени инженера или по номеру заявки. */
@@ -236,6 +167,47 @@ export function OverviewScreen({
   /* Выбрали маршрут или заявку — колонка отвечает о них, а не о дне. */
   const picked = Boolean(pinned || selectedOrder || nest);
 
+  /* Числа в полосе поверх карты — не весь пульт расчёта, а его начало.
+
+     Полоса лежит на городе и платит за каждое число его куском, поэтому
+     порядок в ней свой. Первыми тремя идёт то, с чего читают день: сколько
+     заявок получили инженера, сколько их всего и сколько человек их везёт.
+     За чертой — числа разбора: прогноз, хвост без инженера, простой и
+     перекос нагрузки; они отвечают на «почему так», а не на «что вышло».
+
+     Пробега здесь нет вовсе: километры дня разбирают в сводке, где рядом
+     стоит базовый вариант, — в полосе это число ни с чем не сравнить. */
+  const barLead = useMemo(() => {
+    const by = new Map(view.metrics.map((metric) => [metric.key, metric]));
+    const covered = by.get('assigned');
+    const crew = by.get('engineers');
+    const lead: Metric[] = [];
+    /* «Покрытие» — та же доля, что прежде звалась «Назначено»: сколько
+       заявок дня получили инженера. Слово короче и говорит о дне, а не о
+       действии над заявками. */
+    if (covered) lead.push({ ...covered, label: 'Покрытие' });
+    lead.push({
+      key: 'orders',
+      label: 'Заявок',
+      value: String(day.plan.meta.orders_total),
+      unit: 'з.',
+      caption: 'Всего в расчёте',
+      flag: 'ok',
+      /* Раскрывается тем же разбором, что и покрытие: это его знаменатель. */
+      group: 'metric:assigned'
+    });
+    if (crew) lead.push(crew);
+    return lead;
+  }, [view, day]);
+
+  const barRest = useMemo(
+    () =>
+      view.metrics.filter(
+        (metric) => !['assigned', 'engineers', 'km'].includes(metric.key)
+      ),
+    [view]
+  );
+
   const stats = folded ? (
     /* Сложенная колонка молчит обо всём, кроме одного: пока пересчёт не
        сохранён, на карте показан он, а не то, что лежит в архиве. Прятать
@@ -273,7 +245,7 @@ export function OverviewScreen({
           title="Свернуть итоги и открыть карту целиком"
           aria-label="Свернуть итоги"
         >
-          <Icon name="chevron-right" size={14} />
+          <Icon name="chevron-down" size={14} />
         </button>
       </div>
 
@@ -300,44 +272,58 @@ export function OverviewScreen({
         </p>
       )}
 
+      {/* Число раскрывается окном поверх карты, а не уводит в сводку.
+
+          Прежде щелчок по плитке уносил в соседнюю вкладку: карта, на
+          которую смотрели, исчезала, и возвращаться к ней приходилось
+          руками — при том что спрашивают о числе, не отрываясь от города.
+          Окно отвечает на месте: тот же разбор, что в сводке, а под ним
+          дорога в саму сводку, если разбора мало. */}
       <div className="mapstat__metrics">
-        {view.metrics.map((metric) => (
-          <MetricTile key={metric.key} metric={metric} onOpen={() => onOpenMetric(metric.group)} />
+        {barLead.map((metric) => (
+          <MetricTile
+            key={metric.key}
+            metric={metric}
+            onOpen={() => setWin({ kind: 'group', id: metric.group })}
+          />
+        ))}
+        {/* Черта между итогом дня и его разбором. Тихая: она делит ряд, а не
+            объявляет новый раздел. */}
+        <span className="mapstat__split" aria-hidden="true" />
+        {barRest.map((metric) => (
+          <MetricTile
+            key={metric.key}
+            metric={metric}
+            onOpen={() => setWin({ kind: 'group', id: metric.group })}
+          />
         ))}
       </div>
-
-      {/* Тихая строка вместо кнопки: уход в сводку — не действие над
-          расчётом, а соседняя вкладка, и звучать он должен тише чисел. */}
-      {/* Уход в сводку — стрелкой: в полосе поверх карты слова «Разобрать в
-          сводке» занимали больше места, чем иное число, а куда она ведёт,
-          говорит подсказка. */}
-      <button
-        type="button"
-        className="mapstat__go"
-        onClick={onOpenSummary}
-        title="Разобрать расчёт в сводке"
-        aria-label="Разобрать расчёт в сводке"
-      >
-        <Icon name="arrow-right" size={14} />
-      </button>
     </section>
   );
 
   /* Сводка выбранного стоит на месте итогов: две колонки поверх одной карты
      не помещаются, а спрашивают всегда об одном — либо про день, либо про то,
-     на что нажали. */
-  const held_ = held;
+     на что нажали.
+
+     Свёрнутые итоги на неё не влияют. Прежде влияли — и это была ловушка:
+     свернув числа, диспетчер выбирал маршрут и получал карту без единой
+     подписи о нём, а снять выбор было нечем — крестик живёт в самой этой
+     сводке. Складывают итоги расчёта, а не ответ на щелчок; закрыв сводку
+     выбранного, человек возвращается к тому, что свернул. */
   const asideBody =
-    picked && !folded ? (
+    picked ? (
       <MapPick
         view={view}
+        runId={runId}
         pinned={pinned}
         selectedOrder={selectedOrder}
         nest={nest}
         onPickRoute={(id) => {
           setNest(null);
+          onLive(null);
           onPin(id);
         }}
+        onHoverRoute={onLive}
         onClose={() => {
           onSelectOrder(null);
           setNest(null);
@@ -345,23 +331,31 @@ export function OverviewScreen({
         }}
         onOpenEngineer={(id) => registry && setCard({ kind: 'engineer', id })}
         onOpenOrder={(id) => registry && setCard({ kind: 'order', id })}
-        onExplain={onOpenSummary}
+        /* «Почему этот исполнитель» раскрывается окном поверх карты: там
+           у заявки стоят кандидаты и объяснение движка. Прежде этот вопрос
+           уводил в сводку — вместе с ним пропадала и карта. */
+        onExplain={() => selectedOrder && setWin({ kind: 'order', id: selectedOrder })}
       />
     ) : (
       stats
     );
 
-  /* Перетаскивание висит на самой колонке: обёртка ловит жест и отдаёт сдвиг
-     переменными, а угол, от которого он считается, задан вёрсткой. */
+  /* Обёртка задаёт угол, от которого считается место полосы и карточек. */
   const aside = (
     <div
-      ref={wrap}
-      className={'mapdrag' + (held_ ? ' mapdrag--held' : '')}
-      style={{ '--stat-x': `${shift.x}px`, '--stat-y': `${shift.y}px` } as React.CSSProperties}
-      onPointerDown={onGrab}
-      onPointerMove={onDrag}
-      onPointerUp={onDrop}
-      onPointerCancel={onDrop}
+      /* Итоги расчёта лежат полосой внизу, а всё открытое — инженер,
+         маршрут, заявка, общий выезд — встаёт в правый верхний угол.
+
+         Так распорядился заказчик, и довод у этого простой: внизу слева
+         тесно. Там полоса итогов, над нею столбик масштаба и пульт карты, и
+         высокая карточка, поставленная туда же, непременно на что-нибудь
+         наезжает. В правом верхнем углу под нею только город.
+
+         Перетаскивание на карточку не распространяется: таскают полосу
+         итогов, её угол и запоминается. Карточка выбранного живёт коротко и
+         обязана вставать в одно и то же место — иначе ответ на щелчок
+         каждый раз появляется там, где его не ждут. */
+      className={'mapdrag' + (picked ? ' mapdrag--pick' : '')}
     >
       {asideBody}
     </div>
@@ -387,12 +381,23 @@ export function OverviewScreen({
           onPin(id);
         }}
         focus={focus}
+        /* Выбрали заявку — на карте остаётся её маршрут, остальные гаснут.
+
+           Прежде щелчок по точке только обводил её: одиннадцать чужих путей
+           оставались в полную силу, и разглядеть среди них тот, на который
+           заявка легла, было нельзя. Теперь точка ведёт себя как её маршрут:
+           показан он один. Сводка справа при этом отвечает о заявке —
+           спрашивали про точку, а не про путь. */
         onSelectOrder={(id) => {
           setNest(null);
           onSelectOrder(id);
+          onPin(id ? (view.stopByOrder.get(id)?.engineerId ?? null) : null);
         }}
-        onSelectEngineer={onSelectEngineer}
+        /* Щелчок по месту выезда открывает карточку инженера поверх карты,
+           а не уводит в сводку: в этом виде экран не покидают. */
+        onSelectEngineer={(id) => registry && setCard({ kind: 'engineer', id })}
         onSelectNest={setNest}
+        nest={nest}
         fill
         aside={aside}
       />
@@ -430,6 +435,23 @@ export function OverviewScreen({
           removeCrew(crewCard.id);
           setCard(null);
           onChanged();
+        }}
+      />
+
+      <MapWindow
+        day={day}
+        view={view}
+        open={win}
+        onClose={() => setWin(null)}
+        /* Переход вглубь остаётся в окне: «обзор» закрывает его, всё
+           остальное меняет содержимое. Карта под окном при этом стоит на
+           месте — за неё отвечает выбор на самой карте, а не окно. */
+        onSelect={(next) => setWin(next.kind === 'overview' ? null : next)}
+        onOpenSummary={() => {
+          const open = win;
+          setWin(null);
+          if (open?.kind === 'group') onOpenMetric(open.id);
+          else onOpenSummary();
         }}
       />
 

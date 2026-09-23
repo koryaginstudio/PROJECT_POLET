@@ -155,6 +155,21 @@
 
 /* ─── статистика по всем расчётам ──────────────────────────────────────── */
 
+/* Поиск и порядок над рядом расчётов. Строка одна: список здесь
+   вспомогательный, и полноценная полоса управления, как в базах, спорила бы
+   с диаграммами вокруг. */
+.statsbar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-4);
+}
+
+.statsbar .dbsearch {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .statsrun {
   display: grid;
   grid-template-columns: 76px minmax(120px, 1fr) 72px minmax(120px, 1fr) 72px;
