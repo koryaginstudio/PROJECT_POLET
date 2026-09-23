@@ -1516,6 +1516,7 @@ export function App() {
         <IncidentDialog
           open={incidentOpen}
           view={ready.view}
+          beforePlan={ready.day.plan}
           live={engineReady()}
           savedReplan={savedReplan}
           runCode={runCode(runId)}

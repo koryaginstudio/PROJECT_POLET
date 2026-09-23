@@ -3,8 +3,9 @@ import { Button } from '../ds/components/core/Button.jsx';
 import { Icon } from '../ds/components/core/Icon.jsx';
 import { Select } from '../ds/components/forms/Select.jsx';
 import type { DayView } from '../data/derive.ts';
-import { dec, hhmm, orders as ordersWord, pluralWord } from '../data/derive.ts';
+import { dec, engineersUsed, hhmm, kmTotal, orders as ordersWord, pluralWord } from '../data/derive.ts';
 import type { IncidentKind, IncidentSpec, ReplanResult } from '../data/api.ts';
+import type { Plan } from '../data/contract.ts';
 import { loadEngineSettings } from '../data/api.ts';
 import { CHURN_PRESETS, ENGINE_DEFAULTS } from '../data/engine.ts';
 import { IMPACT, urgentFrom } from '../data/impact.ts';
@@ -17,6 +18,11 @@ import '../styles/control.css';
 interface Props {
   open: boolean;
   view: DayView;
+  /** План до события — тот, что был открыт, когда диспетчер нажал «Внести
+      правку». Нужен, чтобы показать «было — стало» по исполнителям и
+      пробегу: сам пересчёт знает только своё новое число, а с чем его
+      сравнивать, знает только экран. */
+  beforePlan: Plan;
   runCode: string;
   /** День у движка. Без него пересчитывать нечего: расчёт, посчитанный
       здесь, в браузере, дня у движка за собой не имеет. */
@@ -124,6 +130,7 @@ function explainFailure(message: string): { what: string; todo: string } {
 export function IncidentDialog({
   open,
   view,
+  beforePlan,
   runCode,
   day,
   live,
@@ -465,6 +472,36 @@ export function IncidentDialog({
                     ? ' заявок сохранили исполнителя — по тем, кого событие не касалось'
                     : ' заявок сохранили исполнителя'}
                 </span>
+              </span>
+            </div>
+
+            {/* Было — стало, тем же взглядом, что и на пульте расчёта: те же
+                два числа, что диспетчер уже видел там, а не новые единицы
+                измерения, которые снова придётся привыкать читать. Пробег и
+                исполнители не входят в разбор пересчёта отдельно — считаем
+                их сами, из старого и нового плана, одной и той же формулой
+                (`engineersUsed`, `kmTotal`). */}
+            <div className="setrow">
+              <span className="setrow__key">Исполнителей</span>
+              <span className="setrow__val">
+                {(() => {
+                  const before = engineersUsed(beforePlan);
+                  const after = engineersUsed(result!);
+                  return before === after ? `${after}, без изменений` : `${before} → ${after}`;
+                })()}
+              </span>
+            </div>
+            <div className="setrow">
+              <span className="setrow__key">Пробег</span>
+              <span className="setrow__val">
+                {(() => {
+                  const before = kmTotal(beforePlan);
+                  const after = kmTotal(result!);
+                  if (before === null || after === null) return 'километража в плане нет';
+                  const delta = after - before;
+                  const sign = delta > 0 ? '+' : delta < 0 ? '−' : '';
+                  return `${dec(before)} → ${dec(after)} км (${sign}${dec(Math.abs(delta))})`;
+                })()}
               </span>
             </div>
 
