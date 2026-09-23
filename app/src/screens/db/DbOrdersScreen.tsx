@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Icon } from '../../ds/components/core/Icon.jsx';
 import { SegmentedControl } from '../../ds/components/forms/SegmentedControl.jsx';
 import type { OrderRecord, Registry } from '../../data/registry.ts';
+import { mergeOrders } from '../../data/registry.ts';
 import { deadline, hhmm, hoursText, plural, shortName } from '../../data/derive.ts';
 import {
   isUrgent,
@@ -158,10 +159,17 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
   /* Выборка без учёта видов работ. По ней считается разбивка «По видам
      работ»: иначе доска сужала бы сама себя — отметив один вид, второй с
      неё стало бы нечем добавить. */
+  /* Сколько всего заявок в базе — для строки «N из M». Считается по всей
+     базе, без отборов: их и надо сравнивать с выборкой. */
+  const ordersTotal = useMemo(() => mergeOrders(all).length, [all]);
+
   const basis = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    return all.filter((order) => {
-      if (run && order.run.id !== run) return false;
+    /* Порядок здесь смысловой. Сначала отбор по расчёту — он про записи: «что
+       стояло в этом расчёте». Потом слияние записей в заявки. И только потом
+       всё остальное: оно про заявку, а не про её след в прогоне. */
+    const вРасчёте = run ? all.filter((order) => order.run.id === run) : all;
+    return mergeOrders(вРасчёте).filter((order) => {
       if (filter === 'free' && order.engineerId) return false;
       if (filter === 'routed' && !order.engineerId) return false;
       if (filter === 'urgent' && !isUrgent(order.priorityClass, order.priority)) return false;
@@ -575,9 +583,23 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
      пустой заголовок с нулём обещал бы, что там что-то есть. Внутри секции
      порядок тот, что выбран в полосе: заново упорядочивать значило бы, что
      переключатель сортировки в этом виде стоит и ничего не делает. */
+  /* Записи, а не заявки: этот вид только про них.
+
+     Остальные виды показывают заявку один раз — её в базе и ищут. «По
+     расчётам» отвечает на другой вопрос: что стояло в каждом прогоне и чем
+     там кончилось, — и заявка, попавшая в шесть расчётов, должна стоять в
+     шести секциях. Слить её здесь значило бы оставить вид с одной секцией:
+     записью заявки остаётся самая свежая, и все они оказались бы в
+     последнем расчёте. */
+  const byRunBasis = useMemo(() => {
+    const заявки = new Set(rows.map((one) => `${one.run.date} · ${one.id}`));
+    const вРасчёте = run ? all.filter((order) => order.run.id === run) : all;
+    return вРасчёте.filter((order) => заявки.has(`${order.run.date} · ${order.id}`));
+  }, [all, rows, run]);
+
   const byRun = useMemo(() => {
     const picked = new Map<string, OrderRecord[]>();
-    for (const order of rows) {
+    for (const order of byRunBasis) {
       const list = picked.get(order.run.id);
       if (list) list.push(order);
       else picked.set(order.run.id, [order]);
@@ -594,7 +616,7 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
           minutes: list.reduce((sum, one) => sum + one.estMinutes, 0)
         };
       });
-  }, [registry, rows]);
+  }, [registry, byRunBasis]);
 
   /* Что из разбивки рисуем сейчас: секции идут подряд, и первая страница —
      это первые PAGE заявок по всем секциям вместе. Счётчик показанного общий
@@ -678,7 +700,9 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
   const summary = (
     <>
       <b>{plural(rows.length, 'заявка', 'заявки', 'заявок')}</b> в выборке
-      {rows.length !== all.length && ` из ${all.length}`}
+      {/* «Из скольких» — из заявок, а не из записей: записей вшестеро
+          больше, и «66 из 396» читалось как потерянные пять шестых. */}
+      {rows.length !== ordersTotal && ` из ${ordersTotal}`}
       {closedRows > 0 && ` · ${openRows.length} ждут выезда · ${closedRows} закрыты до расчёта`}
       {openRows.length > 0 &&
         ` · ${hoursText(openRows.reduce((sum, one) => sum + one.estMinutes, 0))} работы впереди`}
@@ -1001,7 +1025,13 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
               title: order.workTitle,
               sub: (
                 <>
-                  {order.address} · {order.district} · {order.company} · расчёт {order.run.code}
+                  {order.address} · {order.district} · {order.company} ·{' '}
+                  {/* Заявка одна, а расчётов, где она стояла, много: номер
+                      одного из них ничего не говорит, а их число — говорит,
+                      сколько раз день пересчитывали с нею внутри. */}
+                  {order.runsCount > 1
+                    ? `в ${order.runsCount} расчётах`
+                    : `расчёт ${order.run.code}`}
                   {order.needsAccess ? ' · нужен доступ' : ''}
                   {order.status ? ` · ${statusName(order.status)}` : ''}
                 </>

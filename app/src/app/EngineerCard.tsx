@@ -59,6 +59,10 @@ export function listWords(items: string[]): string {
 
 interface Props {
   row: EngineerRecord;
+  /** Конфликт участков есть у всех до единого — значит, он никого не
+      выделяет, и карточка о нём молчит: общий случай сказан строкой над
+      базой. Решает это база, карточка своего ряда не видит. */
+  clashQuiet?: boolean;
   /** Какой по счёту в списке. Список отбирают и переупорядочивают, поэтому
       номер приходит снаружи: карточка своего места в ряду не знает. */
   seat?: number;
@@ -108,6 +112,7 @@ export function EngineerCard({
   photo,
   dense = false,
   skills = [],
+  clashQuiet = false,
   workedMinutes,
   workMinutes,
   travelMinutes
@@ -118,7 +123,7 @@ export function EngineerCard({
     row.posts.every(
       (post) => post.shiftStart === row.posts[0].shiftStart && post.shiftEnd === row.posts[0].shiftEnd
     );
-  const clash = postsClash(row);
+  const clash = !clashQuiet && postsClash(row);
   /* Порог недогруза — общий на все базы, а не своё число в каждой карточке. */
   const loose = row.occupancyMean > 0 && row.occupancyMean < looseShare();
   const team = crewTeam(row);

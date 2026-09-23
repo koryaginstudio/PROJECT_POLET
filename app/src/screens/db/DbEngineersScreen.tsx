@@ -753,6 +753,11 @@ export function DbEngineersScreen({
      эта строка — на «а что сейчас на экране». Числа выбраны по вопросу самой
      базы: кто у нас есть, сколько они отработали и сколько раз выходили
      впустую. */
+  /* Участков несколько у всех до единого? Тогда метка конфликта никого не
+     выделяет — см. `clashMark`. Считаем по всей базе, а не по выборке: отбор
+     из одного человека не должен ни зажигать метку, ни гасить её. */
+  const clashAll = all.length > 0 && all.every((one) => postsClash(one));
+
   const summary = rows.length > 0 && (
     <>
       <b>{plural(rows.length, 'инженер', 'инженера', 'инженеров')}</b> в выборке
@@ -767,12 +772,29 @@ export function DbEngineersScreen({
         'смены',
         'смен'
       )} без маршрута`}
+      {clashAll && (
+        <span className="crewpro__muted">
+          {' · '}у всех участков несколько, смены в них совпадают — так приходит штат из
+          программы расчёта
+        </span>
+      )}
     </>
   );
 
-  /* Метка конфликта штата — одна на строку и таблицу. */
+  /* Метка конфликта штата — одна на строку и таблицу.
+
+     Метка молчит, когда участков несколько у всех до единого. Так приходит
+     штат из программы расчёта: она кладёт в план каждого участка всех
+     инженеров, приписав каждому офис этого участка, — и «числится в трёх
+     местах разом» оказывается верно про каждого. Предупреждение, которое
+     горит у всех, ничего не выделяет; общий случай сказан один раз строкой
+     над базой. Различает кого-то из штата — метка на месте.
+
+     Считаем по всей базе, а не по выборке: отбор из одного человека не
+     должен ни зажигать метку, ни гасить её. */
+
   const clashMark = (engineer: EngineerRecord) =>
-    postsClash(engineer) ? (
+    !clashAll && postsClash(engineer) ? (
       <span className="ordcard__urgent" title={`${engineer.name}: ${clashText(engineer.posts.length)}`}>
         <Icon name="warning" size={11} />
         {clashText(engineer.posts.length)}
@@ -1037,6 +1059,7 @@ export function DbEngineersScreen({
               <EngineerCard
                 key={engineer.id}
                 row={engineer}
+                clashQuiet={clashAll}
                 seat={index + 1}
                 onOpen={() => setOpened(engineer)}
                 photo={photos.get(engineer.id)}

@@ -25,7 +25,7 @@ import type { DayState, JournalEvent } from '../data/api.ts';
 import type { DispatcherActions } from './DispatcherBlock.tsx';
 import { изДвижка } from '../data/fromEngine.ts';
 import type { IncidentKind, IncidentSpec, ReplanResult } from '../data/api.ts';
-import { engineerInDay, loadRegistry, mergeEngineers } from '../data/registry.ts';
+import { engineerInDay, loadRegistry, mergeEngineers, mergeOrders } from '../data/registry.ts';
 import type { ShiftInput } from '../data/shift.ts';
 import type { Registry, RunRef } from '../data/registry.ts';
 import { buildDayView, dayEnd, dayStart, planHorizon, plural, replanAt } from '../data/derive.ts';
@@ -1053,7 +1053,9 @@ export function App() {
        «сколько записей в ней», и число не должно меняться от того, какой
        расчёт сейчас открыт. Пока справочники не загружены, здесь нули, и
        счётчики не рисуются. */
-    dbOrders: registry?.orders.length ?? 0,
+    /* Заявок, а не записей «заявка в расчёте»: в меню стоит то же число,
+       что в самой базе. */
+    dbOrders: registry ? mergeOrders(registry.orders).length : 0,
     dbServices: registry?.services.length ?? 0,
     /* Людей, а не записей: в меню стоит то же число, что в самой базе. */
     dbEngineers: registry ? mergeEngineers(registry.engineers).length : 0,
