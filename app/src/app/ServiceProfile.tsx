@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Icon } from '../ds/components/core/Icon.jsx';
 import { SegmentedControl } from '../ds/components/forms/SegmentedControl.jsx';
 import type { OrderRecord, Registry, ServiceRecord } from '../data/registry.ts';
-import { distinctEngineers, serviceCrew } from '../data/registry.ts';
+import { mergeEngineers, serviceCrew } from '../data/registry.ts';
 import { dec, hhmm, plural } from '../data/derive.ts';
 import {
   equipmentName,
@@ -66,8 +66,8 @@ export function ServiceProfile({ service, registry, onClose, onOpenOrder, onOpen
     () => (service ? serviceCrew(service, registry.engineers) : null),
     [service?.key, registry]
   );
-  /* Знаменатель — люди, а не записи справочника: см. distinctEngineers. */
-  const staff = useMemo(() => distinctEngineers(registry.engineers).length, [registry]);
+  /* Знаменатель — люди, а не записи справочника: см. mergeEngineers. */
+  const staff = useMemo(() => mergeEngineers(registry.engineers).length, [registry]);
 
   /* Кто эту работу выполнял — по факту плана, а не по записи в кадрах. */
   const crew = useMemo(() => {

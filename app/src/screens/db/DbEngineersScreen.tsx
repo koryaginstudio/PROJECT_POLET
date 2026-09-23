@@ -2,10 +2,11 @@ import { useMemo, useState } from 'react';
 import { Icon } from '../../ds/components/core/Icon.jsx';
 import { SegmentedControl } from '../../ds/components/forms/SegmentedControl.jsx';
 import type { EngineerRecord, Registry } from '../../data/registry.ts';
+import { mergeEngineers } from '../../data/registry.ts';
 import { dec, hhmm, hoursText, plural, visits as pluralVisits } from '../../data/derive.ts';
 import { skillIcon, skillName, transportName } from '../../data/dictionary.ts';
 import { photosFor } from '../../data/photos.ts';
-import { CLASH_TEXT, crewTeam, EngineerCard, postsClash } from '../../app/EngineerCard.tsx';
+import { clashText, crewTeam, EngineerCard, listWords, postsClash } from '../../app/EngineerCard.tsx';
 import { SortMenu } from '../../app/SortMenu.tsx';
 import type { SortRule } from '../../app/SortMenu.tsx';
 import { useWidgetBoard, WidgetPeriod, withinPeriod } from '../../app/DbWidgets.tsx';
@@ -143,7 +144,10 @@ export function DbEngineersScreen({
      первого. */
   const [opened, setOpened] = useState<EngineerRecord | null>(null);
 
-  const all = registry.engineers;
+  /* Люди, а не записи справочника: человек, который числится на нескольких
+     участках, приходит оттуда несколькими записями — с работой на своём
+     участке и нулями на чужих. В базе он один, см. `mergeEngineers`. */
+  const all = useMemo(() => mergeEngineers(registry.engineers), [registry]);
 
   /* Снимки раздаются на весь штат сразу, а не на выборку: иначе отбор по
      навыку менял бы людям лица. */
@@ -549,11 +553,11 @@ export function DbEngineersScreen({
         shape: 'number',
         data: {
           value: String(clashes.length),
-          caption: clashes.length === 1 ? 'человек в двух участках разом' : 'человек в двух участках разом',
+          caption: 'человек числится на нескольких участках разом',
           tone: clashes.length > 0 ? 'bad' : 'ok',
           facts:
             clashes.length > 0
-              ? clashes.slice(0, 3).map((row) => `${row.name} — ${row.posts.map((post) => post.zone).join(' и ')}`)
+              ? clashes.slice(0, 3).map((row) => `${row.name} — ${listWords(row.posts.map((post) => post.zone))}`)
               : ['смены по участкам не пересекаются'],
           parts: clashes.map((row) => ({
             key: row.id,
@@ -769,9 +773,9 @@ export function DbEngineersScreen({
   /* Метка конфликта штата — одна на строку и таблицу. */
   const clashMark = (engineer: EngineerRecord) =>
     postsClash(engineer) ? (
-      <span className="ordcard__urgent" title={`${engineer.name}: ${CLASH_TEXT}`}>
+      <span className="ordcard__urgent" title={`${engineer.name}: ${clashText(engineer.posts.length)}`}>
         <Icon name="warning" size={11} />
-        {CLASH_TEXT}
+        {clashText(engineer.posts.length)}
       </span>
     ) : null;
 
@@ -1071,7 +1075,7 @@ export function DbEngineersScreen({
                   {engineer.transport ? ` · ${transportName(engineer.transport)}` : ''}
                   {team ? ` · бригада ${team}` : ''}
                   {engineer.posts.length > 0
-                    ? ` · ${engineer.posts.map((post) => post.zone).join(' и ')}`
+                    ? ` · ${listWords(engineer.posts.map((post) => post.zone))}`
                     : ''}
                   {` · смена ${hhmm(engineer.shiftStart)}–${hhmm(engineer.shiftEnd)}`}
                 </>

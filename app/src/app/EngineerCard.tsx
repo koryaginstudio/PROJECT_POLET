@@ -40,8 +40,22 @@ export function postsClash(row: Pick<EngineerRecord, 'posts'>): boolean {
   return false;
 }
 
+/* Числительное словом. Участков у человека бывает и три: пока штат приходил
+   разрозненными записями, больше двух в одной не сходилось, и текст метки был
+   написан на «двух» намертво. */
+const COUNT_WORDS: Record<number, string> = { 2: 'двух', 3: 'трёх', 4: 'четырёх' };
+
 /** Текст метки конфликта — один на карточку, строку и таблицу. */
-export const CLASH_TEXT = 'в двух участках, смены пересекаются';
+export const clashText = (posts: number) =>
+  `в ${COUNT_WORDS[posts] ?? 'нескольких'} участках, смены пересекаются`;
+
+/** Перечисление словами: «Восток, Юго-восток и Югоцентр». Склейка через «и»
+   давала «Восток и Юго-восток и Югоцентр» — на двух это читалось, на трёх
+   уже нет. */
+export function listWords(items: string[]): string {
+  if (items.length < 2) return items.join('');
+  return `${items.slice(0, -1).join(', ')} и ${items[items.length - 1]}`;
+}
 
 interface Props {
   row: EngineerRecord;
@@ -190,7 +204,7 @@ export function EngineerCard({
               график, а конфликт штата — и место смены занимает красная
               метка. */}
           {clash
-            ? CLASH_TEXT
+            ? clashText(row.posts.length)
             : sameShift
               ? `${hhmm(row.shiftStart)}–${hhmm(row.shiftEnd)}`
               : 'смена по участкам'}
