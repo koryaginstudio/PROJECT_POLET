@@ -931,6 +931,7 @@ export function DbRoutesScreen({
                 рядом с готовыми сроками. */}
             <div className="filters__group filters__group--wide">
               <span className="filters__label">День</span>
+              <div className="filters__stack">
               <span className="filters__types">
                 <button
                   type="button"
@@ -962,6 +963,7 @@ export function DbRoutesScreen({
                   <Icon name={span === 'range' ? 'chevron-up' : 'chevron-down'} size={12} />
                 </button>
               </span>
+
 
               {/* Поля отрезка — строкой под кнопками, а не окошком поверх:
                   их держат открытыми, пока подбирают границы, и окошко,
@@ -1005,6 +1007,7 @@ export function DbRoutesScreen({
                   )}
                 </div>
               )}
+              </div>
             </div>
 
             {registry.runs.length > 1 && (
