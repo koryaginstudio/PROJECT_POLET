@@ -110,8 +110,23 @@ export function ServiceProfile({ service, registry, onClose, onOpenOrder, onOpen
 
   if (!service) return null;
 
-  const rate = service.orders === 0 ? 0 : service.assigned / service.orders;
-  const missed = service.orders - service.assigned;
+  /* Покрытие — доля разложенного из того, что попадало в расчёты.
+
+     Считалось от числа заявок в данных, а разложенное считается по
+     расчётам: одна и та же открытая заявка попадает в каждый прогон и в
+     `assigned` учтена столько раз, сколько прогонов её видели. Семь заявок
+     в шести расчётах давали «171% покрытия» — доля, которой не бывает.
+
+     Когда услуга в расчёты не попадала, доли нет вовсе: ноль читался бы
+     как «ничего не разложили». */
+  const rate = service.planned === 0 ? null : service.assigned / service.planned;
+  /* Без инженера — из того же, из чего считается покрытие: сколько раз
+     заявка услуги попадала в расчёт и осталась неразложенной. Считалось
+     «заявки в данных минус разложенное по расчётам» — у услуги, попавшей в
+     шесть прогонов, разность уходила в минус, и метка не показывалась
+     никогда; а у услуги, не попавшей ни в один, она, наоборот, обещала
+     «семь заявок без инженера» там, где их никто и не раскладывал. */
+  const missed = service.planned - service.assigned;
 
   return (
     <div className="modal" role="dialog" aria-modal="true" aria-label={service.title}>
@@ -156,9 +171,19 @@ export function ServiceProfile({ service, registry, onClose, onOpenOrder, onOpen
             </span>
 
             <div className="crewpro__stats">
-              <Stat value={String(service.orders)} label="заявок всего" />
-              <Stat value={String(service.assigned)} label="разложено" />
-              <Stat value={`${Math.round(rate * 100)}%`} label="покрытие" bad={rate < 0.8} />
+              <Stat value={String(service.orders)} label="заявок в данных" />
+              {/* «Разложено» — из того, что попадало в расчёты, и сказано
+                  парой: рядом с «заявок в данных» одно число читалось как
+                  часть от него, а это разные основания. */}
+              <Stat
+                value={service.planned > 0 ? `${service.assigned} из ${service.planned}` : '—'}
+                label="разложено в расчётах"
+              />
+              <Stat
+                value={rate === null ? '—' : `${Math.round(rate * 100)}%`}
+                label="покрытие"
+                bad={rate !== null && rate < 0.8}
+              />
               <Stat
                 value={
                   service.minutes === service.minutesTo
@@ -188,6 +213,16 @@ export function ServiceProfile({ service, registry, onClose, onOpenOrder, onOpen
           <section className="crewpro__block">
             <h3 className="crewpro__title">
               Кто может взять · {able.able.length} из {staff}
+              {/* По какому условию отобраны. Стоит здесь, а не отдельной
+                  строкой ниже: это не свойство услуги «между прочим», а то
+                  самое, по чему список разошёлся надвое. Когда никого не
+                  отсекло, сказать об этом всё равно надо — иначе требование
+                  из записи пропадает вовсе. */}
+              {service.requiredTransport && (
+                <span className="crewpro__muted">
+                  {' '}· нужен {requiredTransportName(service.requiredTransport).toLowerCase()}
+                </span>
+              )}
             </h3>
             {able.able.length === 0 ? (
               <p className="crewpro__empty">
@@ -263,7 +298,10 @@ export function ServiceProfile({ service, registry, onClose, onOpenOrder, onOpen
           </section>
         )}
 
-        {(service.equipment.length > 0 || service.requiredTransport) && (
+        {/* Только оборудование. Транспорт отсюда убран: «везти автомобиль»
+            звучит глупо, да и сказано о нём выше — он и есть то условие, по
+            которому люди разошлись на «могут» и «не могут». */}
+        {service.equipment.length > 0 && (
           <section className="crewpro__block">
             <h3 className="crewpro__title">Что нужно везти</h3>
             <div className="skillrow">
@@ -273,12 +311,6 @@ export function ServiceProfile({ service, registry, onClose, onOpenOrder, onOpen
                   {equipmentName(item)}
                 </span>
               ))}
-              {service.requiredTransport && (
-                <span className="skillchip">
-                  <Icon name="car" size={13} />
-                  Транспорт: {requiredTransportName(service.requiredTransport)}
-                </span>
-              )}
             </div>
           </section>
         )}
