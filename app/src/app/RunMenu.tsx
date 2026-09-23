@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { RefObject } from 'react';
 import { Icon } from '../ds/components/core/Icon.jsx';
 import type { RunId, DaySummary } from '../data/load.ts';
-import { dayOf, daysAgo, whenLabel } from '../data/load.ts';
+import { dayOf, daysAgo, localRun, whenLabel } from '../data/load.ts';
 import { dec } from '../data/derive.ts';
 
 /* Быстрые периоды в списке. «15 дней назад» — это не поиск по номеру, а
@@ -237,6 +237,11 @@ export function RunMenu({
             }}
           >
             <span className="runmenu__code">{run.code}</span>
+            {localRun(run.id) && (
+              <span className="localmark" title="Расчёт посчитан в браузере, а не программой расчёта">
+                браузер
+              </span>
+            )}
             <span className="runmenu__facts">
               <span className="runmenu__when">{whenLabel(run.created)}</span>
               покрытие {dec(run.coverage)} % · без инженера {run.unassigned}

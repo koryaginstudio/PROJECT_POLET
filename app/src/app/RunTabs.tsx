@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { Icon } from '../ds/components/core/Icon.jsx';
 import type { RunId, DaySummary } from '../data/load.ts';
-import { whenLabel } from '../data/load.ts';
+import { localRun, whenLabel } from '../data/load.ts';
 import { dec } from '../data/derive.ts';
 import { RunMenu } from './RunMenu.tsx';
 
@@ -141,10 +141,18 @@ export function RunTabs({
                 ? fullHint
                 : `${whenLabel(run.created)} · заявок ${run.ordersTotal}` +
                   ` · инженеров на маршрутах ${run.engineersOnShift}` +
-                  ` · покрытие ${dec(run.coverage)} %`
+                  ` · покрытие ${dec(run.coverage)} %` +
+                  (localRun(run.id) ? ' · посчитан в браузере' : '')
             }
           >
             <span className="runtabs__code">{run.code}</span>
+            {/* Браузерный расчёт помечен прямо в ленте: здесь его и
+                открывают, и здесь же видно, каким расчётом смотрят день. */}
+            {localRun(run.id) && (
+              <span className="localmark localmark--chip" title="Расчёт посчитан в браузере, а не программой расчёта">
+                браузер
+              </span>
+            )}
             {/* Три числа рядом с номером: заявок, инженеров, покрытие. Номер
                 сам по себе ничего не говорит — расчёты в ленте различают не
                 по нему, а по тому, чем они кончились, и раньше за этим

@@ -1493,6 +1493,9 @@ body {
   align-items: baseline;
   gap: 4px;
   min-width: 0;
+  /* Номер не ужимается тем, что встало рядом: это имя записи, и в шапке
+     шириной в две сотни точек он первым уходил в нуль. */
+  flex: 0 0 auto;
 }
 
 .runcard__code {
@@ -7464,6 +7467,32 @@ b.ccard__bad {
    именами, чтобы две группы не слипались в одну. */
 .crewpro__blocked {
   margin-top: var(--sp-3);
+}
+
+/* ─── метка «посчитан в браузере» ──────────────────────────────────────── */
+
+/* Расчёт, разложенный планировщиком из ТЗ, а не программой расчёта. Такие
+   открываются сами, когда движок погашен: его архив в браузере не хранится,
+   и после обновления страницы в истории остаются только свои. Внешне план
+   тот же самый, поэтому метка словом, а не значком, и тоном предупреждения:
+   это не поломка, но и не то, что показывают, не сказав. */
+.localmark {
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  border: 1px solid color-mix(in srgb, var(--warning-500) 45%, transparent);
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--warning-500) 12%, var(--white));
+  color: var(--warning-600);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
+}
+
+/* В ленте расчётов места мало: там метка стоит одним словом и помельче. */
+.localmark--chip {
+  padding: 0 4px;
+  font-size: 10px;
+  line-height: 1.5;
 }
 
 .roster {

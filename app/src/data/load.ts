@@ -658,6 +658,18 @@ export function clearHistory(): void {
 export const runEntry = (id: RunId): RunEntry | undefined =>
   RUN_BY_ID.get(id) ?? RUNS[RUNS.length - 1];
 
+/** Посчитан ли расчёт здесь, в браузере, а не программой расчёта.
+
+    У расчёта движка `source` пуст — формы лежат в его архиве; у браузерного
+    там зона выгрузки, по которой его разложил планировщик из ТЗ.
+
+    Различать это надо на экране, а не только в коде. Записи движка в
+    браузере не хранятся (см. `saveRuns`): движок погас, страницу обновили —
+    его архив из истории пропал, адрес с его номером расчёта не опознаётся,
+    и открывается ближайший браузерный. Выглядит он ровно так же, и подмену
+    нечем заметить, кроме номера. */
+export const localRun = (id: RunId): boolean => runEntry(id)?.source != null;
+
 export const runCode = (id: RunId) => runEntry(id)?.code ?? '';
 
 export const runDate = (id: RunId) => runEntry(id)?.date ?? '';

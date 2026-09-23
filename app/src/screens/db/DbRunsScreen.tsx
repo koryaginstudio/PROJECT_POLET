@@ -3,7 +3,7 @@ import { Icon } from '../../ds/components/core/Icon.jsx';
 import { SegmentedControl } from '../../ds/components/forms/SegmentedControl.jsx';
 import type { Registry, RouteRecord, RunRef } from '../../data/registry.ts';
 import type { RunId } from '../../data/load.ts';
-import { stampOf } from '../../data/load.ts';
+import { localRun, stampOf } from '../../data/load.ts';
 import { dec, hoursText, plural } from '../../data/derive.ts';
 import { skillName } from '../../data/dictionary.ts';
 import { RunCard } from '../../app/RunCard.tsx';
@@ -700,7 +700,19 @@ export function DbRunsScreen({
                один день различают именно временем записи, но это уже
                уточнение, а не имя. Заметка человека стоит перед числами: её
                писал не движок, и теряться среди них ей не следует. */
-            title: row.run.date ? dayOf(row.run.date) : `Расчёт ${row.run.code}`,
+            title: (
+              <>
+                {row.run.date ? dayOf(row.run.date) : `Расчёт ${row.run.code}`}
+                {/* Метка у самого имени записи: список — вид по умолчанию, и
+                    в нём расчёт, разложенный браузером, ничем не отличался от
+                    расчёта программы. */}
+                {localRun(row.run.id) && (
+                  <span className="localmark" title="Расчёт посчитан в браузере, а не программой расчёта">
+                    браузер
+                  </span>
+                )}
+              </>
+            ),
             sub: (
               <>
                 {row.run.note ? `${row.run.note} · ` : ''}
