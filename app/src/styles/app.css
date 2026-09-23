@@ -16483,3 +16483,172 @@ button.chip--sm {
     width: auto;
   }
 }
+
+/* Подсветка цели: рамка ровно по элементу, а всё остальное темнеет одним
+   приёмом — `box-shadow` на десять тысяч пикселей вместо реального фона у
+   самого элемента заливает весь экран, кроме дырки под рамкой. Дырка не
+   ловит клик сама (pointer-events: none) — под ней настоящая кнопка, и
+   нажатие должно доходить до неё, а не до подсветки. Пульс — на самой
+   рамке: она то шире, то у́же, глаз сам находит, куда смотреть. */
+.demo__spot {
+  position: fixed;
+  z-index: 690;
+  border-radius: var(--r-md);
+  box-shadow: 0 0 0 9999px rgba(10, 10, 10, 0.55);
+  pointer-events: none;
+  transition: top 120ms ease-out, left 120ms ease-out, width 120ms ease-out, height 120ms ease-out;
+}
+
+.demo__spot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 2px solid var(--accent-500);
+  animation: demo-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes demo-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(252, 166, 31, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(252, 166, 31, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .demo__spot::after {
+    animation: none;
+  }
+}
+
+/* Экран приветствия — та же развилка, что описана в тексте: демо или
+   обычная работа. Поверх абсолютно всего, включая режим демонстрации
+   (700) — приветствие решает, откроется ли демо вообще. */
+.gate {
+  position: fixed;
+  inset: 0;
+  z-index: 950;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-5);
+  background: rgba(10, 10, 10, 0.55);
+}
+
+.gate__card {
+  width: min(480px, 100%);
+  padding: var(--sp-7) var(--sp-6);
+  border-radius: var(--r-lg);
+  background: var(--white);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.28);
+}
+
+.gate__eyebrow {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.gate__title {
+  margin: var(--sp-2) 0 0;
+  font-family: var(--font-sans);
+  font-size: 28px;
+  font-weight: var(--fw-bold, 800);
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+
+.gate__lede {
+  margin: var(--sp-1) 0 var(--sp-6);
+  font-size: var(--fs-body-s);
+  color: var(--text-secondary);
+}
+
+.gate__options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.gate__option {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--r-md);
+  background: var(--white);
+  text-align: left;
+  cursor: pointer;
+  transition: var(--t-control);
+}
+
+.gate__option:hover {
+  border-color: var(--ink-300);
+  background: var(--ink-50);
+}
+
+.gate__option--accent {
+  border-color: var(--ink-1000);
+}
+
+.gate__option--accent:hover {
+  background: var(--ink-1000);
+}
+
+.gate__option--accent:hover .gate__option-title,
+.gate__option--accent:hover .gate__option-what,
+.gate__option--accent:hover svg {
+  color: var(--white);
+}
+
+.gate__option-icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-md);
+  background: var(--ink-100);
+  color: var(--text-primary);
+}
+
+.gate__option-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.gate__option-title {
+  font-family: var(--font-sans);
+  font-size: var(--fs-body-s);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+
+.gate__option-what {
+  font-size: var(--fs-caption);
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.gate__option > svg {
+  flex: 0 0 auto;
+  margin-top: 10px;
+  color: var(--text-muted);
+}
+
+@media (max-width: 480px) {
+  .gate__card {
+    padding: var(--sp-5) var(--sp-4);
+  }
+}

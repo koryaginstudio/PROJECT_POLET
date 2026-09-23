@@ -32,6 +32,7 @@ import { buildDayView, dayEnd, dayStart, planHorizon, plural, replanAt } from '.
 import { setPlanHorizon, useService } from '../data/service.ts';
 import { Header } from './Header.tsx';
 import { DemoMode } from './DemoMode.tsx';
+import { WelcomeGate } from './WelcomeGate.tsx';
 import { SubHeader } from './SubHeader.tsx';
 import { Sidebar } from './Sidebar.tsx';
 import { DetailPanel } from './DetailPanel.tsx';
@@ -374,6 +375,11 @@ export function App() {
      работы солвера и решения диспетчера, и потерять его по случайному
      переходу — потерять обе эти вещи. */
   const [incidentOpen, setIncidentOpen] = useState(false);
+  /* Экран приветствия — на каждом открытии, а не один раз и навсегда: это
+     не онбординг для нового человека, а развилка на каждый заход, пока
+     сервис ещё строится, — демо для показа или обычная работа. */
+  const [gateOpen, setGateOpen] = useState(true);
+  const [demoOpen, setDemoOpen] = useState(false);
   /* Каким событием открыть окно правки. Задаёт его экран «Воздействия»:
      диспетчер нажал «Инженер выбыл» — окно открывается на выбытии. */
   const [incidentKind, setIncidentKind] = useState<IncidentKind | undefined>(undefined);
@@ -1643,6 +1649,8 @@ export function App() {
       )}
 
       <DemoMode
+        open={demoOpen}
+        onOpenChange={setDemoOpen}
         hasRun={ready !== null}
         firstOrderId={ready?.view.loads.find((load) => load.route)?.route?.stops[0]?.order_id ?? null}
         goCreate={() => nav({ stage: 'create', section: 'dispatch', view: firstView('dispatch') })}
@@ -1654,6 +1662,16 @@ export function App() {
           setIncidentOpen(true);
         }}
       />
+
+      {gateOpen && (
+        <WelcomeGate
+          onDemo={() => {
+            setGateOpen(false);
+            setDemoOpen(true);
+          }}
+          onNormal={() => setGateOpen(false)}
+        />
+      )}
     </div>
   );
 }
