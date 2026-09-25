@@ -5,6 +5,7 @@ import { Icon } from '../ds/components/core/Icon.jsx';
 import { Select } from '../ds/components/forms/Select.jsx';
 import { SegmentedControl } from '../ds/components/forms/SegmentedControl.jsx';
 import type { EngineerRecord, OrderRecord, Registry } from '../data/registry.ts';
+import { uniqueOrders } from '../data/registry.ts';
 import type { CrewPatch } from '../data/crew.ts';
 import { dec, hhmm, hoursText } from '../data/derive.ts';
 import { skillIcon, skillName, teamName, transportIcon, transportName } from '../data/dictionary.ts';
@@ -169,7 +170,9 @@ export function CrewProfile({
   );
 
   const orders = useMemo(
-    () => (crew ? registry.orders.filter((order) => order.engineerKey === crew.id) : []),
+    /* Заявка инженера — одна строка: один и тот же участок, пересчитанный
+       десять раз, не добавляет человеку работы. */
+    () => (crew ? uniqueOrders(registry.orders.filter((order) => order.engineerKey === crew.id)) : []),
     [crew, registry]
   );
 

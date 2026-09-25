@@ -300,6 +300,9 @@ export interface RouteRecord {
 export interface EngineerShift {
   runId: string;
   code: string;
+  /** День, который считали: «2026-08-17». По нему смены и различают — один
+      день, пересчитанный трижды, остаётся одной сменой. */
+  date: string;
   /** Когда завели расчёт, ISO: по нему отбирают срок. */
   created: string;
   /** Дали ли маршрут в этом прогоне. Нет — инженер вышел и остался без работы. */
@@ -313,6 +316,22 @@ export interface EngineerShift {
   /** Пробег в этом прогоне, км. `null` — маршрута не было или движок
       километраж не прислал. */
   distanceKm: number | null;
+}
+
+/** Смена — день человека, а не прогон. Из расчётов одного дня остаётся
+    самый свежий: пересчитав день десять раз, диспетчер не добавил инженеру
+    ни смен, ни заявок, ни часов — он десять раз спросил об одном дне.
+
+    Разные дни при этом складываются, как и раньше: вчера и сегодня — две
+    смены, и сводить их в одну было бы такой же неправдой. Разрез по
+    прогонам живёт в карточке инженера и в базе расчётов. */
+export function uniqueShifts(shifts: EngineerShift[]): EngineerShift[] {
+  const byDay = new Map<string, EngineerShift>();
+  for (const shift of shifts) {
+    const kept = byDay.get(shift.date);
+    if (!kept || shift.created.localeCompare(kept.created) > 0) byDay.set(shift.date, shift);
+  }
+  return [...byDay.values()];
 }
 
 export interface EngineerRecord {
@@ -455,6 +474,29 @@ export interface Registry {
   missingZones: string[];
 }
 
+/** Заявка — одна строка. Из всех прогонов одного номера остаётся самый
+    свежий: номер, адрес, окно приёма и крайний срок у них одни и те же, а
+    инженер и место в маршруте — ответ расчёта, и показывать надо последний.
+
+    Справочник отвечает на «что у нас за хозяйство», а не «что было в каждом
+    прогоне». Пересчитав один и тот же участок десять раз, диспетчер получал
+    десять строк на одну аварию и число заявок, в которое никто не верит:
+    база услуг на том же экране считала по номерам и расходилась с доской
+    наверху в четыре раза.
+
+    Разрез по прогонам никуда не делся — он живёт вкладкой «По расчётам» и
+    базой расчётов, где прогон и есть предмет разговора. */
+export function uniqueOrders(rows: OrderRecord[]): OrderRecord[] {
+  const latest = new Map<string, OrderRecord>();
+  for (const row of rows) {
+    const kept = latest.get(row.id);
+    /* Время счёта, а не порядок в списке: архив программы расчёта
+       дописывается в историю целиком, и порядок в нём — не хронология. */
+    if (!kept || row.run.created.localeCompare(kept.run.created) > 0) latest.set(row.id, row);
+  }
+  return [...latest.values()];
+}
+
 /** Ключ точки обслуживания: адрес, а если его нет — район с координатами.
 
     Одно правило на обе базы. Клиенты собираются по нему, заявки по нему же
@@ -473,6 +515,9 @@ function buildClients(plans: { run: RunRef; plan: Plan }[]): ClientRecord[] {
     runSet: Set<string>;
   };
   const map = new Map<string, Building>();
+  /* Заявка, какой её видел самый свежий расчёт. Числа точки считаются по
+     этой карте, а не по прогонам: см. `uniqueOrders`. */
+  const latest = new Map<string, { created: string; order: Order }>();
 
   for (const { run, plan } of plans) {
     for (const order of plan.orders) {
@@ -503,24 +548,40 @@ function buildClients(plans: { run: RunRef; plan: Plan }[]): ClientRecord[] {
         };
         map.set(key, entry);
       }
-      /* Закрытая до расчёта заявка — часть истории точки, но не часть
-         «обслужено из»: инженера она не ждала. */
-      if (orderClosed(order)) entry.closed += 1;
-      else {
-        entry.orders += 1;
-        if (order.assigned_to) entry.assigned += 1;
-      }
-      if (order.needs_access) entry.access += 1;
-      /* Срочность — по правилу справочника, одному на весь интерфейс:
-         класс, если он пришёл, иначе уровень. Своё правило «уровень от
-         второго» расходилось с базой услуг на заявках, где класс `normal`
-         стоит при высоком уровне. */
-      if (isUrgent(order.priority_class, order.priority)) entry.urgent += 1;
-      entry.minutes.push(order.est_minutes);
-      entry.typeSet.add(order.work_type);
       entry.runSet.add(run.id);
-      entry.firstWindow = Math.min(entry.firstWindow, order.window_start);
+      /* Заявка дома — одна, сколько бы раз его ни считали. Прогоны копим
+         отдельно: «сколько раз дом попадал в расчёт» — вопрос о расчётах, а
+         «сколько у дома заявок» — о доме, и одним числом они не отвечаются.
+         Пока отвечались: пересчитанный десять раз участок показывал у дома
+         двадцать две заявки вместо двух. */
+      const kept = latest.get(order.id);
+      if (!kept || run.created.localeCompare(kept.created) > 0) {
+        latest.set(order.id, { created: run.created, order });
+      }
     }
+  }
+
+  for (const { order } of latest.values()) {
+    const entry = map.get(clientKeyOf(order));
+    /* Адрес заявки от прогона к прогону не меняется, и точка у неё всегда
+       та же — но брать её из карты без проверки значит верить в это молча. */
+    if (!entry) continue;
+    /* Закрытая до расчёта заявка — часть истории точки, но не часть
+       «обслужено из»: инженера она не ждала. */
+    if (orderClosed(order)) entry.closed += 1;
+    else {
+      entry.orders += 1;
+      if (order.assigned_to) entry.assigned += 1;
+    }
+    if (order.needs_access) entry.access += 1;
+    /* Срочность — по правилу справочника, одному на весь интерфейс:
+       класс, если он пришёл, иначе уровень. Своё правило «уровень от
+       второго» расходилось с базой услуг на заявках, где класс `normal`
+       стоит при высоком уровне. */
+    if (isUrgent(order.priority_class, order.priority)) entry.urgent += 1;
+    entry.minutes.push(order.est_minutes);
+    entry.typeSet.add(order.work_type);
+    entry.firstWindow = Math.min(entry.firstWindow, order.window_start);
   }
 
   /* Номера выдаём в том порядке, в каком адреса встретились в расчётах: у
@@ -545,7 +606,9 @@ function buildClients(plans: { run: RunRef; plan: Plan }[]): ClientRecord[] {
       workTypes: [...entry.typeSet],
       access: entry.access,
       urgent: entry.urgent,
-      avgMinutes: Math.round(entry.minutes.reduce((a, b) => a + b, 0) / entry.minutes.length),
+      avgMinutes: entry.minutes.length
+        ? Math.round(entry.minutes.reduce((a, b) => a + b, 0) / entry.minutes.length)
+        : 0,
       firstWindow: entry.firstWindow
     }))
     .sort((a, b) => b.orders - a.orders || a.address.localeCompare(b.address, 'ru'));
@@ -867,7 +930,7 @@ function notePost(entry: EngineerEntry, engineer: Engineer): void {
 /** Каталог услуг: из всех данных, а не только из посчитанного. Расчёты
     добавляют к нему то, чего в данных нет, — сколько раз услугу удалось
     разложить. */
-function buildServices(orders: Order[], plans: { plan: Plan }[]): ServiceRecord[] {
+function buildServices(orders: Order[], plans: { run: RunRef; plan: Plan }[]): ServiceRecord[] {
   const map = new Map<string, ServiceRecord & { equipSet: Set<string> }>();
 
   const touch = (order: Order) => {
@@ -927,13 +990,24 @@ function buildServices(orders: Order[], plans: { plan: Plan }[]): ServiceRecord[
     if (order.needs_access) entry.access += 1;
   }
 
-  for (const { plan } of plans) {
+  /* «Разложено» считается по заявкам, а не по прогонам: пересчитанный
+     десять раз участок иначе обещал бы услуге в десять раз больше работы,
+     чем стоит в её же строке слева. Из прогонов берём самый свежий — он и
+     есть последний ответ о том, досталась заявка инженеру или нет. */
+  const latest = new Map<string, { created: string; order: Order }>();
+  for (const { run, plan } of plans) {
     for (const order of plan.orders) {
-      const entry = touch(order);
-      if (orderClosed(order)) continue;
-      entry.planned += 1;
-      if (order.assigned_to) entry.assigned += 1;
+      const kept = latest.get(order.id);
+      if (!kept || run.created.localeCompare(kept.created) > 0) {
+        latest.set(order.id, { created: run.created, order });
+      }
     }
+  }
+  for (const { order } of latest.values()) {
+    const entry = touch(order);
+    if (orderClosed(order)) continue;
+    entry.planned += 1;
+    if (order.assigned_to) entry.assigned += 1;
   }
 
   return [...map.values()]
@@ -961,7 +1035,6 @@ function buildEngineers(
       const engineer = planned.zone || !dayTitle ? planned : { ...planned, zone: dayTitle };
       const entry = blank(map, engineer, run.day);
       notePost(entry, engineer);
-      entry.runs += 1;
       /* Смена берётся из последнего прогона: справочник показывает то,
          каким инженер числится сейчас, а не каким был в первом расчёте. */
       entry.shiftStart = engineer.shift_start;
@@ -981,6 +1054,7 @@ function buildEngineers(
       entry.byRun.push({
         runId: run.id,
         code: run.code,
+        date: run.date,
         created: run.created,
         routed: Boolean(route),
         visits: route?.totals.visits ?? 0,
@@ -991,22 +1065,29 @@ function buildEngineers(
         distanceKm: route?.totals.distance_km ?? null
       });
 
-      if (!route) {
-        entry.idleRuns += 1;
-        continue;
-      }
-      entry.routes += 1;
-      entry.visits += route.totals.visits;
-      entry.travelMinutes += route.totals.travel_minutes;
-      entry.workMinutes += workMinutesOf(route);
-      entry.overtimeMinutes += route.totals.overtime_minutes;
-      /* Сумма рвётся в null, как только маршрут без километража, и обратно
-         уже не собирается: неполная сумма хуже честного прочерка. */
-      entry.distanceKm =
-        entry.distanceKm === null || route.totals.distance_km == null
-          ? null
-          : entry.distanceKm + route.totals.distance_km;
     }
+  }
+
+  /* Итоги человека — по сменам, а не по прогонам: см. `uniqueShifts`.
+     Считаются в самом конце, когда вся история уже собрана: пока она
+     набирается, какой прогон дня окажется последним, ещё неизвестно. */
+  for (const entry of map.values()) {
+    const shifts = uniqueShifts(entry.byRun);
+    entry.runs = shifts.length;
+    entry.routes = shifts.filter((shift) => shift.routed).length;
+    entry.idleRuns = shifts.length - entry.routes;
+    entry.visits = shifts.reduce((sum, shift) => sum + shift.visits, 0);
+    entry.travelMinutes = shifts.reduce((sum, shift) => sum + shift.travelMinutes, 0);
+    entry.workMinutes = shifts.reduce((sum, shift) => sum + shift.workMinutes, 0);
+    entry.overtimeMinutes = shifts.reduce((sum, shift) => sum + shift.overtimeMinutes, 0);
+    /* Сумма рвётся в null, как только маршрут без километража, и обратно
+       уже не собирается: неполная сумма хуже честного прочерка. */
+    entry.distanceKm = shifts
+      .filter((shift) => shift.routed)
+      .reduce<number | null>(
+        (sum, shift) => (sum === null || shift.distanceKm === null ? null : sum + shift.distanceKm),
+        0
+      );
   }
 
   return [...map.values()]
@@ -1023,7 +1104,7 @@ function buildEngineers(
       overtimeMinutes: entry.overtimeMinutes,
       distanceKm: entry.distanceKm,
       /* Среднее — той же формулой, что и везде: по сменам с маршрутом. */
-      occupancyMean: occupancyMean(entry.byRun.filter((shift) => shift.routed)),
+      occupancyMean: occupancyMean(uniqueShifts(entry.byRun).filter((shift) => shift.routed)),
       idleRuns: entry.idleRuns,
       shiftStart: entry.shiftStart,
       shiftEnd: entry.shiftEnd,

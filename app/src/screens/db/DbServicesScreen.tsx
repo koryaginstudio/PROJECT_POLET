@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Icon } from '../../ds/components/core/Icon.jsx';
 import { SegmentedControl } from '../../ds/components/forms/SegmentedControl.jsx';
+import { uniqueOrders } from '../../data/registry.ts';
 import type { OrderRecord, Registry, ServiceRecord } from '../../data/registry.ts';
 import { dec, plural } from '../../data/derive.ts';
 import {
@@ -179,8 +180,10 @@ export function DbServicesScreen({ registry, mode, onOpenRun }: Props) {
      место, где у услуги есть привязка ко времени. */
   const sliceBy = useMemo(() => {
     const map = new Map<string, Slice>();
-    for (const order of registry.orders) {
-      if (!withinPeriod(order.run.created, period)) continue;
+    /* Заявка — одна, сколько бы раз её ни считали: иначе доска услуг
+       показывала бы вчетверо больше заявок, чем стоит под списком. */
+    const rows = registry.orders.filter((one) => withinPeriod(one.run.created, period));
+    for (const order of uniqueOrders(rows)) {
       const cell = map.get(order.workType) ?? { ...EMPTY };
       cell.orders += 1;
       cell.minutes += order.estMinutes;
@@ -304,7 +307,10 @@ export function DbServicesScreen({ registry, mode, onOpenRun }: Props) {
       .filter((ref) => withinPeriod(ref.created, period))
       .sort((a, b) => a.created.localeCompare(b.created));
     const ids = new Set(runs.map((ref) => ref.id));
-    const orders = registry.orders.filter((order) => ids.has(order.run.id));
+    /* Строки прогонов нужны только ряду «как менялось». Все остальные числа
+       доски — о заявках, и заявка в них одна: см. `uniqueOrders`. */
+    const rows = registry.orders.filter((order) => ids.has(order.run.id));
+    const orders = uniqueOrders(rows);
 
     const assigned = orders.filter((order) => order.engineerId).length;
     const loose = orders.length - assigned;
@@ -346,7 +352,7 @@ export function DbServicesScreen({ registry, mode, onOpenRun }: Props) {
     /* Ряд по прогонам: заявки разложены по расчётам, чтобы «сколько всего» и
        «как менялось» считались из одного места. */
     const cells = new Map<string, { orders: number; minutes: number; urgent: number }>();
-    for (const order of orders) {
+    for (const order of rows) {
       const cell = cells.get(order.run.id) ?? { orders: 0, minutes: 0, urgent: 0 };
       cell.orders += 1;
       cell.minutes += order.estMinutes;
@@ -412,10 +418,7 @@ export function DbServicesScreen({ registry, mode, onOpenRun }: Props) {
           value: dec(minutes / 60),
           unit: 'ч',
           caption: 'работы на объектах',
-          facts: [
-            `${Math.round(minutes / Math.max(orders.length, 1))} мин на заявку`,
-            `${dec(minutes / 60 / Math.max(runs.length, 1))} ч на расчёт`
-          ],
+          facts: [`${Math.round(minutes / Math.max(orders.length, 1))} мин на заявку`],
           series: series((cell) => Math.round(cell.minutes / 6) / 10),
           legend: 'часов работы'
         }

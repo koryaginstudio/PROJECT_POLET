@@ -26,6 +26,7 @@ import type {
   RouteRecord,
   ServiceRecord
 } from './registry.ts';
+import { uniqueOrders } from './registry.ts';
 import { hhmm } from './derive.ts';
 
 export type HitKind = 'order' | 'client' | 'engineer' | 'route' | 'service' | 'run';
@@ -220,7 +221,10 @@ export function findAll(registry: Registry | null, raw: string): Hit[] {
   const phone = isPhoneQuery(raw.trim()) ? phoneForms(raw.trim()) : null;
   const found: Hit[] = [];
 
-  for (const order of registry.orders) {
+  /* Заявка — одна находка, а не столько, сколько раз её считали: прежде
+     номер, посчитанный десять раз, выдавал десять одинаковых подсказок и
+     вытеснял из списка всё остальное. */
+  for (const order of uniqueOrders(registry.orders)) {
     const hit = лучшая(
       phone ? probePhone(phone, [['телефон', order.contactPhone]]) : null,
       probe(query, order.id, order.workTitle, [

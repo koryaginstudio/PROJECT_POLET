@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Icon } from '../ds/components/core/Icon.jsx';
 import { SegmentedControl } from '../ds/components/forms/SegmentedControl.jsx';
 import type { ClientRecord, OrderRecord, Registry } from '../data/registry.ts';
+import { uniqueOrders } from '../data/registry.ts';
 import { dec, hhmm, plural } from '../data/derive.ts';
 import { workTypeIcon } from '../data/dictionary.ts';
 
@@ -56,8 +57,9 @@ export function ClientProfile({ client, registry, onClose, onOpenOrder, onOpenRu
      адреса у заявки — это уже показанная строка, собранная для экрана. */
   const orders = useMemo(() => {
     if (!client) return [];
-    return registry.orders
-      .filter((order) => order.clientKey === client.key)
+    /* Заявка этой точки — одна строка: дом, посчитанный десять раз, ждёт
+       одного выезда, а не десяти. */
+    return uniqueOrders(registry.orders.filter((order) => order.clientKey === client.key))
       .sort((a, b) => a.run.code.localeCompare(b.run.code, 'ru') || a.windowStart - b.windowStart);
   }, [client?.key, registry]);
 

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Icon } from '../../ds/components/core/Icon.jsx';
 import { SegmentedControl } from '../../ds/components/forms/SegmentedControl.jsx';
+import { uniqueOrders } from '../../data/registry.ts';
 import type { OrderRecord, Registry } from '../../data/registry.ts';
 import { deadline, hhmm, hoursText, plural, shortName } from '../../data/derive.ts';
 import {
@@ -141,6 +142,15 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
 
   const all = registry.orders;
 
+  /* Строки базы: заявка — одна, каким бы числом расчётов её ни считали.
+     Выбран расчёт — показываем именно его строки: вопрос тогда не «что у нас
+     за хозяйство», а «что было в этом прогоне», и ответ на него даёт сам
+     прогон. См. `uniqueOrders`. */
+  const pool = useMemo(
+    () => (run ? all.filter((order) => order.run.id === run) : uniqueOrders(all)),
+    [all, run]
+  );
+
   /* В каких расчётах встречается каждый номер. Считаем один раз на всю базу:
      карточка видит одну строку и о соседних прогонах не знает. */
   const runsById = useMemo(() => {
@@ -155,13 +165,13 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
     return map;
   }, [all]);
 
-  /* Выборка без учёта видов работ. По ней считается разбивка «По видам
-     работ»: иначе доска сужала бы сама себя — отметив один вид, второй с
-     неё стало бы нечем добавить. */
-  const basis = useMemo(() => {
+  /* Правило отбора — одно на оба ряда: на строки базы, где заявка одна, и
+     на строки прогонов, из которых собран вид «По расчётам». Разойдись они,
+     вид по расчётам показывал бы под отбором «без инженера» заявки, у
+     которых инженер есть. */
+  const fits = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    return all.filter((order) => {
-      if (run && order.run.id !== run) return false;
+    return (order: OrderRecord) => {
       if (filter === 'free' && order.engineerId) return false;
       if (filter === 'routed' && !order.engineerId) return false;
       if (filter === 'urgent' && !isUrgent(order.priorityClass, order.priority)) return false;
@@ -177,12 +187,17 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
         (order.engineerName ?? '').toLowerCase().includes(needle) ||
         (order.contactName ?? '').toLowerCase().includes(needle)
       );
-    });
-  }, [all, filter, query, run]);
+    };
+  }, [filter, query]);
 
-  const rows = useMemo(() => {
-    const picked = basis.filter((order) => fitsWork(order, picks));
+  /* Выборка без учёта видов работ. По ней считается разбивка «По видам
+     работ»: иначе доска сужала бы сама себя — отметив один вид, второй с
+     неё стало бы нечем добавить. */
+  const basis = useMemo(() => pool.filter(fits), [fits, pool]);
 
+  /* Порядок строк. Одно правило на оба ряда — переключатель сортировки
+     обязан работать и внутри секций вида «По расчётам». */
+  const compare = useMemo(() => {
     const rank = (order: OrderRecord) => {
       switch (sort) {
         case 'window':
@@ -204,11 +219,26 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
           ? a.run.code.localeCompare(b.run.code) || a.id.localeCompare(b.id)
           : a.id.localeCompare(b.id);
 
-    return [...picked].sort((a, b) => {
+    return (a: OrderRecord, b: OrderRecord) => {
       const diff = rank(a) - rank(b);
       return side * (diff !== 0 ? diff : tie(a, b));
-    });
-  }, [basis, desc, picks, sort]);
+    };
+  }, [desc, sort]);
+
+  const rows = useMemo(
+    () => [...basis.filter((one) => fitsWork(one, picks))].sort(compare),
+    [basis, compare, picks]
+  );
+
+  /* Строки прогонов под тем же отбором — для вида «По расчётам». Там вопрос
+     не «что у нас за хозяйство», а «что вышло в каждом расчёте», и заявка
+     честно стоит в каждом прогоне, где её считали. */
+  const runRows = useMemo(
+    () =>
+      [...all.filter((one) => (!run || one.run.id === run) && fits(one) && fitsWork(one, picks))]
+        .sort(compare),
+    [all, compare, fits, picks, run]
+  );
 
   /* Сменили отбор или порядок — счётчик показанного начинается заново. */
   const narrow = <T,>(set: (value: T) => void) => (value: T) => {
@@ -250,9 +280,12 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
 
   /* Срез: заявки расчётов, попавших в срок. */
   const scope = useMemo(() => {
-    const list = all.filter((order) => withinPeriod(order.run.created, period));
-    const runIds = new Set(list.map((order) => order.run.id));
-    return { list, runs: runIds.size };
+    const inPeriod = all.filter((order) => withinPeriod(order.run.created, period));
+    const runIds = new Set(inPeriod.map((order) => order.run.id));
+    /* Итоги доски — по заявкам, ряд «как менялось» — по прогонам: первое
+       отвечает «сколько у нас работы», второе «что выходило в каждом
+       расчёте», и складывать их в одно число нельзя. */
+    return { list: uniqueOrders(inPeriod), rows: inPeriod, runs: runIds.size };
   }, [all, period]);
 
   const widgets = useMemo<WidgetDef[]>(() => {
@@ -263,7 +296,11 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
     const access = list.filter((order) => order.needsAccess);
     const tight = list.filter((order) => order.slaDeadline - order.windowEnd <= 0);
     const minutes = list.reduce((sum, order) => sum + order.estMinutes, 0);
-    const perRun = (value: number) => value / Math.max(scope.runs, 1);
+    /* Сколько заявок считали не по одному разу: это и есть разница между
+       итогом базы и числом строк в базе расчётов. */
+    const repeats = new Map<string, number>();
+    for (const order of scope.rows) repeats.set(order.id, (repeats.get(order.id) ?? 0) + 1);
+    const recountedOrders = [...repeats.values()].filter((times) => times > 1).length;
     const top = <T,>(items: T[], size = 6) => items.slice(0, size);
 
     /* Ряд по расчётам: заявки разложены по прогонам, чтобы «сколько всего» и
@@ -272,7 +309,7 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
       string,
       { code: string; created: string; total: number; assigned: number; minutes: number }
     >();
-    for (const order of list) {
+    for (const order of scope.rows) {
       const cell =
         byRun.get(order.run.id) ??
         { code: order.run.code, created: order.run.created, total: 0, assigned: 0, minutes: 0 };
@@ -323,7 +360,7 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
           facts: [
             `${assigned.length} в маршруте`,
             `${free} без инженера`,
-            `${Math.round(perRun(list.length))} на расчёт`
+            `${recountedOrders} считали не раз`
           ],
           whole: true,
           parts: [
@@ -357,10 +394,7 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
         data: {
           value: hoursText(minutes),
           caption: 'работы на объектах',
-          facts: [
-            `${Math.round(minutes / Math.max(list.length, 1))} мин средняя заявка`,
-            `${hoursText(perRun(minutes))} на расчёт`
-          ],
+          facts: [`${Math.round(minutes / Math.max(list.length, 1))} мин средняя заявка`],
           series: series((cell) => Math.round(cell.minutes / 6) / 10),
           legend: 'часов работы в расчёте'
         }
@@ -563,7 +597,9 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
   }, [basis]);
 
   const shown = rows.slice(0, paging.limit);
-  const hidden = rows.length - shown.length;
+  /* Сколько ещё не показано. У вида «По расчётам» ряд свой, и «Показать
+     ещё» считает по нему. */
+  const hidden = Math.max(0, (mode === 'runs' ? runRows.length : rows.length) - paging.limit);
 
   /* Разбивка по расчётам для вида «По расчётам». Раскладывается вся
      выборка, а не показанная её часть: заголовок секции «7 заявок · 3,2 ч»
@@ -577,7 +613,7 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
      переключатель сортировки в этом виде стоит и ничего не делает. */
   const byRun = useMemo(() => {
     const picked = new Map<string, OrderRecord[]>();
-    for (const order of rows) {
+    for (const order of runRows) {
       const list = picked.get(order.run.id);
       if (list) list.push(order);
       else picked.set(order.run.id, [order]);
@@ -594,7 +630,7 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
           minutes: list.reduce((sum, one) => sum + one.estMinutes, 0)
         };
       });
-  }, [registry, rows]);
+  }, [registry, runRows]);
 
   /* Что из разбивки рисуем сейчас: секции идут подряд, и первая страница —
      это первые PAGE заявок по всем секциям вместе. Счётчик показанного общий
@@ -615,6 +651,14 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
   const openIn = (order: OrderRecord, runId: string) => {
     const twin = all.find((one) => one.id === order.id && one.run.id === runId);
     if (twin) setOpened(twin);
+  };
+
+  /* Сколько прогонов стоит за строкой. Строка одна, а расчётов у заявки
+     может быть много: без этой подписи «расчёт R013» читается как «её
+     считали один раз», и разница с базой расчётов выглядит ошибкой. */
+  const recounted = (order: OrderRecord) => {
+    const times = runsById.get(order.id)?.length ?? 1;
+    return times > 1 ? ` · считали ${plural(times, 'раз', 'раза', 'раз')}` : '';
   };
 
   const card = (order: OrderRecord, index: number) => (
@@ -678,7 +722,7 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
   const summary = (
     <>
       <b>{plural(rows.length, 'заявка', 'заявки', 'заявок')}</b> в выборке
-      {rows.length !== all.length && ` из ${all.length}`}
+      {rows.length !== pool.length && ` из ${pool.length}`}
       {closedRows > 0 && ` · ${openRows.length} ждут выезда · ${closedRows} закрыты до расчёта`}
       {openRows.length > 0 &&
         ` · ${hoursText(openRows.reduce((sum, one) => sum + one.estMinutes, 0))} работы впереди`}
@@ -887,7 +931,10 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
                     </td>
                     <td>
                       <span className="tbl__strong">{order.run.code}</span>
-                      <span className="tbl__sub">{order.run.date}</span>
+                      <span className="tbl__sub">
+                        {order.run.date}
+                        {recounted(order)}
+                      </span>
                     </td>
                     <td>
                       <span className="tbl__inline">
@@ -1002,6 +1049,7 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
               sub: (
                 <>
                   {order.address} · {order.district} · {order.company} · расчёт {order.run.code}
+                  {recounted(order)}
                   {order.needsAccess ? ' · нужен доступ' : ''}
                   {order.status ? ` · ${statusName(order.status)}` : ''}
                 </>

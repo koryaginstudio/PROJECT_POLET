@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Icon } from '../ds/components/core/Icon.jsx';
 import { SegmentedControl } from '../ds/components/forms/SegmentedControl.jsx';
 import type { OrderRecord, Registry, ServiceRecord } from '../data/registry.ts';
+import { uniqueOrders } from '../data/registry.ts';
 import { dec, hhmm, plural } from '../data/derive.ts';
 import { equipmentName, skillIcon, skillName, workTypeIcon } from '../data/dictionary.ts';
 
@@ -45,8 +46,8 @@ export function ServiceProfile({ service, registry, onClose, onOpenOrder, onOpen
      связь прямая, без сверки названий. */
   const orders = useMemo(() => {
     if (!service) return [];
-    return registry.orders
-      .filter((order) => order.workType === service.key)
+    /* Заявка этой услуги — одна строка: см. `uniqueOrders`. */
+    return uniqueOrders(registry.orders.filter((order) => order.workType === service.key))
       .sort((a, b) => a.run.code.localeCompare(b.run.code, 'ru') || a.windowStart - b.windowStart);
   }, [service?.key, registry]);
 

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Icon } from '../../ds/components/core/Icon.jsx';
 import { SegmentedControl } from '../../ds/components/forms/SegmentedControl.jsx';
+import { uniqueShifts } from '../../data/registry.ts';
 import type { EngineerRecord, Registry } from '../../data/registry.ts';
 import { dec, hhmm, hoursText, plural, visits as pluralVisits } from '../../data/derive.ts';
 import { skillIcon, skillName, transportName } from '../../data/dictionary.ts';
@@ -307,16 +308,24 @@ export function DbEngineersScreen({
      простоя нет, а доля дороги «от времени в маршруте» без него считалась бы
      от другого целого, чем в базе маршрутов. */
   const scope = useMemo(() => {
-    const shifts = all.flatMap((row) =>
-      row.byRun
-        .filter((shift) => withinPeriod(shift.created, period))
-        .map((shift) => ({ engineer: row, shift }))
+    const within = (shift: { created: string }) => withinPeriod(shift.created, period);
+    /* Строки прогонов — для ряда «как менялось»: он о расчётах и считается
+       по ним. Смены — для всего остального: смена это день человека, а не
+       прогон, и день, пересчитанный десять раз, остаётся одной сменой (см.
+       `uniqueShifts`). */
+    const rows = all.flatMap((row) =>
+      row.byRun.filter(within).map((shift) => ({ engineer: row, shift }))
     );
-    const runIds = new Set(shifts.map((item) => item.shift.runId));
+    const shifts = all.flatMap((row) =>
+      uniqueShifts(row.byRun.filter(within)).map((shift) => ({ engineer: row, shift }))
+    );
+    /* Простой — из тех же прогонов, что и смены: доля дороги «от времени в
+       маршруте» иначе считалась бы от целого, раздутого пересчётами. */
+    const kept = new Set(shifts.map((item) => item.shift.runId));
     const idle = registry.routes
-      .filter((route) => runIds.has(route.run.id))
+      .filter((route) => kept.has(route.run.id))
       .reduce((sum, route) => sum + route.idleMinutes, 0);
-    return { shifts, runs: runIds.size, idle };
+    return { shifts, rows, runs: new Set(rows.map((item) => item.shift.runId)).size, idle };
   }, [all, registry.routes, period]);
 
   /* Выработка каждого за выбранный срок. Карточка показывает её главным
@@ -361,7 +370,6 @@ export function DbEngineersScreen({
     const crewed = new Set(worked.map((item) => item.engineer.id));
     const idlePeople = [...people].filter((id) => !crewed.has(id)).length;
 
-    const perRun = (value: number) => value / Math.max(scope.runs, 1);
     const top = <T,>(list: T[], size = 4) => list.slice(0, size);
 
     /* Ряд по прогонам: смены разложены по расчётам, чтобы «сколько всего» и
@@ -370,7 +378,7 @@ export function DbEngineersScreen({
       string,
       { code: string; created: string; visits: number; travel: number; work: number; idle: number; crew: number }
     >();
-    for (const { shift } of shifts) {
+    for (const { shift } of scope.rows) {
       const cell =
         byRun.get(shift.runId) ??
         { code: shift.code, created: shift.created, visits: 0, travel: 0, work: 0, idle: 0, crew: 0 };
@@ -513,10 +521,7 @@ export function DbEngineersScreen({
         data: {
           value: String(visits),
           caption: 'отработано',
-          facts: [
-            `${dec(visits / Math.max(worked.length, 1))} на смену`,
-            `${Math.round(perRun(visits))} на расчёт`
-          ],
+          facts: [`${dec(visits / Math.max(worked.length, 1))} на смену`],
           series: series((cell) => cell.visits),
           legend: 'заявок'
         }
