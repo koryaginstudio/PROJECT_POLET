@@ -644,6 +644,10 @@ export function MapBoard({
      не прибавляла ни пикселя, и казалось, что целишься мимо. Поэтому карта
      помнит своё: под курсором путь или нет. */
   const [overRoute, setOverRoute] = useState<string | null>(null);
+  /* Выбранный маршрут — для обработчиков карты: они живут дольше отрисовки
+     и о текущем выборе знают только отсюда. */
+  const pinnedRef = useRef<string | null>(pinned);
+  pinnedRef.current = pinned;
   /* Дорожная сеть — для границ участков. Читается один раз и не мешает
      карте: пока её нет, границы идут как считаются, а придёт — лягут по
      улицам. */
@@ -1169,10 +1173,16 @@ export function MapBoard({
       base.on('mouseover', () => {
         showInfo(baseCard, base.getLatLng(), { r: 9 });
         pick.current.onLive(load.engineer.id);
+        /* Точка выезда принадлежит своему пути, и наведение на неё поднимает
+           его так же, как наведение на саму линию. У выбранного маршрута
+           подсветка и так равна выбору — без этого признака его выезд под
+           курсором не отзывался вовсе. */
+        setOverRoute(load.engineer.id);
       });
       base.on('mouseout', () => {
         hideInfo();
         pick.current.onLive(null);
+        setOverRoute(null);
       });
       base.on('click', () => pick.current.onPin(load.engineer.id));
       /* Квадрат выезда — точка, а не путь: гаснет вместе с остальными
@@ -1222,11 +1232,17 @@ export function MapBoard({
            непонятно, из-за чего он погас. */
         mark.getElement()?.classList.add('geo__basebox--on');
         setHoverNest(crew);
+        /* Из общего гнезда выезжает вся бригада, и гасить в ответ нечего,
+           когда маршрут уже выбран: тогда наведение поднимает его самого —
+           это его выезд. */
+        const mine = pinnedRef.current;
+        if (mine && crew.includes(mine)) setOverRoute(mine);
       });
       mark.on('mouseout', () => {
         hideInfo();
         mark.getElement()?.classList.remove('geo__basebox--on');
         setHoverNest(null);
+        setOverRoute(null);
       });
       mark.addTo(marks);
       nestMarks.current.set(key, mark);

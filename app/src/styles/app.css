@@ -16570,36 +16570,6 @@ button.subhdr__close {
   transform: translateX(2px);
 }
 
-/* Имя исполнителя в сводке — такая же ссылка, как и остальные: под
-   курсором подчёркивается и светлеет. Прежде она молчала, и понять, что
-   по ней можно перейти, было нельзя. */
-.mpick__link {
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--text-link);
-  font: inherit;
-  cursor: pointer;
-  text-align: right;
-  transition:
-    color 140ms var(--ease-out-strong),
-    text-decoration-color 140ms var(--ease-out-strong);
-  text-decoration: underline;
-  text-decoration-color: transparent;
-  text-underline-offset: 2px;
-}
-
-.mpick__link:hover {
-  text-decoration-color: currentColor;
-  filter: brightness(1.15);
-}
-
-.mpick__link:focus-visible {
-  outline: none;
-  box-shadow: var(--ring-focus);
-  border-radius: var(--r-xs);
-}
-
 .mpick__title--go:focus-visible {
   outline: none;
   box-shadow: var(--ring-focus);
@@ -16723,9 +16693,17 @@ button.subhdr__close {
   cursor: pointer;
 }
 
+/* Имя исполнителя — ссылка, и под курсором это должно быть видно сразу.
+   Одного подчёркивания мало: имя стоит в строке значений, среди чисел, и
+   тонкая черта под ним теряется. Поэтому ещё и подсветка плашкой — та же,
+   что у строк перечня. */
 .mpick__link:hover {
   text-decoration: underline;
   text-underline-offset: 2px;
+  color: var(--text-link);
+  background: var(--glass-hover);
+  box-shadow: 0 0 0 4px var(--glass-hover);
+  border-radius: var(--r-xs);
 }
 
 .mpick__link:focus-visible {
