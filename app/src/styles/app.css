@@ -9503,6 +9503,28 @@ b.ccard__bad {
   color: var(--text-muted);
 }
 
+/* Запись посчитана не сегодняшним движком. Пометка тихая и без цвета
+   тревоги: это не ошибка расчёта, а честное «числа могли измениться», и
+   план всё равно открывается. Всю фразу движка показывает подсказка —
+   в строке для неё нет места, а укоротить её значило бы сказать за него,
+   что именно устарело. */
+.runcard__drift {
+  min-width: 0;
+  font-size: var(--fs-small);
+  line-height: 1.4;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: help;
+}
+
+.runcard__drift::before {
+  content: '·';
+  margin-right: 5px;
+  color: var(--text-muted);
+}
+
 /* Кнопки прижаты к низу карточки: цифр сверху может оказаться на строку
    больше или меньше, а ряд действий обязан стоять на одной линии у всех. */
 .runcard__facts {
@@ -17014,7 +17036,7 @@ button.subhdr__close {
    номер под номером, как в любой таблице. */
 .livegroup__head {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 52px 22px 56px;
+  grid-template-columns: minmax(0, 1fr) 58px 22px;
   align-items: center;
   gap: var(--sp-2);
 }
@@ -17027,10 +17049,9 @@ button.subhdr__close {
   display: flex;
   align-items: center;
   gap: 5px;
-  /* Стрелка не растягивает первую колонку: она стоит перед названием и
-     занимает своё место сама. */
-  padding: 2px 4px;
-  margin: 0 -4px;
+  /* Отступов у кнопок нет: их держит сама полоса участка, и подсветка
+     должна идти по ней, а не по каждой кнопке порознь. */
+  padding: 0;
   border: 0;
   border-radius: var(--r-sm);
   background: none;
@@ -17042,14 +17063,12 @@ button.subhdr__close {
   transition: var(--t-control);
 }
 
-/* Заголовок района занимает первые две колонки: название тянется, число
-   людей прижато к правому краю своей. Ширины колонок заданы числом, а не
-   содержимым, — только так «14 инж.» у «Юго-востока» встанет ровно под
-   «14 инж.» у «Востока». */
+/* Заголовок района — название и число людей в одной кнопке: нажимают на
+   них вместе. Число сидит в колонке постоянной ширины у правого края, и
+   потому «14 инж.» у «Юго-востока» стоит ровно под «14 инж.» у «Востока»,
+   хотя названия разной длины. */
 .livegroup__open {
-  display: grid;
-  grid-column: 1 / 3;
-  grid-template-columns: minmax(0, 1fr) 52px;
+  display: flex;
   min-width: 0;
 }
 
@@ -17069,6 +17088,7 @@ button.subhdr__close {
 
 .livegroup__place {
   display: flex;
+  flex: 1 1 auto;
   align-items: center;
   gap: 5px;
   min-width: 0;
@@ -17080,7 +17100,9 @@ button.subhdr__close {
 /* Число людей — в своей колонке, вправо: так они стоят столбиком у всех
    трёх районов. */
 .livegroup__crew {
-  justify-self: end;
+  flex: 0 0 auto;
+  width: 52px;
+  text-align: right;
 }
 
 /* Сколько людей на участке — тем же тихим тоном, что и остальные подписи:

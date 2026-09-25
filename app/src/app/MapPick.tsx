@@ -236,13 +236,13 @@ export function MapPick({
     );
   }
 
-  /* Маршрут и инженер — двумя отдельными карточками, одна под другой.
+  /* Маршрут одной карточкой: номер и числа дня, а под чертой — человек,
+     который его везёт.
 
-     Это разные записи, и вопросы к ним разные. К маршруту: сколько заявок,
-     сколько времени в пути и в работе, каким окном лёг день. К инженеру:
-     кто он, на чём ездит, когда его смена и откуда он выезжает. Пока это
-     стояло одной карточкой, щелчок по пути отвечал фамилией, а номер
-     маршрута в ответе не назывался вовсе.
+     Двумя карточками, одна над другой, это занимало половину карты: у
+     маршрута свои пять строк, у инженера свои три, и каждая со своим
+     заголовком и своей чертой. Вопрос-то один — «что это за путь», а кто
+     за рулём, часть ответа, а не отдельный разговор.
 
      Числа не повторяются: день принадлежит маршруту, свойства — человеку. */
   const crew = load!;
@@ -252,54 +252,43 @@ export function MapPick({
   const tone = colorOf(crew.engineer.id);
 
   return (
-    <>
-      <section className="mapstat mpick" aria-label="Выбранный маршрут">
-        {head(tone, <b className="mpick__name">{number}</b>, 'Маршрут')}
+    <section className="mapstat mpick" aria-label="Выбранный маршрут">
+      {head(
+        tone,
+        <b className="mpick__name">{number}</b>,
+        crew.engineer.transport ? transportName(crew.engineer.transport) : 'Транспорт не указан',
+        crew.engineer.transport ? transportIcon(crew.engineer.transport) : undefined
+      )}
 
-        <div className="mpick__rows">
-          {row('Заявок', String(crew.visits))}
-          {row('Загрузка', `${Math.round(crew.occupancy * 100)}%`)}
-          {totals && row('В пути', spell(totals.travel_minutes))}
-          {totals && row('Работа', spell(totals.work_minutes))}
-          {totals && row('День', `${hhmm(totals.start)}–${hhmm(totals.end)}`)}
-        </div>
-      </section>
+      <div className="mpick__rows">
+        {row('Заявок', String(crew.visits))}
+        {row('Загрузка', `${Math.round(crew.occupancy * 100)}%`)}
+        {totals && row('В пути', spell(totals.travel_minutes))}
+        {totals && row('Работа', spell(totals.work_minutes))}
+        {totals && row('День', `${hhmm(totals.start)}–${hhmm(totals.end)}`)}
+      </div>
 
-      <section className="mapstat mpick" aria-label="Инженер маршрута">
-        {head(
-          tone,
+      {/* Кто везёт. Отделено чертой, а не заголовком: это продолжение
+          ответа о маршруте, а не новая карточка. */}
+      <div className="mpick__rows mpick__rows--crew">
+        {row(
+          'Исполнитель',
           onOpenEngineer ? (
             <button
               type="button"
               className="mpick__link"
               onClick={() => onOpenEngineer(crew.engineer.id)}
+              title="Открыть карточку инженера"
             >
               <PersonName name={crew.engineer.name} stacked={false} />
             </button>
           ) : (
             <PersonName name={crew.engineer.name} stacked={false} />
-          ),
-          crew.engineer.transport ? transportName(crew.engineer.transport) : 'Транспорт не указан',
-          crew.engineer.transport ? transportIcon(crew.engineer.transport) : undefined,
-          true
+          )
         )}
-
-        <div className="mpick__rows">
-          {row('Смена', `${hhmm(crew.engineer.shift_start)}–${hhmm(crew.engineer.shift_end)}`)}
-          {row('Выезжает из', homeOf(crew.engineer))}
-        </div>
-
-        {onOpenEngineer && (
-          <button
-            type="button"
-            className="mapstat__go"
-            onClick={() => onOpenEngineer(crew.engineer.id)}
-          >
-            Открыть карточку инженера
-            <Icon name="arrow-right" size={13} />
-          </button>
-        )}
-      </section>
-    </>
+        {row('Смена', `${hhmm(crew.engineer.shift_start)}–${hhmm(crew.engineer.shift_end)}`)}
+        {row('Выезжает из', homeOf(crew.engineer))}
+      </div>
+    </section>
   );
 }

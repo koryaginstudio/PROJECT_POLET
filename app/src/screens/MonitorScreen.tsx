@@ -431,7 +431,9 @@ export function MonitorScreen({
                       className={'livegroup' + (off ? ' livegroup--off' : '')}
                       key={group.run}
                     >
-                      <span className="livegroup__head">
+                      <span
+                        className={'livegroup__head' + (open ? ' livegroup__head--open' : '')}
+                      >
                         <button
                           type="button"
                           className={'livegroup__open' + (open ? ' livegroup__open--on' : '')}
@@ -456,6 +458,27 @@ export function MonitorScreen({
                           </span>
                         </button>
 
+                        {/* Номер расчёта — кнопка: день ведут одним планом,
+                            а посчитано их несколько, и менять план проще
+                            там же, где написано, каким ведут. */}
+                        <button
+                          type="button"
+                          className={'livegroup__run' + (picking ? ' livegroup__run--on' : '')}
+                          onClick={() => {
+                            setPickGroup(picking ? null : group.run);
+                            setOpenGroup(null);
+                          }}
+                          aria-expanded={picking}
+                          disabled={others.length === 0 && !picking}
+                          title={
+                            others.length === 0
+                              ? `${group.code} — единственный расчёт на этот день`
+                              : `Ведёт ${group.code} · сменить расчёт`
+                          }
+                        >
+                          {group.code}
+                          <Icon name="chevron-down" size={11} />
+                        </button>
                         {/* Глаз снимает участок с карты и из чисел смены.
                             Последний показанный снять нельзя: пустая карта
                             в живом виде — не ответ ни на один вопрос. */}
@@ -484,28 +507,6 @@ export function MonitorScreen({
                               выдумывать его здесь незачем: погашенный глаз
                               рядом со словом «скрыт» говорит то же самое. */}
                           <Icon name="eye" size={13} />
-                        </button>
-
-                        {/* Номер расчёта — кнопка: день ведут одним планом,
-                            а посчитано их несколько, и менять план проще
-                            там же, где написано, каким ведут. */}
-                        <button
-                          type="button"
-                          className={'livegroup__run' + (picking ? ' livegroup__run--on' : '')}
-                          onClick={() => {
-                            setPickGroup(picking ? null : group.run);
-                            setOpenGroup(null);
-                          }}
-                          aria-expanded={picking}
-                          disabled={others.length === 0 && !picking}
-                          title={
-                            others.length === 0
-                              ? `${group.code} — единственный расчёт на этот день`
-                              : `Ведёт ${group.code} · сменить расчёт`
-                          }
-                        >
-                          {group.code}
-                          <Icon name="chevron-down" size={11} />
                         </button>
                       </span>
 
