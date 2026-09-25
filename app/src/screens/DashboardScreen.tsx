@@ -46,6 +46,9 @@ interface Props {
   /** Выбранный маршрут: пока он выбран, остальные на карте не нажимаются. */
   pinned: string | null;
   onPin: (engineerId: string | null) => void;
+  /** Показать маршрут, не переключая: щелчок по заявке оставляет её путь на
+      карте, сколько бы раз по заявкам этого пути ни щёлкали. */
+  onShowRoute: (engineerId: string | null) => void;
   focus: number;
   cut: number;
   onCutChange: (cut: number | ((prev: number) => number)) => void;
@@ -148,6 +151,7 @@ export function DashboardScreen({
   onLive,
   pinned,
   onPin,
+  onShowRoute,
   focus,
   cut,
   onCutChange,
@@ -258,7 +262,15 @@ export function DashboardScreen({
             pinned={pinned}
             onPin={onPin}
             focus={focus}
-            onSelectOrder={onSelectOrder}
+            /* Щелчок по точке оставляет на карте её маршрут — тот же ответ,
+               что и в обзоре: спросили про заявку, показываем, на чей путь
+               она легла. Показываем, а не переключаем: повторный щелчок по
+               той же заявке ничего не меняет, а соседняя заявка того же
+               пути его не снимает. */
+            onSelectOrder={(id) => {
+              onSelectOrder(id);
+              onShowRoute(id ? (view.stopByOrder.get(id)?.engineerId ?? null) : null);
+            }}
             onSelectEngineer={onSelectEngineer}
           />
         </section>

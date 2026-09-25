@@ -36,12 +36,13 @@ import { WelcomeGate } from './WelcomeGate.tsx';
 import { SubHeader } from './SubHeader.tsx';
 import { Sidebar } from './Sidebar.tsx';
 import { DetailPanel } from './DetailPanel.tsx';
-import { HomeScreen } from '../screens/HomeScreen.tsx';
+import { InDevelopment } from '../screens/InDevelopment.tsx';
+import { MonitorScreen } from '../screens/MonitorScreen.tsx';
+import { MonitorGate } from '../screens/MonitorGate.tsx';
 import { DispatchGate } from '../screens/DispatchGate.tsx';
 import { CreateRunScreen } from '../screens/CreateRunScreen.tsx';
 import { DashboardScreen } from '../screens/DashboardScreen.tsx';
 import { OverviewScreen } from '../screens/OverviewScreen.tsx';
-import { MonitorScreen } from '../screens/MonitorScreen.tsx';
 import { ControlScreen } from '../screens/ControlScreen.tsx';
 import { RoutePanel } from './RoutePanel.tsx';
 import { CrewPanel } from './CrewPanel.tsx';
@@ -52,7 +53,6 @@ import { DbRoutesScreen } from '../screens/db/DbRoutesScreen.tsx';
 import { DbEngineersScreen } from '../screens/db/DbEngineersScreen.tsx';
 import { DbServicesScreen } from '../screens/db/DbServicesScreen.tsx';
 import { DbRunsScreen } from '../screens/db/DbRunsScreen.tsx';
-import { StatsScreen } from '../screens/StatsScreen.tsx';
 import { CompareScreen } from '../screens/CompareScreen.tsx';
 import { SettingsScreen } from '../screens/SettingsScreen.tsx';
 import { OrderProfile } from './OrderProfile.tsx';
@@ -68,7 +68,7 @@ import type { SectionId } from './nav.ts';
 import { firstView, readRoute, sameRoute, writeRoute } from './route.ts';
 import type { Route } from './route.ts';
 import { COMPARE_MAX } from './compare.ts';
-import { dropDuty } from '../data/duty.ts';
+import { dropDuty, useDuty } from '../data/duty.ts';
 import { OVERVIEW } from './selection.ts';
 import type { Selection } from './selection.ts';
 import { DayFail } from './DayFail.tsx';
@@ -96,6 +96,11 @@ export function App() {
   const [route, setRoute] = useState<Route>(() => readRoute(window.location.hash));
   const { section, view, stage, runId } = route;
   const nav = (patch: Partial<Route>) => setRoute((prev) => ({ ...prev, ...patch }));
+  /* Сравнение шага в адресе не хранит — набор и открытая архивная запись
+     живут внутри самого экрана. Счётчик растёт при повторном щелчке по
+     разделу и просит экран выйти из архивной записи к своему набору — см.
+     `goSection`. */
+  const [compareReset, setCompareReset] = useState(0);
   const [day, setDay] = useState<Day | null>(null);
   const [error, setError] = useState<HumanError | null>(null);
   const [selection, setSelection] = useState<Selection>(OVERVIEW);
@@ -140,6 +145,24 @@ export function App() {
   /* Расчёты, отобранные к сравнению. Набор живёт на сессию: его собирают в
      базе расчётов и смотрят в «Сравнении», а не хранят между заходами. */
   const [compare, setCompare] = useState<RunId[]>([]);
+  /* Дни участков, за которыми смотрит мониторинг. Пусто — раздел встречает
+     своим меню: какой сегодня день и какие расчёты его ведут.
+
+     Живут здесь, а не внутри раздела: выбор переживает уход в диспетчерскую
+     и обратно — смена одна, и возвращаться к меню на каждом шаге незачем. */
+  const [watched, setWatched] = useState<string[]>([]);
+  /* Смотрим или выбираем. Раздел встречает меню дня и переходит к живому виду
+     по кнопке: отметить участок и начать смотреть — два разных решения, и
+     первое не должно выполнять второе. */
+  const [watching, setWatching] = useState(false);
+  /* Рабочие расчёты отмеченных дней. Ключ дня участка знает только слой
+     `duty`, у него же и спрашиваем: день без рабочего расчёта отпадает сам —
+     смотреть за ним нечего, пока план не выбран. */
+  const dutyMap = useDuty();
+  const watchRuns = useMemo(
+    () => watched.map((key) => dutyMap[key]).filter((id): id is RunId => Boolean(id)),
+    [watched, dutyMap]
+  );
   /* Запись, которую правят. Окно живёт здесь, а не в базе: после правки надо
      пересобрать справочники, а держит их этот уровень. */
   const [editing, setEditing] = useState<RunRef | null>(null);
@@ -160,6 +183,19 @@ export function App() {
     setPinnedRoute((prev) => (prev === id ? null : id));
     if (id) setRouteFocus((n) => n + 1);
   };
+  /* Показать маршрут, не переключая: щелчок по заявке оставляет на карте её
+     путь и держит его там, сколько бы раз по заявкам этого пути ни щёлкали.
+
+     Переключатель здесь не годится, и это была настоящая поломка: выбор
+     заявки звал `pinRoute` с её маршрутом, второй щелчок по той же заявке
+     попадал в «тот же — значит снять», и путь исчезал с карты, а заявка
+     оставалась жирной точкой среди дюжины чужих линий. То же самое случалось
+     при переходе к соседней заявке того же маршрута.
+
+     И без подлёта: к заявке, по которой только что щёлкнули на карте, карта
+     не едет — диспетчер и так смотрит на неё. Подлёт остаётся за щелчком по
+     самому маршруту, где о месте и спрашивают. */
+  const showRoute = (id: string | null) => setPinnedRoute(id);
   /* Выбранный маршрут живёт в пределах экрана, на котором его выбрали.
      Прежде он переживал уход в другой раздел: диспетчер закреплял линию на
      карте, шёл в мониторинг — и встречал там смену, где все, кроме одного,
@@ -174,6 +210,31 @@ export function App() {
     setPinnedRoute(null);
     setHoverRoute(null);
   }, [section, runId]);
+
+  /* Escape снимает выбранное: закрытую заявку и закреплённый маршрут.
+
+     Прежде выход был только щелчком по пустому месту карты, а на плотном дне
+     пустого места почти нет: щелчок раз за разом попадал то в линию, то в
+     точку, и выбор снимался не с первого раза. Escape — то же движение, каким
+     закрывают любое окно в программе, и оно не зависит от того, куда попал
+     курсор.
+
+     Открытые окна забирают Escape себе: каждое закрывает себя само, и снимать
+     под ними выбор на карте нельзя — иначе одно нажатие делало бы два дела
+     сразу. Смотрим на разметку, а не на свои флаги: окон в программе много,
+     и перечислять их здесь значило бы забыть следующее. */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (document.querySelector('[role="dialog"]')) return;
+      if (selection.kind === 'overview' && pinnedRoute === null) return;
+      setSelection(OVERVIEW);
+      setPinnedRoute(null);
+      setHoverRoute(null);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [selection, pinnedRoute]);
 
   /* Адрес ведёт: «назад», «вперёд» и вручную набранная ссылка меняют его, а
      состояние читается из него заново. Сравниваем по значениям — иначе
@@ -745,20 +806,31 @@ export function App() {
   );
   /* Правая панель показывает список маршрутов вместо справочника там, где
      карта — основной способ смотреть на день: на вкладке «Карта» в
-     диспетчерской и на всём мониторинге, который сам почти целиком карта. */
+     диспетчерской. Мониторинг сюда не попадает: его «Обзор» — карта во весь
+     экран со своим перечнем маршрутов поверх неё, а «Сводка» карты не
+     показывает вовсе. */
   const onPlan = section === 'dispatch' && stage === 'plan';
   /* Обзор — карта на оба поля: правой панели у него нет, и колонку под неё
      он не оставляет. Числа расчёта лежат на самой карте. */
   const onOverview = onPlan && view === 'overview';
-  const onMap = (onPlan && view === 'map') || section === 'monitor';
+  const onMap = onPlan && view === 'map';
 
   const goSection = (id: SectionId) => {
-    /* Шаг диспетчерской переход между разделами не трогает: открытый расчёт
-       остаётся открытым. Раньше возврат в диспетчерскую снова начинался с
-       вопроса «создать или выбрать» — и расчёт, помеченный в базе открытым,
-       открытым не оказывался. Вопрос теперь задаётся один раз, пока не
-       открыт ни один; дальше расчёты переключают лентой в подшапке и базой,
-       а завести новый можно кнопкой в меню. */
+    /* Переход между разделами шаг диспетчерской не трогает: открытый расчёт
+       остаётся открытым. Повторный щелчок по уже открытому разделу — другое
+       дело: это не переход, а просьба вернуться к его началу. В диспетчерской
+       начало — вопрос «создать или выбрать» (ворота), в сравнении — свой
+       набор, а не чужая запись из архива, которую разглядывали. */
+    if (id === section) {
+      if (id === 'dispatch') {
+        nav({ view: firstView('dispatch'), stage: 'gate' });
+        return;
+      }
+      if (id === 'compare') {
+        setCompareReset((n) => n + 1);
+        return;
+      }
+    }
     nav({ section: id, view: firstView(id) });
   };
 
@@ -1102,7 +1174,7 @@ export function App() {
      её не показываем — и колонку под неё тоже, иначе справа остаётся пустая
      полоса, которая читается как несработавший экран. Дашборд обзорный и
      объекта не выбирает, поэтому тоже идёт без неё. */
-  const withDetail = (onPlan && !onOverview) || section === 'monitor';
+  const withDetail = onPlan && !onOverview;
 
   /* Правая панель показывает выбранное не везде: на карте её место занимает
      список маршрутов, у ганта — часы, у канбана — бригада. Там щелчок по
@@ -1147,32 +1219,38 @@ export function App() {
      здесь уже не пустые: это те же значения, но проверенные. */
   const dayScreens = (day: Day, dayView: DayView) => (
     <>
-      {section === 'home' && (
-        <HomeScreen
-          day={day}
-          plan={shownDay?.plan ?? day.plan}
-          view={dayView}
-          runs={runs}
-          activeRun={runId}
-          onGoSection={goSection}
-          onOpenRun={openRun}
-          onCreate={createRunForm}
-        />
-      )}
+      {/* Главная временно скрыта плашкой «В разработке»: сам экран и данные
+          для него остались как есть — см. `InDevelopment.tsx` про то, как
+          вернуть его на место. */}
+      {section === 'home' && <InDevelopment label="Главная" />}
 
-      {section === 'monitor' && (
+      {/* Мониторинг вернулся из-под плашки: без него цепочка «план →
+          что происходит → воздействие» рвалась посередине, и воздействие
+          читалось как правка случайного расчёта из архива. */}
+      {section === 'monitor' &&
+        (watching && watchRuns.length > 0 ? (
         <MonitorScreen
           view={dayView}
           runId={runId}
+          runs={watchRuns}
+          onBack={() => setWatching(false)}
+          mode={view}
           live={liveRoute}
           onLive={setHoverRoute}
           pinned={pinnedRoute}
           onPin={pinRoute}
+          onShowRoute={showRoute}
           focus={routeFocus}
           onSelectOrder={selectOrder}
           onSelectEngineer={selectEngineer}
         />
-      )}
+        ) : (
+          <MonitorGate
+            watched={watched}
+            onWatch={setWatched}
+            onEnter={() => setWatching(true)}
+          />
+        ))}
 
       {/* Управление воздействием — третий этап процесса. Привязано к
           расчёту так же, как диспетчерская и мониторинг: воздействие
@@ -1216,6 +1294,7 @@ export function App() {
           onLive={setHoverRoute}
           pinned={pinnedRoute}
           onPin={pinRoute}
+          onShowRoute={showRoute}
           focus={routeFocus}
           selectedOrder={selection.kind === 'order' ? selection.id : null}
           /* Щелчок по точке остаётся на карте: обзор отвечает сводкой в
@@ -1260,6 +1339,7 @@ export function App() {
           onLive={setHoverRoute}
           pinned={pinnedRoute}
           onPin={pinRoute}
+          onShowRoute={showRoute}
           focus={routeFocus}
           cut={cut}
           onCutChange={setCut}
@@ -1376,6 +1456,7 @@ export function App() {
               picks={compare}
               registry={registry}
               runs={runs}
+              resetToken={compareReset}
               active={stage === 'plan' ? runId : null}
               onToggle={toggleCompare}
               onClear={() => setCompare([])}
@@ -1387,18 +1468,9 @@ export function App() {
             />
           )}
 
-          {/* Статистика стоит над расчётами и читает справочники: те же
-              итоги, что в базе расчётов, но сведённые в один экран. */}
-          {section === 'stats' &&
-            (!registry ? (
-              registryPending
-            ) : (
-              <StatsScreen
-                registry={registry}
-                active={stage === 'plan' ? runId : null}
-                onOpenRun={openRunFromDb}
-              />
-            ))}
+          {/* Статистика временно скрыта плашкой «В разработке»: сама она
+              и данные для неё остались как есть — см. InDevelopment.tsx. */}
+          {section === 'stats' && <InDevelopment label="Статистика" />}
 
           {onDb &&
             (!registry ? (

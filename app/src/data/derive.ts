@@ -419,6 +419,97 @@ export interface DayView {
   hardEnd: Minutes | undefined;
 }
 
+/** Складывает дни участков в один вид — для карты мониторинга, где за тремя
+    районами смотрят разом.
+
+    Складываются только те поля, из которых мониторинг строит картину: люди,
+    их маршруты, заявки и отметки журнала. Участки не пересекаются — свои
+    инженеры, свои заявки, свой офис, — поэтому склейка тут сложение, а не
+    слияние: одинаковых ключей в них не бывает.
+
+    Сводные числа дня — итоги расчёта, воронка, причины, разбор по видам
+    работ — остаются от первого дня и намеренно не пересчитываются. Сложить
+    их нельзя: покрытие трёх участков — не сумма трёх покрытий, а воронка
+    одного дня ничего не говорит о трёх. Мониторинг их не читает: его числа
+    считает `buildLiveRoster` по составу смены. Понадобятся — считать заново,
+    а не брать отсюда. */
+export interface MergedDays {
+  /** Дни, сложенные в один вид. */
+  view: DayView;
+  /** Инженер на общей карте → чей он на самом деле: расчёт и номер внутри
+      своего дня. Нужен для сквозных номеров маршрутов: номер считается от
+      пары «расчёт — инженер», и придуманный для карты составной номер туда
+      попасть не должен. */
+  owner: Map<string, { runId: string; engineerId: string }>;
+}
+
+export function mergeDays(parts: { runId: string; view: DayView }[]): MergedDays | null {
+  if (parts.length === 0) return null;
+  const owner = new Map<string, { runId: string; engineerId: string }>();
+  if (parts.length === 1) {
+    const [only] = parts;
+    for (const load of only.view.loads) {
+      owner.set(load.engineer.id, { runId: only.runId, engineerId: load.engineer.id });
+    }
+    return { view: only.view, owner };
+  }
+
+  /* Номера инженеров у участков одни и те же: в каждом свои E00…E13. На
+     общей карте они сталкиваются, и день, положенный вторым, затирал бы
+     людей первого — ровно это и происходило: сорок два инженера в числах и
+     четырнадцать на карте. Поэтому на общей карте у инженера составной
+     номер, «расчёт::инженер», а настоящий остаётся в `owner`. */
+  const tag = (runId: string, id: string) => `${runId}::${id}`;
+  const loads: EngineerLoad[] = [];
+  const engineerById = new Map<string, Engineer>();
+  const routeByEngineer = new Map<string, Route>();
+  const stopByOrder = new Map<string, Placement>();
+
+  for (const { runId, view } of parts) {
+    for (const load of view.loads) {
+      const id = tag(runId, load.engineer.id);
+      owner.set(id, { runId, engineerId: load.engineer.id });
+      const engineer = { ...load.engineer, id };
+      loads.push({ ...load, engineer });
+      engineerById.set(id, engineer);
+      const route = view.routeByEngineer.get(load.engineer.id);
+      if (route) routeByEngineer.set(id, route);
+    }
+    for (const [orderId, place] of view.stopByOrder) {
+      stopByOrder.set(orderId, { ...place, engineerId: tag(runId, place.engineerId) });
+    }
+  }
+
+  const views = parts.map((one) => one.view);
+  const [first] = views;
+  return {
+    view: {
+      ...first,
+      loads,
+      engineerById,
+      routeByEngineer,
+      stopByOrder,
+      unassigned: views.flatMap((one) => one.unassigned),
+      closed: views.flatMap((one) => one.closed),
+      deferrable: views.flatMap((one) => one.deferrable),
+      fragile: views.flatMap((one) => one.fragile),
+      /* Заявки у участков свои: номер наряда общий по выгрузке, и
+         сталкиваться им незачем. */
+      orderById: new Map(views.flatMap((one) => [...one.orderById])),
+      reported: Object.assign({}, ...views.map((one) => one.reported)),
+      tightCount: views.reduce((sum, one) => sum + one.tightCount, 0),
+      /* Граница суток у участков одна и та же — это день выгрузки. Берём
+         позднюю: на ней кончается последняя смена из показанных. */
+      hardEnd: views.reduce<Minutes | undefined>(
+        (top, one) =>
+          one.hardEnd == null ? top : top == null ? one.hardEnd : Math.max(top, one.hardEnd),
+        undefined
+      )
+    },
+    owner
+  };
+}
+
 /** Срез внутри рабочего дня. Данные — план на дату, поэтому «сейчас» берём
     по часам и прижимаем к границам смены. */
 export function cutMinutes(now = new Date()): Minutes {
@@ -1017,14 +1108,7 @@ export function buildDayView(day: Day, reported: Record<string, string> = {}): D
      но теперь их можно подвинуть под свою норму, не трогая код. */
   const limit = service().thresholds;
 
-  /* Две обязательные метрики ТЗ — задействованные исполнители и пробег — и
-     базовый вариант ТЗ рядом. Прежде на пульте их не было вовсе: ни одного
-     километра на экране, кроме масштаба карты, хотя именно по этим двум
-     числам ТЗ сравнивает планы. Пробег с базовым сравнивается на заявку:
-     план, назначивший вдвое больше заявок, и проедет больше. */
   const used = engineersUsed(plan);
-  const km = kmTotal(plan);
-  const perVisit = km !== null && plan.meta.orders_assigned > 0 ? km / plan.meta.orders_assigned : null;
 
   /* Пересчёт — план остатка дня, а не дня. Сравнивать его с базовым
      вариантом нечестно: базовый раскладывал день с утра, а пересчёт — только
@@ -1037,10 +1121,6 @@ export function buildDayView(day: Day, reported: Record<string, string> = {}): D
   const restFrom = replanAt(plan);
   const rest = restFrom === null ? null : `Остаток дня с ${hhmm(restFrom)}`;
   const base = rest === null ? plan.meta.baseline ?? null : null;
-  const basePerVisit =
-    base && base.distance_km_total != null && base.orders_assigned > 0
-      ? base.distance_km_total / base.orders_assigned
-      : null;
   const idleMinutes =
     rest === null
       ? simulation.idle_minutes
@@ -1074,13 +1154,19 @@ export function buildDayView(day: Day, reported: Record<string, string> = {}): D
         ]
       : [];
 
+  /* Порядок плиток — путь чтения дня. Первые четыре — то, что вышло: сколько
+     заявок покрыто, сколько их всего, сколько человек их везёт, у скольких
+     инженера нет. Следующие четыре — разбор того, почему вышло так: прогноз,
+     простой, перекос загрузки. Пробега на пульте нет: километры дня сравнивают
+     с базовым вариантом в «Сводке» — здесь их не с чем сопоставить, и голое
+     число без сравнения только путает. */
   const metrics: Metric[] = [
     {
       /* Твёрдое число дня: сколько заявок получили инженера. Доля и подпись
          под ней считаются из одного и того же и сходятся между собой —
          в отличие от прогноза, который приходит из симуляции. */
       key: 'assigned',
-      label: 'Назначено',
+      label: 'Покрытие',
       value: pct(assignedShare),
       unit: '%',
       caption:
@@ -1095,17 +1181,16 @@ export function buildDayView(day: Day, reported: Record<string, string> = {}): D
           : 'В остатке дня часть заявок осталась без инженера'
       )
     },
-    ...forecast,
     {
-      /* Нераспределённые стоят рядом с покрытием не случайно: это первая
-         причина, по которой оно не сходится к сотне. */
-      key: 'unassigned',
-      label: 'Без инженера',
-      value: String(unassigned.length),
+      /* Знаменатель покрытия — тем же разбором: сколько заявок в расчёте
+         вообще, до вопроса, у скольких из них есть инженер. */
+      key: 'orders',
+      label: 'Заявок',
+      value: String(plan.meta.orders_total),
       unit: 'з.',
-      caption: rest ?? 'Не найден инженер',
-      group: 'unassigned',
-      ...mark(lostShare > 0.1, unassigned.length > 0, 'Для этих заявок не найден инженер')
+      caption: rest ?? 'Всего в расчёте',
+      group: 'metric:assigned',
+      flag: 'ok'
     },
     {
       key: 'engineers',
@@ -1124,19 +1209,15 @@ export function buildDayView(day: Day, reported: Record<string, string> = {}): D
       flag: 'ok'
     },
     {
-      key: 'km',
-      label: 'Пробег',
-      value: km === null ? '—' : String(Math.round(km)),
-      unit: km === null ? undefined : 'км',
-      caption:
-        (rest === null ? '' : `${rest} · `) +
-        (perVisit === null
-          ? 'Километража в плане нет'
-          : `${dec(perVisit, 2)} км на заявку` +
-            (basePerVisit !== null ? ` · базовый ${dec(basePerVisit, 2)}` : '')),
-      group: 'metric:km',
-      flag: 'ok'
+      key: 'unassigned',
+      label: 'Без инженера',
+      value: String(unassigned.length),
+      unit: 'з.',
+      caption: rest ?? 'Не найден инженер',
+      group: 'unassigned',
+      ...mark(lostShare > 0.1, unassigned.length > 0, 'Для этих заявок не найден инженер')
     },
+    ...forecast,
     {
       key: 'idle',
       label: 'Общий простой',

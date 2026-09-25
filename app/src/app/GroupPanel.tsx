@@ -10,7 +10,6 @@ import {
   engineersUsed,
   hhmm,
   hoursText,
-  kmTotal,
   orders as pluralOrders,
   placeOf,
   plural,
@@ -72,7 +71,7 @@ function metricShape(groupId: string, view: DayView, day: Day): Shape | null {
   const rest = restFrom === null ? null : `Остаток дня с ${hhmm(restFrom)}`;
 
   switch (groupId) {
-    /* Назначено — твёрдый счёт: у скольких заявок есть инженер. Здесь нет
+    /* Покрытие — твёрдый счёт: у скольких заявок есть инженер. Здесь нет
        ни одного числа из симуляции, поэтому кольцо делится надвое и сходится
        с подписью под плиткой. Прогноз стоит отдельной строкой и назван
        прогнозом, чтобы его не прочитали как факт. */
@@ -81,7 +80,7 @@ function metricShape(groupId: string, view: DayView, day: Day): Shape | null {
       const assigned = day.plan.meta.orders_assigned;
       return {
         eyebrow: rest ?? 'Число расчёта',
-        title: rest === null ? 'Назначено' : 'Назначено в остатке дня',
+        title: rest === null ? 'Покрытие' : 'Покрытие в остатке дня',
         chart: {
           title: rest === null ? 'У скольких заявок есть инженер' : 'Как разложен остаток дня',
           centerValue: total,
@@ -283,57 +282,6 @@ function metricShape(groupId: string, view: DayView, day: Day): Shape | null {
             key: 'free',
             label: freeLabel,
             engineerIds: free.map((load) => load.engineer.id)
-          }
-        ]
-      };
-    }
-
-    case 'metric:km': {
-      const plan = day.plan;
-      const base = rest === null ? plan.meta.baseline ?? null : null;
-      const withKm = view.loads
-        .filter((load) => load.route && load.route.totals.distance_km != null)
-        .sort((a, b) => (b.route!.totals.distance_km ?? 0) - (a.route!.totals.distance_km ?? 0));
-      /* Та же сумма, что на плитке: поле движка, а без него — по маршрутам. */
-      const total = kmTotal(plan);
-      const perVisit = total !== null && plan.meta.orders_assigned > 0 ? total / plan.meta.orders_assigned : null;
-      const basePerVisit =
-        base && base.distance_km_total != null && base.orders_assigned > 0
-          ? base.distance_km_total / base.orders_assigned
-          : null;
-      return {
-        eyebrow: rest ?? 'Число расчёта',
-        title: 'Пробег',
-        facts: [
-          {
-            key: 'total',
-            label: rest === null ? 'Всего по плану' : 'Всего за остаток дня',
-            value: total === null ? '—' : `${dec(total, 0)} км`
-          },
-          { key: 'visit', label: 'На одну заявку', value: perVisit === null ? '—' : `${dec(perVisit, 2)} км` },
-          {
-            key: 'engineer',
-            label: 'На одного исполнителя',
-            value: total === null || withKm.length === 0 ? '—' : `${dec(total / withKm.length, 1)} км`
-          },
-          /* Базовый — только у плана дня: пересчёт с ним не сравнивается, и
-             строка говорит об этом, а не пропадает молча. */
-          {
-            key: 'base',
-            label: 'Базовый вариант (без планировщика)',
-            value:
-              rest !== null
-                ? 'для пересчёта не сравнивается'
-                : base && base.distance_km_total != null
-                  ? `${dec(base.distance_km_total, 0)} км · ${basePerVisit === null ? '—' : dec(basePerVisit, 2)} на заявку`
-                  : '—'
-          }
-        ],
-        sections: [
-          {
-            key: 'routes',
-            label: 'Маршруты, от длинного к короткому',
-            engineerIds: withKm.map((load) => load.engineer.id)
           }
         ]
       };

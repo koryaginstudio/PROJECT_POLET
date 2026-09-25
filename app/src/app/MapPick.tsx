@@ -52,12 +52,6 @@ interface Props {
   onExplain: () => void;
 }
 
-/** Минуты словами: «3 ч 40 мин». */
-const spell = (minutes: number) => {
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  return h > 0 ? `${h} ч ${m} мин` : `${m} мин`;
-};
 
 export function MapPick({
   view,
@@ -216,63 +210,47 @@ export function MapPick({
     );
   }
 
-  /* Маршрут и инженер — двумя отдельными карточками, одна под другой.
+  /* Маршрут — одной карточкой: номер, а под ним ответственный и на чём он
+     ездит. Всё.
 
-     Это разные записи, и вопросы к ним разные. К маршруту: сколько заявок,
-     сколько времени в пути и в работе, каким окном лёг день. К инженеру:
-     кто он, на чём ездит, когда его смена и откуда он выезжает. Пока это
-     стояло одной карточкой, щелчок по пути отвечал фамилией, а номер
-     маршрута в ответе не назывался вовсе.
-
-     Числа не повторяются: день принадлежит маршруту, свойства — человеку. */
+     Прежде их было две, одна под другой: в первой — заявки, загрузка, время
+     в пути и в работе, окно дня; во второй — человек, смена и место выезда.
+     Два окна поверх карты отвечали на вопрос, которого никто не задавал:
+     щёлкая по пути, спрашивают «чей он», а не «сколько в нём минут работы».
+     Числа маршрута никуда не делись — они в карточке инженера и в базе
+     маршрутов, куда ведёт та же фамилия. */
   const crew = load!;
-  const totals = crew.route?.totals;
   const number = routeLabel(routeNumber(runId, crew.engineer.id));
   const tone = colorOf(crew.engineer.id);
 
   return (
-    <>
-      <section className="mapstat mpick" aria-label="Выбранный маршрут">
-        {head(tone, <b className="mpick__name">{number}</b>, 'Маршрут')}
+    <section className="mapstat mpick" aria-label="Выбранный маршрут">
+      {head(tone, <b className="mpick__name">{number}</b>, 'Маршрут')}
 
-        <div className="mpick__rows">
-          {row('Заявок', String(crew.visits))}
-          {row('Загрузка', `${Math.round(crew.occupancy * 100)}%`)}
-          {totals && row('В пути', spell(totals.travel_minutes))}
-          {totals && row('Работа', spell(totals.work_minutes))}
-          {totals && row('День', `${hhmm(totals.start)}–${hhmm(totals.end)}`)}
-        </div>
-      </section>
-
-      <section className="mapstat mpick" aria-label="Инженер маршрута">
-        {head(
-          tone,
+      <div className="mpick__rows">
+        {row(
+          'Ответственный',
           <button
             type="button"
             className="mpick__link"
             onClick={() => onOpenEngineer(crew.engineer.id)}
+            title="Открыть карточку инженера"
           >
             <PersonName name={crew.engineer.name} stacked={false} />
-          </button>,
-          crew.engineer.transport ? transportName(crew.engineer.transport) : 'Транспорт не указан',
-          crew.engineer.transport ? transportIcon(crew.engineer.transport) : undefined,
-          true
+          </button>
         )}
-
-        <div className="mpick__rows">
-          {row('Смена', `${hhmm(crew.engineer.shift_start)}–${hhmm(crew.engineer.shift_end)}`)}
-          {row('Выезжает из', homeOf(crew.engineer))}
-        </div>
-
-        <button
-          type="button"
-          className="mapstat__go"
-          onClick={() => onOpenEngineer(crew.engineer.id)}
-        >
-          Открыть карточку инженера
-          <Icon name="arrow-right" size={13} />
-        </button>
-      </section>
-    </>
+        {row(
+          'Транспорт',
+          crew.engineer.transport ? (
+            <span className="mpick__ride">
+              <Icon name={transportIcon(crew.engineer.transport)} size={12} />
+              {transportName(crew.engineer.transport)}
+            </span>
+          ) : (
+            <span className="mpick__none">Не указан</span>
+          )
+        )}
+      </div>
+    </section>
   );
 }

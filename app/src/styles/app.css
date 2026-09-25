@@ -785,6 +785,17 @@ body {
   color: var(--text-secondary);
 }
 
+/* Действия под сравнением — не подтверждение и не выбор плана, а «посмотреть»
+   и «унести»: черта над ними отделяет их от таблицы так же, как отделяют
+   служебный ряд действий в других панелях. */
+.basecmp__actions {
+  display: flex;
+  gap: var(--sp-3);
+  margin-top: var(--sp-4);
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--border-hairline);
+}
+
 .rowlist {
   display: flex;
   flex-direction: column;
@@ -2435,16 +2446,97 @@ body {
   gap: 2px;
 }
 
+/* Заголовок раздела — сама кнопка складывания. Отрицательные поля держат её
+   в ширину карточки, хотя нажимаемая область у неё чуть шире строк под ней:
+   так курсор не проваливается мимо кнопки в паре пикселей от текста. */
+.notify__group-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  width: calc(100% + var(--sp-2) * 2);
+  margin: 0 calc(var(--sp-2) * -1);
+  padding: 4px var(--sp-2);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  font-family: var(--font-sans);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 120ms var(--ease-out-strong);
+}
+
+.notify__group-head:hover {
+  background: var(--ink-50);
+}
+
+.notify__group-head:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+
+/* Значок тона — раньше текста говорит, о чём раздел: красный треугольник у
+   срочных, жёлтые часы у остального. Цвет не темы ради контраста, а сути. */
+.notify__group-icon {
+  flex: 0 0 auto;
+}
+
+.notify__group-icon--urgent {
+  color: var(--danger-600);
+}
+
+.notify__group-icon--watch {
+  color: var(--warning-600);
+}
+
 .notify__group-title {
+  flex: 1 1 auto;
+  min-width: 0;
   font-size: var(--fs-overline);
   letter-spacing: var(--ls-overline);
   text-transform: uppercase;
   font-weight: var(--fw-bold);
   color: var(--text-muted);
-  margin-bottom: var(--sp-2);
+}
+
+.notify__group-count {
+  flex: 0 0 auto;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+
+/* Та же стрелка, что складывает разделы правой панели: поворачивается на
+   месте вместо смены значка. */
+.notify__group-chev {
+  flex: 0 0 auto;
+  color: var(--icon-secondary);
+  transition: transform 160ms var(--ease-out-strong), color 120ms var(--ease-out-strong);
+}
+
+.notify__group-chev--open {
+  transform: rotate(180deg);
+  color: var(--text-primary);
+}
+
+.notify__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: var(--sp-1);
+}
+
+/* Черта между «срочными» и «остальными» — та же подразделялка, что у ленты
+   расчётов в наборе: без неё две группы читались как один список вперемешку
+   по важности. */
+.notify__divider {
+  height: 1px;
+  margin: 0 calc(var(--sp-2) * -1);
+  background: var(--border-hairline);
 }
 
 .notify__empty {
+  margin-top: var(--sp-1);
   font-size: var(--fs-caption);
   color: var(--text-secondary);
 }
@@ -2452,7 +2544,7 @@ body {
 .notify__row {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   padding: 8px var(--sp-3);
   margin: 0 calc(var(--sp-3) * -1);
   border: 0;
@@ -2473,16 +2565,131 @@ body {
   box-shadow: var(--ring-focus);
 }
 
-.notify__row-title {
-  font-size: var(--fs-body-s);
+/* Первая строка карточки — разбор, а не текст: что это за запись, её
+   номер и число, ради которого её вообще показали. Порядок читают слева
+   направо как ответ на «что? какое? когда/насколько плохо?». */
+.notify__row-head {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.notify__row-kind-icon {
+  flex: 0 0 auto;
+  color: var(--icon-secondary);
+}
+
+.notify__row-kind {
+  flex: 0 0 auto;
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+
+/* Номер — отдельной плашкой: его ищут глазами быстрее всего, и он не должен
+   тонуть между служебным «Заявка» и текстом заголовка. */
+.notify__row-id {
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  border-radius: var(--r-xs);
+  background: var(--ink-100);
+  font-size: var(--fs-caption);
   font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
   color: var(--text-primary);
 }
 
 .notify__row-meta {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: right;
   font-size: var(--fs-caption);
   color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
+}
+
+/* Название работ стоит в первой строке, рядом с номером: это всё ещё «что за
+   объект». Вторая строка отдана беде, третья — адресу. */
+.notify__row-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--fs-body-s);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Причина — то, ради чего уведомление и показано. Набрана в полный тон и с
+   цветной отбивкой слева: в списке из восьми строк взгляд должен цепляться
+   за беду, а не за номер заявки. Цвет отбивки — тон группы. */
+.notify__row-why {
+  padding-left: var(--sp-2);
+  border-left: 2px solid var(--tone, var(--border-hairline));
+  font-size: var(--fs-caption);
+  line-height: var(--lh-body);
+  color: var(--text-primary);
+}
+
+.notify__row--urgent {
+  --tone: var(--danger-500);
+}
+
+.notify__row--watch {
+  --tone: var(--warning-500);
+}
+
+/* ─── смахивание ──────────────────────────────────────────────────────
+
+   Строку убирают движением вбок, как в списке уведомлений телефона: мышью —
+   потянув, на трекпаде — двумя пальцами. Сама строка едет поверх подложки,
+   на которой написано, что будет, если довести жест до конца. */
+.notify__swipe {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--r-sm);
+}
+
+.notify__swipe-back {
+  position: absolute;
+  inset: 0 var(--sp-3) 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  color: var(--danger-600);
+  pointer-events: none;
+}
+
+.notify__swipe .notify__row {
+  position: relative;
+  width: calc(100% + var(--sp-3) * 2);
+  background: var(--white);
+  transition:
+    transform 180ms var(--ease-out-strong),
+    background-color 120ms var(--ease-out-strong);
+  /* Жест вбок принадлежит строке, а не странице: без этого горизонтальная
+     прокрутка уводила бы всю карточку уведомлений. */
+  touch-action: pan-y;
+}
+
+.notify__swipe .notify__row:hover {
+  background: var(--ink-50);
+}
+
+/* Уезжающая строка курсору больше не отвечает: жест уже решён. */
+.notify__row--leaving {
+  pointer-events: none;
+  opacity: 0.4;
+}
+
+.notify__row-place {
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ─── выбор расчёта ──────────────────────────────────────────────────── */
@@ -2491,14 +2698,23 @@ body {
    календаря — он отдаёт расчёты движка под номерами. Лента забирает всю
    свободную ширину подшапки и прокручивается: расчётов со временем станет
    много, и строка не должна ни расти вместе с ними, ни оставлять справа
-   пустоту. Что не поместилось — достаётся из списка справа. */
+   пустоту. Что не поместилось — достаётся из списка справа.
+
+   `min-width` — число, а не 0 и не auto. Ноль на узком окне схлопывал ленту
+   целиком, и кнопка «Все», которая не сжимается, вылезала поверх кнопок
+   действий. Auto — другая крайность: без явного числа браузер поднимает
+   минимум ленты до полной, несжатой ширины всех чипов сразу (их у
+   `.runtabs__strip` не видно из-за вложенной прокрутки, но в счёт
+   автоматического минимума родителя они всё равно идут), и лента вместо
+   прокрутки распирает всю подшапку. Число держит только то, что действительно
+   нельзя сжимать, — саму кнопку «Все» с небольшим запасом. */
 .runtabs {
   position: relative;
   display: flex;
   align-items: center;
   gap: var(--sp-2);
   flex: 1 1 auto;
-  min-width: 0;
+  min-width: 110px;
 }
 
 .runtabs__strip {
@@ -2564,9 +2780,6 @@ body {
   /* Цифры в одну ширину: три величины через косую черту стоят в ленте
      столбиками, и прыгающая ширина знака ломала бы их ряд. */
   font-variant-numeric: tabular-nums;
-  /* Подсказка объясняет, какое число что означает, — курсор об этом
-     предупреждает. */
-  cursor: help;
 }
 
 .runtabs__item--active .runtabs__meta {
@@ -4095,6 +4308,21 @@ button.ministage:hover:not(:disabled) {
   font-size: var(--fs-small);
 }
 
+/* Выбранный визит: тот же кружок с цифрой, только крупнее. Прежде выбор
+   подменял его простым кружком без номера, и точка на глазах теряла своё
+   место в объезде — ради подсветки, которая и так видна по размеру.
+
+   Прибавка нарочно небольшая: кружок и так вдвое крупнее точки, и широкая
+   кайма поверх делала из него не выбранный визит, а нашлёпку посреди карты.
+   Размер держат и стили, и рамка значка в MapBoard — разойтись им нельзя. */
+.geo__seq--picked {
+  width: 24px;
+  height: 24px;
+  box-shadow:
+    0 0 0 2px var(--white),
+    0 0 0 3px var(--ink-1000);
+}
+
 .geo__line {
   width: 16px;
   height: 3px;
@@ -5165,11 +5393,14 @@ button.bsq:focus-visible {
 }
 
 
-/* разделитель в нижнем хэдере */
+/* Разделитель в подшапке. `--border-hairline` здесь терялся на тёмном фоне
+   строки — черта была на месте, но её не было видно, и зазор перед ней
+   читался как случайный, а не как граница группы. `--ink-300` держит ту же
+   тихую роль, но остаётся различимой чертой, а не только числом в CSS. */
 .subhdr__divider {
   width: 1px;
   height: 22px;
-  background: var(--border-hairline);
+  background: var(--ink-300);
 }
 
 /* Фирменная кнопка не должна чернеть на наведении. В компоненте системы
@@ -5267,6 +5498,18 @@ button.bsq:focus-visible {
   text-align: left;
   cursor: pointer;
   transition: background-color 120ms var(--ease-out-strong), border-color 120ms var(--ease-out-strong);
+}
+
+/* Плитка, по которой не нажимают. В мониторинге числа — ответ сам по себе:
+   разбирать «сколько людей в пути» не во что, и рука не должна тянуться к
+   плитке за окном, которого не будет. */
+.cmetric--flat {
+  cursor: default;
+}
+
+.cmetric--flat:hover {
+  background: var(--ink-50);
+  border-color: var(--border-hairline);
 }
 
 .cmetric:hover {
@@ -6823,7 +7066,15 @@ b.ccard__bad {
 }
 
 /* Шапка списка: подписи колонок один раз наверху. Держится при прокрутке —
-   иначе на второй сотне строк колонка цифр снова становится безымянной. */
+   иначе на второй сотне строк колонка цифр снова становится безымянной.
+
+   Строка под шапкой свободно останавливается на любом пикселе, а не по
+   границе строк: без разницы в подложке шапка и панель были одного и того
+   же цвета `--white`, и там, где шапка на весу перекрывала верх строки,
+   глаз не видел плашки поверх текста — казалось, что подпись колонки
+   вписана в саму строку, второй её строкой. Свой тон плюс тень читаются
+   как «шапка на весу», и то, что строка ныряет под неё при прокрутке,
+   перестаёт выглядеть поломкой. */
 .dblist__head {
   position: sticky;
   top: 0;
@@ -6832,8 +7083,9 @@ b.ccard__bad {
   align-items: flex-end;
   gap: var(--sp-3);
   padding: var(--sp-2) var(--sp-4);
-  background: var(--surface-card);
+  background: var(--ink-100);
   border-bottom: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-md);
   /* Начертание задаём шапке целиком: имя первой колонки и подписи колонок
      чисел — одно и то же по роли, и набраны они обязаны быть одинаково. */
   font-size: var(--fs-small);
@@ -7648,81 +7900,31 @@ b.ccard__bad {
   font-variant-numeric: tabular-nums;
 }
 
-/* ─── вход в диспетчерскую ────────────────────────────────────────────── */
+/* ─── вход в раздел: заголовок, строка и одно главное действие ────────── */
 
-.gate {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+/* Счётчик справа от заголовка на узком экране уходит под него, а не режет
+   заголовок пополам. */
+.gatehero__head {
+  flex-wrap: wrap;
+}
+
+/* Ряд действий ворот. Обычно в нём одна кнопка; в сравнении рядом встаёт
+   вторая — или строка о том, что открывать пока нечего. Прежде здесь стояли
+   две карточки в полэкрана, и «открыть готовое» вело туда же, куда и список
+   под ними. */
+.gatehero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: var(--sp-3);
   margin-top: var(--sp-4);
 }
 
-.gate__card {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
-  padding: var(--sp-4);
-  border: 1px solid var(--border-hairline);
-  border-radius: var(--r-md);
-  background: var(--white);
-  font-family: var(--font-sans);
-  text-align: left;
-  cursor: pointer;
-  transition: border-color 120ms var(--ease-out-strong), background-color 120ms var(--ease-out-strong);
-}
-
-.gate__card:hover {
-  border-color: var(--ink-300);
-}
-
-.gate__card:focus-visible {
-  outline: none;
-  box-shadow: var(--ring-focus);
-}
-
-.gate__card--accent {
-  border-color: var(--ink-1000);
-}
-
-.gate__card--on {
-  background: var(--ink-50);
-  border-color: var(--ink-300);
-}
-
-.gate__icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: var(--r-pill);
-  background: var(--ink-100);
-  color: var(--text-primary);
-  margin-bottom: 2px;
-}
-
-.gate__title {
-  font-family: var(--font-display);
-  font-size: var(--fs-h4);
-  font-weight: var(--fw-extrabold);
-  letter-spacing: var(--ls-h4);
-  color: var(--text-primary);
-}
-
-.gate__note {
+/* Пустой архив говорит словами, а не погашенной кнопкой: нажимать нечего,
+   и вид кнопки тут только обманывал бы. */
+.gatehero__hint {
   font-size: var(--fs-caption);
   color: var(--text-muted);
-}
-
-.gate__go {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  margin-top: var(--sp-2);
-  font-size: var(--fs-caption);
-  font-weight: var(--fw-semibold);
-  color: var(--text-primary);
 }
 
 .gatelist {
@@ -7947,6 +8149,69 @@ b.ccard__bad {
   color: var(--text-muted);
 }
 
+/* Точка у названия пресета стабильности. Цвет отвечает на вопрос быстрее
+   текста: зелёная — план стоит, жёлтая — уступает по необходимости,
+   красная — перестраивается свободно. Сам выбор она не заменяет, поэтому
+   от чтения с экрана скрыта: там есть название. */
+.preset__dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  border-radius: var(--r-pill);
+  transform: translateY(-1px);
+}
+
+.preset__dot--ok {
+  background: var(--success-500);
+}
+
+.preset__dot--warn {
+  background: var(--warning-500);
+}
+
+.preset__dot--bad {
+  background: var(--danger-500);
+}
+
+/* Название с точкой прижато влево, «По умолчанию» — вправо: раньше в строке
+   было двое, теперь трое. */
+.preset__top > .preset__label {
+  margin-right: auto;
+}
+
+/* Что число на ползунке значит в минутах смены. Стоит сразу под числом,
+   до самого ползунка: читают сверху вниз, и объяснение после рычага
+   приходит, когда его уже подвинули. */
+.knob__means {
+  margin-top: 2px;
+  font-size: var(--fs-small);
+  color: var(--text-secondary);
+}
+
+/* ─── импорт файлов: три формата одним рядом ──────────────────────────── */
+
+.dayimport {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.dayimport__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.dayimport__btn {
+  min-width: 104px;
+}
+
+.dayimport__hint {
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+
 .createbar {
   display: flex;
   align-items: center;
@@ -8011,6 +8276,9 @@ b.ccard__bad {
 }
 
 .createbar__reset {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   border: 0;
   background: transparent;
   padding: 0;
@@ -8019,6 +8287,12 @@ b.ccard__bad {
   color: var(--text-muted);
   text-decoration: underline;
   cursor: pointer;
+}
+
+.createbar__reset:focus-visible {
+  outline: none;
+  border-radius: var(--r-sm);
+  box-shadow: var(--ring-focus);
 }
 
 .createbar__reset:hover {
@@ -12121,28 +12395,30 @@ b.ccard__bad {
   flex: 0 0 auto;
 }
 
+/* Тот же рост, та же форма и тот же цвет значка, что у колокольчика рядом:
+   обе кнопки в шапке — служебные значки одного ряда, и разнобой в размере
+   (36px против 40px) и в цвете (приглушённый серый против основного) читался
+   как две разные системы там, где должна быть одна. */
 .svc__btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: var(--control-h);
+  height: var(--control-h);
   border: 0;
-  border-radius: var(--r-control);
+  border-radius: var(--r-pill);
   background: transparent;
-  color: var(--icon-secondary);
+  color: var(--icon-primary);
   cursor: pointer;
   transition: var(--t-control);
 }
 
 .svc__btn:hover {
   background: var(--ink-100);
-  color: var(--text-primary);
 }
 
 .svc__btn--on {
   background: var(--ink-150);
-  color: var(--text-primary);
 }
 
 .svc__btn:focus-visible {
@@ -14051,16 +14327,123 @@ button.chip--sm {
   margin-top: 6px;
 }
 
+/* Группа действий с открытым расчётом — «В работу» и «Закрыть» — в конце
+   подшапки, за разделителем. Свой gap, а не общий шаг строки: зазор до
+   крестика чуть шире, чтобы 26px крестика не ловил промахи мимо главной
+   кнопки, и это ровно одно значение, а не сумма зазора строки с отступом
+   самой кнопки. */
+.subhdr__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-5);
+  flex: 0 0 auto;
+}
+
 /* «В работу» в подшапке диспетчерской. Пилюля того же роста и кегля, что
    кнопки в карточке расчёта: одно действие, один вид — где бы его ни нажали.
-   В спокойном виде тихая, светлая; взятый расчёт красится фирменным
-   оранжевым — «вот этот, с ним сейчас работают». */
-/* «Закрыть» в подшапке. Тихий, без рамки: служебный выход из плана, а не
-   действие с планом. Отодвинут от «В работу» на шаг сетки, чтобы не
-   попадать в него вместо главной кнопки. */
+   Зелёная тихая обводка — «нажми, это действие»; взятый расчёт красится
+   фирменным оранжевым — «вот этот, с ним сейчас работают», это уже
+   состояние, а не приглашение нажать. */
+/* Селектор с тегом, не просто класс: переменные `Button` дизайн-системы
+   попадают в `<head>` во время выполнения, позже вёрстки приложения, и при
+   равном весе селектора выигрывали бы они. Тег поднимает вес и снимает
+   вопрос порядка загрузки. */
+button.duty__take {
+  --pl-bg: var(--white);
+  --pl-fg: var(--success-600);
+  --pl-bd: var(--success-500);
+  --pl-bg-h: var(--success-solid);
+  --pl-fg-h: var(--text-on-solid);
+  --pl-bd-h: var(--success-solid);
+}
+
+/* «Закрыть» в подшапке. Та же тихая обводка, что у «В работу», только
+   красная: выход из плана — тоже действие, а не служебная мелочь, и гасить
+   его до полной незаметности значило бы прятать кнопку, которую диспетчер
+   ищет глазами в конце строки. */
 .subhdr__close {
   flex: 0 0 auto;
-  margin-left: var(--sp-4);
+}
+
+button.subhdr__close {
+  --pl-bg: var(--white);
+  --pl-fg: var(--danger-600);
+  --pl-bd: var(--danger-500);
+  --pl-bg-h: var(--danger-solid);
+  --pl-fg-h: var(--text-on-solid);
+  --pl-bd-h: var(--danger-solid);
+}
+
+/* ─── форма расчёта: шапка и группы ───────────────────────────────────
+
+   Заголовок экрана стоит над карточками, а не в отдельной белой панели.
+   Панель обещает раздел с содержанием, и панель из одного заголовка этого
+   обещания не держит: на экране получались две одинаковые полосы подряд,
+   первая — пустая. Здесь имя экрана и одна строка о том, что произойдёт;
+   дальше карточки отвечают по порядку: что считаем, по каким правилам. */
+.calc__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  /* Отступ снизу меньше обычного шага между карточками: заголовок к первой
+     карточке ближе, чем карточки друг к другу, — он её и называет. */
+  margin: var(--sp-2) 0 calc(var(--sp-1) * -1);
+}
+
+.calc__head-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  min-width: 0;
+}
+
+.calc__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: var(--fw-extrabold);
+  font-size: var(--fs-h3);
+  letter-spacing: var(--ls-h3);
+  color: var(--text-primary);
+}
+
+/* Строка под заголовком: что произойдёт по кнопке. Длину держим в пределах
+   читаемой строки — глазу незачем ехать через весь экран ради одной фразы. */
+.calc__lede {
+  margin: 0;
+  max-width: 68ch;
+  font-size: var(--fs-body-s);
+  line-height: var(--lh-body);
+  color: var(--text-secondary);
+}
+
+/* Крестик в шапке экрана стоит вровень с заголовком, а не с текстом под ним. */
+.calc__close--head {
+  margin-top: var(--sp-1);
+}
+
+/* Три карточки правил под общим именем: они отвечают на один вопрос — как
+   считать, — и порознь читались как три самостоятельных раздела. Имя группы
+   стоит над ними той же ступенью, что и заголовки карточек ниже. */
+.calc__rules {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.calc__rules-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: 0 var(--sp-1);
+}
+
+.calc__rules-note {
+  margin: 0;
+  max-width: 68ch;
+  font-size: var(--fs-body-s);
+  line-height: var(--lh-body);
+  color: var(--text-secondary);
 }
 
 /* Крестик у номера расчёта: закрывает открытый план и возвращает к выбору.
@@ -14349,52 +14732,6 @@ button.chip--sm {
     opacity: 1;
     transform: none;
   }
-}
-
-/* Раскрытая история встаёт первой панелью экрана и приходит чуть заметнее:
-   у неё нет соседей сверху, и короткий сдвиг читается как переход, а не
-   как подрагивание. */
-.gateview--full {
-  animation-name: gateInFull;
-}
-
-@keyframes gateInFull {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-/* Возврат к выбору действия стоит слева от заголовка — там же, где стрелка
-   «Назад» на всех остальных экранах. */
-.gateback {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--control-h-sm);
-  height: var(--control-h-sm);
-  margin-right: var(--sp-2);
-  vertical-align: middle;
-  border: 1px solid var(--border-hairline);
-  border-radius: var(--r-sm);
-  background: var(--white);
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: var(--t-control);
-}
-
-.gateback:hover {
-  border-color: var(--ink-300);
-  color: var(--text-primary);
-}
-
-.gateback:focus-visible {
-  outline: none;
-  box-shadow: var(--ring-focus);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -16378,14 +16715,331 @@ button.chip--sm {
    заявок. Наведение зажигает путь, щелчок оставляет его на карте одного.
    Прокручивается: маршрутов в дне бывает и полсотни, а расти выше карты
    перечню нельзя. */
-.georoutes {
+/* Правый верхний угол карты: столбец из плашки о дне и перечня маршрутов.
+
+   Прежде перечень стоял здесь один и держал угол сам. Когда над ним
+   понадобилась вторая плашка, каждая со своим «прижмись к углу» легла бы
+   поверх другой — поэтому угол держит столбец, а они стоят в нём по
+   порядку. Высоту столбца ограничиваем рамкой карты: перечень в нём
+   складывается сам, а плашка над ним всегда мала. */
+.geotop {
   position: absolute;
   top: var(--sp-3);
   right: var(--sp-3);
   z-index: 505;
   display: flex;
   flex-direction: column;
-  max-height: calc(50% - var(--sp-3));
+  align-items: flex-end;
+  gap: var(--sp-2);
+  max-height: calc(100% - var(--sp-3) * 2);
+  pointer-events: none;
+}
+
+/* Сами плашки нажимаются, а пустота между ними — нет: столбец тянется во всю
+   высоту карты, и без этого он перехватывал бы перетаскивание города. */
+.geotop > * {
+  pointer-events: auto;
+}
+
+/* Плашка мониторинга: который час, по какому расчёту идёт смена и что в
+   городе с пробками.
+
+   Стекло здесь то же, что у перечня маршрутов под нею и у остальных окон
+   поверх карты: одна плашка со своим фоном рядом с шестью стеклянными
+   читалась бы как чужая. Ширину держит сама, по перечню под собой, — иначе
+   столбец дёргался бы при каждой смене числа баллов. */
+.livecard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-width: 208px;
+  padding: 10px 12px;
+  border-radius: var(--r-control);
+  background: var(--glass);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-edge), var(--glass-line);
+  color: var(--glass-ink);
+  font-family: var(--font-sans);
+}
+
+/* Часы — самое крупное на плашке: за ними сюда и смотрят. Точка рядом живая:
+   она показывает, что раздел сам обновляется, а не замер на одной минуте. */
+.livecard__now {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.livecard__dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: var(--r-pill);
+  background: var(--success-500);
+  animation: livepulse 2.4s ease-in-out infinite;
+}
+
+.livecard__time {
+  font-size: var(--fs-h4);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--ls-h4);
+}
+
+.livecard__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.livecard__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  font-size: var(--fs-caption);
+}
+
+.livecard__label {
+  color: var(--glass-ink-soft);
+}
+
+.livecard__value {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--glass-ink);
+}
+
+/* Баллы пробок — цветом самого Яндекса: зелёный, жёлтый, красный. Цвет
+   стоит точкой, а не окраской числа: числа на плашке одинаково тёмные, и
+   цветное среди них читалось бы как тревога, которой нет. */
+.livecard__jam {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: var(--r-pill);
+  background: var(--success-500);
+}
+
+.livecard__jam--yellow {
+  background: var(--warning-500);
+}
+
+.livecard__jam--red {
+  background: var(--danger-500);
+}
+
+.livecard__foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.livecard__stamp {
+  font-size: var(--fs-small);
+  color: var(--glass-ink-mute);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Дорога назад к выбору дней — тихой строкой в углу плашки: её ищут редко,
+   но искать должны там, где написано, за чем смотрим. */
+.livecard__back {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: var(--font-sans);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-semibold);
+  color: var(--glass-ink-soft);
+  cursor: pointer;
+  transition: color 120ms var(--ease-out-strong);
+}
+
+.livecard__back:hover {
+  color: var(--glass-ink);
+}
+
+.livecard__back:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+  border-radius: var(--r-xs);
+}
+
+/* ─── меню мониторинга: дни участков ──────────────────────────────────
+
+   Строка дня — не карточка: их три-четыре, и каждая отвечает на один
+   вопрос «кто ведёт этот день». Карточками ряд занял бы пол-экрана ради
+   двух слов в каждой. */
+.mday__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.mday {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(0, 1.4fr) auto;
+  gap: var(--sp-3);
+  align-items: center;
+  padding: 10px var(--sp-3);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--r-md);
+  background: var(--surface-card);
+  transition: border-color 120ms var(--ease-out-strong), background-color 120ms var(--ease-out-strong);
+}
+
+/* Отмеченный день — рамкой в акцентном тоне, а не заливкой: заливка
+   спорила бы с оранжевой пометкой «в работе» внутри строки. */
+.mday--on {
+  border-color: var(--accent-500);
+  background: var(--accent-100);
+}
+
+.mday__pick {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  cursor: pointer;
+  min-width: 0;
+}
+
+.mday__box {
+  align-self: center;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  accent-color: var(--accent-500);
+  cursor: pointer;
+}
+
+.mday__place {
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+
+.mday__date {
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.mday__holder {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  min-width: 0;
+  font-size: var(--fs-body-s);
+  color: var(--text-primary);
+}
+
+.mday__holder-icon {
+  align-self: center;
+  color: var(--accent-600);
+}
+
+.mday__holder-note,
+.mday__none {
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+
+.mday__more {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--r-sm);
+  background: var(--white);
+  font-family: var(--font-sans);
+  font-size: var(--fs-caption);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background-color 120ms var(--ease-out-strong);
+}
+
+.mday__more:hover {
+  background: var(--ink-50);
+}
+
+.mday__more:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+
+/* Раскрытый список расчётов дня занимает всю ширину строки: он ответ на
+   вопрос из третьей колонки, но относится ко всей строке. */
+.mday__runs {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  padding-top: var(--sp-2);
+  border-top: 1px solid var(--border-hairline);
+}
+
+.mday__run {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  padding: 5px 10px;
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--r-sm);
+  background: var(--white);
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: background-color 120ms var(--ease-out-strong);
+}
+
+.mday__run:hover:not(:disabled) {
+  background: var(--ink-50);
+}
+
+.mday__run:disabled {
+  cursor: default;
+  border-color: var(--accent-500);
+  background: var(--accent-100);
+}
+
+.mday__run-code {
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+.mday__run-note {
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+
+/* Часы вне смены: план показан на её границу, и молчать об этом нельзя —
+   иначе нули на плашке читаются как «все стоят». */
+.livecard__off {
+  font-size: var(--fs-small);
+  line-height: var(--lh-body);
+  color: var(--glass-ink-soft);
+}
+
+@keyframes livepulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.georoutes {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 50vh;
   padding: 6px;
   border-radius: var(--r-control);
   background: var(--glass);
@@ -16484,6 +17138,36 @@ button.chip--sm {
 .georoutes__visits {
   color: var(--glass-ink-mute);
   font-variant-numeric: tabular-nums;
+}
+
+/* «Ещё N» — хвост перечня по кнопке. Список без неё сам дорастал до пульта
+   карты под ним; теперь видно сразу шесть, а до конца — по нажатию. */
+.georoutes__more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 22px;
+  margin-top: 1px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--glass-ink-mute);
+  font-family: var(--font-sans);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-medium);
+  cursor: pointer;
+  transition: var(--t-control);
+}
+
+.georoutes__more:hover {
+  background: var(--glass-hover);
+  color: var(--glass-ink);
+}
+
+.georoutes__more:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
 }
 
 /* На полном экране в том же углу стоит крестик выхода — перечень
@@ -16643,8 +17327,79 @@ button.chip--sm {
    подложки и, главное, притемняет то, что под ним. Маршрут рисуется
    перегонами по порядку, и на перекрёстке поздний проходит над ранним —
    тень показывает, который сверху, а значит, куда инженер сворачивает. */
-.geo__road {
+/* Тень лежит на слое целиком, а не на каждой линии и каждой точке.
+
+   Так она стоит вдвое дешевле и рисуется везде одинаково. Сначала тень
+   висела на самих путях (`drop-shadow` в CSS) — Chrome рисовал, Safari нет:
+   слой карты двигается трёхмерным преобразованием, и фильтр на его детях в
+   WebKit сплошь и рядом теряется. Потом на них же повесили фильтр SVG — он
+   рисовался в обоих, но фильтров стало сто тридцать, по одному на путь и
+   точку, и карта начала заметно тормозить на перетаскивании.
+
+   Слоёв два, значит и фильтров два. Платим за это одним: на перекрёстке
+   тень больше не притемняет линию, проходящую снизу, — силуэт у слоя
+   общий. Который путь сверху, по-прежнему видно по самому цвету. */
+.geo__map .leaflet-overlay-pane {
   filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.7));
+}
+
+.geo__map .leaflet-points-pane {
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.9));
+}
+
+/* Пока карту тащат или масштабируют, тени и стекло меток гаснут.
+
+   Замерено на обзоре трёх участков — сорок маршрутов, сто девяносто
+   перегонов: с эффектами перетаскивание шло 38 кадров в секунду и грело
+   ноутбук, без них — 60. Дороже всего обходится не тень, а размытие под
+   метками: их сорок, и фон под каждой пересчитывается каждый кадр.
+
+   Гасим на время жеста, а не насовсем: карту разглядывают в покое, и там
+   вид прежний. Возвращаются они через сто сорок миллисекунд после
+   остановки — раньше глаз всё равно не успевает. */
+.geo--moving .leaflet-overlay-pane,
+.geo--moving .leaflet-points-pane {
+  filter: none;
+}
+
+.geo--moving .geo__end,
+.geo--moving .geo__stop,
+.geo--moving .gtip {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  /* Без размытия полупрозрачное стекло теряет плотность — на время жеста
+     подставляем сплошной фон того же тона, иначе метки «мигают» прозрачностью
+     на старте и в конце движения. */
+  background: var(--glass-solid);
+}
+
+/* Лёгкий режим: тени сняты совсем. Тумблер в пульте карты. */
+.geo--flat .leaflet-overlay-pane,
+.geo--flat .leaflet-points-pane {
+  filter: none;
+}
+
+/* Обзор области — метки маршрутов ужимаются.
+
+   На двадцати километрах город виден целиком, а меток сорок, и в полный
+   рост они закрывают собою то, ради чего на такое отдаление и отходят: как
+   идут пути. Уменьшаем метку, а не прячем: цвет и номер на ней — это и есть
+   способ отличить один путь от другого. */
+.geo--far .geo__end {
+  height: 15px;
+  gap: 3px;
+  padding: 0 5px 0 4px;
+  font-size: 10px;
+}
+
+.geo--far .geo__end svg {
+  width: 10px;
+  height: 10px;
+}
+
+.geo--far .geo__end-dot {
+  width: 5px;
+  height: 5px;
 }
 
 /* Точка заявки: белая середина, обводка цветом маршрута и тень под кружком.
@@ -16652,9 +17407,9 @@ button.chip--sm {
    Тень здесь не украшение: точка почти всегда стоит на своей же линии, и
    без неё кружок и путь сливаются в одно пятно. Прежняя была вдвое слабее и
    на тёмной подложке не читалась вовсе — её попросту не было видно. */
-.geo__pin {
-  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.9));
-}
+/* Тень точки лежит на слое точек целиком — см. `.leaflet-points-pane`
+   выше. Здесь её нет нарочно: фильтр на каждом из шестидесяти кружков
+   обходился дороже всей остальной отрисовки карты. */
 
 /* Кружок с номером у выбранного маршрута — с той же тенью: он стоит на той
    же линии и на тех же координатах, что и точка, которую заменяет. */

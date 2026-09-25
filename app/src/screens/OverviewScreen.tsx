@@ -34,6 +34,10 @@ interface Props {
   /** Выбранный маршрут: пока он выбран, остальные на карте не нажимаются. */
   pinned: string | null;
   onPin: (engineerId: string | null) => void;
+  /** Показать маршрут, не переключая его. Щелчок по заявке оставляет на карте
+      её путь: сколько бы раз по заявкам этого пути ни щёлкали, он остаётся.
+      Переключатель здесь снимал бы маршрут на втором же щелчке. */
+  onShowRoute: (engineerId: string | null) => void;
   focus: number;
   /** Выбранная заявка: карта обводит её точку. */
   selectedOrder: string | null;
@@ -90,6 +94,7 @@ export function OverviewScreen({
   onLive,
   pinned,
   onPin,
+  onShowRoute,
   focus,
   selectedOrder,
   onSelectOrder,
@@ -179,32 +184,13 @@ export function OverviewScreen({
      стоит базовый вариант, — в полосе это число ни с чем не сравнить. */
   const barLead = useMemo(() => {
     const by = new Map(view.metrics.map((metric) => [metric.key, metric]));
-    const covered = by.get('assigned');
-    const crew = by.get('engineers');
-    const lead: Metric[] = [];
-    /* «Покрытие» — та же доля, что прежде звалась «Назначено»: сколько
-       заявок дня получили инженера. Слово короче и говорит о дне, а не о
-       действии над заявками. */
-    if (covered) lead.push({ ...covered, label: 'Покрытие' });
-    lead.push({
-      key: 'orders',
-      label: 'Заявок',
-      value: String(day.plan.meta.orders_total),
-      unit: 'з.',
-      caption: 'Всего в расчёте',
-      flag: 'ok',
-      /* Раскрывается тем же разбором, что и покрытие: это его знаменатель. */
-      group: 'metric:assigned'
-    });
-    if (crew) lead.push(crew);
-    return lead;
-  }, [view, day]);
+    return ['assigned', 'orders', 'engineers']
+      .map((key) => by.get(key))
+      .filter((metric): metric is Metric => Boolean(metric));
+  }, [view]);
 
   const barRest = useMemo(
-    () =>
-      view.metrics.filter(
-        (metric) => !['assigned', 'engineers', 'km'].includes(metric.key)
-      ),
+    () => view.metrics.filter((metric) => !['assigned', 'orders', 'engineers'].includes(metric.key)),
     [view]
   );
 
@@ -391,7 +377,10 @@ export function OverviewScreen({
         onSelectOrder={(id) => {
           setNest(null);
           onSelectOrder(id);
-          onPin(id ? (view.stopByOrder.get(id)?.engineerId ?? null) : null);
+          /* Показываем, а не переключаем: повторный щелчок по той же заявке
+             не должен снимать её маршрут с карты, а соседняя заявка того же
+             пути — тем более. Пустое место снимает выбор само. */
+          onShowRoute(id ? (view.stopByOrder.get(id)?.engineerId ?? null) : null);
         }}
         /* Щелчок по месту выезда открывает карточку инженера поверх карты,
            а не уводит в сводку: в этом виде экран не покидают. */

@@ -25,5 +25,11 @@ export interface ButtonProps {
   type?: 'button' | 'submit' | 'reset';
   style?: React.CSSProperties;
   className?: string;
+  /** Подпись для чтения с экрана, когда текста кнопки мало. */
+  ariaLabel?: string;
+  /** Кнопка раскрывает список: открыт он сейчас или свёрнут. */
+  ariaExpanded?: boolean;
+  /** id того, что раскрывает кнопка. */
+  ariaControls?: string;
 }
 export declare function Button(props: ButtonProps): JSX.Element;

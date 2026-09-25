@@ -26,7 +26,7 @@ function styles() {
   document.head.appendChild(s);
 }
 
-export function Button({ children, variant = 'primary', size = 'md', block = false, disabled = false, iconLeft, iconRight, href, onClick, type = 'button', style, className = '' }) {
+export function Button({ children, variant = 'primary', size = 'md', block = false, disabled = false, iconLeft, iconRight, href, onClick, type = 'button', style, className = '', ariaLabel, ariaExpanded, ariaControls }) {
   styles();
   const cls = ['pl-btn', 'pl-btn--' + variant, size !== 'md' && 'pl-btn--' + size, block && 'pl-btn--block', className].filter(Boolean).join(' ');
   const inner = (
@@ -36,6 +36,9 @@ export function Button({ children, variant = 'primary', size = 'md', block = fal
       {iconRight}
     </>
   );
-  if (href && !disabled) return <a className={cls} href={href} style={style} onClick={onClick}>{inner}</a>;
-  return <button className={cls} type={type} disabled={disabled} onClick={onClick} style={style}>{inner}</button>;
+  /* Кнопка, которая раскрывает список, обязана сказать об этом вслух:
+     без aria-expanded чтение с экрана видит просто ещё одну кнопку. */
+  const aria = { 'aria-label': ariaLabel, 'aria-expanded': ariaExpanded, 'aria-controls': ariaControls };
+  if (href && !disabled) return <a className={cls} href={href} style={style} onClick={onClick} {...aria}>{inner}</a>;
+  return <button className={cls} type={type} disabled={disabled} onClick={onClick} style={style} {...aria}>{inner}</button>;
 }
