@@ -172,6 +172,10 @@ export interface RunEntry {
   /** Заметка человека: зачем этот расчёт считали и чем он кончился. Движок
       её не заполняет и не читает — это подпись к записи, а не входные данные. */
   note?: string;
+  /** Запись посчитана не сегодняшним движком — его же словами. Пусто —
+      движок тот же, и говорить не о чем. Фраза приходит готовой и разная
+      для двух случаев: см. `EngineRun.движок`. */
+  drift?: string;
 }
 
 /** Поля записи, которые заводит человек, а не движок: номер, время и заметка.
@@ -370,7 +374,10 @@ export function adoptEngineRun(record: EngineRun): RunEntry {
     day: record.day,
     forms: record.forms,
     solveSeconds: record.summary.solve_seconds,
-    params: record.params
+    params: record.params,
+    /* Фразу берём как есть. Своих слов здесь быть не может: какие числа
+       устарели — знает движок, а не интерфейс. */
+    drift: record.движок?.словами
   };
   RUNS.push(entry);
   RUN_BY_ID.set(entry.id, entry);

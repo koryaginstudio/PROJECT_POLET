@@ -845,6 +845,15 @@ export function DbRunsScreen({
                 {plural(row.routes, 'маршрут', 'маршрута', 'маршрутов')} · {row.engineersOnRoute} из{' '}
                 {row.engineersTotal} инженеров с маршрутом
                 {row.run.id === active ? ' · открыт в диспетчерской' : ''}
+                {/* Запись посчитана не сегодняшним движком. В строке — три
+                    слова, чтобы её было видно в ряду; вся фраза движка — в
+                    подсказке: что именно устарело, план или числа на
+                    карточке, он говорит сам и по-разному. */}
+                {row.run.drift && (
+                  <span className="runcard__drift" title={row.run.drift}>
+                    считан другим движком
+                  </span>
+                )}
               </>
             ),
             cells: [

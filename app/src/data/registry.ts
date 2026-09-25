@@ -33,6 +33,9 @@ export interface RunRef {
   /** День движка («восток», «югоцентр»), по которому считали. Пусто у
       расчёта браузера. Нужен ключу инженера: см. `engineerKey`. */
   day?: string;
+  /** Запись посчитана не сегодняшним движком — его словами. Пусто — движок
+      тот же. Показывается пометкой у записи: см. `RunEntry.drift`. */
+  drift?: string;
 }
 
 /** Ключ записи инженера в справочнике.
@@ -1301,7 +1304,8 @@ export async function loadRegistry(): Promise<Registry> {
       note: entry.note,
       /* День движка — только у его расчётов: у расчёта браузера ключ
          инженера остаётся его номером. */
-      day: entry.source === null ? entry.day : undefined
+      day: entry.source === null ? entry.day : undefined,
+      drift: entry.drift
     } as RunRef,
     plan: data.get(entry.id)!.plan,
     simulation: data.get(entry.id)!.simulation
