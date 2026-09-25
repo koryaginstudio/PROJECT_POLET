@@ -1165,10 +1165,14 @@ export function MapBoard({
       const crew = list.map((one) => one.engineer.id);
       mark.on('mouseover', () => {
         showInfo(nestCard, mark.getLatLng(), { r: 10 });
+        /* Пока город в тени, сама точка обязана быть видной — иначе
+           непонятно, из-за чего он погас. */
+        mark.getElement()?.classList.add('geo__basebox--on');
         setHoverNest(crew);
       });
       mark.on('mouseout', () => {
         hideInfo();
+        mark.getElement()?.classList.remove('geo__basebox--on');
         setHoverNest(null);
       });
       mark.addTo(marks);
@@ -1482,6 +1486,16 @@ export function MapBoard({
       instance?.off('moveend zoomend', place);
     };
   }, [zoneShapes, zonesOn]);
+
+  /* Перечень подводит к выбранному маршруту. Свёрнутым он показывает шесть
+     строк из тринадцати, и выбранный на карте путь мог остаться за нижним
+     краем — перечень тогда выглядел так, будто выбор в нём не отметился. */
+  useEffect(() => {
+    if (!pinned) return;
+    const box = routesBox.current;
+    const row = box?.querySelector<HTMLElement>(`[data-route="${CSS.escape(pinned)}"]`);
+    row?.scrollIntoView({ block: 'nearest' });
+  }, [pinned, routesExpanded]);
 
   const routeList = useMemo(
     () =>
@@ -1965,21 +1979,24 @@ export function MapBoard({
         ? selectedOrder
         : null;
     const lone = lonePick;
-    /* Курсор на общем гнезде — те, кто отсюда выезжает, остаются в полную
-       силу, остальной город гаснет. Ровно то же и тем же тоном, что делает
-       наведение на один маршрут: вопрос здесь такой же («а это что»), и
-       ответ на него не должен выглядеть иначе.
+    /* Курсор на точке выезда — город гаснет весь, на виду остаётся сама
+       точка. Тем же тоном, что и при наведении на маршрут: вопрос здесь
+       такой же («а это что»), и ответ не должен выглядеть иначе.
+
+       Сперва мы оставляли в полную силу тех, кто отсюда выезжает, — и в
+       диспетчерской это не гасило ровным счётом ничего: из общего гнезда
+       там выезжает вся бригада, «остальных» не остаётся. Точка выезда —
+       место, а не бригада; о бригаде спрашивают щелчком, и отвечает на
+       него перечень.
 
        Щелчком гнездо ничего не гасит. Прежде он оставлял карту затихшей,
        пока выбор не снимут, — и это был третий способ гасить город, со
-       своим тоном и своим правилом выхода. Гнездо отвечает перечнем тех,
-       кто из него выезжает; прозрачность — дело наведения. */
-    const crowd = hoverNest !== null && hoverNest.length > 0 ? new Set(hoverNest) : null;
+       своим тоном и своим правилом выхода. */
+    const overNest = hoverNest !== null && hoverNest.length > 0;
     const away = (_id: string | undefined) => lone !== null;
-    /* Приглушён ли этот маршрут: под курсором гнездо, а он из другого, или
-       под курсором невзятая заявка. */
-    const muted = (id: string | undefined) =>
-      (crowd !== null && (!id || !crowd.has(id))) || loneOver !== null;
+    /* Приглушён ли этот маршрут: под курсором точка выезда или невзятая
+       заявка — в обоих случаях смотрят на точку, а не на пути. */
+    const muted = (_id: string | undefined) => overNest || loneOver !== null;
     const thick = weightAt(map.current?.getZoom() ?? zoom);
     for (const item of stack.current) {
       const on = live === item.id;
@@ -2030,6 +2047,8 @@ export function MapBoard({
          горят двенадцать квадратов чужих выездов. */
       const dim = muted(id) || (live !== null && live !== id);
       base.setOpacity(hidden ? 0 : dim ? 0.2 : 1);
+      /* Личная точка выезда под курсором сама не гаснет: на неё и
+         смотрят. */
       base.getElement()?.classList.toggle('geo__live', pinned === id);
 
       /* У выбранного маршрута точки подписаны сами, без наведения: коротко —
@@ -2783,6 +2802,7 @@ export function MapBoard({
                   onFocus={() => onLive(route.id)}
                   onBlur={() => onLive(null)}
                   onClick={() => onPin(pinned === route.id ? null : route.id)}
+                  data-route={route.id}
                   aria-pressed={pinned === route.id}
                   title={`${route.number} · ${route.name} · ${visits(route.visits)} · загрузка ${Math.round(
                     route.occupancy * 100
@@ -2834,8 +2854,7 @@ export function MapBoard({
             const on = live === plate.id;
             const hidden = loneNow !== null || (pinned !== null && pinned !== plate.id);
             if (hidden) return null;
-            const faded =
-              (hoverNest !== null && !hoverNest.includes(plate.id)) || (live !== null && !on);
+            const faded = hoverNest !== null || (live !== null && !on);
             return (
               <button
                 key={plate.id}

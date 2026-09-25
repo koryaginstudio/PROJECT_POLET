@@ -247,6 +247,30 @@ export function MonitorScreen({
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const [pickGroup, setPickGroup] = useState<string | null>(null);
 
+  /* Выбрали на карте маршрут или заявку — плашка открывает тот участок,
+     которому они принадлежат, и подводит к нужной строке.
+
+     Без этого ответ на щелчок расходился надвое: внизу слева вставала
+     сводка о выбранном, а наверху справа участок этого маршрута оставался
+     свёрнутым, будто щёлкнули не по нему. Разворачивает участок сам экран —
+     спрашивать «а в каком он районе» диспетчеру не приходится. */
+  const chosen = pinned ?? (selectedOrder ? shown.stopByOrder.get(selectedOrder)?.engineerId : null);
+  const chosenRun = chosen ? merged?.owner.get(chosen)?.runId : null;
+  useEffect(() => {
+    if (!chosenRun) return;
+    setOpenGroup(chosenRun);
+    setPickGroup(null);
+  }, [chosenRun, chosen]);
+
+  /* И подводит к строке: у участка их четырнадцать, а перечень в углу
+     карты показывает восемь — выбранный маршрут мог остаться за нижним
+     краем. */
+  useEffect(() => {
+    if (!chosen) return;
+    const row = document.querySelector<HTMLElement>(`[data-route="${CSS.escape(chosen)}"]`);
+    row?.scrollIntoView({ block: 'nearest' });
+  }, [chosen, openGroup]);
+
   /* Чем ещё можно вести этот день: расчёты того же участка на ту же дату.
      Список тот же, что в меню раздела, — там его и собирают. */
   const days = workDays();
@@ -531,8 +555,8 @@ export function MonitorScreen({
                                 type="button"
                                 className={
                                   'livegroup__item' +
-                                  (pinned === route.id ? ' livegroup__item--on' : '') +
-                                  (live === route.id && pinned !== route.id
+                                  (chosen === route.id ? ' livegroup__item--on' : '') +
+                                  (live === route.id && chosen !== route.id
                                     ? ' livegroup__item--live'
                                     : '')
                                 }
@@ -541,6 +565,7 @@ export function MonitorScreen({
                                 onFocus={() => onLive(route.id)}
                                 onBlur={() => onLive(null)}
                                 onClick={() => onPin(pinned === route.id ? null : route.id)}
+                                data-route={route.id}
                                 aria-pressed={pinned === route.id}
                                 title={`${route.number} · ${route.name} · ${route.visits} заявок · загрузка ${Math.round(
                                   route.occupancy * 100
