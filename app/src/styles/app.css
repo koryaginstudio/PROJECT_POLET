@@ -16147,6 +16147,18 @@ button.subhdr__close {
   transform: scale(1.15);
 }
 
+/* Выноски от плашек к их точкам. Слой во всю карту и без событий: это
+   рисунок, а не орган управления. */
+.geo__leads {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  color: var(--glass-ink);
+}
+
 /* Подпись участка на подложке. Не плашка со стеклом, а само слово: подложка
    лежит под всем городом, и заголовок к ней должен быть таким же тихим —
    цветом своего участка и вразрядку, как надпись на карте, а не как окно
@@ -16533,6 +16545,32 @@ button.subhdr__close {
   border-radius: 3px;
 }
 
+/* Заголовок-кнопка: вся шапка сводки ведёт в разбор записи. */
+.mpick__title--go {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: color 140ms var(--ease-out-strong);
+}
+
+.mpick__title--go:hover {
+  color: var(--text-link);
+}
+
+.mpick__title--go:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+  border-radius: var(--r-xs);
+}
+
 .mpick__title {
   flex: 1 1 auto;
   display: flex;
@@ -16561,6 +16599,49 @@ button.subhdr__close {
   font-weight: var(--fw-regular);
   line-height: 1.3;
   color: var(--text-muted);
+}
+
+/* Беда заявки — строкой поверх её чисел, и строка эта нажимается: с неё
+   идут разбираться дальше, в карточку записи. */
+.mpick__trouble {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--danger-50, rgba(255, 91, 82, 0.12));
+  color: var(--danger-600, #d4342b);
+  font-family: var(--font-sans);
+  font-size: var(--fs-small);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color 140ms var(--ease-out-strong),
+    transform 140ms var(--ease-out-strong);
+}
+
+.mpick__trouble:disabled {
+  cursor: default;
+}
+
+.mpick__trouble:hover:not(:disabled) {
+  background: var(--danger-100, rgba(255, 91, 82, 0.2));
+  transform: scale(1.01);
+}
+
+.mpick__trouble:active:not(:disabled) {
+  transform: scale(0.995);
+}
+
+.mpick__trouble-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  line-height: var(--lh-body);
 }
 
 .mpick__rows {
@@ -17042,6 +17123,69 @@ button.subhdr__close {
   outline: none;
   box-shadow: var(--ring-focus);
   border-radius: var(--r-xs);
+}
+
+/* Ряд средств передвижения под участками: кто на машине, кто в автобусе,
+   кто пешком, кто на велосипеде. Кнопка называет вид значком и числом
+   людей, а нажатая оставляет на карте только его. */
+.liverides {
+  display: flex;
+  gap: 4px;
+  padding-top: 2px;
+}
+
+.liveride {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1 1 auto;
+  justify-content: center;
+  height: 24px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--glass-ink-soft);
+  font-family: var(--font-sans);
+  font-size: var(--fs-small);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition:
+    transform 140ms var(--ease-out-strong),
+    background-color 140ms var(--ease-out-strong),
+    color 140ms var(--ease-out-strong),
+    box-shadow 140ms var(--ease-out-strong);
+}
+
+.liveride:hover:not(:disabled) {
+  background: var(--glass-hover);
+  color: var(--glass-ink);
+  transform: scale(1.05);
+}
+
+.liveride:active:not(:disabled) {
+  transform: scale(0.96);
+  transition-duration: 80ms;
+}
+
+.liveride--on {
+  background: var(--glass-hover);
+  color: var(--glass-ink);
+  box-shadow: inset 0 0 0 1px var(--glass-ink-soft);
+}
+
+.liveride:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.liveride:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+
+.liveride__count {
+  font-weight: var(--fw-semibold);
 }
 
 /* ─── участки внутри плашки смены ─────────────────────────────────────

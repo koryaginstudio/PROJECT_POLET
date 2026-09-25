@@ -669,6 +669,11 @@ export const runCode = (id: RunId) => runEntry(id)?.code ?? '';
 
 export const runDate = (id: RunId) => runEntry(id)?.date ?? '';
 
+/** День движка, на котором посчитан расчёт: «восток», «югоцентр». У
+    загруженной выгрузки его нет — там справочник ключует инженеров одним
+    номером. Нужен карточкам: ключ инженера в базах собран из дня и номера. */
+export const runDay = (id: RunId): string | null => runEntry(id)?.day ?? null;
+
 /** Дата и время расчёта так, как их читают: «08.09.2026, 06:12». */
 export function stampOf(created: string): string {
   const [date, time = ''] = created.split('T');

@@ -74,6 +74,10 @@ interface Props {
       у названия района в плашке смены, и считать его дважды нельзя —
       разойдутся. */
   zoneTint?: (title: string) => string;
+  /** По какому плану считать землю участков. Отбор по средству
+      передвижения прячет маршруты, но земли участка не меняет: пешие ушли
+      с карты — район остался тем же. Не задан — считается по показанному. */
+  zoneSource?: DayView;
   /** Чей это маршрут, когда на карте день не один. Номер маршрута сквозной
       по всей базе и считается от пары «расчёт — инженер»; при нескольких
       участках разом один `runId` на всех выдал бы соседнему участку чужие
@@ -385,6 +389,7 @@ export function MapBoard({
   routeList: routeListOn = true,
   zoneOf,
   zoneTint,
+  zoneSource,
   busy = false,
   busyNote = '',
   routeKeyOf
@@ -426,10 +431,14 @@ export function MapBoard({
      плашки, а он известен только из разметки. */
   const endNodes = useRef<Map<string, HTMLElement>>(new Map());
   /* Куда раскладка поставила каждую метку относительно её точки. */
-  const [endSpots, setEndSpots] = useState<Map<string, { x: number; y: number }>>(new Map());
+  const [endSpots, setEndSpots] = useState<
+    Map<string, { x: number; y: number; w: number; h: number }>
+  >(new Map());
   /* То же для постоянных подписей выбранного маршрута. */
   const stopNodes = useRef<Map<string, HTMLElement>>(new Map());
-  const [stopSpots, setStopSpots] = useState<Map<string, { x: number; y: number }>>(new Map());
+  const [stopSpots, setStopSpots] = useState<
+    Map<string, { x: number; y: number; w: number; h: number }>
+  >(new Map());
   /* Маршрут рисуется не одной линией, а перегонами: так на перекрёстке
      видно, какой из них сверху, а значит — куда инженер сворачивает. */
   const lines = useRef<Map<string, L.Polyline[]>>(new Map());
@@ -1348,15 +1357,16 @@ export function MapBoard({
      значило бы нарисовать границу там, где её нет. */
   const zoneShapes = useMemo(() => {
     if (!zoneOf) return [];
+    const ground = zoneSource ?? view;
     const spots = new Map<string, { lat: number; lon: number }[]>();
     const roads: [number, number][] = [];
-    for (const load of view.loads) {
+    for (const load of ground.loads) {
       const zone = zoneOf(load.engineer.id);
       if (!zone) continue;
       const list = spots.get(zone) ?? [];
       list.push({ lat: load.engineer.home_lat, lon: load.engineer.home_lon });
       for (const stop of load.route?.stops ?? []) {
-        const order = view.orderById.get(stop.order_id);
+        const order = ground.orderById.get(stop.order_id);
         if (order) list.push({ lat: order.lat, lon: order.lon });
         for (const point of stop.geometry ?? []) roads.push(point);
       }
@@ -1636,7 +1646,8 @@ export function MapBoard({
       };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view, zoneOf ? 'zones' : 'none', zoneTint]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [zoneSource ?? view, zoneOf ? 'zones' : 'none', zoneTint]);
 
   /* Кладём подложки на карту. Отдельным действием от их счёта: считаются
      они от плана, а гасит их кнопка, и пересчитывать поле ради нажатия
@@ -1718,23 +1729,30 @@ export function MapBoard({
 
       for (const { zone, mark } of marks) {
         const spot = pick(zone, true) ?? pick(zone, false);
-        /* Подпись отходит от межи наружу, за пределы района: внутри она
-           ложится на его же маршруты, а снаружи — на пустое поле, и видно,
-           что она подписывает именно эту сторону границы. Направление
-           берём от середины участка к точке межи и шагаем дальше по нему. */
+        /* Подпись выходит за межу, наружу.
+
+           Считаем в пикселях экрана, а не в градусах: в градусах отступ на
+           общем виде незаметен, а вблизи выбрасывает подпись за горизонт.
+           Сорок пикселей от границы — на любом масштабе это ровно «сбоку
+           от района»: подпись стоит на пустом поле и не ложится на его
+           собственные маршруты.
+
+           Направление — от середины участка через точку межи. */
         const best: [number, number] | null = spot
           ? (() => {
               const ys = zone.edge.map((one) => one[0]);
               const xs = zone.edge.map((one) => one[1]);
-              const midY = (Math.min(...ys) + Math.max(...ys)) / 2;
-              const midX = (Math.min(...xs) + Math.max(...xs)) / 2;
-              const dy = spot[0] - midY;
-              const dx = spot[1] - midX;
+              const middleOf = instance.latLngToContainerPoint([
+                (Math.min(...ys) + Math.max(...ys)) / 2,
+                (Math.min(...xs) + Math.max(...xs)) / 2
+              ]);
+              const edgeAt = instance.latLngToContainerPoint(spot);
+              const dy = edgeAt.y - middleOf.y;
+              const dx = edgeAt.x - middleOf.x;
               const len = Math.hypot(dy, dx) || 1;
-              /* Полтора километра наружу: дальше подпись отрывается от
-                 своего района и начинает подписывать чужое поле. */
-              const step = 1.5 / 111;
-              return [spot[0] + (dy / len) * step, spot[1] + (dx / len) * step];
+              const out = L.point(edgeAt.x + (dx / len) * 40, edgeAt.y + (dy / len) * 40);
+              const ll = instance.containerPointToLatLng(out);
+              return [ll.lat, ll.lng];
             })()
           : null;
         if (best) busy.push(instance.latLngToContainerPoint(best));
@@ -2031,7 +2049,7 @@ export function MapBoard({
       }))
       .sort((a, b) => a.at.y - b.at.y || a.at.x - b.at.x);
 
-    const spots = new Map<string, { x: number; y: number }>();
+    const spots = new Map<string, { x: number; y: number; w: number; h: number }>();
     for (const one of list) {
       const node = one.node;
       if (!node) continue;
@@ -2052,10 +2070,18 @@ export function MapBoard({
         }
       }
 
+      /* Своя точка — та, у которой метка и стоит. Накрыть её собой она не
+         имеет права ни при какой тесноте: метка «M0105» поверх последней
+         заявки маршрута прячет как раз то место, о котором рассказывает.
+         Поэтому своё место в общем списке занятых стоит отдельно и с
+         утроенной ценой — лучше отойти на полсотни пикселей, чем сесть на
+         собственный конец пути. */
+      const own = { x: one.at.x - 12, y: one.at.y - 12, w: 24, h: 24 };
+
       let best: { spot: { x: number; y: number }; cost: number } | null = null;
       for (const spot of tries) {
         const box = { x: one.at.x + spot.x, y: one.at.y + spot.y - h / 2, w, h };
-        let cost = 0;
+        let cost = clash(box, own) * 3;
         for (const seat of busy) cost += clash(box, seat);
         if (cost === 0) {
           best = { spot, cost };
@@ -2074,7 +2100,7 @@ export function MapBoard({
         w: w + 6,
         h: h + 6
       });
-      spots.set(one.id, spot);
+      spots.set(one.id, { ...spot, w, h });
     }
     setEndSpots(spots);
 
@@ -2087,7 +2113,7 @@ export function MapBoard({
 
        Сначала метки маршрутов, потом подписи: метка одна на весь маршрут и
        место ей важнее, а подписей у выбранного маршрута десяток. */
-    const tags = new Map<string, { x: number; y: number }>();
+    const tags = new Map<string, { x: number; y: number; w: number; h: number }>();
     for (const plate of stopPlates) {
       const node = stopNodes.current.get(plate.key);
       if (!node) continue;
@@ -2096,14 +2122,18 @@ export function MapBoard({
       const h = node.offsetHeight || 18;
       /* Кружок с номером визита занимает само место точки — подпись обходит
          его, как и всё остальное. */
+      /* Места перебираем от ближних к дальним и недалеко: подпись, ушедшая
+         за сотню пикселей, читается как подпись к чужой точке — а на
+         плотной карте рядом обязательно есть чужая. Дальше сорока пяти
+         пикселей не отходим, связь с точкой держит выноска. */
       const tries: { x: number; y: number }[] = [];
-      for (let row = 0; row < 4; row += 1) {
-        const lift = 16 + row * (h + 4);
+      for (let row = 0; row < 3; row += 1) {
+        const lift = 14 + row * (h + 3);
         tries.push({ x: -w / 2, y: -lift - h });
         tries.push({ x: -w / 2, y: lift });
       }
-      for (let row = 0; row < 3; row += 1) {
-        const side = 14 + row * 24;
+      for (let row = 0; row < 2; row += 1) {
+        const side = 13 + row * 18;
         tries.push({ x: side, y: -h / 2 });
         tries.push({ x: -side - w, y: -h / 2 });
       }
@@ -2121,7 +2151,7 @@ export function MapBoard({
       }
       const spot = best?.spot ?? tries[0];
       busy.push({ x: at.x + spot.x - 3, y: at.y + spot.y - 3, w: w + 6, h: h + 6 });
-      tags.set(plate.key, spot);
+      tags.set(plate.key, { ...spot, w, h });
     }
     setStopSpots(tags);
   };
@@ -2872,13 +2902,14 @@ export function MapBoard({
               </button>
             )}
 
-            {/* Лёгкий режим: снимает тени под путями и точками. Тени
-                отделяют их от подложки, но стоят кадров — на обзоре трёх
-                участков с сорока маршрутами их полезно снять.
+            {/* Тени под путями и точками. Они отделяют их от подложки, но
+                стоят кадров — на обзоре трёх участков с сорока маршрутами
+                их полезно снять.
 
-                Зажжённой кнопка стоит в лёгком режиме, а не в обычном: она
-                называет то, что включено, а тени — это и есть обычный вид,
-                объявлять его нечем. */}
+                Кнопка горит, когда тени есть, и гаснет, когда сняты: как у
+                соседних тумблеров слоёв, где зажжённая означает
+                «показано». Прежде было наоборот — горел «лёгкий режим», —
+                и один тумблер в ряду жил по своему правилу. */}
             <button
               type="button"
               className={'geo__view' + (shade ? '' : ' geo__view--on')}
@@ -2893,9 +2924,9 @@ export function MapBoard({
                   return next;
                 })
               }
-              aria-pressed={!shade}
-              aria-label="Лёгкий режим: карта без теней"
-              title={shade ? 'Лёгкий режим: снять тени, карта пойдёт легче' : 'Вернуть тени'}
+              aria-pressed={shade}
+              aria-label="Тени под маршрутами и точками"
+              title={shade ? 'Снять тени: карта пойдёт легче' : 'Вернуть тени'}
             >
               <Icon name="lightning" size={15} />
             </button>
@@ -3113,6 +3144,62 @@ export function MapBoard({
             метки считает раскладка `spread`, подписи стоят над своими
             точками. */}
         <div className="geo__plates" ref={platesBox} aria-hidden={false}>
+          {/* Выноски: тонкая линия от плашки к её точке.
+
+              Плашка стоит не на точке, а рядом — иначе на плотном участке
+              они лягут друг на друга. Но отойдя, она теряет хозяина: у
+              подписи «Заявка 66315 · 16:41» посреди города десяток
+              одинаково близких точек. Линия возвращает связь и стоит
+              дёшево — волосок в четверть прозрачности, который не спорит
+              ни с маршрутом, ни с самой подписью. */}
+          <svg className="geo__leads" aria-hidden="true">
+            {endPlates.map((plate) => {
+              const at = atPoint(plate.lat, plate.lon);
+              const spot = endSpots.get(plate.id);
+              if (!at || !spot) return null;
+              const hidden = loneNow !== null || (pinned !== null && pinned !== plate.id);
+              if (hidden) return null;
+              /* Тянем к ближнему краю плашки, а не к её середине: линия,
+                 уходящая под плашку, читается как хвост, торчащий не с той
+                 стороны. */
+              const cx = at.x + spot.x + (spot.x < 0 ? spot.w : 0);
+              const cy = at.y + spot.y;
+              if (Math.hypot(cx - at.x, cy - at.y) < 14) return null;
+              return (
+                <line
+                  key={`lead-${plate.id}`}
+                  x1={at.x}
+                  y1={at.y}
+                  x2={cx}
+                  y2={cy}
+                  stroke={plate.color}
+                  strokeWidth={1}
+                  opacity={live === plate.id || pinned === plate.id ? 0.7 : 0.35}
+                />
+              );
+            })}
+            {stopPlates.map((plate) => {
+              const at = atPoint(plate.lat, plate.lon);
+              const spot = stopSpots.get(plate.key);
+              if (!at || !spot) return null;
+              const cx = at.x + spot.x + spot.w / 2;
+              const cy = at.y + spot.y + (spot.y < 0 ? spot.h : 0);
+              if (Math.hypot(cx - at.x, cy - at.y) < 14) return null;
+              return (
+                <line
+                  key={`lead-${plate.key}`}
+                  x1={at.x}
+                  y1={at.y}
+                  x2={cx}
+                  y2={cy}
+                  stroke="currentColor"
+                  strokeWidth={1}
+                  opacity={0.4}
+                />
+              );
+            })}
+          </svg>
+
           {endPlates.map((plate) => {
             const at = atPoint(plate.lat, plate.lon);
             if (!at) return null;

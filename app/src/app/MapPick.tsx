@@ -98,13 +98,24 @@ export function MapPick({
     title: React.ReactNode,
     note: string,
     icon?: string,
+    /* Куда ведёт сам заголовок. Задан — вся шапка становится кнопкой: о
+       выбранном спрашивают, нажимая на него, а не выискивая строку внизу
+       карточки. */
+    onOpen?: () => void,
     /* Вторая карточка в паре крестика не носит: закрывают ответ целиком, и
        два крестика подряд читались бы как два разных выхода. */
     quiet = false
   ) => (
-    <div className="mpick__head">
+    <div className={'mpick__head' + (onOpen ? ' mpick__head--open' : '')}>
       <span className="mpick__mark" style={{ background: tone }} />
-      <span className="mpick__title">{title}</span>
+      {onOpen ? (
+        <button type="button" className="mpick__title mpick__title--go" onClick={onOpen}>
+          {title}
+          <Icon name="arrow-right" size={13} />
+        </button>
+      ) : (
+        <span className="mpick__title">{title}</span>
+      )}
       {/* Подпись под заголовком идёт от самого края карточки, а не от
           названия: иначе значок средства передвижения стоит с отступом в
           цветную точку и выглядит съехавшим вправо. */}
@@ -177,12 +188,53 @@ export function MapPick({
   if (order) {
     const mine = placement ? view.engineerById.get(placement.engineerId) : undefined;
     const stop = placement?.stop;
+    /* Беда заявки, если она есть. Точка на карте помечена знаком, а сводка
+       о ней молчала — выходило, что тревога видна, пока смотришь на город,
+       и пропадает, стоит о нём спросить.
+
+       Две беды и обе от движка: срок сорван — приезд позже крайнего срока;
+       под угрозой — запас так мал, что любая задержка срывает срок. */
+    const late = placement?.slaBreached ?? false;
+    const shaky = (placement?.stop.risk ?? 'low') !== 'low';
+    const trouble = late
+      ? {
+          title: 'Срок сорван',
+          text: stop
+            ? `Приезд в ${hhmm(stop.arrive)}, крайний срок — ${deadline(order.sla_deadline)}.`
+            : 'Плановый приезд позже крайнего срока.'
+        }
+      : shaky
+        ? {
+            title: 'Под угрозой',
+            text: `Запас до срока ${stop?.slack_minutes ?? 0} мин: любая задержка в пути срывает срок.`
+          }
+        : null;
+
     return (
       <section className="mapstat mpick" aria-label="Выбранная заявка">
         {head(
           placement ? colorOf(placement.engineerId) : '#8A8A8A',
           <b className="mpick__name">{order.id}</b>,
-          order.work_title
+          order.work_title,
+          undefined,
+          onOpenOrder ? () => onOpenOrder(order.id) : undefined
+        )}
+
+        {trouble && (
+          <button
+            type="button"
+            className="mpick__trouble"
+            onClick={() => onOpenOrder?.(order.id)}
+            disabled={!onOpenOrder}
+            title={onOpenOrder ? 'Открыть карточку заявки' : undefined}
+          >
+            <Icon name="alert-triangle" size={14} />
+            <span className="mpick__trouble-body">
+              <b>{trouble.title}</b>
+              <span>{trouble.text}</span>
+            </span>
+            {onOpenOrder && <Icon name="chevron-right" size={13} />}
+          </button>
         )}
 
         <div className="mpick__rows">
@@ -258,7 +310,8 @@ export function MapPick({
         tone,
         <b className="mpick__name">{number}</b>,
         crew.engineer.transport ? transportName(crew.engineer.transport) : 'Транспорт не указан',
-        crew.engineer.transport ? transportIcon(crew.engineer.transport) : undefined
+        crew.engineer.transport ? transportIcon(crew.engineer.transport) : undefined,
+        onOpenEngineer ? () => onOpenEngineer(crew.engineer.id) : undefined
       )}
 
       <div className="mpick__rows">

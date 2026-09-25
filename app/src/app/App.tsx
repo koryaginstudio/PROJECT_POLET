@@ -976,6 +976,12 @@ export function App() {
      парой «участок + номер». Без этого перевода карточка не находится, и
      щелчок оборачивается ничем. */
   const openOrderCard = (orderId: string) => setLookup({ kind: 'order', key: `${runId}:${orderId}` });
+  /* То же, но для чужого расчёта: мониторинг смотрит за тремя участками
+     разом, и заявка принадлежит не тому плану, что открыт в диспетчерской. */
+  const openOrderOf = (run: string, orderId: string) =>
+    setLookup({ kind: 'order', key: `${run}:${orderId}` });
+  const openEngineerOf = (dayName: string | null, engineerId: string) =>
+    setLookup({ kind: 'engineer', key: engineerKey(dayName, engineerId) });
   const openEngineerCard = (engineerId: string) =>
     setLookup({ kind: 'engineer', key: engineerKey(day?.plan.meta.day, engineerId) });
 
@@ -1279,6 +1285,11 @@ export function App() {
           selectedOrder={selection.kind === 'order' ? selection.id : null}
           onSelectOrder={selectOrder}
           onSelectEngineer={selectEngineer}
+          /* Разбор записи открывается поверх карты — той же карточкой, что
+             и в базах: вопрос «что это за заявка» один и тот же, где бы его
+             ни задали. */
+          onOpenOrder={openOrderOf}
+          onOpenEngineer={openEngineerOf}
         />
         ) : (
           <MonitorGate

@@ -16,7 +16,7 @@ import {
   weekdayName
 } from '../data/derive.ts';
 import type { LiveEngineer } from '../data/derive.ts';
-import { loadDay, runCode, runDate } from '../data/load.ts';
+import { loadDay, runCode, runDate, runDay } from '../data/load.ts';
 import type { RunId } from '../data/load.ts';
 import { dayLabel, takeDuty, useDuty, workDays } from '../data/duty.ts';
 import { loadTraffic } from '../data/traffic.ts';
@@ -50,8 +50,22 @@ interface Props {
       отвечает о ней. */
   selectedOrder: string | null;
   onSelectOrder: (id: string | null) => void;
+  /** Открыть разбор записи поверх карты — карточкой из баз. Заявка знает
+      свой расчёт: на общей карте лежат дни трёх участков. */
+  onOpenOrder: (runId: string, orderId: string) => void;
+  onOpenEngineer: (dayName: string | null, engineerId: string) => void;
   onSelectEngineer: (id: string) => void;
 }
+
+/* Средства передвижения в том порядке, в каком их читают: сперва машины —
+   их большинство, — потом всё остальное. Значки те же, что в перечнях
+   маршрутов и в базах. */
+const RIDES = [
+  { key: 'car', icon: 'car', title: 'Автомобиль' },
+  { key: 'transit', icon: 'bus', title: 'Общественный транспорт' },
+  { key: 'walk', icon: 'person-walk', title: 'Пешком' },
+  { key: 'bike', icon: 'bicycle', title: 'Велосипед' }
+];
 
 const RANK: Record<string, number> = Object.fromEntries(
   LIVE_STATUS_ORDER.map((key, index) => [key, index])
@@ -75,6 +89,8 @@ export function MonitorScreen({
   focus,
   selectedOrder,
   onSelectOrder,
+  onOpenOrder,
+  onOpenEngineer,
   onSelectEngineer
 }: Props) {
   const [now, setNow] = useState(() => new Date());
@@ -147,7 +163,34 @@ export function MonitorScreen({
     return mergeDays(parts.length > 0 ? parts : [{ runId, view }]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shownRuns.join('|'), runId, view, others]);
-  const shown = merged?.view ?? view;
+  /* Отбор по средству передвижения. Пусто — показаны все: отбор нужен не
+     каждый день, и молчание здесь значит «весь город», а не «ничего».
+
+     Скрытый вид уходит с карты целиком — и маршруты, и точки их заявок:
+     иначе на карте оставались бы кружки без путей, и было бы непонятно,
+     кто к ним едет. */
+  const [rides, setRides] = useState<Set<string>>(new Set());
+
+  const whole = merged?.view ?? view;
+  const shown = useMemo(() => {
+    if (rides.size === 0) return whole;
+    const keep = whole.loads.filter((load) => rides.has(load.engineer.transport ?? 'car'));
+    const mine = new Set(keep.map((load) => load.engineer.id));
+    const stopByOrder = new Map(
+      [...whole.stopByOrder].filter(([, place]) => mine.has(place.engineerId))
+    );
+    const orderById = new Map(
+      [...whole.orderById].filter(([id]) => stopByOrder.has(id) || !whole.stopByOrder.has(id))
+    );
+    return {
+      ...whole,
+      loads: keep,
+      engineerById: new Map([...whole.engineerById].filter(([id]) => mine.has(id))),
+      routeByEngineer: new Map([...whole.routeByEngineer].filter(([id]) => mine.has(id))),
+      stopByOrder,
+      orderById
+    };
+  }, [whole, rides]);
 
   /* Чей маршрут, когда участков несколько: номер сквозной по базе и считается
      от пары «расчёт — инженер», а не от составного номера с общей карты. */
@@ -286,6 +329,18 @@ export function MonitorScreen({
   const days = workDays();
   const runsOfDay = (id: RunId) => days.find((day) => day.runs.includes(id)) ?? null;
 
+  /* Сколько человек каким средством едет. Считается по всем показанным
+     участкам, а не по отобранным: иначе нажатая кнопка обнуляла бы счёт у
+     соседних и отбор нельзя было бы расширить. */
+  const tally = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const load of whole.loads) {
+      const ride = load.engineer.transport ?? 'car';
+      map.set(ride, (map.get(ride) ?? 0) + 1);
+    }
+    return map;
+  }, [whole]);
+
   /* Выбрали маршрут или заявку — полоса чисел уступает место сводке о
      выбранном. */
   const picked = Boolean(pinned || selectedOrder);
@@ -385,14 +440,26 @@ export function MonitorScreen({
           routeList={false}
           zoneOf={zoneOf}
           zoneTint={zoneTint}
+          zoneSource={whole}
           /* Щелчок по общему выезду раскрывает его участок в плашке:
              спрашивают «кто отсюда выезжает», а перечень выезжающих лежит
              там. Прозрачностью на карте он не заведует — это дело
              наведения, и держит его сама карта. */
           onSelectNest={(ids) => {
             const owner = ids.length > 0 ? merged?.owner.get(ids[0]) : undefined;
-            setOpenGroup(owner ? (owner.runId as RunId) : null);
+            const run = owner ? (owner.runId as RunId) : null;
+            setOpenGroup(run);
             setPickGroup(null);
+            /* Щелчок по общему выезду оставляет на карте один его участок:
+               спрашивают «кто отсюда выезжает», а соседние районы к ответу
+               не относятся. Повторный щелчок по тому же гнезду возвращает
+               всех — иначе, разобравшись с одним участком, пришлось бы
+               искать его глаз в плашке, чтобы вернуть остальные. */
+            if (!run) return;
+            setHidden((was) => {
+              const alone = runs.length - was.size === 1 && !was.has(run);
+              return alone ? new Set() : new Set(runs.filter((id) => id !== run));
+            });
           }}
           busy={awaiting.length > 0}
           busyNote={awaiting
@@ -609,6 +676,38 @@ export function MonitorScreen({
 
               </span>
 
+              {/* Кто чем едет. Ряд стоит под участками: сперва «где чья
+                  земля», потом «на чём по ней ездят». Нажатая кнопка
+                  оставляет на карте только свой вид, нажатые вместе —
+                  несколько; отжать все значит вернуть весь город. */}
+              <span className="liverides">
+                {RIDES.map((ride) => {
+                  const on = rides.has(ride.key);
+                  const count = tally.get(ride.key) ?? 0;
+                  return (
+                    <button
+                      key={ride.key}
+                      type="button"
+                      className={'liveride' + (on ? ' liveride--on' : '')}
+                      onClick={() =>
+                        setRides((was) => {
+                          const next = new Set(was);
+                          if (next.has(ride.key)) next.delete(ride.key);
+                          else next.add(ride.key);
+                          return next;
+                        })
+                      }
+                      aria-pressed={on}
+                      disabled={count === 0 && !on}
+                      title={`${ride.title}: ${count} на смене`}
+                    >
+                      <Icon name={ride.icon} size={13} />
+                      <span className="liveride__count">{count}</span>
+                    </button>
+                  );
+                })}
+              </span>
+
               {(beforeShift || afterShift) && (
                 <span className="livecard__off">
                   {beforeShift
@@ -652,6 +751,18 @@ export function MonitorScreen({
                   onClose={() => {
                     onSelectOrder(null);
                     onPin(null);
+                  }}
+                  /* Разбор записи — поверх карты. Чей это расчёт, знает
+                     общая карта: у заявки спрашиваем её инженера, у
+                     инженера — день его участка. */
+                  onOpenOrder={(id) => {
+                    const who = shown.stopByOrder.get(id)?.engineerId;
+                    const owner = who ? merged?.owner.get(who) : undefined;
+                    onOpenOrder(owner?.runId ?? runId, id);
+                  }}
+                  onOpenEngineer={(id) => {
+                    const owner = merged?.owner.get(id);
+                    onOpenEngineer(runDay(owner?.runId ?? runId), owner?.engineerId ?? id);
                   }}
                 />
               ) : (
