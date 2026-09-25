@@ -255,7 +255,10 @@ const ROUTES_COLLAPSED = 6;
 
    Наведённый маршрут прибавляет пиксель с небольшим: множитель от тонкой
    линии почти не виден, а от толстой даёт вдвое больше, чем нужно. */
-const bandWeight = (base: number, live: boolean) => base + (live ? 1.2 : 0);
+/* Толщина линии: под курсором и у выбранного маршрута она заметно больше.
+   Прибавка в один пиксель терялась на глаз — путь подсвечивался цветом, а
+   «поднимался» ли он над остальными, понять было нельзя. */
+const bandWeight = (base: number, live: boolean) => base + (live ? base * 0.7 + 1.4 : 0);
 
 /* Виды подложки. Три — по числу вопросов, ради которых карту переключают.
 
@@ -1046,7 +1049,10 @@ export function MapBoard({
         const path = fanned(lane, instance.getZoom());
         /* Ловушка курсора — одна на весь маршрут и по его оси: попасть в
            линию в три пикселя нельзя, а слои для этого не при чём. */
-        const grip = L.polyline(path, { color, weight: 16, opacity: 0, noClip: true });
+        /* Ловушка курсора — одна на весь маршрут и по его оси. Широкая
+           нарочно: у выбранного маршрута промах по линии попадает в пустое
+           место карты и снимает выбор вместе со всеми его подписями. */
+        const grip = L.polyline(path, { color, weight: 30, opacity: 0, noClip: true });
         grip.on('mouseover', () => pick.current.onLive(load.engineer.id));
         grip.on('mouseout', () => pick.current.onLive(null));
         grip.on('click', () => pick.current.onPin(load.engineer.id));
@@ -1340,35 +1346,23 @@ export function MapBoard({
       const zone = zoneOf(load.engineer.id);
       if (!zone) continue;
       const list = spots.get(zone) ?? [];
-      /* Земля участка — не только там, где он работает, но и там, где он
-         едет. Без дороги юго-восток распадался надвое: город и дальний
-         конец за Подольском, между ними полсотни километров пустого поля —
-         и на карте это читалось как два разных района под одним цветом.
-         Поэтому между соседними точками маршрута подсыпаем промежуточные,
-         через каждые пять километров: участок становится цельным ровно по
-         той земле, по которой его люди ездят. */
-      let from = { lat: load.engineer.home_lat, lon: load.engineer.home_lon };
-      list.push(from);
+      /* Земля участка — там, где стоят его заявки и откуда выезжают его
+         люди. По дороге между ними мы её не тянем нарочно: юго-восток
+         работает в городе и отдельно за Подольском, и это два разных куска
+         земли, а не один вытянутый район. Полсотни километров трассы между
+         ними — не участок, а дорога к нему. */
+      list.push({ lat: load.engineer.home_lat, lon: load.engineer.home_lon });
       for (const stop of load.route?.stops ?? []) {
         const order = view.orderById.get(stop.order_id);
-        if (!order) continue;
-        const to = { lat: order.lat, lon: order.lon };
-        const dy = to.lat - from.lat;
-        const dx = (to.lon - from.lon) * Math.cos((from.lat * Math.PI) / 180);
-        const far = Math.hypot(dy, dx) * 111;
-        const steps = Math.floor(far / 5);
-        for (let i = 1; i < steps; i += 1) {
-          list.push({
-            lat: from.lat + (dy * i) / steps,
-            lon: from.lon + ((to.lon - from.lon) * i) / steps
-          });
-        }
-        list.push(to);
-        from = to;
+        if (order) list.push({ lat: order.lat, lon: order.lon });
       }
       spots.set(zone, list);
     }
-    if (spots.size < 2) return [];
+    /* Один участок — подложка всё равно нужна: два соседних сняли с карты,
+       и оставшийся не должен терять своё поле. Прежде здесь стояла проверка
+       «меньше двух — не рисуем», и стоило погасить участок, как соседние
+       оставались без своей земли. */
+    if (spots.size === 0) return [];
 
     const titles = [...spots.keys()];
     const tint = zoneTint ?? ((title: string) => zonePalette(titles).get(title) ?? ZONE_COLORS[0]);
@@ -1486,9 +1480,31 @@ export function MapBoard({
       return [0, ...marks, ring.length - 1].map((i) => ring[i]);
     };
 
+    /* Сглаживание углов по Чайкину: каждый угол срезается дважды, и
+       лесенка из прямых углов превращается в мягкую линию.
+
+       Без него район выглядел выкройкой из клетчатой бумаги — все углы по
+       девяносто градусов, — и читался не как местность, а как разметка
+       экрана. Граница работы кривая по самой своей природе: она идёт там,
+       где кончаются заявки, а не по сторонам света. */
+    const smooth = (ring: [number, number][], times: number): [number, number][] => {
+      let out = ring;
+      for (let round = 0; round < times; round += 1) {
+        const next: [number, number][] = [];
+        for (let i = 0; i < out.length; i += 1) {
+          const [ay, ax] = out[i];
+          const [by, bx] = out[(i + 1) % out.length];
+          next.push([ay + (by - ay) * 0.25, ax + (bx - ax) * 0.25]);
+          next.push([ay + (by - ay) * 0.75, ax + (bx - ax) * 0.75]);
+        }
+        out = next;
+      }
+      return out;
+    };
+
     return titles.map((title, index) => {
       const rings = outline(index)
-        .map((ring) => straighten(ring, STEP * 0.45))
+        .map((ring) => smooth(straighten(ring, STEP * 0.7), 2))
         .filter((ring) => ring.length > 3)
         .sort((a, b) => b.length - a.length);
       /* Островки мельче четверти главного куска отбрасываем: район — это

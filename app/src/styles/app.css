@@ -19125,8 +19125,15 @@ button.subhdr__close {
     box-shadow 140ms var(--ease-out-strong);
 }
 
-.geo__basebox:hover .geo__base {
+.geo__basebox:hover .geo__base,
+.geo__basebox:hover .geo__nest {
   transform: scale(1.25);
+}
+
+/* Общий выезд под курсором отвечает и цветом: город вокруг в тени, и
+   квадрат должен быть виден без сомнений. */
+.geo__basebox:hover .geo__nest {
+  background: var(--ink-700);
 }
 
 /* Значок «под угрозой» рядом с точкой. */
