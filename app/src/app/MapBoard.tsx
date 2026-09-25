@@ -1435,7 +1435,7 @@ export function MapBoard({
                всего пятна: красим только заливкой. */
             stroke: false,
             fillColor: zone.color,
-            fillOpacity: 0.24,
+            fillOpacity: 0.15,
             interactive: false
           }
         ).addTo(layer);
@@ -2063,11 +2063,18 @@ export function MapBoard({
        выгрузке заказчика вся бригада выезжает из одного гнезда — личных
        квадратов там нет вовсе, и у выбранного маршрута начало оставалось
        безымянным, хотя все его визиты подписаны. */
-    for (const mark of nestMarks.current.values()) {
-      /* Гнездо уходит с карты только вместе со всем остальным — когда на
-         ней оставлена одна невзятая заявка. Наведение его не гасит: оно
-         само и есть то, на что сейчас смотрят. */
-      mark.setOpacity(lone !== null ? 0 : 1);
+    /* Гнёзда уходят с карты вместе со всем прочим: выбран маршрут — на
+       виду он один, и чужие места выезда к нему не относятся. Остаётся
+       гнездо самого выбранного: это его начало, на нём висит подпись
+       «Выезд · 10:00», и без квадрата подпись повисала бы в пустоте.
+
+       Наведение гнёзда не гасит: под курсором как раз они. */
+    const ownNest = load
+      ? nestKey(load.engineer.home_lat, load.engineer.home_lon)
+      : null;
+    for (const [key, mark] of nestMarks.current) {
+      const gone = lone !== null || (pinned !== null && key !== ownNest);
+      mark.setOpacity(gone ? 0 : 1);
       mark.unbindTooltip();
     }
 
