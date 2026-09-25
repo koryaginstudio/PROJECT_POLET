@@ -104,12 +104,13 @@ export function MapPick({
   ) => (
     <div className="mpick__head">
       <span className="mpick__mark" style={{ background: tone }} />
-      <span className="mpick__title">
-        {title}
-        <span className="mpick__note">
-          {icon && <Icon name={icon} size={11} />}
-          {note}
-        </span>
+      <span className="mpick__title">{title}</span>
+      {/* Подпись под заголовком идёт от самого края карточки, а не от
+          названия: иначе значок средства передвижения стоит с отступом в
+          цветную точку и выглядит съехавшим вправо. */}
+      <span className="mpick__note">
+        {icon && <Icon name={icon} size={11} />}
+        {note}
       </span>
       {!quiet && (
         <button

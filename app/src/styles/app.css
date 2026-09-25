@@ -16507,10 +16507,20 @@ button.subhdr__close {
    Стоит на месте итогов расчёта и в той же колонке: спрашивают всегда об
    одном — либо про день целиком, либо про то, на что нажали. */
 
+/* Заголовок сводки — сетка в три колонки: цветная точка, название, выход.
+   Подпись под ними идёт второй строкой от левого края, и значок средства
+   передвижения встаёт ровно под точкой. */
 .mpick__head {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 8px;
+  row-gap: 2px;
+}
+
+.mpick__head > .mapstat__fold {
+  grid-column: 3;
+  grid-row: 1;
 }
 
 /* Цвет маршрута — тот же, что у линии на карте: по нему и опознают, о чём
@@ -16542,6 +16552,8 @@ button.subhdr__close {
 }
 
 .mpick__note {
+  grid-column: 1 / 4;
+  grid-row: 2;
   display: inline-flex;
   align-items: center;
   gap: 4px;

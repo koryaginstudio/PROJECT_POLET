@@ -1321,47 +1321,49 @@ export function MapBoard({
   /* Участки на подложке.
 
      Три района лежат на одном городе, и по линиям не видно, где кончается
-     один и начинается другой: в центре маршруты соседних участков
-     переплетаются, а к краям расходятся. Подложка отвечает на это одним
-     пятном на район — где чья земля.
+     один и начинается другой. Подложка отвечает на это одним пятном на
+     район — где чья земля.
 
-     Границ участков в выгрузке нет, и выдумывать административные было бы
-     враньём. Зато есть сами точки: выезды и заявки. Поле вокруг них
-     делится по ближайшей точке — это и есть настоящая граница работы, и
-     пересечься такие области не могут: у клочка земли всегда один
-     ближайший. Дальше восьми километров от любой точки поле пустое: за
-     городом у участков нет ни заявок, ни людей.
+     Границ участков в выгрузке нет, и административные были бы враньём.
+     Зато есть точки: выезды и заявки. Поле вокруг них делится по ближайшей
+     точке — это и есть граница работы. Дальше восьми километров от любой
+     точки поле пустое: за городом у участков нет ни заявок, ни людей.
 
-     Дальше из этого поля вынимается контур — замкнутая ломаная по краю, а
-     не россыпь квадратов. Квадратами район выглядел сеткой из пикселей;
-     ломаная же говорит «здесь проходит граница». Мелкие островки
-     отбрасываются: у каждого района одна земля, а не архипелаг.
+     Дальше важное. Граница между двумя районами считается один раз и одной
+     линией — как общая межа, а не как два независимых края. Иначе после
+     упрощения и сглаживания соседние контуры расходятся, залезают друг на
+     друга и рисуют двойную черту там, где черта одна.
 
-     Участок один — подложки нет вовсе: пятно во весь город ничего не
-     разделяет. */
+     Поэтому край поля разбирается на дуги: цепочки, у которых с одной
+     стороны один район, с другой — другой (или пустое поле). Каждая дуга
+     упрощается и сглаживается однажды, а кольцо района собирается из
+     готовых дуг. Общая межа у соседей — буквально один и тот же набор
+     точек.
+
+     И последнее: вершины дуг подтягиваются к дорогам, по которым ездят
+     сами маршруты. Дорожная сеть города в выгрузке не приходит, приходят
+     только пути перегонов, — но и их хватает, чтобы межа легла вдоль
+     улицы, а не поперёк кварталов. Нет дороги поблизости — вершина
+     остаётся на месте: тянуть её за три километра к единственной трассе
+     значило бы нарисовать границу там, где её нет. */
   const zoneShapes = useMemo(() => {
     if (!zoneOf) return [];
     const spots = new Map<string, { lat: number; lon: number }[]>();
+    const roads: [number, number][] = [];
     for (const load of view.loads) {
       const zone = zoneOf(load.engineer.id);
       if (!zone) continue;
       const list = spots.get(zone) ?? [];
-      /* Земля участка — там, где стоят его заявки и откуда выезжают его
-         люди. По дороге между ними мы её не тянем нарочно: юго-восток
-         работает в городе и отдельно за Подольском, и это два разных куска
-         земли, а не один вытянутый район. Полсотни километров трассы между
-         ними — не участок, а дорога к нему. */
       list.push({ lat: load.engineer.home_lat, lon: load.engineer.home_lon });
       for (const stop of load.route?.stops ?? []) {
         const order = view.orderById.get(stop.order_id);
         if (order) list.push({ lat: order.lat, lon: order.lon });
+        for (const point of stop.geometry ?? []) roads.push(point);
       }
       spots.set(zone, list);
     }
-    /* Один участок — подложка всё равно нужна: два соседних сняли с карты,
-       и оставшийся не должен терять своё поле. Прежде здесь стояла проверка
-       «меньше двух — не рисуем», и стоило погасить участок, как соседние
-       оставались без своей земли. */
+    /* Один участок — подложка всё равно нужна: соседей сняли с карты, и
+       оставшийся не должен терять своё поле. */
     if (spots.size === 0) return [];
 
     const titles = [...spots.keys()];
@@ -1370,8 +1372,6 @@ export function MapBoard({
       spots.get(title)!.map((one) => ({ ...one, zone: index }))
     );
     const kx = Math.cos((all[0].lat * Math.PI) / 180);
-    /* Шаг сетки — около километра: мельче считается долго, крупнее видно
-       ступеньки даже после сглаживания. */
     const STEP = 0.009;
     const REACH = 8 / 111;
     const south = Math.min(...all.map((one) => one.lat)) - REACH;
@@ -1382,8 +1382,7 @@ export function MapBoard({
     const rows = Math.ceil((north - south) / STEP);
     const cols = Math.ceil((east - west) / stepLon);
 
-    /* Чья земля в каждой клетке. −1 — ничья: до ближайшей точки дальше
-       восьми километров. */
+    /* Чья земля в каждой клетке. −1 — ничья. */
     const owner = new Int16Array(rows * cols).fill(-1);
     for (let r = 0; r < rows; r += 1) {
       const lat = south + (r + 0.5) * STEP;
@@ -1404,62 +1403,96 @@ export function MapBoard({
       }
     }
 
-    const at = (r: number, c: number) => (r < 0 || c < 0 || r >= rows || c >= cols ? -1 : owner[r * cols + c]);
-    const vertex = (r: number, c: number): [number, number] => [south + r * STEP, west + c * stepLon];
+    const at = (r: number, c: number) =>
+      r < 0 || c < 0 || r >= rows || c >= cols ? -1 : owner[r * cols + c];
 
-    /* Контур области: собираем сторонки клеток, у которых сосед чужой, и
-       сшиваем их в кольца. Самое длинное кольцо и есть внешний край. */
-    const outline = (zone: number): [number, number][][] => {
-      const links = new Map<string, string[]>();
-      const point = new Map<string, [number, number]>();
-      const key = (r: number, c: number) => `${r}:${c}`;
-      const join = (a: [number, number], b: [number, number]) => {
-        const ka = key(a[0], a[1]);
-        const kb = key(b[0], b[1]);
-        point.set(ka, vertex(a[0], a[1]));
-        point.set(kb, vertex(b[0], b[1]));
-        links.set(ka, [...(links.get(ka) ?? []), kb]);
-        links.set(kb, [...(links.get(kb) ?? []), ka]);
-      };
-      for (let r = 0; r < rows; r += 1) {
-        for (let c = 0; c < cols; c += 1) {
-          if (at(r, c) !== zone) continue;
-          if (at(r - 1, c) !== zone) join([r, c], [r, c + 1]);
-          if (at(r + 1, c) !== zone) join([r + 1, c], [r + 1, c + 1]);
-          if (at(r, c - 1) !== zone) join([r, c], [r + 1, c]);
-          if (at(r, c + 1) !== zone) join([r, c + 1], [r + 1, c + 1]);
-        }
-      }
-      const rings: [number, number][][] = [];
-      const used = new Set<string>();
-      const edge = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
-      for (const start of links.keys()) {
-        let here = start;
-        const ring: [number, number][] = [];
-        for (;;) {
-          const next = (links.get(here) ?? []).find((one) => !used.has(edge(here, one)));
-          if (!next) break;
-          used.add(edge(here, next));
-          ring.push(point.get(here)!);
-          here = next;
-        }
-        if (ring.length > 8) rings.push(ring);
-      }
-      return rings;
+    /* Рёбра края: сторонка клетки, за которой другой хозяин. Помним, кто по
+       обе стороны — по этой паре и собираются общие межи. */
+    type Edge = { a: string; b: string; left: number; right: number };
+    const edges: Edge[] = [];
+    const node = (r: number, c: number) => `${r}:${c}`;
+    const place = new Map<string, [number, number]>();
+    const mark = (r: number, c: number) => {
+      place.set(node(r, c), [south + r * STEP, west + c * stepLon]);
     };
+    for (let r = 0; r < rows; r += 1) {
+      for (let c = 0; c < cols; c += 1) {
+        const mine = at(r, c);
+        if (mine < 0) continue;
+        const sides: [number, number, number, number, number][] = [
+          [r, c, r, c + 1, at(r - 1, c)],
+          [r + 1, c, r + 1, c + 1, at(r + 1, c)],
+          [r, c, r + 1, c, at(r, c - 1)],
+          [r, c + 1, r + 1, c + 1, at(r, c + 1)]
+        ];
+        for (const [ar, ac, br, bc, other] of sides) {
+          if (other === mine) continue;
+          /* Ребро между двумя районами заносим один раз — со стороны того,
+             чей номер меньше: иначе межа попадёт в список дважды. */
+          if (other >= 0 && other < mine) continue;
+          mark(ar, ac);
+          mark(br, bc);
+          edges.push({ a: node(ar, ac), b: node(br, bc), left: mine, right: other });
+        }
+      }
+    }
 
-    /* Сглаживание ломаной: выбрасываем вершины, которые почти лежат на
-       прямой между соседями. Без него контур остаётся лесенкой из
-       километровых ступенек. */
-    const straighten = (ring: [number, number][], eps: number): [number, number][] => {
-      if (ring.length < 4) return ring;
-      const keep = (from: number, to: number, out: number[]) => {
+    /* Сшиваем рёбра в дуги: идём, пока сторона не меняется и путь не
+       ветвится. */
+    const around = new Map<string, Edge[]>();
+    for (const one of edges) {
+      around.set(one.a, [...(around.get(one.a) ?? []), one]);
+      around.set(one.b, [...(around.get(one.b) ?? []), one]);
+    }
+    const pairKey = (one: Edge) => `${Math.min(one.left, one.right)}:${Math.max(one.left, one.right)}`;
+    const done = new Set<Edge>();
+    type Arc = { pair: string; from: string; to: string; line: [number, number][] };
+    const arcs: Arc[] = [];
+    for (const seed of edges) {
+      if (done.has(seed)) continue;
+      const pair = pairKey(seed);
+      done.add(seed);
+      const line = [seed.a, seed.b];
+      /* Растём в обе стороны, пока в вершине ровно два ребра той же межи. */
+      const grow = (tip: string, forward: boolean) => {
+        for (;;) {
+          const near = (around.get(tip) ?? []).filter((one) => pairKey(one) === pair);
+          if (near.length !== 2) break;
+          const next = near.find((one) => !done.has(one));
+          if (!next) break;
+          done.add(next);
+          tip = next.a === tip ? next.b : next.a;
+          if (forward) line.push(tip);
+          else line.unshift(tip);
+        }
+        return tip;
+      };
+      grow(seed.b, true);
+      grow(seed.a, false);
+      arcs.push({
+        pair,
+        from: line[0],
+        to: line[line.length - 1],
+        line: line.map((one) => place.get(one)!)
+      });
+    }
+
+    /* Упрощение: выбрасываем вершины, почти лежащие на прямой между
+       соседями. Порог крупный нарочно — межа должна читаться как несколько
+       прямых, а не как сотня километровых ступенек. */
+    /* Упрощение незамкнутой цепочки: выбрасываем вершины, почти лежащие
+       на прямой между соседями. Порог крупный нарочно — межа должна
+       читаться как несколько прямых, а не как сотня ступенек по клетке. */
+    const thinOut = (line: [number, number][], eps: number): [number, number][] => {
+      if (line.length < 3) return line;
+      const marks: number[] = [];
+      const keep = (from: number, to: number) => {
         let far = -1;
         let pick = -1;
-        const [ay, ax] = ring[from];
-        const [by, bx] = ring[to];
+        const [ay, ax] = line[from];
+        const [by, bx] = line[to];
         for (let i = from + 1; i < to; i += 1) {
-          const [py, px] = ring[i];
+          const [py, px] = line[i];
           const dy = by - ay;
           const dx = bx - ax;
           const len = Math.hypot(dy, dx) || 1;
@@ -1470,52 +1503,134 @@ export function MapBoard({
           }
         }
         if (far > eps && pick > 0) {
-          keep(from, pick, out);
-          out.push(pick);
-          keep(pick, to, out);
+          keep(from, pick);
+          marks.push(pick);
+          keep(pick, to);
         }
       };
-      const marks: number[] = [];
-      keep(0, ring.length - 1, marks);
-      return [0, ...marks, ring.length - 1].map((i) => ring[i]);
+      keep(0, line.length - 1);
+      return [0, ...marks.sort((a, b) => a - b), line.length - 1].map((i) => line[i]);
     };
 
-    /* Сглаживание углов по Чайкину: каждый угол срезается дважды, и
-       лесенка из прямых углов превращается в мягкую линию.
+    /* Замкнутую дугу режем пополам и упрощаем половинами. Целиком её
+       упростить нельзя: начало и конец в одной точке, отрезок между ними
+       нулевой, и всякая вершина оказывается «на прямой» — кольцо
+       схлопывается в черту. Так пропадал дальний кусок юго-востока: контур
+       у него был, а площади не оставалось. */
+    const straighten = (line: [number, number][], eps: number): [number, number][] => {
+      if (line.length < 4) return line;
+      const first = line[0];
+      const last = line[line.length - 1];
+      if (first[0] !== last[0] || first[1] !== last[1]) return thinOut(line, eps);
+      const loop = line.slice(0, -1);
+      const cut = Math.floor(loop.length / 2);
+      const head = thinOut(loop.slice(0, cut + 1), eps);
+      const tail = thinOut(loop.slice(cut), eps);
+      return [...head, ...tail.slice(1), loop[0]];
+    };
 
-       Без него район выглядел выкройкой из клетчатой бумаги — все углы по
-       девяносто градусов, — и читался не как местность, а как разметка
-       экрана. Граница работы кривая по самой своей природе: она идёт там,
-       где кончаются заявки, а не по сторонам света. */
-    const smooth = (ring: [number, number][], times: number): [number, number][] => {
-      let out = ring;
-      for (let round = 0; round < times; round += 1) {
-        const next: [number, number][] = [];
-        for (let i = 0; i < out.length; i += 1) {
-          const [ay, ax] = out[i];
-          const [by, bx] = out[(i + 1) % out.length];
-          next.push([ay + (by - ay) * 0.25, ax + (bx - ax) * 0.25]);
-          next.push([ay + (by - ay) * 0.75, ax + (bx - ax) * 0.75]);
+    /* Подтягиваем вершину к ближайшей дорожной точке — но только если та
+       рядом. Дальняя дорога притянула бы межу к себе через поле. */
+    const NEAR = 1.2 / 111;
+    const onRoad = (point: [number, number]): [number, number] => {
+      let best = point;
+      let far = NEAR * NEAR;
+      for (const road of roads) {
+        const dy = road[0] - point[0];
+        const dx = (road[1] - point[1]) * kx;
+        const gap = dy * dy + dx * dx;
+        if (gap < far) {
+          far = gap;
+          best = road;
         }
-        out = next;
       }
+      return best;
+    };
+
+    /* Сглаживание по Чайкину: угол срезается, и ломаная перестаёт быть
+       выкройкой из клетчатой бумаги. Одного прохода довольно — больше, и
+       межа отходит от собственных точек. */
+    const soften = (line: [number, number][]): [number, number][] => {
+      if (line.length < 3) return line;
+      const out: [number, number][] = [line[0]];
+      for (let i = 0; i < line.length - 1; i += 1) {
+        const [ay, ax] = line[i];
+        const [by, bx] = line[i + 1];
+        out.push([ay + (by - ay) * 0.25, ax + (bx - ax) * 0.25]);
+        out.push([ay + (by - ay) * 0.75, ax + (bx - ax) * 0.75]);
+      }
+      out.push(line[line.length - 1]);
       return out;
     };
 
+    const ready = new Map<Arc, [number, number][]>();
+    for (const arc of arcs) {
+      ready.set(arc, soften(straighten(arc.line, STEP * 2.2).map(onRoad)));
+    }
+
+    /* Кольцо района: дуги, у которых район с одной из сторон, сшиваются по
+       общим концам. */
+    const ringsOf = (zone: number): [number, number][][] => {
+      const mine = arcs.filter((arc) => {
+        const [a, b] = arc.pair.split(':').map(Number);
+        return a === zone || b === zone;
+      });
+      const left = new Set(mine);
+      const rings: [number, number][][] = [];
+      /* Замкнутая дуга — уже готовый контур: это отдельный кусок земли,
+         обведённый целиком. Прежде она шла в общую сшивку и цеплялась к
+         чужому кольцу по случайно совпавшей вершине — так у юго-востока
+         пропадал дальний кусок за Каширой. */
+      for (const arc of [...left]) {
+        if (arc.from !== arc.to) continue;
+        left.delete(arc);
+        rings.push([...ready.get(arc)!]);
+      }
+      while (left.size > 0) {
+        const first = left.values().next().value as Arc;
+        left.delete(first);
+        let tip = first.to;
+        const ring = [...ready.get(first)!];
+        for (;;) {
+          const next = [...left].find((arc) => arc.from === tip || arc.to === tip);
+          if (!next) break;
+          left.delete(next);
+          const line = ready.get(next)!;
+          const straight = next.from === tip;
+          ring.push(...(straight ? line : [...line].reverse()));
+          tip = straight ? next.to : next.from;
+          if (tip === first.from) break;
+        }
+        if (ring.length > 6) rings.push(ring);
+      }
+      return rings;
+    };
+
+    /* Площадь кольца — по формуле трапеций, в квадратных градусах; нам
+       она нужна только чтобы отличить землю от крошки. */
+    const area = (ring: [number, number][]) => {
+      let sum = 0;
+      for (let i = 0; i < ring.length; i += 1) {
+        const [ay, ax] = ring[i];
+        const [by, bx] = ring[(i + 1) % ring.length];
+        sum += ax * by - bx * ay;
+      }
+      return Math.abs(sum) / 2;
+    };
+
     return titles.map((title, index) => {
-      const rings = outline(index)
-        .map((ring) => smooth(straighten(ring, STEP * 0.7), 2))
-        .filter((ring) => ring.length > 3)
-        .sort((a, b) => b.length - a.length);
-      /* Островки мельче четверти главного куска отбрасываем: район — это
-         одна земля, а не он же плюс три клетки за рекой. */
-      const main = rings[0]?.length ?? 0;
-      const land = rings.filter((ring) => ring.length >= main * 0.25);
+      const rings = ringsOf(index).sort((a, b) => area(b) - area(a));
+      /* Отбрасываем крошку — кольца мельче десяти клеток. Отдельный кусок
+         земли при этом остаётся: у юго-востока их два, город и дальний
+         конец за Подольском, и оба настоящие. Прежний отбор по доле от
+         главного куска второй кусок и съедал. */
+      const crumb = 10 * STEP * stepLon;
+      const land = rings.filter((ring) => area(ring) >= crumb);
       return {
         title,
         color: tint(title),
         rings: land,
-        /* Кандидаты для подписи — вершины края: подпись стоит на границе
+        /* Кандидаты для подписи — вершины межи: подпись стоит у границы
            участка, а не посреди его маршрутов. */
         edge: land.flat()
       };
@@ -1602,7 +1717,26 @@ export function MapBoard({
       };
 
       for (const { zone, mark } of marks) {
-        const best = pick(zone, true) ?? pick(zone, false);
+        const spot = pick(zone, true) ?? pick(zone, false);
+        /* Подпись отходит от межи наружу, за пределы района: внутри она
+           ложится на его же маршруты, а снаружи — на пустое поле, и видно,
+           что она подписывает именно эту сторону границы. Направление
+           берём от середины участка к точке межи и шагаем дальше по нему. */
+        const best: [number, number] | null = spot
+          ? (() => {
+              const ys = zone.edge.map((one) => one[0]);
+              const xs = zone.edge.map((one) => one[1]);
+              const midY = (Math.min(...ys) + Math.max(...ys)) / 2;
+              const midX = (Math.min(...xs) + Math.max(...xs)) / 2;
+              const dy = spot[0] - midY;
+              const dx = spot[1] - midX;
+              const len = Math.hypot(dy, dx) || 1;
+              /* Полтора километра наружу: дальше подпись отрывается от
+                 своего района и начинает подписывать чужое поле. */
+              const step = 1.5 / 111;
+              return [spot[0] + (dy / len) * step, spot[1] + (dx / len) * step];
+            })()
+          : null;
         if (best) busy.push(instance.latLngToContainerPoint(best));
         const node = mark.getElement();
         if (best) {
