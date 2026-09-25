@@ -1246,6 +1246,10 @@ export function MapBoard({
         showInfo(orderCard, marker.getLatLng(), {
           r: pinOuter(instance.getZoom(), Boolean(placement))
         });
+        /* Точка под курсором подрастает: девять пикселей на карте с сотней
+           таких же — слишком мало, чтобы по цвету понять, на какую именно
+           отвечает карточка рядом. */
+        marker.getElement()?.classList.add('geo__pin--over');
         if (placement) pick.current.onLive(placement.engineerId);
         /* Невзятая заявка отвечает на наведение тем же, чем маршрут:
            остаётся одна, остальное с карты уходит. */
@@ -1253,6 +1257,7 @@ export function MapBoard({
       });
       marker.on('mouseout', () => {
         hideInfo();
+        marker.getElement()?.classList.remove('geo__pin--over');
         if (placement) pick.current.onLive(null);
         else setLonely(null);
       });

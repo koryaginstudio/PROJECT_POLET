@@ -19051,3 +19051,124 @@ button.subhdr__close {
     animation: none;
   }
 }
+
+/* ─── отклик на курсор: сама карта ───────────────────────────────────────
+
+   Движение здесь не для красоты. На карте поверх города лежат сто точек,
+   четыре десятка путей и дюжина плашек, и все они нарисованы одинаково
+   ровно до того, как их тронешь. Подрастающая под курсором точка — самый
+   короткий ответ на вопрос «о чём эта карточка сбоку».
+
+   Переходы вешаем на сами фигуры Leaflet: толщину и прозрачность он
+   меняет разом, скачком, и на плотной карте это читалось как мигание. */
+.geo__road {
+  transition:
+    stroke-width 160ms var(--ease-out-strong),
+    stroke-opacity 160ms var(--ease-out-strong);
+}
+
+.geo__pin {
+  /* Масштаб от середины самой фигуры: без fill-box кружок растёт от угла
+     всего слоя и уезжает со своей точки. */
+  transform-box: fill-box;
+  transform-origin: center;
+  transition:
+    transform 140ms var(--ease-out-strong),
+    stroke-width 140ms var(--ease-out-strong),
+    stroke-opacity 160ms var(--ease-out-strong),
+    fill-opacity 160ms var(--ease-out-strong);
+}
+
+.geo__pin--over {
+  transform: scale(1.3);
+}
+
+/* Нумерованные кружки выбранного маршрута — те же точки, только подписанные
+   порядком объезда. Отвечают так же. */
+.geo__seq {
+  transition:
+    transform 140ms var(--ease-out-strong),
+    box-shadow 140ms var(--ease-out-strong);
+}
+
+.geo__seqbox:hover .geo__seq {
+  transform: scale(1.18);
+}
+
+/* Квадраты выезда — личный и общий. */
+.geo__base,
+.geo__nest {
+  transition:
+    transform 140ms var(--ease-out-strong),
+    background-color 140ms var(--ease-out-strong),
+    box-shadow 140ms var(--ease-out-strong);
+}
+
+.geo__basebox:hover .geo__base {
+  transform: scale(1.25);
+}
+
+/* Значок «под угрозой» рядом с точкой. */
+.geo__alarm {
+  transition: transform 140ms var(--ease-out-strong);
+}
+
+.geo__alarmbox:hover .geo__alarm {
+  transform: scale(1.2);
+}
+
+/* Подробная карточка под курсором и подписи визитов появляются с коротким
+   подъёмом от своей точки, а не возникают готовыми: возникшее мгновенно
+   поверх города читается как помеха, поднявшееся — как ответ. */
+.geo__info {
+  animation: tipin 140ms var(--ease-out-strong) both;
+}
+
+.geo__stoptag {
+  animation: tipin 160ms var(--ease-out-strong) both;
+}
+
+@keyframes tipin {
+  from {
+    opacity: 0;
+    transform: translateY(3px) scale(0.98);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .geo__road,
+  .geo__pin,
+  .geo__seq,
+  .geo__base,
+  .geo__nest,
+  .geo__alarm {
+    transition: none;
+  }
+
+  .geo__pin--over,
+  .geo__seqbox:hover .geo__seq,
+  .geo__basebox:hover .geo__base,
+  .geo__alarmbox:hover .geo__alarm {
+    transform: none;
+  }
+
+  .geo__info,
+  .geo__stoptag {
+    animation: none;
+  }
+}
+
+/* Окна поверх карты — условные обозначения и разбор выбранного — входят
+   тем же коротким подъёмом, что и карточка под курсором: одно движение на
+   всё, что встаёт над городом. */
+.mapkeys,
+.mapwin {
+  animation: tipin 180ms var(--ease-out-strong) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mapkeys,
+  .mapwin {
+    animation: none;
+  }
+}
