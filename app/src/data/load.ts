@@ -44,6 +44,7 @@ import {
   loadEngineDay,
   loadEngineForm,
   loadEngineForms,
+  hideRun,
   listRuns,
   listUploads,
   noteEngineRun,
@@ -329,9 +330,60 @@ const ENGINE_ZONE: Record<string, string> = {
 /** Умеет ли движок считать по нашим данным. Да — см. `attachEngine`. */
 const engineTakesRealData = () => true;
 
-/** Архив движка. */
+/** Архив движка. Спрятанные черновики в списке не приходят. */
 export async function engineArchive() {
-  return listRuns();
+  return listRuns().then((body) => body.runs);
+}
+
+/* Сколько записей движок прячет из списка. Обновляется при каждом чтении
+   архива и при самом скрытии: строка «спрятано N» в базе расчётов берётся
+   отсюда, а не пересчитывается по истории — спрятанных в истории нет. */
+let спрятано = 0;
+
+/* Умеет ли запущенная программа расчёта прятать черновики. Узнаём по
+   ответу списка: поле `скрытых` в нём есть только у сборки с этой ручкой.
+   Кнопку «Спрятать» показываем лишь тогда — обещать действие, которое не
+   выполнится, хуже, чем не предлагать его вовсе. */
+let прячет = false;
+
+/** Сколько черновиков спрятано из списка. Ноль — прятать нечего либо
+    движка нет вовсе. */
+export const hiddenCount = () => спрятано;
+
+/** Умеет ли движок прятать записи из списка. */
+export const canHideRuns = () => прячет;
+
+/** Спрятанные записи — те, которых нет в списке. За ними ходим только по
+    просьбе: «Показать спрятанные» в базе расчётов. */
+export async function hiddenRuns(): Promise<EngineRun[]> {
+  if (!engineOn) return [];
+  const body = await listRuns(true);
+  спрятано = body.скрытых ?? 0;
+  return body.runs.filter((run) => run.скрыт);
+}
+
+/** Прячет черновик из списка — и убирает его из истории, чтобы
+    справочники перестали считать его день дважды. Возвращает `false`,
+    если запись не из архива движка: своим браузерным расчётам прятаться
+    негде, они удаляются (`deleteRun`).
+
+    Удаления у движка нет намеренно — см. `hideRun` в `api.ts`. */
+export async function hideEngineRun(id: RunId, скрыт: boolean): Promise<boolean> {
+  const known = RUN_BY_ID.get(id);
+  if (скрыт && known && known.source !== null) return false;
+  const ответ = await hideRun(id, скрыт);
+  спрятано = ответ.скрытых;
+  if (скрыт) {
+    const at = RUNS.findIndex((run) => run.id === id);
+    if (at !== -1) RUNS.splice(at, 1);
+    RUN_BY_ID.delete(id);
+  } else {
+    /* Вернули — запись снова в списке, и в историю её кладёт та же дорога,
+       что и архив: номер, формы и признак «считан другим движком» у неё
+       те же. */
+    adoptEngineRun(ответ);
+  }
+  return true;
 }
 
 /** Дописывает архив движка в историю — то, что описано в комментарии к
@@ -344,7 +396,10 @@ export async function engineArchive() {
     заводить первый расчёт самому. */
 export async function pullArchive(): Promise<number> {
   if (!engineOn || !engineTakesRealData()) return 0;
-  const записи = await engineArchive();
+  const body = await listRuns();
+  const записи = body.runs;
+  спрятано = body.скрытых ?? 0;
+  прячет = body.скрытых !== undefined;
   let добавлено = 0;
   for (const record of записи) {
     if (RUN_BY_ID.has(record.id)) continue;

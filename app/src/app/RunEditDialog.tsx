@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Button } from '../ds/components/core/Button.jsx';
 import { Icon } from '../ds/components/core/Icon.jsx';
 import type { RunPatch } from '../data/load.ts';
-import { RUNS, runEntry } from '../data/load.ts';
+import { canHideRuns, RUNS, runEntry } from '../data/load.ts';
 import type { RunRef } from '../data/registry.ts';
 import { useModalFocus } from './modal.ts';
 
@@ -12,6 +12,10 @@ interface Props {
   onClose: () => void;
   onSave: (patch: RunPatch) => void;
   onDelete: () => void;
+  /** Спрятать черновик из списка. Только у расчёта программы расчёта: свои
+      браузерные записи удаляются, прятать их негде. Необязательный: окно
+      открывается и там, где прятать нечем, — тогда кнопки нет. */
+  onHide?: () => void;
 }
 
 /* Правка записи расчёта.
@@ -43,7 +47,7 @@ const tailOf = (code: string) => code.replace(/^[RРрrMМмm]\s*/u, '');
    число — оставляем как набрали: буквы в номере не наше дело. */
 const padTail = (tail: string) => (/^\d{1,2}$/.test(tail) ? tail.padStart(3, '0') : tail);
 
-export function RunEditDialog({ run, onClose, onSave, onDelete }: Props) {
+export function RunEditDialog({ run, onClose, onSave, onDelete, onHide }: Props) {
   const [tail, setTail] = useState('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
@@ -202,6 +206,13 @@ export function RunEditDialog({ run, onClose, onSave, onDelete }: Props) {
           <p className="runedit__archived">
             Этот расчёт хранится в архиве программы расчёта: удалить его отсюда нельзя, можно
             оставить заметку.
+            {canHideRuns() && (
+              <>
+                {' '}
+                День пересчитывают по многу раз, и черновик можно спрятать: запись останется в
+                архиве и откроется по своему номеру, из списка уйдёт строка.
+              </>
+            )}
           </p>
         ) : (
           <p className="runedit__note">
@@ -220,7 +231,37 @@ export function RunEditDialog({ run, onClose, onSave, onDelete }: Props) {
 
           <span className="runedit__spacer" />
 
-          {archived ? null : confirming ? (
+          {/* У записи из архива — «Спрятать», в два шага, как и удаление:
+              первый щелчок только спрашивает. Слово «удалить» здесь не
+              годится — запись остаётся на месте, уходит строка из списка, и
+              обещать больше, чем делаешь, нельзя. */}
+          {archived ? (
+            !canHideRuns() || !onHide ? null : confirming ? (
+              <>
+                <span className="runedit__ask">Спрятать из списка?</span>
+                <button type="button" className="runedit__danger" onClick={onHide}>
+                  <Icon name="eye" size={13} />
+                  Спрятать
+                </button>
+                <button
+                  type="button"
+                  className="runedit__cancel"
+                  onClick={() => setConfirming(false)}
+                >
+                  Нет
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                className="runedit__danger runedit__danger--quiet"
+                onClick={() => setConfirming(true)}
+              >
+                <Icon name="eye" size={13} />
+                Спрятать из списка
+              </button>
+            )
+          ) : confirming ? (
             <>
               <span className="runedit__ask">Удалить запись?</span>
               <button type="button" className="runedit__danger" onClick={onDelete}>

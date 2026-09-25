@@ -3,7 +3,8 @@ import { Icon } from '../../ds/components/core/Icon.jsx';
 import { SegmentedControl } from '../../ds/components/forms/SegmentedControl.jsx';
 import type { Registry, RouteRecord, RunRef } from '../../data/registry.ts';
 import type { RunId } from '../../data/load.ts';
-import { stampOf } from '../../data/load.ts';
+import { hiddenCount, hiddenRuns, hideEngineRun, stampOf } from '../../data/load.ts';
+import type { EngineRun } from '../../data/api.ts';
 import { dec, hoursText, plural } from '../../data/derive.ts';
 import { skillName } from '../../data/dictionary.ts';
 import { RunCard } from '../../app/RunCard.tsx';
@@ -41,6 +42,10 @@ interface Props {
   onCompare: (id: RunId) => void;
   /** Открыть правку записи: номер, время создания, заметка. */
   onEdit: (run: RunRef) => void;
+  /** Пересобрать историю и справочники: вернули спрятанный черновик, и
+      база обязана показать его следующей же отрисовкой. Необязательный:
+      без него база просто уберёт строку из перечня спрятанных. */
+  onRefresh?: () => void;
 }
 
 /* Плотность строки — это выбор между «разглядеть» и «охватить», а не просто
@@ -149,7 +154,8 @@ export function DbRunsScreen({
   onGo,
   compare,
   onCompare,
-  onEdit
+  onEdit,
+  onRefresh
 }: Props) {
   /* С какой плотности открывается база — настройка сервиса: одному важно
      разглядеть карту дня, другому охватить историю строками. */
@@ -669,6 +675,42 @@ export function DbRunsScreen({
   const working_ = rows.filter(working).slice(0, paging.limit);
   const drafts = rows.filter((row) => !working(row)).slice(0, paging.limit);
 
+  /* Спрятанные черновики. В списке их нет — движок их не отдаёт, — но
+     сказать, что они есть, надо: иначе «спрятал и потерял». Число берём у
+     движка, сами записи спрашиваем только по щелчку: за ними отдельный
+     запрос, и делать его каждому, кто открыл базу, незачем. */
+  const [buried, setBuried] = useState<EngineRun[] | null>(null);
+  const [buriedCount, setBuriedCount] = useState(hiddenCount());
+  const [busy, setBusy] = useState(false);
+
+  const openBuried = async () => {
+    setBusy(true);
+    try {
+      const list = await hiddenRuns();
+      setBuried(list);
+      setBuriedCount(hiddenCount());
+    } catch {
+      /* Не ответила — оставляем как было: строка со счётчиком никуда не
+         делась, щёлкнуть можно ещё раз. */
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const restore = async (id: string) => {
+    setBusy(true);
+    try {
+      await hideEngineRun(id, false);
+      setBuried((prev) => (prev ?? []).filter((one) => one.id !== id));
+      setBuriedCount(hiddenCount());
+      onRefresh?.();
+    } catch {
+      /* То же самое: запись осталась спрятанной, строка на месте. */
+    } finally {
+      setBusy(false);
+    }
+  };
+
   /* Итог выборки — над списком, а не под ним: это ответ на «что дал отбор»,
      и внизу, за прокруткой, его никто не читает. Числа выбраны по вопросу
      самой базы: что считали, сколько заявок прошло и что от них осталось. */
@@ -693,8 +735,53 @@ export function DbRunsScreen({
           )}`}
         </>
       )}
+      {buriedCount > 0 && (
+        <>
+          {` · спрятано ${buriedCount}`}
+          {buried === null && (
+            <button type="button" className="dbruns__buried-show" onClick={openBuried} disabled={busy}>
+              показать
+            </button>
+          )}
+        </>
+      )}
     </>
   );
+
+  /* Перечень спрятанных — под полосой отбора и только когда его открыли.
+     Строка короткая: номер, день и когда завели, — этого хватает, чтобы
+     узнать свой черновик и вернуть его. Числа плана здесь не нужны: за
+     ними запись надо открывать, а её в списке нет. */
+  const buriedPanel =
+    buried === null ? null : (
+      <section className="panel dbruns__buried">
+        <div className="dash__section-head">
+          <h2 className="dash__section-title">Спрятанные черновики</h2>
+          <span className="dbrun__facts">
+            {buried.length === 0
+              ? 'Ни одного: всё вернули'
+              : `${plural(buried.length, 'запись', 'записи', 'записей')} вне списка · ` +
+                'они целы в архиве программы расчёта и открываются по своему номеру'}
+          </span>
+        </div>
+        {buried.map((one) => (
+          <div key={one.id} className="dbruns__buried-row">
+            <span className="dbruns__buried-code">{one.code}</span>
+            <span className="dbruns__buried-day">{one.date}</span>
+            <span className="dbruns__buried-when">заведён {stampOf(one.created)}</span>
+            {one.note && <span className="dbruns__buried-note">{one.note}</span>}
+            <button
+              type="button"
+              className="dbruns__buried-back"
+              onClick={() => restore(one.id)}
+              disabled={busy}
+            >
+              Вернуть в список
+            </button>
+          </div>
+        ))}
+      </section>
+    );
 
   return (
     <div className="dash enter">
@@ -769,6 +856,8 @@ export function DbRunsScreen({
           </div>
         </DbBar>
       </DbHead>
+
+      {buriedPanel}
 
       {rows.length === 0 ? (
         <DbEmpty
