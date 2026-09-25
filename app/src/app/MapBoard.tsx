@@ -10,6 +10,8 @@ import type { Lane } from './lanes.ts';
 import { laneLayout } from './lanes.ts';
 import { transportIcon, transportName } from '../data/dictionary.ts';
 import { ZONE_COLORS, zonePalette } from '../data/zones.ts';
+import { loadRoadNet, RoadIndex } from '../data/roadnet.ts';
+import type { RoadLine } from '../data/roadnet.ts';
 import { routeLabel, routeNumber } from '../data/routeIds.ts';
 import { MapKeys } from './MapKeys.tsx';
 
@@ -635,6 +637,19 @@ export function MapBoard({
      снаружи: это наведение, оно кончается вместе с движением мыши, и
      рассказывать о нём экрану незачем. */
   const [hoverNest, setHoverNest] = useState<string[] | null>(null);
+  /* Дорожная сеть — для границ участков. Читается один раз и не мешает
+     карте: пока её нет, границы идут как считаются, а придёт — лягут по
+     улицам. */
+  const [roadNet, setRoadNet] = useState<RoadLine[]>([]);
+  useEffect(() => {
+    let alive = true;
+    loadRoadNet().then((lines) => {
+      if (alive) setRoadNet(lines);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   /* Условные обозначения — окном по кнопке, а не строкой поверх города. */
   const [keysOpen, setKeysOpen] = useState(false);
@@ -1539,22 +1554,40 @@ export function MapBoard({
       return [...head, ...tail.slice(1), loop[0]];
     };
 
-    /* Подтягиваем вершину к ближайшей дорожной точке — но только если та
-       рядом. Дальняя дорога притянула бы межу к себе через поле. */
-    const NEAR = 1.2 / 111;
-    const onRoad = (point: [number, number]): [number, number] => {
-      let best = point;
-      let far = NEAR * NEAR;
-      for (const road of roads) {
-        const dy = road[0] - point[0];
-        const dx = (road[1] - point[1]) * kx;
-        const gap = dy * dy + dx * dx;
-        if (gap < far) {
-          far = gap;
-          best = road;
+    /* Ведём межу по дорогам.
+
+       Границу читают не как линию наименьших расстояний, а как улицу: «до
+       Каширского шоссе наш участок, дальше соседний». Поэтому каждая
+       вершина межи садится на ближайшую дорогу, а если две соседние
+       вершины сели на одну и ту же — между ними подставляется сам кусок
+       дороги, со всеми её поворотами. Так межа идёт по асфальту, а не
+       поперёк кварталов.
+
+       Дальше двух с половиной километров не тянем: за городом дорог мало,
+       и притягивать к единственной трассе всё поле значило бы нарисовать
+       границу там, где её нет. Там межа остаётся расчётной. */
+    const REACH_ROAD = 2.5 / 111;
+    const net = roadNet.length > 0 ? new RoadIndex(roadNet, all[0].lat) : null;
+    const alongRoads = (line: [number, number][]): [number, number][] => {
+      if (!net) return line;
+      const snaps = line.map((one) => net.nearest(one[0], one[1], REACH_ROAD));
+      const out: [number, number][] = [];
+      line.forEach((one, i) => {
+        const here = snaps[i];
+        const before = i > 0 ? snaps[i - 1] : null;
+        if (before && here) {
+          const bridge = net.between(before, here);
+          /* Кусок длиной в пол-области — это не «между двумя соседними
+             вершинами», а объезд через всю дорогу: такой мост отбрасываем
+             и соединяем напрямую. */
+          if (bridge && bridge.length <= 60) {
+            out.push(...bridge.slice(1));
+            return;
+          }
         }
-      }
-      return best;
+        out.push(here ? here.at : one);
+      });
+      return out;
     };
 
     /* Сглаживание по Чайкину: угол срезается, и ломаная перестаёт быть
@@ -1575,7 +1608,11 @@ export function MapBoard({
 
     const ready = new Map<Arc, [number, number][]>();
     for (const arc of arcs) {
-      ready.set(arc, soften(straighten(arc.line, STEP * 2.2).map(onRoad)));
+      const plain = straighten(arc.line, STEP * 2.2);
+      const paved = alongRoads(plain);
+      /* Сглаживаем только то, что не легло на дорогу: у дороги свои
+         повороты, и срезать их — значит снова уйти с асфальта. */
+      ready.set(arc, net ? paved : soften(paved));
     }
 
     /* Кольцо района: дуги, у которых район с одной из сторон, сшиваются по
@@ -1647,7 +1684,7 @@ export function MapBoard({
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [zoneSource ?? view, zoneOf ? 'zones' : 'none', zoneTint]);
+  }, [zoneSource ?? view, zoneOf ? 'zones' : 'none', zoneTint, roadNet]);
 
   /* Кладём подложки на карту. Отдельным действием от их счёта: считаются
      они от плана, а гасит их кнопка, и пересчитывать поле ради нажатия
