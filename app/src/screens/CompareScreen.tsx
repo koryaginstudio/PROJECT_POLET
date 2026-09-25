@@ -75,7 +75,7 @@ export function CompareScreen({
      об этом сказано заранее, а не отказом по нажатию. */
   const [saved, setSaved] = useState<SavedCompare[] | null>(null);
   const [busy, setBusy] = useState(false);
-  const [failed, setFailed] = useState<string | null>(null);
+  const [failed, setFailed] = useState<{ text: string; detail: string } | null>(null);
 
   useEffect(() => {
     /* Без движка архива нет — и это ответ, а не ожидание: пустой список,
@@ -174,7 +174,7 @@ export function CompareScreen({
     } catch (error) {
       /* Заголовок «Сравнение не сохранилось» ставит сама плашка: прежде
          незнакомая ошибка давала его дважды подряд. */
-      setFailed(humanAfter(error, 'Повторите ещё раз.').text);
+      setFailed(humanAfter(error, 'Повторите ещё раз.'));
     } finally {
       setBusy(false);
     }
@@ -280,7 +280,15 @@ export function CompareScreen({
           <div className="solvefail">
             <Icon name="alert-triangle" size={16} />
             <span>
-              <b>Сравнение не сохранилось.</b> {failed}
+              <b>Сравнение не сохранилось.</b> {failed.text}
+              {/* Слова программы расчёта — «расчётов нет в архиве: R012»:
+                  без них совет «повторите» не помогает. */}
+              {failed.detail && (
+                <details className="dispatch__more">
+                  <summary>Подробности</summary>
+                  {failed.detail}
+                </details>
+              )}
             </span>
           </div>
         )}
