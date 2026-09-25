@@ -22,6 +22,7 @@ import { dayLabel, takeDuty, useDuty, workDays } from '../data/duty.ts';
 import { loadTraffic } from '../data/traffic.ts';
 import type { Traffic } from '../data/traffic.ts';
 import { MapBoard, routeColor, surnameOf } from '../app/MapBoard.tsx';
+import { zonePalette } from '../data/zones.ts';
 import { MapPick } from '../app/MapPick.tsx';
 import { transportIcon } from '../data/dictionary.ts';
 import { routeLabel, routeNumber } from '../data/routeIds.ts';
@@ -244,6 +245,15 @@ export function MonitorScreen({
   /* Раскрытый участок и участок, которому меняют расчёт, — по одному за раз.
      Три раскрытых списка разом не поместились бы в угол карты, а два
      раскрытых ряда «чем ведём» сделали бы из плашки базу расчётов. */
+  /* Цвета участков — на весь набор сразу и по всем отмеченным дням, а не
+     по показанным: сняли участок с карты, вернули обратно — цвет у него тот
+     же, каким был. Карта берёт цвет отсюда же. */
+  const tints = useMemo(
+    () => zonePalette(runs.map((id) => dayLabel(id, runDate(id)).split(' · ')[0])),
+    [runs]
+  );
+  const zoneTint = (title: string) => tints.get(title) ?? 'var(--glass-ink-soft)';
+
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const [pickGroup, setPickGroup] = useState<string | null>(null);
 
@@ -374,6 +384,7 @@ export function MonitorScreen({
              внутри плашки смены. */
           routeList={false}
           zoneOf={zoneOf}
+          zoneTint={zoneTint}
           /* Щелчок по общему выезду раскрывает его участок в плашке:
              спрашивают «кто отсюда выезжает», а перечень выезжающих лежит
              там. Прозрачностью на карте он не заведует — это дело
@@ -451,6 +462,13 @@ export function MonitorScreen({
                         >
                           <span className="livegroup__place">
                             <Icon name={open ? 'chevron-down' : 'chevron-right'} size={12} />
+                            {/* Цвет участка — тот же, каким он закрашен на
+                                карте: точка связывает строку в плашке с
+                                пятном на городе. */}
+                            <i
+                              className="livegroup__tone"
+                              style={{ background: zoneTint(group.place) }}
+                            />
                             {group.place}
                           </span>
                           <span className="livegroup__crew">

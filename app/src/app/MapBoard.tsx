@@ -9,6 +9,7 @@ import { hhmm, homeOf, placeOf, roadLegs, visits } from '../data/derive.ts';
 import type { Lane } from './lanes.ts';
 import { laneLayout } from './lanes.ts';
 import { transportIcon, transportName } from '../data/dictionary.ts';
+import { ZONE_COLORS, zonePalette } from '../data/zones.ts';
 import { routeLabel, routeNumber } from '../data/routeIds.ts';
 import { MapKeys } from './MapKeys.tsx';
 
@@ -69,6 +70,10 @@ interface Props {
       отвечает на главный вопрос — чья это бригада. Не задан — участок на
       карте один, и называть его у каждой точки незачем. */
   zoneOf?: (engineerId: string) => string | null;
+  /** Цвет участка. Задаёт его экран, а не карта: тот же цвет стоит точкой
+      у названия района в плашке смены, и считать его дважды нельзя —
+      разойдутся. */
+  zoneTint?: (title: string) => string;
   /** Чей это маршрут, когда на карте день не один. Номер маршрута сквозной
       по всей базе и считается от пары «расчёт — инженер»; при нескольких
       участках разом один `runId` на всех выдал бы соседнему участку чужие
@@ -318,12 +323,6 @@ const BASEMAPS: {
   }
 ];
 
-/* Цвета участков. Не из палитры маршрутов: подложка — не линия, и спорить с
-   ней она не должна. Оттенки разведены по кругу и взяты приглушёнными, а
-   работают они почти прозрачными — участок узнают по пятну под маршрутами,
-   а не по цвету самого пятна. */
-const ZONE_COLORS = ['#4C7DF0', '#3FAE8C', '#E0864A', '#A46BD8', '#C9556F'];
-
 /* Фамилия из полного имени. Порядок слов у записи разный — «Фамилия Имя
    Отчество» в выгрузке заказчика, «Имя Фамилия» от программы расчёта, —
    поэтому берём то слово, которое похоже на фамилию, а не первое по счёту.
@@ -382,6 +381,7 @@ export function MapBoard({
   routesTitle = 'Маршруты',
   routeList: routeListOn = true,
   zoneOf,
+  zoneTint,
   busy = false,
   busyNote = '',
   routeKeyOf
@@ -1320,18 +1320,19 @@ export function MapBoard({
      пятном на район — где чья земля.
 
      Границ участков в выгрузке нет, и выдумывать административные было бы
-     враньём. Зато есть сами точки: выезды и заявки. Берём поле вокруг них
-     и красим каждый его клочок в цвет того участка, чья точка к нему
-     ближе. Это и есть настоящая граница работы — линия, на которой один
-     участок сменяется другим; пересечься такие пятна не могут по самому
-     способу построения, у клочка земли всегда один ближайший.
+     враньём. Зато есть сами точки: выезды и заявки. Поле вокруг них
+     делится по ближайшей точке — это и есть настоящая граница работы, и
+     пересечься такие области не могут: у клочка земли всегда один
+     ближайший. Дальше восьми километров от любой точки поле пустое: за
+     городом у участков нет ни заявок, ни людей.
 
-     Дальше восьми километров от любой точки поле остаётся пустым: за
-     городом у участков нет ни заявок, ни людей, и красить там нечего.
+     Дальше из этого поля вынимается контур — замкнутая ломаная по краю, а
+     не россыпь квадратов. Квадратами район выглядел сеткой из пикселей;
+     ломаная же говорит «здесь проходит граница». Мелкие островки
+     отбрасываются: у каждого района одна земля, а не архипелаг.
 
-     Клочки собираются в полосы по строкам — рисовать тысячу квадратов
-     поштучно карта не должна. Участок один — подложки нет вовсе: пятно во
-     весь город ничего не разделяет. */
+     Участок один — подложки нет вовсе: пятно во весь город ничего не
+     разделяет. */
   const zoneShapes = useMemo(() => {
     if (!zoneOf) return [];
     const spots = new Map<string, { lat: number; lon: number }[]>();
@@ -1339,84 +1340,172 @@ export function MapBoard({
       const zone = zoneOf(load.engineer.id);
       if (!zone) continue;
       const list = spots.get(zone) ?? [];
-      list.push({ lat: load.engineer.home_lat, lon: load.engineer.home_lon });
+      /* Земля участка — не только там, где он работает, но и там, где он
+         едет. Без дороги юго-восток распадался надвое: город и дальний
+         конец за Подольском, между ними полсотни километров пустого поля —
+         и на карте это читалось как два разных района под одним цветом.
+         Поэтому между соседними точками маршрута подсыпаем промежуточные,
+         через каждые пять километров: участок становится цельным ровно по
+         той земле, по которой его люди ездят. */
+      let from = { lat: load.engineer.home_lat, lon: load.engineer.home_lon };
+      list.push(from);
       for (const stop of load.route?.stops ?? []) {
         const order = view.orderById.get(stop.order_id);
-        if (order) list.push({ lat: order.lat, lon: order.lon });
+        if (!order) continue;
+        const to = { lat: order.lat, lon: order.lon };
+        const dy = to.lat - from.lat;
+        const dx = (to.lon - from.lon) * Math.cos((from.lat * Math.PI) / 180);
+        const far = Math.hypot(dy, dx) * 111;
+        const steps = Math.floor(far / 5);
+        for (let i = 1; i < steps; i += 1) {
+          list.push({
+            lat: from.lat + (dy * i) / steps,
+            lon: from.lon + ((to.lon - from.lon) * i) / steps
+          });
+        }
+        list.push(to);
+        from = to;
       }
       spots.set(zone, list);
     }
     if (spots.size < 2) return [];
 
     const titles = [...spots.keys()];
+    const tint = zoneTint ?? ((title: string) => zonePalette(titles).get(title) ?? ZONE_COLORS[0]);
     const all = titles.flatMap((title, index) =>
       spots.get(title)!.map((one) => ({ ...one, zone: index }))
     );
     const kx = Math.cos((all[0].lat * Math.PI) / 180);
-    /* Шаг сетки — около километра: мельче незаметно, крупнее видно
-       ступеньки. Вылет поля — те же восемь километров, что и порог. */
+    /* Шаг сетки — около километра: мельче считается долго, крупнее видно
+       ступеньки даже после сглаживания. */
     const STEP = 0.009;
     const REACH = 8 / 111;
-    const edge = {
-      south: Math.min(...all.map((one) => one.lat)) - REACH,
-      north: Math.max(...all.map((one) => one.lat)) + REACH,
-      west: Math.min(...all.map((one) => one.lon)) - REACH / kx,
-      east: Math.max(...all.map((one) => one.lon)) + REACH / kx
-    };
-
-    const bands = titles.map(() => [] as [number, number, number, number][]);
+    const south = Math.min(...all.map((one) => one.lat)) - REACH;
+    const north = Math.max(...all.map((one) => one.lat)) + REACH;
+    const west = Math.min(...all.map((one) => one.lon)) - REACH / kx;
+    const east = Math.max(...all.map((one) => one.lon)) + REACH / kx;
     const stepLon = STEP / kx;
-    for (let lat = edge.south; lat < edge.north; lat += STEP) {
-      let open: { zone: number; from: number } | null = null;
-      for (let lon = edge.west; lon < edge.east + stepLon; lon += stepLon) {
-        let mine = -1;
+    const rows = Math.ceil((north - south) / STEP);
+    const cols = Math.ceil((east - west) / stepLon);
+
+    /* Чья земля в каждой клетке. −1 — ничья: до ближайшей точки дальше
+       восьми километров. */
+    const owner = new Int16Array(rows * cols).fill(-1);
+    for (let r = 0; r < rows; r += 1) {
+      const lat = south + (r + 0.5) * STEP;
+      for (let c = 0; c < cols; c += 1) {
+        const lon = west + (c + 0.5) * stepLon;
         let best = REACH * REACH;
+        let mine = -1;
         for (const one of all) {
-          const dy = one.lat - (lat + STEP / 2);
-          const dx = (one.lon - (lon + stepLon / 2)) * kx;
+          const dy = one.lat - lat;
+          const dx = (one.lon - lon) * kx;
           const far = dy * dy + dx * dx;
           if (far < best) {
             best = far;
             mine = one.zone;
           }
         }
-        if (open && open.zone !== mine) {
-          bands[open.zone].push([lat, open.from, lat + STEP, lon]);
-          open = null;
-        }
-        if (mine >= 0 && !open) open = { zone: mine, from: lon };
+        owner[r * cols + c] = mine;
       }
-      if (open) bands[open.zone].push([lat, open.from, lat + STEP, edge.east + stepLon]);
     }
 
-    /* У каждой полосы считаем запас — насколько далеко от неё ближайшая
-       чужая заявка. По нему подпись участка и выбирает себе место: в
-       глубине своей земли, а не у границы с соседом. Считается здесь, один
-       раз: подпись переставляется на каждое движение карты, и перебирать
-       при этом сотню чужих точек нельзя. */
-    const roomy = titles.map((_title, index) => {
-      const strangers = all.filter((one) => one.zone !== index);
-      return bands[index].map(([south, west, north, east]) => {
-        const lat = (south + north) / 2;
-        const lon = (west + east) / 2;
-        let near = Infinity;
-        for (const one of strangers) {
-          const dy = one.lat - lat;
-          const dx = (one.lon - lon) * kx;
-          near = Math.min(near, dy * dy + dx * dx);
-        }
-        return { lat, lon, room: near };
-      });
-    });
+    const at = (r: number, c: number) => (r < 0 || c < 0 || r >= rows || c >= cols ? -1 : owner[r * cols + c]);
+    const vertex = (r: number, c: number): [number, number] => [south + r * STEP, west + c * stepLon];
 
-    return titles.map((title, index) => ({
-      title,
-      color: ZONE_COLORS[index % ZONE_COLORS.length],
-      bands: bands[index],
-      spots: roomy[index]
-    }));
+    /* Контур области: собираем сторонки клеток, у которых сосед чужой, и
+       сшиваем их в кольца. Самое длинное кольцо и есть внешний край. */
+    const outline = (zone: number): [number, number][][] => {
+      const links = new Map<string, string[]>();
+      const point = new Map<string, [number, number]>();
+      const key = (r: number, c: number) => `${r}:${c}`;
+      const join = (a: [number, number], b: [number, number]) => {
+        const ka = key(a[0], a[1]);
+        const kb = key(b[0], b[1]);
+        point.set(ka, vertex(a[0], a[1]));
+        point.set(kb, vertex(b[0], b[1]));
+        links.set(ka, [...(links.get(ka) ?? []), kb]);
+        links.set(kb, [...(links.get(kb) ?? []), ka]);
+      };
+      for (let r = 0; r < rows; r += 1) {
+        for (let c = 0; c < cols; c += 1) {
+          if (at(r, c) !== zone) continue;
+          if (at(r - 1, c) !== zone) join([r, c], [r, c + 1]);
+          if (at(r + 1, c) !== zone) join([r + 1, c], [r + 1, c + 1]);
+          if (at(r, c - 1) !== zone) join([r, c], [r + 1, c]);
+          if (at(r, c + 1) !== zone) join([r, c + 1], [r + 1, c + 1]);
+        }
+      }
+      const rings: [number, number][][] = [];
+      const used = new Set<string>();
+      const edge = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
+      for (const start of links.keys()) {
+        let here = start;
+        const ring: [number, number][] = [];
+        for (;;) {
+          const next = (links.get(here) ?? []).find((one) => !used.has(edge(here, one)));
+          if (!next) break;
+          used.add(edge(here, next));
+          ring.push(point.get(here)!);
+          here = next;
+        }
+        if (ring.length > 8) rings.push(ring);
+      }
+      return rings;
+    };
+
+    /* Сглаживание ломаной: выбрасываем вершины, которые почти лежат на
+       прямой между соседями. Без него контур остаётся лесенкой из
+       километровых ступенек. */
+    const straighten = (ring: [number, number][], eps: number): [number, number][] => {
+      if (ring.length < 4) return ring;
+      const keep = (from: number, to: number, out: number[]) => {
+        let far = -1;
+        let pick = -1;
+        const [ay, ax] = ring[from];
+        const [by, bx] = ring[to];
+        for (let i = from + 1; i < to; i += 1) {
+          const [py, px] = ring[i];
+          const dy = by - ay;
+          const dx = bx - ax;
+          const len = Math.hypot(dy, dx) || 1;
+          const off = Math.abs((py - ay) * dx - (px - ax) * dy) / len;
+          if (off > far) {
+            far = off;
+            pick = i;
+          }
+        }
+        if (far > eps && pick > 0) {
+          keep(from, pick, out);
+          out.push(pick);
+          keep(pick, to, out);
+        }
+      };
+      const marks: number[] = [];
+      keep(0, ring.length - 1, marks);
+      return [0, ...marks, ring.length - 1].map((i) => ring[i]);
+    };
+
+    return titles.map((title, index) => {
+      const rings = outline(index)
+        .map((ring) => straighten(ring, STEP * 0.45))
+        .filter((ring) => ring.length > 3)
+        .sort((a, b) => b.length - a.length);
+      /* Островки мельче четверти главного куска отбрасываем: район — это
+         одна земля, а не он же плюс три клетки за рекой. */
+      const main = rings[0]?.length ?? 0;
+      const land = rings.filter((ring) => ring.length >= main * 0.25);
+      return {
+        title,
+        color: tint(title),
+        rings: land,
+        /* Кандидаты для подписи — вершины края: подпись стоит на границе
+           участка, а не посреди его маршрутов. */
+        edge: land.flat()
+      };
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view, zoneOf ? 'zones' : 'none']);
+  }, [view, zoneOf ? 'zones' : 'none', zoneTint]);
 
   /* Кладём подложки на карту. Отдельным действием от их счёта: считаются
      они от плана, а гасит их кнопка, и пересчитывать поле ради нажатия
@@ -1428,55 +1517,80 @@ export function MapBoard({
     if (!zonesOn) return;
     const marks: { zone: (typeof zoneShapes)[number]; mark: L.Marker }[] = [];
     for (const zone of zoneShapes) {
-      for (const [south, west, north, east] of zone.bands) {
-        L.rectangle(
-          [
-            [south, west],
-            [north, east]
-          ],
-          {
-            pane: 'zones',
-            /* Полосы стоят вплотную, и обводка у них была бы сеткой поперёк
-               всего пятна: красим только заливкой. */
-            stroke: false,
-            fillColor: zone.color,
-            fillOpacity: 0.15,
-            interactive: false
-          }
-        ).addTo(layer);
+      for (const ring of zone.rings) {
+        L.polygon(ring, {
+          pane: 'zones',
+          color: zone.color,
+          weight: 1.5,
+          opacity: 0.55,
+          fillColor: zone.color,
+          fillOpacity: 0.13,
+          interactive: false
+        }).addTo(layer);
       }
-      const mark = L.marker([zone.spots[0]?.lat ?? 0, zone.spots[0]?.lon ?? 0], {
+      const mark = L.marker(zone.edge[0] ?? [0, 0], {
         pane: 'zones',
         interactive: false,
         keyboard: false,
         icon: L.divIcon({
           className: 'geo__zonebox',
-          html: `<span class="geo__zone" style="--tone:${zone.color}">${zone.title}</span>`,
+          html:
+            `<span class="geo__zone" style="--tone:${zone.color}">` +
+            `<i class="geo__zone-dot"></i>${zone.title}</span>`,
           iconSize: [0, 0]
         })
       }).addTo(layer);
       marks.push({ zone, mark });
     }
 
-    /* Подпись участка держится того куска его земли, который сейчас на
-       экране, и стоит в самой глубине этого куска. Прибитая к одной точке,
-       она уезжала за край при первом же движении карты: у вытянутого
-       участка «самое своё» место — дальний конец коридора за городом, и
-       подписи там никто не видит. Уехала земля участка целиком — уходит и
-       подпись: называть нечего. */
+    /* Подпись участка стоит на его границе и держится той её части, что
+       сейчас на экране.
+
+       Посреди района она тонула в маршрутах — их там сорок, и слово между
+       ними читалось как ещё одна метка. На краю пусто: с одной стороны
+       чужая земля, с другой своя, и подпись говорит ровно то, что нужно, —
+       чья это сторона. Прибить её к одной точке нельзя: при движении карты
+       та уезжает за край, и район остаётся безымянным. */
     const place = () => {
       const instance = map.current;
       if (!instance) return;
-      const frame = instance.getBounds().pad(-0.06);
-      for (const { zone, mark } of marks) {
-        let best: { lat: number; lon: number; room: number } | null = null;
-        for (const spot of zone.spots) {
-          if (!frame.contains([spot.lat, spot.lon])) continue;
-          if (!best || spot.room > best.room) best = spot;
+      const frame = instance.getBounds().pad(-0.08);
+      const middle = instance.getCenter();
+      /* Занятые места: две подписи рядом — хуже одной. У соседних участков
+         границы сходятся в одной точке города, и «Восток» с «Югоцентром»
+         вставали там плечом к плечу, будто подписывают одно и то же. */
+      const busy: { x: number; y: number }[] = [];
+      /* Ищем место дважды: сперва подальше от уже занятых, а если вся
+         видимая граница участка легла рядом с чужой подписью — там же, но
+         не отказываясь от подписи вовсе. Безымянный район на карте хуже
+         двух подписей по соседству. */
+      const pick = (zone: (typeof zoneShapes)[number], apart: boolean) => {
+        let best: [number, number] | null = null;
+        let far = -1;
+        for (const spot of zone.edge) {
+          if (!frame.contains(spot)) continue;
+          if (apart) {
+            const at = instance.latLngToContainerPoint(spot);
+            if (busy.some((one) => Math.hypot(one.x - at.x, one.y - at.y) < 120)) continue;
+          }
+          /* Из видимых кусков границы берём тот, что дальше от середины
+             экрана: подпись уходит к краю карты и освобождает середину под
+             сами маршруты. */
+          const away = Math.hypot(spot[0] - middle.lat, spot[1] - middle.lng);
+          if (away > far) {
+            far = away;
+            best = spot;
+          }
         }
+        return best;
+      };
+
+      for (const { zone, mark } of marks) {
+        const best = pick(zone, true) ?? pick(zone, false);
+        if (best) busy.push(instance.latLngToContainerPoint(best));
         const node = mark.getElement();
         if (best) {
-          mark.setLatLng([best.lat, best.lon]);
+          mark.setLatLng(best);
           if (node) node.style.display = '';
         } else if (node) {
           node.style.display = 'none';
@@ -1491,16 +1605,6 @@ export function MapBoard({
       instance?.off('moveend zoomend', place);
     };
   }, [zoneShapes, zonesOn]);
-
-  /* Перечень подводит к выбранному маршруту. Свёрнутым он показывает шесть
-     строк из тринадцати, и выбранный на карте путь мог остаться за нижним
-     краем — перечень тогда выглядел так, будто выбор в нём не отметился. */
-  useEffect(() => {
-    if (!pinned) return;
-    const box = routesBox.current;
-    const row = box?.querySelector<HTMLElement>(`[data-route="${CSS.escape(pinned)}"]`);
-    row?.scrollIntoView({ block: 'nearest' });
-  }, [pinned, routesExpanded]);
 
   const routeList = useMemo(
     () =>

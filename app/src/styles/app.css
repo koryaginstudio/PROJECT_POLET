@@ -16156,7 +16156,9 @@ button.subhdr__close {
 }
 
 .geo__zone {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   transform: translate(-50%, -50%);
   white-space: nowrap;
   font-family: var(--font-sans);
@@ -16165,8 +16167,19 @@ button.subhdr__close {
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--tone);
-  opacity: 0.75;
-  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.55);
+  opacity: 0.9;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.7);
+}
+
+/* Точка у подписи — того же цвета, что и сам участок: подпись на границе
+   стоит на чужой земле не меньше, чем на своей, и цвет говорит, чья она. */
+.geo__zone-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--tone);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.35);
 }
 
 /* Завеса на время загрузки дня. Нужна там, где план под картой меняют на
@@ -17099,6 +17112,14 @@ button.subhdr__close {
 
 /* Число людей — в своей колонке, вправо: так они стоят столбиком у всех
    трёх районов. */
+/* Цвет участка в плашке — той же точкой, что и у подписи на карте. */
+.livegroup__tone {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+}
+
 .livegroup__crew {
   flex: 0 0 auto;
   width: 52px;
