@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import { Icon } from '../ds/components/core/Icon.jsx';
-import { Button } from '../ds/components/core/Button.jsx';
 import { Lede } from '../app/Lede.tsx';
 import { Badge } from '../ds/components/core/Badge.jsx';
 import type { RunId, DaySummary } from '../data/load.ts';
@@ -14,18 +13,26 @@ interface Props {
   onOpen: (id: RunId) => void;
 }
 
-/* Вход в диспетчерскую. Раздел не открывает последний расчёт сам, но и лишнего
-   вопроса не задаёт: сверху одно действие — посчитать новый день, — а всё уже
-   посчитанное лежит списком под ним и открывается прямо оттуда.
+/* Вход в диспетчерскую. Раздел не открывает последний расчёт сам: сначала
+   вопрос — считать новый или открыть готовый, — и только потом экран плана.
 
-   Прежде здесь стояли две равные карточки, и вторая, «Открыть существующий»,
-   вела к тому же списку, что и так открыт ниже: щелчок ради того, чтобы
-   увидеть уже видимое. */
+   История расчётов открыта сразу, под карточками выбора: в большинстве
+   случаев приходят именно за ней, и прятать её за нажатием значит добавлять
+   шаг к самому частому действию. Карточка «Открыть существующий» переводит
+   на полный список: там поиск по номеру и вся история, а карточки выбора
+   уступают ему место. */
 /* Сколько расчётов показываем сразу. Дальше — по кнопке: в архиве их
    десятки, и вываливать всё списком значит заставить искать глазами. */
+const PAGE = 10;
+
+/* В обзоре список короче: он стоит под карточками выбора и не должен
+   отодвигать их с экрана. Полная история — в раскрытом виде. */
 const SHORT = 5;
 
 export function DispatchGate({ runs, activeRun, onCreate, onOpen }: Props) {
+  /* Два вида одного экрана: обзор с карточками и раскрытая история. Второй
+     не добавляет данных, он отдаёт списку всю ширину и внимание. */
+  const [mode, setMode] = useState<'overview' | 'list'>('overview');
   const [expanded, setExpanded] = useState(false);
   const [searching, setSearching] = useState(false);
   const [query, setQuery] = useState('');
@@ -44,35 +51,80 @@ export function DispatchGate({ runs, activeRun, onCreate, onOpen }: Props) {
      кнопкой «раскрыть» после того, как человек уже сузил список, — значит
      заставить его нажимать дважды за один и тот же ответ. */
   const searchOn = searching && query.trim() !== '';
-  const shown = searchOn || expanded ? found : found.slice(0, SHORT);
+  const onList = mode === 'list';
+  const shown = searchOn || expanded ? found : found.slice(0, onList ? PAGE : SHORT);
   const hidden = found.length - shown.length;
 
   return (
     <div className="dash enter">
-      <section className="panel gateview">
-        <div className="dash__section-head gatehero__head">
-          <h2 className="dash__section-title">Диспетчерская</h2>
-        </div>
+      {!onList && (
+        <section className="panel gateview">
+          <div className="dash__section-head">
+            <h2 className="dash__section-title">Диспетчерская</h2>
+            <span className="dash__section-note">
+              {runs ? `${runs.length} расчётов в истории` : 'Собираем историю…'}
+            </span>
+          </div>
 
-        <Lede first="Создайте новый расчёт или продолжите работу с одним из предыдущих." />
+          <Lede first="Начните с нового расчёта или откройте один из посчитанных раньше.">
+            Диспетчерская — это работа с планом: программа расчёта раскладывает заявки по
+            инженерам, а вы смотрите, что получилось, и правите.
+          </Lede>
 
-        {/* Одно действие вместо двух карточек: «открыть посчитанное» — это
-            строка списка под воротами, а не отдельная кнопка к нему. */}
-        <div className="gatehero__actions">
-          <Button
-            variant="primary"
-            className="gatehero__cta"
-            iconLeft={<Icon name="plus" size={14} />}
-            onClick={onCreate}
-          >
-            Создать новый расчёт
-          </Button>
-        </div>
-      </section>
+          <div className="gate">
+            <button type="button" className="gate__card gate__card--accent" onClick={onCreate}>
+              <span className="gate__icon">
+                <Icon name="shuffle" size={22} />
+              </span>
+              <span className="gate__title">Создать расчёт</span>
+              <span className="gate__note">
+                Задать правила расчёта и разложить заявки по инженерам заново.
+              </span>
+              <span className="gate__go">
+                Дальше
+                <Icon name="arrow-right" size={13} />
+              </span>
+            </button>
 
-      <section className="panel gateview">
-          <div className="dash__section-head gatehero__head">
-            <h2 className="dash__section-title">Посчитанные расчёты</h2>
+            {/* Одна кнопка вместо переключателя «показать/скрыть»: список и
+                так открыт ниже, а эта карточка отдаёт ему весь экран. */}
+            <button type="button" className="gate__card" onClick={() => setMode('list')}>
+              <span className="gate__icon">
+                <Icon name="stack" size={22} />
+              </span>
+              <span className="gate__title">Открыть существующий</span>
+              <span className="gate__note">
+                Вернуться к уже посчитанному плану — своему сегодняшнему или из архива.
+              </span>
+              <span className="gate__go">
+                Дальше
+                <Icon name="arrow-right" size={13} />
+              </span>
+            </button>
+          </div>
+        </section>
+      )}
+
+      <section className={'panel gateview' + (onList ? ' gateview--full' : '')}>
+          <div className="dash__section-head">
+            <h2 className="dash__section-title">
+              {onList && (
+                <button
+                  type="button"
+                  className="gateback"
+                  onClick={() => {
+                    setMode('overview');
+                    setExpanded(false);
+                    setSearching(false);
+                    setQuery('');
+                  }}
+                  aria-label="Вернуться к выбору действия"
+                >
+                  <Icon name="arrow-left" size={14} />
+                </button>
+              )}
+              Посчитанные расчёты
+            </h2>
 
             <span className="gatetools">
               {searching ? (
@@ -105,11 +157,7 @@ export function DispatchGate({ runs, activeRun, onCreate, onOpen }: Props) {
                 </label>
               ) : (
                 <>
-                  {/* Счётчик стоит над самим списком, а не в воротах: это
-                      мера этого списка, и читается она рядом с ним. */}
-                  <span className="dash__section-note">
-                    {runs ? `${runs.length} расчётов в истории` : 'Собираем историю…'}
-                  </span>
+                  <span className="dash__section-note">Свежие сверху</span>
                   <button
                     type="button"
                     className="gatetools__find"
@@ -134,10 +182,10 @@ export function DispatchGate({ runs, activeRun, onCreate, onOpen }: Props) {
                 (runs.length === 0 ? (
                   <div className="emptynote">
                     <p className="emptynote__title">Посчитанных расчётов пока нет</p>
-                    <span>Начните с «Создать новый расчёт» — первый и появится здесь.</span>
+                    <span>Начните с «Создать расчёт» — первый и появится здесь.</span>
                     <button type="button" className="runcard__go" onClick={onCreate}>
-                      <Icon name="plus" size={13} />
-                      Создать новый расчёт
+                      <Icon name="shuffle" size={13} />
+                      Создать расчёт
                     </button>
                   </div>
                 ) : (
@@ -150,7 +198,6 @@ export function DispatchGate({ runs, activeRun, onCreate, onOpen }: Props) {
                   key={run.id}
                   type="button"
                   className={'gaterow' + (run.id === activeRun ? ' gaterow--active' : '')}
-                  title={`Открыть расчёт ${run.code}`}
                   onClick={() => onOpen(run.id)}
                 >
                   <span className="gaterow__code">{run.code}</span>
@@ -171,17 +218,24 @@ export function DispatchGate({ runs, activeRun, onCreate, onOpen }: Props) {
             </div>
           )}
 
-          {/* Список растёт на месте: ворота стали на одну кнопку, и от
-              раскрытия истории им уже не тесно. */}
-          {!searchOn && hidden > 0 && (
+          {onList && !searchOn && hidden > 0 && (
             <button type="button" className="tblmore" onClick={() => setExpanded(true)}>
-              Показать все {found.length}
+              Раскрыть ещё {hidden}
+              <span className="tblmore__rest">всего {found.length}</span>
             </button>
           )}
 
-          {!searchOn && expanded && found.length > SHORT && (
+          {!searchOn && expanded && found.length > PAGE && (
             <button type="button" className="tblmore" onClick={() => setExpanded(false)}>
-              Свернуть до {SHORT}
+              Свернуть до {PAGE}
+            </button>
+          )}
+
+          {/* В обзоре список короткий и ведёт в полный, а не растёт на
+              месте: иначе карточки выбора уезжают с экрана. */}
+          {!onList && !searchOn && hidden > 0 && (
+            <button type="button" className="tblmore" onClick={() => setMode('list')}>
+              Показать все {found.length}
             </button>
           )}
       </section>

@@ -1,12 +1,9 @@
 import type { EngineParams } from '../data/engine.ts';
 import {
   balanceHint,
-  balanceMeaning,
   bufferHint,
-  bufferMeaning,
   CHURN_PRESETS,
   durationHint,
-  durationMeaning,
   ENGINE_DEFAULTS
 } from '../data/engine.ts';
 import { dec } from '../data/derive.ts';
@@ -26,7 +23,6 @@ import { dec } from '../data/derive.ts';
 function Slider({
   label,
   unit,
-  means,
   value,
   min,
   max,
@@ -37,9 +33,6 @@ function Slider({
 }: {
   label: string;
   unit: string;
-  /** То же число человеческими словами: единицы движка сами по себе ничего
-      диспетчеру не говорят. */
-  means: string;
   value: number;
   min: number;
   max: number;
@@ -54,7 +47,6 @@ function Slider({
         <span className="knob__label">{label}</span>
         <span className="knob__value">{unit}</span>
       </div>
-      <p className="knob__means">{means}</p>
       <input
         className="knob__range"
         type="range"
@@ -110,7 +102,6 @@ export function EngineParamsForm({ params, onChange, only }: Props) {
               onClick={() => set('churn_penalty', item.penalty)}
             >
               <span className="preset__top">
-                <span className={'preset__dot preset__dot--' + item.tone} aria-hidden="true" />
                 <span className="preset__label">{item.label}</span>
                 {item.penalty === ENGINE_DEFAULTS.churn_penalty && (
                   <span className="preset__default">По умолчанию</span>
@@ -138,7 +129,6 @@ export function EngineParamsForm({ params, onChange, only }: Props) {
           <Slider
             label="Запас по времени работ"
             unit={`× ${dec(params.duration_factor, 2)}`}
-            means={durationMeaning(params.duration_factor)}
             value={params.duration_factor}
             min={0.8}
             max={1.5}
@@ -151,7 +141,6 @@ export function EngineParamsForm({ params, onChange, only }: Props) {
           <Slider
             label="Консервативность маршрута"
             unit={`${params.buffer_step} мин`}
-            means={bufferMeaning(params.buffer_step)}
             value={params.buffer_step}
             min={0}
             max={15}
@@ -178,7 +167,6 @@ export function EngineParamsForm({ params, onChange, only }: Props) {
           <Slider
             label="Насколько ровно делить нагрузку"
             unit={dec(params.balance_weight)}
-            means={balanceMeaning(params.balance_weight)}
             value={params.balance_weight}
             min={0}
             max={20}

@@ -1,35 +1,28 @@
 import { useEffect, useRef, useState } from 'react';
-import { Lede } from '../app/Lede.tsx';
 import { Button } from '../ds/components/core/Button.jsx';
 import { Icon } from '../ds/components/core/Icon.jsx';
 import type { EngineParams } from '../data/engine.ts';
 import { engineDefaults, ENGINE_DEFAULTS } from '../data/engine.ts';
 import { EngineParamsForm } from '../app/EngineParamsForm.tsx';
-import { EngineSourceNote, SourcePicker } from '../app/SourcePicker.tsx';
+import { SourcePicker } from '../app/SourcePicker.tsx';
 import type { SourceChoice } from '../app/SourcePicker.tsx';
 import type { ShiftInput } from '../data/shift.ts';
-import { shiftSummary } from '../data/shift.ts';
 import type { SourceId } from '../data/load.ts';
 import {
   BUILT_IN,
   engineReady,
   engineUploads,
   forgetUpload,
-  isBuiltIn,
   loadZone,
   pullUploads,
   rememberUploads,
-  sources,
-  zoneSize,
   zoneTitle
 } from '../data/load.ts';
 import type { Engineer } from '../data/contract.ts';
-import { DatasetImport } from '../app/DatasetImport.tsx';
-import { DayUploadButton, DayUploadPreview } from '../app/DayUpload.tsx';
+import { DayImport, DayUploadPreview } from '../app/DayUpload.tsx';
 import type { EngineUpload } from '../data/api.ts';
 import { prepareUpload, uploadState } from '../data/api.ts';
 import { humanLine } from '../data/errors.ts';
-import { plural } from '../data/derive.ts';
 
 interface Props {
   onCancel: () => void;
@@ -72,27 +65,18 @@ export function CreateRunScreen({
   }));
   const touched = JSON.stringify(params) !== JSON.stringify(ENGINE_DEFAULTS);
 
-  /* Какую зону считаем. Зоны — это три самостоятельных рабочих дня из
-     выгрузки: свой офис, свои бригады, свой район. Общий день из всех трёх
-     собрать можно, но это будет уже нагрузочный тест, а не работа
-     диспетчера. */
+  /* Какой день считаем. Ряда участков на форме больше нет — день приносят
+     файлом, и выбранным становится он. Пока файла нет, считается участок
+     выгрузки, с которого программа расчёта открывается сама: убрать выбор
+     с экрана можно, а посчитать без дня — нет. */
   const [zone, setZone] = useState<SourceId>(BUILT_IN[0]);
-  const [sizes, setSizes] = useState<Record<string, { orders: number; engineers: number }>>({});
-  /* Участки, чей размер узнать не удалось, — с технической причиной. Без
-     этого карточка навсегда оставалась на «Читаем данные…». */
-  const [sizeFails, setSizeFails] = useState<Record<string, string>>({});
-  /* Список источников меняется прямо на этом экране: загрузили набор — он
-     встал в тот же ряд. Поэтому он в состоянии, а не считается на лету. */
-  /* Программа расчёта считает только три участка выгрузки: загруженный
-     набор она не примет, и карточка его в ряду обещала бы расчёт, который
-     упадёт с ошибкой. */
+  /* Программа расчёта считает только выгрузку заказчика: принесённый файл
+     уходит ей и становится таким же днём, как участки. */
   const engine = engineReady();
-  /* Выгрузки дня, которые принесли кнопкой: при программе расчёта они стоят
-     в ряду рядом с участками. Состояние, а не чтение реестра на лету: после
-     загрузки, подготовки и удаления экран должен перерисоваться. */
+  /* Выгрузки дня, которые принесли кнопкой. Состояние, а не чтение реестра
+     на лету: после загрузки, подготовки и удаления экран должен
+     перерисоваться. */
   const [uploads, setUploads] = useState<EngineUpload[]>(() => (engine ? engineUploads() : []));
-  const engineList = (list: EngineUpload[]): SourceId[] => [...BUILT_IN, ...list.map((one) => one.day)];
-  const [list, setList] = useState<SourceId[]>(() => (engine ? engineList(engineUploads()) : sources()));
 
   /* Выгрузку могли принести или убрать из другого окна — перечитываем при
      открытии формы. Не прочиталось — остаётся то, что было. */
@@ -103,7 +87,6 @@ export function CreateRunScreen({
       .then((fresh) => {
         if (cancelled) return;
         setUploads(fresh);
-        setList(engineList(fresh));
       })
       .catch(() => undefined);
     return () => {
@@ -113,53 +96,16 @@ export function CreateRunScreen({
 
   const refreshUploads = (changed?: EngineUpload) => {
     if (changed) rememberUploads([changed]);
-    const fresh = engineUploads();
-    setUploads(fresh);
-    setList(engineList(fresh));
-    if (changed) {
-      setSizes((was) => ({ ...was, [changed.day]: { orders: changed.to_plan, engineers: changed.engineers } }));
-    }
+    setUploads(engineUploads());
   };
-
-  /* Размеры участков — от того, кто будет считать: при программе расчёта
-     по её плану (своя бригада, 14 человек на участок), без неё — по файлам. */
-  useEffect(() => {
-    let cancelled = false;
-    Promise.all(
-      list.map((key) =>
-        zoneSize(key)
-          .then((size) => ({ key, size, fail: null }))
-          .catch((error: unknown) => ({
-            key,
-            size: null,
-            fail: error instanceof Error ? error.message : String(error)
-          }))
-      )
-    )
-      .then((zones) => {
-        if (cancelled) return;
-        const next: Record<string, { orders: number; engineers: number }> = {};
-        const fails: Record<string, string> = {};
-        for (const one of zones) {
-          if (one.size) next[one.key] = one.size;
-          else if (one.fail !== null) fails[one.key] = one.fail;
-        }
-        setSizes((was) => ({ ...was, ...next }));
-        setSizeFails(fails);
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, [list]);
 
   /* Состав выбранной зоны. Меняется вместе с зоной: снятые с одной зоны
      табельные к соседней отношения не имеют, и переносить их туда значило бы
      снять с работы людей, которых диспетчер не трогал. */
   const [crew, setCrew] = useState<Engineer[]>([]);
   useEffect(() => {
-    /* При программе расчёта состава смены на форме нет — вводные она не
-       принимает (см. EngineSourceNote), и читать файлы незачем. */
+    /* При программе расчёта состава смены на форме нет: бригаду она берёт
+       из самой выгрузки, и читать файлы незачем. */
     if (engine) return;
     let cancelled = false;
     loadZone(zone)
@@ -191,16 +137,16 @@ export function CreateRunScreen({
     ...(Object.keys(source.skillsOff).length > 0 ? { skillsOff: source.skillsOff } : {}),
     ...(source.extra.length > 0 ? { extra: source.extra } : {})
   };
-  const shiftNote = shiftSummary(shift, crew.length);
-
-  /* Загруженный набор сразу становится выбранным: человек принёс его, чтобы
-     посчитать, а не чтобы он лежал в списке. */
-  const onLoaded = (key: SourceId) => {
-    setList(sources());
-    setZone(key);
-  };
 
   const selectedUpload = engine ? uploads.find((one) => one.day === zone) : undefined;
+
+  /* Что уйдёт в расчёт прямо сейчас. Ряда участков на форме нет, и без этой
+     строки экран молчал о том, что при ненесённом файле считает участок по
+     умолчанию: человек нажимал «Рассчитать», ничего не выбрав, и получал
+     готовый план — будто из ниоткуда. */
+  const dayNote = selectedUpload
+    ? `Файл «${selectedUpload.name}»`
+    : `Без файла посчитаем участок «${zoneTitle(zone)}»`;
 
   /* «Рассчитать» по выгрузке, которая ещё не готова: сперва подготовка —
      адреса, сеть дорог, план, — потом обычный расчёт. Подготовка идёт у
@@ -264,120 +210,59 @@ export function CreateRunScreen({
 
   return (
     <div className="dash enter">
+      {/* Заголовок экрана — над карточками, а не в одной из них.
+
+          Прежде он стоял в своей белой панели: полоса во всю ширину, два
+          слова в ней и пустота под ними, а сразу следом — такая же полоса с
+          настоящим содержимым. Панель обещает раздел с содержанием, и первая
+          панель этого обещания не держала. Имя экрана — общее для всех
+          карточек под ним, и стоять оно должно над ними. */}
+      <header className="calc__head">
+        <div className="calc__head-text">
+          <h2 className="calc__title">{first ? 'Первый расчёт' : 'Новый расчёт'}</h2>
+          <p className="calc__lede">
+            {first
+              ? 'Расчётов пока нет. Принесите день файлом и разложите его по инженерам.'
+              : 'Программа разложит заявки дня по инженерам. Ниже — что считаем и по каким правилам.'}
+          </p>
+        </div>
+        {/* Крестик, а не «Назад»: форма — это открытая вещь, и закрывают её
+            так же, как открытый расчёт на пульте. «Назад» обещало бы шаг
+            в истории, а возвращает оно к тому же выбору, с которого
+            диспетчерская начинается. На первом расчёте закрывать не во
+            что: истории ещё нет. */}
+        {!first && (
+          <button
+            type="button"
+            className="calc__close calc__close--head"
+            onClick={onCancel}
+            title="Закрыть форму и вернуться к выбору"
+            aria-label="Закрыть форму"
+          >
+            <Icon name="x" size={14} />
+          </button>
+        )}
+      </header>
+
+      {/* Первый вопрос — что считаем. Раздел называется днём, а не «импортом
+          файлов»: файл здесь не цель, а способ принести день. И сразу под
+          заголовком сказано, что уйдёт в расчёт, если файл не приносить, —
+          прежде участок по умолчанию выбирался молча, и расчёт заводился
+          будто вовсе без вводных. */}
       <section className="panel">
         <div className="dash__section-head">
-          <h2 className="dash__section-title">{first ? 'Первый расчёт' : 'Новый расчёт'}</h2>
-          {/* Крестик, а не «Назад»: форма — это открытая вещь, и закрывают её
-              так же, как открытый расчёт на пульте. «Назад» обещало бы шаг
-              в истории, а возвращает оно к тому же выбору, с которого
-              диспетчерская начинается. На первом расчёте закрывать не во
-              что: истории ещё нет. */}
-          {!first && (
-            <button
-              type="button"
-              className="calc__close"
-              onClick={onCancel}
-              title="Закрыть форму и вернуться к выбору"
-              aria-label="Закрыть форму"
-            >
-              <Icon name="x" size={14} />
-            </button>
-          )}
-        </div>
-        {/* Первая фраза — что делать; почему и как — под «Подробнее». В
-            пустом состоянии видимая фраза и есть указание, поэтому она
-            собрана целиком, а не отрезана по первой точке. */}
-        {first ? (
-          <Lede first="Расчётов пока нет — выберите зону обслуживания и разложите её день по инженерам.">
-            План, маршруты и карта появятся после расчёта.
-          </Lede>
-        ) : (
-          <Lede
-            text={
-              'Программа расчёта разложит все заявки дня по инженерам. Ниже — то, чем можно повлиять на её ' +
-              'решение: насколько держаться за уже объявленный план, сколько времени закладывать ' +
-              'на работу и дорогу и насколько ровно распределять нагрузку.'
-            }
-          />
-        )}
-      </section>
-
-      {/* Зона — первым вопросом: сначала решают, какой день считать, и
-          только потом, как его считать. */}
-      <section className="panel">
-        <div className="dash__section-head">
-          <h2 className="dash__section-title">Какой день считаем</h2>
-          <span className="dash__section-note">
-            {plural(list.length, 'источник', 'источника', 'источников')}
-          </span>
-        </div>
-        <Lede
-          first={engine ? 'Расчёт идёт по одному участку.' : 'Расчёт идёт по одному дню одной зоны.'}
-        >
-          {engine
-            ? 'Участки — это дни выгрузки «Билайн Бизнес»: свой офис, своя бригада и свой ' +
-              'район города у каждого. Выгрузку своего дня можно загрузить файлом — она встанет ' +
-              'в этот же ряд.'
-            : 'Встроенные зоны — это дни выгрузки «Билайн Бизнес»: свой офис, свои бригады и ' +
-              'свой район города у каждой. Свой набор можно загрузить файлом — он встанет в ' +
-              'этот же ряд.'}
-        </Lede>
-
-        <div className="srcgrid">
-          {list.map((key) => {
-            const size = sizes[key];
-            return (
-              <button
-                key={key}
-                type="button"
-                className={'srccard' + (zone === key ? ' srccard--on' : '')}
-                onClick={() => setZone(key)}
-              >
-                <span className="srccard__top">
-                  <Icon name="map-pin" size={16} />
-                  <span className="srccard__title">{zoneTitle(key)}</span>
-                </span>
-                <span className="srccard__what">
-                  {size
-                    ? `${plural(size.orders, 'заявка', 'заявки', 'заявок')}, ` +
-                      `${plural(size.engineers, 'инженер', 'инженера', 'инженеров')}`
-                    : sizeFails[key] !== undefined
-                      ? 'Не удалось узнать размер участка'
-                      : 'Читаем данные…'}
-                </span>
-                {!isBuiltIn(key) && <span className="srccard__mark">загружен</span>}
-              </button>
-            );
-          })}
+          <h2 className="dash__section-title">День для расчёта</h2>
+          <span className="dash__section-note">{dayNote}</span>
         </div>
 
-        {/* Загрузка своего набора стоит здесь же, под рядом источников: это
-            тот же вопрос — что считать, — а не отдельная настройка. */}
-        {!engine && (
-          <div className="srcblock">
-            <div className="dash__section-head">
-              <h3 className="srcblock__title">Загрузить свой набор</h3>
-            </div>
-            <DatasetImport onLoaded={onLoaded} />
-          </div>
-        )}
-        {/* При программе расчёта загрузка одна — выгрузка дня файлом. Она
-            идёт программе как есть: разбор, адреса и сеть — её работа. */}
-        {engine && (
-          <div className="srcblock">
-            <div className="dash__section-head">
-              <h3 className="srcblock__title">Загрузить выгрузку дня</h3>
-            </div>
-            <DayUploadButton
-              current={selectedUpload}
-              onUploaded={(upload) => {
-                refreshUploads(upload);
-                setZone(upload.day);
-                setPrepareFailed(null);
-              }}
-            />
-          </div>
-        )}
+        <DayImport
+          offline={!engine}
+          onUploaded={(upload) => {
+            refreshUploads(upload);
+            setZone(upload.day);
+            setPrepareFailed(null);
+          }}
+        />
       </section>
 
       {engine && selectedUpload && (
@@ -392,28 +277,28 @@ export function CreateRunScreen({
         />
       )}
 
-      {engine && !selectedUpload && (
-        <EngineSourceNote
-          orders={sizes[zone]?.orders}
-          engineers={sizes[zone]?.engineers}
-          fail={sizeFails[zone]}
-        />
-      )}
-
       {/* Состав смены и заявки поверх выгрузки. Отталкиваемся от выбранной
           зоны, а не от открытого расчёта: считают то, что выбрано здесь. */}
       {!engine && crew.length > 0 && (
-        <SourcePicker
-          crew={crew}
-          orderCount={sizes[zone]?.orders ?? 0}
-          value={source}
-          onChange={setSource}
-        />
+        <SourcePicker crew={crew} orderCount={0} value={source} onChange={setSource} />
       )}
 
-      {/* Сами переменные — общей вёрсткой с настройками: вопрос один и тот
+      {/* Второй вопрос — как считаем. Три карточки правил идут под общим
+          именем: порознь они читались как три самостоятельных раздела, хотя
+          отвечают на один вопрос и меняют одно и то же — решение программы.
+
+          Сами переменные — общей вёрсткой с настройками: вопрос один и тот
           же, значит и подписи, и пресеты, и замеры одни и те же. */}
-      <EngineParamsForm params={params} onChange={setParams} />
+      <section className="calc__rules">
+        <div className="calc__rules-head">
+          <h2 className="dash__section-title">Правила расчёта</h2>
+          <p className="calc__rules-note">
+            Чем можно повлиять на решение программы: насколько держаться за уже объявленный план,
+            сколько закладывать на работу и дорогу и насколько ровно делить нагрузку.
+          </p>
+        </div>
+        <EngineParamsForm params={params} onChange={setParams} />
+      </section>
 
       {/* Отказ движка показываем на форме, а не уводим с неё: переменные
           остались набранными, и повторить расчёт — это один щелчок. */}
@@ -446,27 +331,19 @@ export function CreateRunScreen({
                 столько работает планировщик.
               </span>
             ) : (
-              <>
-                {touched
-                  ? 'Настройки изменены — расчёт пойдёт с ними.'
-                  : 'Все настройки по умолчанию.'}
-                {touched && (
-                  <button
-                    type="button"
-                    className="createbar__reset"
-                    onClick={() => setParams({ ...ENGINE_DEFAULTS })}
-                  >
-                    Вернуть заводские значения
-                  </button>
-                )}
-                {/* Вводные смены называем здесь же, у кнопки. Их задают
-                    на панели выше и к моменту запуска уже не видят, а
-                    расчёт пойдёт именно с ними — и это последнее место,
-                    где ошибку ещё можно заметить до восьми секунд счёта. */}
-                {shiftNote.length > 0 && (
-                  <span className="createbar__shift">Вводные смены: {shiftNote.join(' · ')}.</span>
-                )}
-              </>
+              /* Пока настройки заводские, говорить нечего: строка «всё по
+                 умолчанию» сообщала то, что и так видно по рычагам. Тронули —
+                 остаётся одна дорога назад, и она сама себя называет. */
+              touched && (
+                <button
+                  type="button"
+                  className="createbar__reset"
+                  onClick={() => setParams({ ...ENGINE_DEFAULTS })}
+                >
+                  <Icon name="arrow-left" size={13} />
+                  Вернуть по умолчанию
+                </button>
+              )
             )}
           </span>
           <div className="createbar__actions">

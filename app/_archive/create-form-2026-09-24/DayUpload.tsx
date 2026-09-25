@@ -1,24 +1,20 @@
 import { useRef, useState } from 'react';
 import { Button } from '../ds/components/core/Button.jsx';
 import { Icon } from '../ds/components/core/Icon.jsx';
+import { Input } from '../ds/components/forms/Input.jsx';
 import type { EngineUpload } from '../data/api.ts';
 import { deleteUpload, EngineError, sendUpload } from '../data/api.ts';
 import { humanLine } from '../data/errors.ts';
 import { plural, pluralWord } from '../data/derive.ts';
-import type { ImportKind } from '../data/tabular.ts';
-import { ACCEPT, toUploadBytes, uploadName } from '../data/tabular.ts';
 
 /* Выгрузка дня — файл, который диспетчер принёс из своей системы.
 
-   ТЗ: «загружать готовые данные из CSV». Форматов на входе три — выгрузка
-   CSV, таблица в Markdown и книга Excel, — а путь у них один: файл сводится
-   к выгрузке дня (см. `data/tabular.ts`) и уходит программе расчёта как
-   есть. Она сама разбирает кодировку, дату и адрес офиса и говорит, что в
-   файле нашлось и чего не хватает, — до расчёта, а не после минуты счёта.
-
-   Инженеров в смене на форме не спрашиваем: бригада приходит вместе с днём.
-   Программе нужно число, и она получает то же, что стояло здесь по
-   умолчанию, — четырнадцать человек по шаблону участка. */
+   ТЗ: «загружать готовые данные из CSV». При программе расчёта это одна
+   кнопка: файл уходит программе как есть, она сама разбирает кодировку
+   (cp1251 или UTF-8), дату и адрес офиса и говорит, что в файле нашлось и
+   чего не хватает, — до расчёта, а не после минуты счёта. Прежде при
+   программе расчёта загрузки на форме не было вовсе: загружали только
+   наборы для счёта в браузере, а их программа не принимала. */
 
 /** Отказ программы расчёта словами для диспетчера. У выгрузки её отказ и
     есть объяснение — «в файле нет строки «Адрес офиса»…», — и прятать его
@@ -32,98 +28,102 @@ function refusalText(error: unknown, fallback: string): string {
 }
 
 const ENGINEERS_DEFAULT = 14;
-
-/** Три формата одной кнопкой каждый. Порядок — как их приносят: выгрузка из
-    учётной системы, таблица из переписки, книга из отчёта. */
-const KINDS: { kind: ImportKind; label: string }[] = [
-  { kind: 'csv', label: 'CSV' },
-  { kind: 'md', label: 'MD' },
-  { kind: 'xlsx', label: 'Excel' }
-];
+const ENGINEERS_MIN = 1;
+const ENGINEERS_MAX = 30;
 
 interface UploadProps {
   /** Выгрузка принята: предпросмотр движка. */
   onUploaded: (upload: EngineUpload) => void;
-  /** Программа расчёта не запущена — принимать файл некому. */
-  offline?: boolean;
+  /** Выбранная сейчас выгрузка — чтобы предложить пересобрать её на другое
+      число инженеров, пока файл ещё в руках. */
+  current?: EngineUpload;
 }
 
-export function DayImport({ onUploaded, offline = false }: UploadProps) {
-  /* Своё поле выбора на каждый формат: у них разные accept, и одно поле на
-     троих пришлось бы переключать состоянием перед самым открытием окна. */
-  const inputs = useRef<Partial<Record<ImportKind, HTMLInputElement | null>>>({});
-  const [busy, setBusy] = useState<ImportKind | null>(null);
+export function DayUploadButton({ onUploaded, current }: UploadProps) {
+  const input = useRef<HTMLInputElement>(null);
+  const [engineers, setEngineers] = useState(String(ENGINEERS_DEFAULT));
+  const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
+  /* Последний выбранный файл: число инженеров — часть дня, и чтобы сменить
+     его, файл надо прислать заново. Пока он здесь, это одна кнопка, а не
+     повторный поиск файла на диске. */
+  const [lastFile, setLastFile] = useState<{ file: File; day: string } | null>(null);
 
-  const send = async (kind: ImportKind, file: File) => {
-    setBusy(kind);
+  const count = Number(engineers);
+  const countOk = Number.isInteger(count) && count >= ENGINEERS_MIN && count <= ENGINEERS_MAX;
+
+  const send = async (file: File) => {
+    if (!countOk) return;
+    setBusy(true);
     setFailed(null);
     try {
-      const bytes = await toUploadBytes(kind, file);
-      const upload = await sendUpload(uploadName(kind, file.name), bytes, ENGINEERS_DEFAULT);
+      const upload = await sendUpload(file.name, await file.arrayBuffer(), count);
+      setLastFile({ file, day: upload.day });
       onUploaded(upload);
     } catch (error) {
-      /* Своя ошибка разбора — это уже готовая фраза, и оборачивать её в
-         «программа расчёта не ответила» значит соврать: программа файла
-         даже не видела. */
-      setFailed(
-        error instanceof Error && !(error instanceof EngineError)
-          ? error.message.charAt(0).toUpperCase() +
-            error.message.slice(1) +
-            (/[.!?]$/.test(error.message) ? '' : '.')
-          : refusalText(error, 'Выгрузка не принята')
-      );
+      setFailed(refusalText(error, 'Выгрузка не принята'));
     } finally {
-      setBusy(null);
+      setBusy(false);
       /* Сбрасываем поле: иначе повторный выбор того же файла не даст события
          и человек решит, что кнопка сломалась. */
-      const field = inputs.current[kind];
-      if (field) field.value = '';
+      if (input.current) input.current.value = '';
     }
   };
 
+  const canRebuild =
+    lastFile !== null && current !== undefined && current.day === lastFile.day && countOk && count !== current.engineers;
+
   return (
-    <div className="dayimport">
-      <div className="dayimport__row">
-        {KINDS.map((one) => (
-          <span key={one.kind} className="dayimport__slot">
-            <input
-              ref={(node) => {
-                inputs.current[one.kind] = node;
-              }}
-              type="file"
-              data-kind={one.kind}
-              accept={ACCEPT[one.kind]}
-              hidden
-              onChange={(event) => {
-                const file = event.currentTarget.files?.[0];
-                if (file) void send(one.kind, file);
-              }}
-            />
-            <Button
-              variant="secondary"
-              size="sm"
-              className="dayimport__btn"
-              onClick={() => inputs.current[one.kind]?.click()}
-              disabled={busy !== null || offline}
-              iconLeft={<Icon name={busy === one.kind ? 'clock' : 'upload'} size={14} />}
-              ariaLabel={`Импортировать файл ${one.label}`}
-            >
-              {busy === one.kind ? 'Читаю…' : one.label}
-            </Button>
-          </span>
-        ))}
+    <div className="dsimport dayupload">
+      <input
+        ref={input}
+        type="file"
+        accept=".csv,text/csv,text/plain"
+        hidden
+        onChange={(event) => {
+          const file = event.currentTarget.files?.[0];
+          if (file) void send(file);
+        }}
+      />
+      <p className="clients__lede">
+        Файл выгрузки заявок на день — такой же, как у участков выше: колонки «Заявка», «Тип заявки
+        BK», «Начало», «Окончание», «Адрес», внизу строка «Адрес офиса». Программа расчёта
+        покажет, что в нём нашлось, до того как считать.
+      </p>
+      <div className="dayupload__row">
+        <Input
+          className="dayupload__count"
+          label="Инженеров в смене"
+          type="number"
+          size="sm"
+          value={engineers}
+          onChange={(event) => setEngineers(event.currentTarget.value)}
+          error={countOk ? undefined : `От ${ENGINEERS_MIN} до ${ENGINEERS_MAX}`}
+        />
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => input.current?.click()}
+          disabled={busy || !countOk}
+          iconLeft={<Icon name="upload" size={14} />}
+        >
+          {busy ? 'Читаю файл…' : 'Загрузить выгрузку дня'}
+        </Button>
+        {canRebuild && (
+          <Button variant="ghost" size="sm" onClick={() => void send(lastFile.file)} disabled={busy}>
+            Пересобрать на {plural(count, 'инженера', 'инженеров', 'инженеров')}
+          </Button>
+        )}
       </div>
-
-      {offline && (
-        <p className="dayimport__hint">Программа расчёта не запущена — принять файл некому.</p>
-      )}
-
+      <p className="dayupload__hint">
+        Инженеров в выгрузке нет — бригада собирается по шаблону: навыки, транспорт и смены с
+        8:00 до 22:00, выезд из офиса выгрузки.
+      </p>
       {failed && (
         <div className="solvefail">
           <Icon name="alert-triangle" size={16} />
           <span>
-            <b>Файл не принят.</b> {failed}
+            <b>Выгрузка не принята.</b> {failed}
           </span>
         </div>
       )}
