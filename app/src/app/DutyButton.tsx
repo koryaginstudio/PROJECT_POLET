@@ -4,7 +4,7 @@ import { Button } from '../ds/components/core/Button.jsx';
 import { Icon } from '../ds/components/core/Icon.jsx';
 import type { RunId } from '../data/load.ts';
 import { runCode } from '../data/load.ts';
-import { dropDuty, holderOf, onDuty, takeDuty, useDuty } from '../data/duty.ts';
+import { dayLabel, dropDuty, holderOf, onDuty, takeDuty, useDuty } from '../data/duty.ts';
 
 /* Кнопка «В работу» вместе с вопросом перед необратимым.
 
@@ -14,9 +14,12 @@ import { dropDuty, holderOf, onDuty, takeDuty, useDuty } from '../data/duty.ts';
    диспетчера не читать вопросы вовсе. Поэтому логика вопроса живёт здесь, а
    места отличаются только обёрткой.
 
-   Спрашиваем про два случая. Снять расчёт с работы — день останется без
-   рабочего плана. Взять чужой день — прежний расчёт молча станет черновиком.
-   Просто взять свободный день ничего не ломает и делается сразу. */
+   Спрашиваем всегда, и вопрос называет день, на который берут: «Восток ·
+   17.08.2026». Прежде свободный день брался с одного щелчка молча — и это
+   была не экономия движения, а умолчание в самом важном месте: расчётов на
+   экране несколько, дней участка три, и по кнопке было не видно, к какому из
+   них привязывают этот план. Теперь связь названа вслух до того, как
+   случится. */
 
 interface Props {
   run: RunId;
@@ -27,8 +30,6 @@ interface Props {
   place: 'bar' | 'card';
 }
 
-const dayText = (date: string) => date.split('-').reverse().join('.');
-
 export function DutyButton({ run, date, place }: Props) {
   /* Подписка ради перерисовки: хозяина дня спрашивают у слоя данных. */
   useDuty();
@@ -36,7 +37,7 @@ export function DutyButton({ run, date, place }: Props) {
   const heldBy = holderOf(run, date);
   const held = heldBy && heldBy !== run ? runCode(heldBy) : null;
   const code = runCode(run);
-  const day = dayText(date);
+  const day = date ? dayLabel(run, date) : '';
 
   /* Вопрос помнит, про какой расчёт задан: переключились на другой в ленте —
      старый вопрос к нему не относится и пропадает сам. */
@@ -57,11 +58,7 @@ export function DutyButton({ run, date, place }: Props) {
     wasAsking.current = Boolean(ask);
   }, [ask]);
 
-  const onClick = () => {
-    if (working) setAsking({ kind: 'drop', run });
-    else if (held) setAsking({ kind: 'take', run });
-    else takeDuty(run, date);
-  };
+  const onClick = () => setAsking({ kind: working ? 'drop' : 'take', run });
   const confirm = () => {
     if (ask === 'drop') dropDuty(run, date);
     else if (ask === 'take') takeDuty(run, date);
@@ -75,9 +72,11 @@ export function DutyButton({ run, date, place }: Props) {
   };
 
   const question =
-    ask === 'take'
-      ? `День ${day} сейчас ведёт ${held}. Передать его ${code}?`
-      : `Снять ${code} с работы? На ${day} не останется рабочего расчёта.`;
+    ask === 'drop'
+      ? `Снять ${code} с работы? На ${day} не останется рабочего расчёта.`
+      : held
+        ? `День ${day} сейчас ведёт ${held}. Передать его ${code}?`
+        : `Взять ${code} в работу на ${day}? Остальные расчёты этого дня станут черновиками.`;
   const textId = `duty-ask-${run}`;
 
   /* Объяснение того, что делает кнопка, — в подсказке у обёртки: Button
@@ -99,7 +98,7 @@ export function DutyButton({ run, date, place }: Props) {
           </span>
           <span className="duty__ask-btns">
             <Button variant="primary" size="sm" onClick={confirm}>
-              {ask === 'take' ? 'Передать' : 'Снять'}
+              {ask === 'drop' ? 'Снять' : held ? 'Передать' : 'Взять в работу'}
             </Button>
             <Button variant="secondary" size="sm" onClick={() => setAsking(null)}>
               Отмена
@@ -113,6 +112,11 @@ export function DutyButton({ run, date, place }: Props) {
           <Button
             variant={working ? 'accent' : 'secondary'}
             size="sm"
+            /* Зелёная тихая обводка — только у самого действия «В работу».
+               «В работе» её не получает: там уже акцентная заливка, и это
+               не действие, а состояние — красить его в тот же зелёный
+               значило бы путать «нажми» с «уже сделано». */
+            className={working ? undefined : 'duty__take'}
             disabled={!date}
             onClick={onClick}
             iconLeft={<Icon name={working ? 'check-circle' : 'calendar'} size={16} />}

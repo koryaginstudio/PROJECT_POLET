@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import { RUNS } from './load.ts';
+import { engineDayTitle, RUNS, zoneTitle } from './load.ts';
 import type { RunId } from './load.ts';
 
 /* Расчёт, взятый в работу на свой день.
@@ -47,6 +47,22 @@ const sourceOf = (id: RunId): string => {
 
 /** Ключ дня участка для расчёта. */
 const dayKey = (id: RunId, date: string) => `${sourceOf(id)}|${date}`;
+
+/** День участка словами: «Восток · 17.08.2026».
+
+    Подпись живёт рядом с ключом нарочно. Ключ собран из участка и даты, и
+    всякий вопрос перед взятием в работу обязан называть ровно это: «взять на
+    сегодня» без участка — обещание, которого кнопка не держит, у соседнего
+    участка свой рабочий расчёт на ту же дату. */
+export const dayLabel = (id: RunId, date: string): string => {
+  const run = RUNS.find((one) => one.id === id);
+  const place = run?.source
+    ? zoneTitle(run.source)
+    : run?.day
+      ? engineDayTitle(run.day)
+      : 'участок';
+  return `${place} · ${date.split('-').reverse().join('.')}`;
+};
 
 function read(): DutyMap {
   if (typeof localStorage === 'undefined') return {};
@@ -118,6 +134,53 @@ function save(next: DutyMap): void {
     }
   }
   for (const watcher of watchers) watcher();
+}
+
+/** День участка со всем, что о нём известно: какие расчёты на него посчитаны
+    и какой из них ведёт работу. */
+export interface WorkDay {
+  /** Ключ дня участка — тот же, что в хранилище. */
+  key: string;
+  /** Участок словами: «Восток». */
+  place: string;
+  /** Дата дня, ISO. */
+  date: string;
+  /** «Восток · 17.08.2026» — то же, чем кнопка называет день. */
+  label: string;
+  /** Все расчёты этого дня участка, свежие сверху. */
+  runs: RunId[];
+  /** Расчёт, который ведёт день. `null` — рабочий не выбран. */
+  holder: RunId | null;
+}
+
+/** Дни участков, на которые что-то посчитано.
+
+    Собирается из истории, а не из хранилища: день существует потому, что на
+    него есть расчёты, а не потому, что кто-то нажал «В работу». Иначе
+    мониторингу нечего было бы предложить на пустом месте — он показывал бы
+    пустой список вместо «вот дни, выберите рабочий расчёт». */
+export function workDays(): WorkDay[] {
+  const byKey = new Map<string, WorkDay>();
+  for (const run of RUNS) {
+    if (!run.date) continue;
+    const key = dayKey(run.id, run.date);
+    const day = byKey.get(key);
+    if (day) {
+      day.runs.unshift(run.id);
+      continue;
+    }
+    byKey.set(key, {
+      key,
+      place: dayLabel(run.id, run.date).split(' · ')[0],
+      date: run.date,
+      label: dayLabel(run.id, run.date),
+      runs: [run.id],
+      holder: current[key] ?? null
+    });
+  }
+  /* Сначала свежие дни, а внутри дня — свежие расчёты: и то и другое ищут
+     глазами сверху. */
+  return [...byKey.values()].sort((a, b) => b.date.localeCompare(a.date) || a.place.localeCompare(b.place));
 }
 
 /** Весь список «день участка → расчёт». Для всего, что живёт вне дерева

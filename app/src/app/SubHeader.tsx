@@ -5,7 +5,7 @@ import { RunTabs } from './RunTabs.tsx';
 import type { RunId, DaySummary } from '../data/load.ts';
 import { runDate } from '../data/load.ts';
 import { DutyButton } from './DutyButton.tsx';
-import { isCrossRun, isRunScoped, SUBHEADER } from './nav.ts';
+import { isCrossRun, isRunScoped, showsRunTabs, SUBHEADER } from './nav.ts';
 import type { SectionId } from './nav.ts';
 import { COMPARE_MAX } from './compare.ts';
 
@@ -45,6 +45,9 @@ export function SubHeader({
      сразу, вместо переключателя получают прямую подпись: показывать
      неработающий выбор хуже, чем не показывать его вовсе. */
   const runScoped = isRunScoped(section) && !planPending;
+  /* Лента расчётов есть не у всех разделов с расчётом: в мониторинге её нет
+     нарочно — см. `showsRunTabs`. */
+  const withTabs = runScoped && showsRunTabs(section);
   const crossRun = isCrossRun(section);
   /* В «Сравнении» та же лента делает другую работу: не переключает открытый
      расчёт, а набирает их несколько. Место у неё одно и то же — подшапка, —
@@ -60,7 +63,7 @@ export function SubHeader({
       {config.views.length > 1 && !planPending && (
         <SegmentedControl size="sm" items={config.views} value={view} onChange={onViewChange} />
       )}
-      {(runScoped || crossRun) && <span className="subhdr__divider" />}
+      {(withTabs || crossRun) && <span className="subhdr__divider" />}
       {picking && (
         <RunTabs
           runs={runs}
@@ -74,35 +77,47 @@ export function SubHeader({
       {/* Лента расчётов занимает всю оставшуюся ширину сама, поэтому распорки
           после неё нет: пустота справа была бы ровно тем, что лента и должна
           собой закрыть. */}
-      {runScoped && <RunTabs runs={runs} active={activeRun} onOpen={onOpenRun} />}
+      {withTabs && <RunTabs runs={runs} active={activeRun} onOpen={onOpenRun} />}
+      {/* Ленты нет — её место занимает распорка, иначе кнопки справа
+          съезжают к заголовку. */}
+      {runScoped && !withTabs && <div className="subhdr__spacer" />}
       {/* Пометки «Все расчёты» здесь нет: раздел и так стоит в меню под
           своим именем, а лента расчётов в нём не показана — обещать нечего. */}
       {crossRun && !picking && <div className="subhdr__spacer" />}
-      {/* «В работу» — про открытый расчёт: с этой минуты день принадлежит ему,
-          а прочие расчёты того же дня остаются черновиками. Стоит в конце
-          строки, за лентой расчётов: лента отвечает на «какой смотрим», а
-          кнопка — на «какой берём», и это разные вопросы.
-
-          Подпись меняется с «В работу» на «В работе»: первое — что кнопка
-          сделает, второе — что уже сделано. Оранжевый в этой системе значит
-          «вот этот, с ним сейчас работают», и здесь он ровно об этом. */}
-      {onCloseRun && date && <DutyButton run={activeRun} date={date} place="bar" />}
-
-      {/* Крестик закрывает расчёт и возвращает диспетчерскую к выбору
-          действия. Стоит в конце строки, за лентой: это не работа с планом, а
-          выход из него, и мешаться с вкладками ему незачем. Отодвинут от
-          «В работу» и подписан словом: вплотную к главной кнопке крестик
-          26px ловил промахи. */}
+      {/* Действия с расчётом — обособленная группа в конце строки, за
+          разделителем: тем же приёмом, что отделяет ленту расчётов от
+          заголовка слева. Врозь с лентой они не смешивались бы с «какой
+          смотрим», но зазор между лентой и кнопками плыл вместе с длиной
+          ленты — разделитель делает границу явной при любой длине. */}
       {onCloseRun && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="subhdr__close"
-          onClick={onCloseRun}
-          iconLeft={<Icon name="x" size={16} />}
-        >
-          Закрыть расчёт
-        </Button>
+        <>
+          <span className="subhdr__divider" />
+          <div className="subhdr__actions">
+            {/* «В работу» — про открытый расчёт: с этой минуты день
+                принадлежит ему, а прочие расчёты того же дня остаются
+                черновиками.
+
+                Подпись меняется с «В работу» на «В работе»: первое — что
+                кнопка сделает, второе — что уже сделано. Оранжевый в этой
+                системе значит «вот этот, с ним сейчас работают», и здесь он
+                ровно об этом. */}
+            {date && <DutyButton run={activeRun} date={date} place="bar" />}
+
+            {/* Крестик закрывает расчёт и возвращает диспетчерскую к выбору
+                действия: это не работа с планом, а выход из него. Зазор до
+                «В работу» держит сама группа — одним значением, а не
+                сложением зазора строки с собственным отступом кнопки. */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="subhdr__close"
+              onClick={onCloseRun}
+              iconLeft={<Icon name="x" size={16} />}
+            >
+              Закрыть расчёт
+            </Button>
+          </div>
+        </>
       )}
     </div>
   );
