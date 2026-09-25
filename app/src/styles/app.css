@@ -16114,6 +16114,73 @@ button.subhdr__close {
   pointer-events: auto;
 }
 
+/* Завеса на время загрузки дня. Нужна там, где план под картой меняют на
+   ходу: без неё полгорода ещё от прежнего расчёта, полгорода уже от нового,
+   и разницы не видно. Завеса ловит щелчки на себя — нажимать на половину
+   плана не на что. */
+.geo__busy {
+  position: absolute;
+  inset: 0;
+  z-index: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-overlay);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  animation: veil 160ms var(--ease-out-strong) both;
+}
+
+.geo__busy-card {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: 10px 14px;
+  border-radius: var(--r-control);
+  background: var(--glass);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-edge), var(--glass-line);
+  color: var(--glass-ink);
+  font-family: var(--font-sans);
+  font-size: var(--fs-caption);
+}
+
+.geo__busy-spin {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  border: 2px solid var(--glass-ink-mute);
+  border-top-color: var(--glass-ink);
+  animation: geospin 700ms linear infinite;
+}
+
+.geo__busy-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.geo__busy-note {
+  color: var(--glass-ink-mute);
+  font-size: var(--fs-small);
+}
+
+@keyframes geospin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Без движения кольцо стоит на месте: о том, что день грузится, сказано
+   словами рядом. */
+@media (prefers-reduced-motion: reduce) {
+  .geo__busy-spin {
+    animation: none;
+  }
+}
+
 /* Карточку выбранного маршрута экран со своей колонкой не показывает вовсе:
    сводку о выбранном рисует сама колонка. */
 
@@ -16787,6 +16854,15 @@ button.subhdr__close {
   letter-spacing: var(--ls-h4);
 }
 
+/* День недели и число — рядом с часами, но тише их: часы отвечают на
+   «сколько сейчас», день — на «какой сегодня», и спрашивают о нём реже. */
+.livecard__when {
+  font-size: var(--fs-caption);
+  color: var(--glass-ink-soft);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 .livecard__rows {
   display: flex;
   flex-direction: column;
@@ -16868,6 +16944,220 @@ button.subhdr__close {
   outline: none;
   box-shadow: var(--ring-focus);
   border-radius: var(--r-xs);
+}
+
+/* ─── участки внутри плашки смены ─────────────────────────────────────
+
+   Прежде маршруты стояли отдельной карточкой в том же углу — общим списком
+   на три района разом. Теперь район сам себе заголовок: свёрнутый занимает
+   одну строку, раскрытый показывает свои маршруты и ничего чужого. */
+.livegroup {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.livegroup__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+
+/* Заголовок района — вся левая половина строки: в неё и целятся, чтобы
+   раскрыть. Тихая кнопка без рамки: строк три, и три обведённые кнопки
+   подряд читались бы как пульт. */
+.livegroup__open,
+.livegroup__run {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 4px;
+  margin: 0 -4px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--glass-ink-soft);
+  font-family: var(--font-sans);
+  font-size: var(--fs-caption);
+  text-align: left;
+  cursor: pointer;
+  transition: var(--t-control);
+}
+
+.livegroup__open {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.livegroup__open:hover,
+.livegroup__run:hover:not(:disabled),
+.livegroup__open--on,
+.livegroup__run--on {
+  background: var(--glass-hover);
+  color: var(--glass-ink);
+}
+
+.livegroup__open:focus-visible,
+.livegroup__run:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+
+.livegroup__place {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Сколько людей на участке — тем же тихим тоном, что и остальные подписи:
+   число здесь справочное, тревоги в нём нет. */
+.livegroup__crew {
+  color: var(--glass-ink-mute);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Номер расчёта — единственное на строке, что написано как значение:
+   по нему и узнают, чем ведут день. */
+.livegroup__run {
+  flex: 0 0 auto;
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--glass-ink);
+}
+
+.livegroup__run:disabled {
+  cursor: default;
+  opacity: 0.65;
+}
+
+.livegroup__runs,
+.livegroup__list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  max-height: 34vh;
+  padding-left: 14px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.livegroup__runs::-webkit-scrollbar,
+.livegroup__list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.livegroup__runs::-webkit-scrollbar-thumb,
+.livegroup__list::-webkit-scrollbar-thumb {
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* Строка маршрута — та же, что стояла в перечне у карты: цвет линии,
+   средство передвижения, номер, фамилия и сколько заявок. Менять её
+   устройство при переезде незачем — её уже умеют читать. */
+.livegroup__item {
+  display: grid;
+  grid-template-columns: 8px 12px auto 1fr auto;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--glass-ink-soft);
+  font-family: var(--font-sans);
+  font-size: var(--fs-small);
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: var(--t-control);
+}
+
+.livegroup__item:hover,
+.livegroup__item--live {
+  background: var(--glass-hover);
+  color: var(--glass-ink);
+}
+
+.livegroup__item--on {
+  background: var(--glass-hover);
+  color: var(--glass-ink);
+  font-weight: var(--fw-semibold);
+  box-shadow: inset 0 0 0 1px var(--glass-ink-soft);
+}
+
+.livegroup__item:focus-visible,
+.livegroup__pick:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+
+.livegroup__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.livegroup__who {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--glass-ink-mute);
+}
+
+.livegroup__item--on .livegroup__who,
+.livegroup__item:hover .livegroup__who {
+  color: var(--glass-ink-soft);
+}
+
+.livegroup__visits {
+  color: var(--glass-ink-mute);
+}
+
+/* Расчёт на замену. Строка говорит, что с ним сделают, а не просто
+   называет номер: «взять в работу» — решение, и произносить его должна
+   сама кнопка. */
+.livegroup__pick {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  height: 22px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--glass-ink-soft);
+  font-family: var(--font-sans);
+  font-size: var(--fs-small);
+  text-align: left;
+  cursor: pointer;
+  transition: var(--t-control);
+}
+
+.livegroup__pick:hover {
+  background: var(--glass-hover);
+  color: var(--glass-ink);
+}
+
+.livegroup__pick-code {
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.livegroup__pick-note,
+.livegroup__empty {
+  color: var(--glass-ink-mute);
+  font-size: var(--fs-small);
+}
+
+.livegroup__empty {
+  padding: 2px 6px;
+  line-height: var(--lh-body);
+  white-space: normal;
 }
 
 /* ─── меню мониторинга: дни участков ──────────────────────────────────

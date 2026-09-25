@@ -6,6 +6,7 @@ import type { RunId } from '../data/load.ts';
 import { runCode } from '../data/load.ts';
 import type { WorkDay } from '../data/duty.ts';
 import { takeDuty, useDuty, workDays } from '../data/duty.ts';
+import { monthName, weekdayName } from '../data/derive.ts';
 
 interface Props {
   /** Дни участков, отмеченные к наблюдению. */
@@ -15,30 +16,6 @@ interface Props {
   onEnter: () => void;
 }
 
-const WEEKDAYS = [
-  'воскресенье',
-  'понедельник',
-  'вторник',
-  'среда',
-  'четверг',
-  'пятница',
-  'суббота'
-];
-
-const MONTHS = [
-  'января',
-  'февраля',
-  'марта',
-  'апреля',
-  'мая',
-  'июня',
-  'июля',
-  'августа',
-  'сентября',
-  'октября',
-  'ноября',
-  'декабря'
-];
 
 /* Вход в мониторинг: какой сегодня день и по каким расчётам его ведут.
 
@@ -61,7 +38,7 @@ export function MonitorGate({ watched, onWatch, onEnter }: Props) {
   useDuty();
   const days = workDays();
   const now = new Date();
-  const today = `${WEEKDAYS[now.getDay()]}, ${now.getDate()} ${MONTHS[now.getMonth()]}`;
+  const today = `${weekdayName(now)}, ${now.getDate()} ${monthName(now)}`;
 
   const ready = days.filter((day) => day.holder);
   const toggle = (key: string) =>

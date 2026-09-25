@@ -53,6 +53,26 @@ interface Props {
   /** Имя перечня маршрутов. У мониторинга он «на сегодня»: там смотрят на
       идущий день, а не на любой из архива. */
   routesTitle?: string;
+  /** Показывать ли перечень маршрутов в правом углу. Мониторинг его гасит:
+      там маршруты разложены по участкам внутри плашки смены, и второй
+      перечень тем же списком стоял бы рядом с первым.
+
+      Линий на карте это не касается — их прячет только кнопка «маршруты» на
+      пульте. Скрыт перечень, а не сами маршруты. */
+  routeList?: boolean;
+  /** Карта ждёт данные: поверх неё встаёт затемнение с «загружаем». Нужно,
+      когда день под картой меняют на ходу, — иначе старый план секунду
+      выдаёт себя за новый. */
+  busy?: boolean;
+  /** Что именно грузится — строкой под «загружаем». */
+  busyNote?: string;
+  /** Участок, которому принадлежит инженер: «Восток», «Юго-восток».
+
+      Нужен там, где на одной карте лежат дни нескольких участков: место
+      выезда у них бывает общее, и «Общий выезд» без имени участка не
+      отвечает на главный вопрос — чья это бригада. Не задан — участок на
+      карте один, и называть его у каждой точки незачем. */
+  zoneOf?: (engineerId: string) => string | null;
   /** Чей это маршрут, когда на карте день не один. Номер маршрута сквозной
       по всей базе и считается от пары «расчёт — инженер»; при нескольких
       участках разом один `runId` на всех выдал бы соседнему участку чужие
@@ -308,7 +328,7 @@ const BASEMAPS: {
    Не опознали — первое: пусть лучше стоит имя, чем пусто. */
 const SURNAME_END = /(ов|ев|ёв|ин|ын|ский|цкий|ской|цкой|ко|ук|юк|ян|дзе|швили|ых|их)(а)?$/i;
 
-const surnameOf = (name: string) => {
+export const surnameOf = (name: string) => {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   return parts.find((part) => SURNAME_END.test(part)) ?? parts[0] ?? name;
 };
@@ -359,11 +379,22 @@ export function MapBoard({
   aside = null,
   topRight = null,
   routesTitle = 'Маршруты',
+  routeList: routeListOn = true,
+  zoneOf,
+  busy = false,
+  busyNote = '',
   routeKeyOf
 }: Props) {
   /* Чей маршрут: при одном дне — открытый расчёт и сам инженер, при
      нескольких — то, что назвал звавший. */
   const routeKey = (engineerId: string) => routeKeyOf?.(engineerId) ?? { runId, engineerId };
+  /* Участок точки — приставкой «/ Восток» к её подписи. Определителя нет —
+     нет и приставки: на карте одного участка она повторяла бы заголовок
+     раздела у каждой точки города. */
+  const zoneName = (engineerId: string) => {
+    const zone = zoneOf?.(engineerId);
+    return zone ? ` / ${zone}` : '';
+  };
   const host = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   /* Слои разведены по тому, что диспетчер включает и выключает: пути с
@@ -1058,7 +1089,7 @@ export function MapBoard({
         })
       });
       const baseCard = card(color, load.engineer.name, [
-        `Выезжает из: ${homeOf(load.engineer)}`,
+        `Выезжает из: ${homeOf(load.engineer)}${zoneName(load.engineer.id)}`,
         `Средство передвижения: ${rideOf(load.engineer.transport)}`,
         `${visits(load.visits)} · загрузка ${Math.round(load.occupancy * 100)}%`
       ]);
@@ -1097,11 +1128,20 @@ export function MapBoard({
          место: экран отвечает перечнем тех, кто отсюда выезжает, и из него
          уже выбирают конкретный путь. */
       mark.on('click', () => pick.current.onSelectNest?.(list.map((one) => one.engineer.id)));
-      const nestCard = card('#8A8A8A', 'Общий выезд', [
-        homeOf(first.engineer),
-        `Отсюда выезжают ${list.length}: ` +
-          list.map((one) => one.engineer.name.split(' ')[0]).join(', ')
-      ]);
+      /* Участки гнезда — все, чьи инженеры отсюда выезжают. Обычно он
+         один, но одно и то же гнездо может держать соседние участки, и
+         молчать об этом нельзя: «Общий выезд» на общей карте трёх районов
+         без их имён — ровно то место, где путают, чья это бригада. */
+      const zones = [...new Set(list.map((one) => zoneOf?.(one.engineer.id)).filter(Boolean))];
+      const nestCard = card(
+        '#8A8A8A',
+        `Общий выезд${zones.length > 0 ? ` / ${zones.join(' / ')}` : ''}`,
+        [
+          homeOf(first.engineer),
+          `Отсюда выезжают ${list.length}: ` +
+            list.map((one) => one.engineer.name.split(' ')[0]).join(', ')
+        ]
+      );
       mark.on('mouseover', () => showInfo(nestCard, mark.getLatLng(), { r: 10 }));
       mark.on('mouseout', hideInfo);
       mark.addTo(marks);
@@ -1299,7 +1339,7 @@ export function MapBoard({
     const plates: { key: string; text: string; lat: number; lon: number }[] = [
       {
         key: 'start',
-        text: `Выезд · ${hhmm(load.route.totals.start)}`,
+        text: `Выезд · ${hhmm(load.route.totals.start)}${zoneName(load.engineer.id)}`,
         lat: load.engineer.home_lat,
         lon: load.engineer.home_lon
       }
@@ -2483,7 +2523,7 @@ export function MapBoard({
 
           {/* Перечень маршрутов дня. Уступает место всему, что открывают
               поверх карты: карточка выбранного встаёт под ним. */}
-          {routesOn && routeList.length > 0 && (
+          {routeListOn && routesOn && routeList.length > 0 && (
           <div className="georoutes" ref={routesBox} role="group" aria-label="Маршруты дня">
             <div className="georoutes__head">
               <span>{routesTitle}</span>
@@ -2650,6 +2690,21 @@ export function MapBoard({
             не карта: карта отвечает за то, где они лежат и что при этом
             уступает им место, но не за то, что в них написано. */}
         {aside && <div className="geo__aside">{aside}</div>}
+
+        {/* Карта ждёт новый день. Затемнение стоит поверх всего, что на ней
+            лежит, и перехватывает щелчки: половина плана на экране — старый,
+            и нажимать по нему сейчас не на что. */}
+        {busy && (
+          <div className="geo__busy" role="status">
+            <span className="geo__busy-card">
+              <span className="geo__busy-spin" aria-hidden="true" />
+              <span className="geo__busy-text">
+                Загружаем план
+                {busyNote && <span className="geo__busy-note">{busyNote}</span>}
+              </span>
+            </span>
+          </div>
+        )}
       </div>
 
       <MapKeys

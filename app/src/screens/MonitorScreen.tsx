@@ -5,21 +5,25 @@ import {
   buildDayView,
   buildLiveRoster,
   cutMinutes,
+  dayDot,
   dayEnd,
   dayStart,
   hhmm,
   LIVE_STATUS_ORDER,
   mergeDays,
   placeOf,
-  pluralWord
+  pluralWord,
+  weekdayName
 } from '../data/derive.ts';
 import type { LiveEngineer } from '../data/derive.ts';
 import { loadDay, runCode, runDate } from '../data/load.ts';
 import type { RunId } from '../data/load.ts';
-import { dayLabel, useDuty } from '../data/duty.ts';
+import { dayLabel, takeDuty, useDuty, workDays } from '../data/duty.ts';
 import { loadTraffic } from '../data/traffic.ts';
 import type { Traffic } from '../data/traffic.ts';
-import { MapBoard } from '../app/MapBoard.tsx';
+import { MapBoard, routeColor, surnameOf } from '../app/MapBoard.tsx';
+import { transportIcon } from '../data/dictionary.ts';
+import { routeLabel, routeNumber } from '../data/routeIds.ts';
 
 interface Props {
   /** Открытый расчёт: его день уже загружен и приходит в `view` вместе с
@@ -87,7 +91,9 @@ export function MonitorScreen({
      движок ведёт его от одного плана, и чужие факты в чужой день не
      переносятся. Поэтому у догруженных дней отметок пусто, а состояние людей
      считается по плану и часам — ровно то, что мониторинг и обещает. */
-  const [others, setOthers] = useState<Map<RunId, DayView>>(new Map());
+  /* Не ответивший день лежит здесь как `null`, а не пропуском: пропуск
+     неотличим от «ещё едет», и карта ждала бы его вечно. */
+  const [others, setOthers] = useState<Map<RunId, DayView | null>>(new Map());
   const wanted = runs.filter((id) => id !== runId).join('|');
   useEffect(() => {
     let alive = true;
@@ -100,16 +106,25 @@ export function MonitorScreen({
       need.map((id) =>
         loadDay(id)
           .then((day) => [id, buildDayView(day, {})] as const)
-          .catch(() => null)
+          .catch(() => [id, null] as const)
       )
     ).then((pairs) => {
       if (!alive) return;
-      setOthers(new Map(pairs.filter((pair): pair is readonly [string, DayView] => Boolean(pair))));
+      setOthers(new Map(pairs));
     });
     return () => {
       alive = false;
     };
   }, [wanted]);
+
+  /* Дни, которых ещё нет. Пока хоть один в пути, карта закрыта завесой: при
+     смене расчёта на участке половина города осталась бы от прежнего плана,
+     а половина — от нового, и разницу никто бы не заметил.
+
+     Считается из того же, что рисует карту, отдельного «идёт загрузка» не
+     держим: лишний признак живёт своей жизнью и однажды остаётся поднятым
+     навсегда. */
+  const awaiting = runs.filter((id) => id !== runId && !others.has(id));
 
   /* Что показываем: открытый день плюс догруженные, в том порядке, в каком
      их отметили. Пока чужой день грузится, на карте просто меньше участков —
@@ -126,6 +141,34 @@ export function MonitorScreen({
      от пары «расчёт — инженер», а не от составного номера с общей карты. */
   const routeKeyOf = (engineerId: string) =>
     merged?.owner.get(engineerId) ?? { runId, engineerId };
+
+  /* Чей это участок. На общей карте лежат дни трёх районов, и место выезда
+     у них бывает одно на всех: без имени участка «Общий выезд» не говорит
+     главного — чья это бригада. */
+  const zoneOf = (engineerId: string) => {
+    const owner = merged?.owner.get(engineerId);
+    return owner ? dayLabel(owner.runId as RunId, runDate(owner.runId as RunId)).split(' · ')[0] : null;
+  };
+
+  /* Выбранное гнездо выезда: пока оно выбрано, на карте остаются только те,
+     кто отсюда выезжает, а остальной город уходит в тень.
+
+     Прежде щелчок по гнезду в мониторинге не делал ничего: ответ на него
+     держала диспетчерская, а здесь его просто не передавали — иконка
+     нажималась, и карта не отзывалась. Повторный щелчок по тому же гнезду
+     снимает выбор: раз уж на него нажимают, чтобы посмотреть, то и
+     отпускают тем же движением. */
+  const [nest, setNest] = useState<string[] | null>(null);
+  const sameNest = (ids: string[]) =>
+    nest !== null && nest.length === ids.length && ids.every((id) => nest.includes(id));
+
+  /* Пустое место карты снимает и выбор гнезда: в диспетчерской его снимает
+     крестик на сводке выбранного, а здесь сводки нет — и город остался бы в
+     тени, пока не найдёшь тот же квадрат ещё раз. */
+  const pinRoute = (id: string | null) => {
+    if (id === null) setNest(null);
+    onPin(id);
+  };
 
   /* Обстановка в городе. Читается при открытии и раз в пять минут: баллы
      держатся дольше, а чаще спрашивать чужой источник незачем. Не ответил —
@@ -150,14 +193,70 @@ export function MonitorScreen({
      перерисовалась, когда расчёт берут в работу или снимают с неё. */
   useDuty();
 
-  /* Участки, за которыми смотрим, и их рабочие расчёты — строками для
-     плашки. Имя участка берём у того же слоя, что собирает ключ дня: так
-     подпись на карте и подпись на кнопке «В работу» не разойдутся. */
-  const watchRows = runs.map((id) => ({
-    id,
-    code: runCode(id),
-    place: dayLabel(id, runDate(id)).split(' · ')[0]
-  }));
+  /* Участки, за которыми смотрим: кто ведёт день, сколько людей в смене и
+     чьи маршруты на карте.
+
+     Перечень маршрутов стоял отдельной карточкой в том же углу и повторял
+     общий список для трёх районов разом: четырнадцать строк подряд, и по
+     какому участку идёт каждая, читалось только по номеру. Здесь он разобран
+     по участкам и убран внутрь — район раскрывают, когда смотрят именно на
+     него.
+
+     Цвет и опознание маршрута берутся с общей карты, а не считаются заново:
+     на карте порядок маршрутов задаёт цвет, и отдельный счёт развёл бы
+     точку в списке с линией на городе. Имя участка берём у того же слоя,
+     что собирает ключ дня, — иначе подпись здесь и подпись на кнопке
+     «В работу» разойдутся. */
+  const groups = useMemo(() => {
+    const list = runs.map((id) => ({
+      run: id,
+      code: runCode(id),
+      date: runDate(id),
+      place: dayLabel(id, runDate(id)).split(' · ')[0],
+      /* Инженеров в смене — всех, и тех, кому работы не досталось: сколько
+         людей на участке, спрашивают про людей, а не про линии. */
+      crew: 0,
+      routes: [] as {
+        id: string;
+        number: string;
+        color: string;
+        ride: string;
+        name: string;
+        visits: number;
+        occupancy: number;
+      }[]
+    }));
+    const byRun = new Map(list.map((one) => [one.run, one]));
+    shown.loads.forEach((load, index) => {
+      const owner = merged?.owner.get(load.engineer.id) ?? { runId, engineerId: load.engineer.id };
+      const group = byRun.get(owner.runId as RunId);
+      if (!group) return;
+      group.crew += 1;
+      if (!load.route || load.route.stops.length === 0) return;
+      group.routes.push({
+        id: load.engineer.id,
+        number: routeLabel(routeNumber(owner.runId, owner.engineerId)),
+        color: routeColor(index),
+        ride: transportIcon(load.engineer.transport ?? ''),
+        name: load.engineer.name,
+        visits: load.visits,
+        occupancy: load.occupancy
+      });
+    });
+    for (const group of list) group.routes.sort((a, b) => a.number.localeCompare(b.number));
+    return list;
+  }, [runs, runId, shown, merged]);
+
+  /* Раскрытый участок и участок, которому меняют расчёт, — по одному за раз.
+     Три раскрытых списка разом не поместились бы в угол карты, а два
+     раскрытых ряда «чем ведём» сделали бы из плашки базу расчётов. */
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
+  const [pickGroup, setPickGroup] = useState<string | null>(null);
+
+  /* Чем ещё можно вести этот день: расчёты того же участка на ту же дату.
+     Список тот же, что в меню раздела, — там его и собирают. */
+  const days = workDays();
+  const runsOfDay = (id: RunId) => days.find((day) => day.runs.includes(id)) ?? null;
 
   const cut = cutMinutes(now);
   const wall = now.getHours() * 60 + now.getMinutes();
@@ -240,7 +339,7 @@ export function MonitorScreen({
           live={live}
           onLive={onLive}
           pinned={pinned}
-          onPin={onPin}
+          onPin={pinRoute}
           focus={focus}
           onSelectOrder={(id) => {
             onSelectOrder(id);
@@ -248,25 +347,178 @@ export function MonitorScreen({
           }}
           onSelectEngineer={onSelectEngineer}
           fill
-          routesTitle="Маршруты на сегодня"
+          /* Перечень маршрутов у карты погашен: они разобраны по участкам
+             внутри плашки смены. */
+          routeList={false}
+          zoneOf={zoneOf}
+          onSelectNest={(ids) => {
+            const off = sameNest(ids);
+            setNest(off ? null : ids);
+            /* Вопрос «кто отсюда выезжает» задан щелчком по гнезду —
+               отвечает на него участок в плашке: раскрываем его сам, иначе
+               город ушёл бы в тень, а перечень остался бы свёрнутым. */
+            const owner = ids.length > 0 ? merged?.owner.get(ids[0]) : undefined;
+            setOpenGroup(off || !owner ? null : (owner.runId as RunId));
+            setPickGroup(null);
+          }}
+          nest={nest}
+          busy={awaiting.length > 0}
+          busyNote={awaiting
+            .map((id) => dayLabel(id, runDate(id)).split(' · ')[0])
+            .join(', ')}
           topRight={
             <section className="livecard" aria-label="Смена сейчас">
               <span className="livecard__now">
                 <span className="livecard__dot" aria-hidden="true" />
                 <span className="livecard__time">{hhmm(wall)}</span>
+                {/* День рядом с часами: смотрят на живую смену, и «12:20»
+                    без дня недели одинаково подходит любому вторнику. */}
+                <span className="livecard__when">
+                  / {weekdayName(now)} / {dayDot(now)}
+                </span>
               </span>
 
               <span className="livecard__rows">
-                {/* Строка на каждый участок, за которым смотрят: какой план
-                    ведёт его день. Участков бывает три, и общая подпись
-                    «расчёт R013» на три района была бы неправдой — у каждого
-                    свой рабочий расчёт. */}
-                {watchRows.map((row) => (
-                  <span className="livecard__row" key={row.id}>
-                    <span className="livecard__label">{row.place}</span>
-                    <span className="livecard__value">{row.code}</span>
-                  </span>
-                ))}
+                {/* Участок за участком: кто ведёт день, сколько людей в
+                    смене и — по нажатию — чьи маршруты сегодня на карте.
+                    Участков бывает три, и общая подпись «расчёт R013» на
+                    три района была бы неправдой: у каждого свой рабочий
+                    расчёт, и меняют их порознь. */}
+                {groups.map((group) => {
+                  const open = openGroup === group.run;
+                  const picking = pickGroup === group.run;
+                  const day = runsOfDay(group.run);
+                  const others = day ? day.runs.filter((id) => id !== group.run) : [];
+                  return (
+                    <span className="livegroup" key={group.run}>
+                      <span className="livegroup__head">
+                        <button
+                          type="button"
+                          className={'livegroup__open' + (open ? ' livegroup__open--on' : '')}
+                          onClick={() => {
+                            setOpenGroup(open ? null : group.run);
+                            setPickGroup(null);
+                          }}
+                          aria-expanded={open}
+                          title={
+                            open
+                              ? `Свернуть маршруты: ${group.place}`
+                              : `Маршруты на сегодня: ${group.place}`
+                          }
+                        >
+                          <Icon name={open ? 'chevron-down' : 'chevron-right'} size={12} />
+                          <span className="livegroup__place">{group.place}</span>
+                          <span className="livegroup__crew">{group.crew} инж.</span>
+                        </button>
+
+                        {/* Номер расчёта — кнопка: день ведут одним планом,
+                            а посчитано их несколько, и менять план проще
+                            там же, где написано, каким ведут. */}
+                        <button
+                          type="button"
+                          className={'livegroup__run' + (picking ? ' livegroup__run--on' : '')}
+                          onClick={() => {
+                            setPickGroup(picking ? null : group.run);
+                            setOpenGroup(null);
+                          }}
+                          aria-expanded={picking}
+                          disabled={others.length === 0 && !picking}
+                          title={
+                            others.length === 0
+                              ? `${group.code} — единственный расчёт на этот день`
+                              : `Ведёт ${group.code} · сменить расчёт`
+                          }
+                        >
+                          {group.code}
+                          <Icon name="chevron-down" size={11} />
+                        </button>
+                      </span>
+
+                      {/* Чем ещё можно вести этот день. Выбранный расчёт
+                          встаёт на работу сразу — карта под завесой
+                          перекладывается на его план. */}
+                      {picking && (
+                        <span className="livegroup__runs">
+                          {others.length === 0 ? (
+                            <span className="livegroup__empty">
+                              Других расчётов на этот день нет
+                            </span>
+                          ) : (
+                            others.map((id) => (
+                              <button
+                                key={id}
+                                type="button"
+                                className="livegroup__pick"
+                                onClick={() => {
+                                  takeDuty(id, day?.date ?? group.date);
+                                  setPickGroup(null);
+                                }}
+                                title={`Вести ${group.place} расчётом ${runCode(id)}`}
+                              >
+                                <span className="livegroup__pick-code">{runCode(id)}</span>
+                                <span className="livegroup__pick-note">взять в работу</span>
+                              </button>
+                            ))
+                          )}
+                        </span>
+                      )}
+
+                      {/* Маршруты участка. Наведение подсвечивает путь на
+                          карте, нажатие оставляет его одного — то же, что
+                          делал общий перечень, только теперь видно, чей
+                          маршрут. */}
+                      {open && (
+                        <span className="livegroup__list">
+                          {group.routes.length === 0 ? (
+                            <span className="livegroup__empty">
+                              Маршрутов нет: план на этот участок пуст.
+                            </span>
+                          ) : (
+                            group.routes.map((route) => (
+                              <button
+                                key={route.id}
+                                type="button"
+                                className={
+                                  'livegroup__item' +
+                                  (pinned === route.id ? ' livegroup__item--on' : '') +
+                                  (live === route.id && pinned !== route.id
+                                    ? ' livegroup__item--live'
+                                    : '')
+                                }
+                                onMouseEnter={() => onLive(route.id)}
+                                onMouseLeave={() => onLive(null)}
+                                onFocus={() => onLive(route.id)}
+                                onBlur={() => onLive(null)}
+                                onClick={() => {
+                                  /* Выбор маршрута отменяет выбор гнезда:
+                                     это два ответа на один вопрос «что
+                                     оставить на карте», и держать их разом
+                                     нельзя. */
+                                  setNest(null);
+                                  onPin(pinned === route.id ? null : route.id);
+
+                                }}
+                                aria-pressed={pinned === route.id}
+                                title={`${route.number} · ${route.name} · ${route.visits} заявок · загрузка ${Math.round(
+                                  route.occupancy * 100
+                                )}%`}
+                              >
+                                <span
+                                  className="livegroup__dot"
+                                  style={{ background: route.color }}
+                                />
+                                <Icon name={route.ride} size={12} />
+                                <span className="livegroup__num">{route.number}</span>
+                                <span className="livegroup__who">{surnameOf(route.name)}</span>
+                                <span className="livegroup__visits">{route.visits}</span>
+                              </button>
+                            ))
+                          )}
+                        </span>
+                      )}
+                    </span>
+                  );
+                })}
 
                 {/* Пробки в городе. Нет строки — нет и сведений: источник не
                     ответил, и выдумывать баллы нельзя, по ним судят о
