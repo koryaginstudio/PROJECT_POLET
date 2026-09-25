@@ -13,6 +13,7 @@
    Ничего к контракту здесь не придумывается. */
 
 import { engineDayTitle, loadAllOrders, loadRoster, loadRunData, missingEngineZones, RUNS } from './load.ts';
+import { noteCrew } from './photos.ts';
 import type { RosterEngineer, RunId } from './load.ts';
 import type { Engineer, Order, Plan, Route, Simulation } from './contract.ts';
 import { occupancyMean, placeOf, roadPath } from './derive.ts';
@@ -1327,6 +1328,12 @@ export async function loadRegistry(): Promise<Registry> {
      сборке, а заявке он нужен готовым — иначе название пришлось бы раздавать
      дважды и по-разному. */
   const clients = buildClients(plans);
+
+  /* Лица раздаются на весь штат разом, здесь: справочник — единственное
+     место, где видны все люди всех участков сразу. Раздай их по расчёту, и
+     один человек получал бы в разных разделах разные лица, а в общей базе
+     снимки повторялись бы. */
+  noteCrew(engineers);
 
   return {
     runs: plans.map((p) => p.run),
