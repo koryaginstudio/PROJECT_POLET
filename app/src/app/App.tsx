@@ -209,6 +209,12 @@ export function App() {
     }
     setPinnedRoute(null);
     setHoverRoute(null);
+    /* И выбранная заявка тоже: карты разделов независимы, и выбор с одной
+       не имеет силы на другой. Прежде заявка переживала переход, а на
+       соседней карте её не было в плане — и карта честно считала, что
+       показывать надо одну эту заявку, а остальное убрать. Диспетчер
+       возвращался в диспетчерскую и встречал город без единого маршрута. */
+    setSelection(OVERVIEW);
   }, [section, runId]);
 
   /* Escape снимает выбранное: закрытую заявку и закреплённый маршрут.
@@ -813,6 +819,10 @@ export function App() {
   /* Обзор — карта на оба поля: правой панели у него нет, и колонку под неё
      он не оставляет. Числа расчёта лежат на самой карте. */
   const onOverview = onPlan && view === 'overview';
+  /* Живой вид мониторинга — такая же карта во весь экран, и поля вокруг неё
+     такая же рамка вокруг пустоты. Считается ниже, когда известно, за чем
+     смотрят: пока дни не отмечены, раздел показывает своё меню, а у меню
+     поля как у любого экрана. */
   const onMap = onPlan && view === 'map';
 
   const goSection = (id: SectionId) => {
@@ -828,6 +838,14 @@ export function App() {
       }
       if (id === 'compare') {
         setCompareReset((n) => n + 1);
+        return;
+      }
+      /* В мониторинге начало — выбор дней. Прежде туда вела тихая строка в
+         плашке смены, но плашка рассказывает о живом дне, и кнопка выхода
+         из раздела стояла в ней случайным гостем. Раздел в меню — то самое
+         место, где просят «начать сначала». */
+      if (id === 'monitor') {
+        setWatching(false);
         return;
       }
     }
@@ -1176,6 +1194,11 @@ export function App() {
      объекта не выбирает, поэтому тоже идёт без неё. */
   const withDetail = onPlan && !onOverview;
 
+  /* Карта мониторинга во весь экран — там же, где живой вид: дни отмечены,
+     смотрят обзор. */
+  const onWatchMap =
+    section === 'monitor' && view === 'overview' && watching && watchRuns.length > 0;
+
   /* Правая панель показывает выбранное не везде: на карте её место занимает
      список маршрутов, у ганта — часы, у канбана — бригада. Там щелчок по
      заявке или инженеру обязан открывать карточку сам, иначе выбор уходит в
@@ -1233,7 +1256,6 @@ export function App() {
           view={dayView}
           runId={runId}
           runs={watchRuns}
-          onBack={() => setWatching(false)}
           mode={view}
           live={liveRoute}
           onLive={setHoverRoute}
@@ -1241,6 +1263,7 @@ export function App() {
           onPin={pinRoute}
           onShowRoute={showRoute}
           focus={routeFocus}
+          selectedOrder={selection.kind === 'order' ? selection.id : null}
           onSelectOrder={selectOrder}
           onSelectEngineer={selectEngineer}
         />
@@ -1391,7 +1414,7 @@ export function App() {
         (withDetail ? '' : ' shell--wide') +
         /* Обзор идёт без полей вокруг: карта в нём доходит до краёв, а
            рамка вокруг карты на весь экран — рамка вокруг пустоты. */
-        (onOverview ? ' shell--flush' : '')
+        (onOverview || onWatchMap ? ' shell--flush' : '')
       }
     >
       <Header

@@ -28,10 +28,6 @@ interface Props {
       выезжает. Нет обработчика — гнездо только рассказывает о себе
       подсказкой. */
   onSelectNest?: (engineerIds: string[]) => void;
-  /** Выбранное общее гнездо: чьи маршруты из него выезжают. Пока оно
-      выбрано, на карте остаются только они — остальное уходит, как при
-      выборе одного маршрута. */
-  nest?: string[] | null;
   /** Выбранная заявка: её выбирают и в списке справа, и щелчком по точке.
       Карта на это отвечает — обводит точку и подъезжает к ней. */
   selectedOrder?: string | null;
@@ -322,6 +318,12 @@ const BASEMAPS: {
   }
 ];
 
+/* Цвета участков. Не из палитры маршрутов: подложка — не линия, и спорить с
+   ней она не должна. Оттенки разведены по кругу и взяты приглушёнными, а
+   работают они почти прозрачными — участок узнают по пятну под маршрутами,
+   а не по цвету самого пятна. */
+const ZONE_COLORS = ['#4C7DF0', '#3FAE8C', '#E0864A', '#A46BD8', '#C9556F'];
+
 /* Фамилия из полного имени. Порядок слов у записи разный — «Фамилия Имя
    Отчество» в выгрузке заказчика, «Имя Фамилия» от программы расчёта, —
    поэтому берём то слово, которое похоже на фамилию, а не первое по счёту.
@@ -373,7 +375,6 @@ export function MapBoard({
   onSelectOrder,
   onSelectEngineer,
   onSelectNest,
-  nest = null,
   selectedOrder = null,
   fill = false,
   aside = null,
@@ -400,6 +401,7 @@ export function MapBoard({
   /* Слои разведены по тому, что диспетчер включает и выключает: пути с
      началами маршрутов, точки взятых заявок и точки тех, которые никто не
      взял. Нумерация выбранного маршрута живёт отдельно и не выключается. */
+  const zoneLayer = useRef<L.LayerGroup | null>(null);
   const routeLayer = useRef<L.LayerGroup | null>(null);
   const pinLayer = useRef<L.LayerGroup | null>(null);
   const freeLayer = useRef<L.LayerGroup | null>(null);
@@ -617,6 +619,10 @@ export function MapBoard({
      Держится отдельно от `live`: тот называет инженера, а у этой заявки
      инженера и нет — в том и дело. */
   const [lonely, setLonely] = useState<string | null>(null);
+  /* Чьи маршруты выходят из гнезда под курсором. Живёт в самой карте, а не
+     снаружи: это наведение, оно кончается вместе с движением мыши, и
+     рассказывать о нём экрану незачем. */
+  const [hoverNest, setHoverNest] = useState<string[] | null>(null);
 
   /* Условные обозначения — окном по кнопке, а не строкой поверх города. */
   const [keysOpen, setKeysOpen] = useState(false);
@@ -634,6 +640,15 @@ export function MapBoard({
   });
   const rootBox = useRef<HTMLDivElement>(null);
   const [routesOn, setRoutesOn] = useState(true);
+  /* Подложки участков. Выбор запоминается: на одном рабочем месте они
+     помогают, на другом мешают, и спрашивать об этом каждое утро незачем. */
+  const [zonesOn, setZonesOn] = useState(() => {
+    try {
+      return localStorage.getItem('polet.mapzones') !== 'off';
+    } catch {
+      return true;
+    }
+  });
   /* Перечень маршрутов открыт коротким по умолчанию: длинный список сам
      дорастал до пульта карты в правом нижнем углу и ложился на него, пока
      прокрутка внутри узкого стекла ещё не началась. Хвост — по кнопке. */
@@ -697,6 +712,10 @@ export function MapBoard({
        Отдельная панель с большим z-index решает это раз и навсегда: линия
        может всплывать сколько угодно внутри своей панели, выше точек она
        не окажется. 450 — между обычными фигурами (400) и маркерами (600). */
+    /* Подложки участков лежат ниже всего нарисованного: они не предмет
+       разговора, а поле, на котором он идёт. 350 — под обычными фигурами
+       (400), то есть под каждой линией маршрута. */
+    instance.createPane('zones').style.zIndex = '350';
     instance.createPane('points').style.zIndex = '450';
     /* Знак «под угрозой» — своим слоем поверх точек.
 
@@ -707,6 +726,7 @@ export function MapBoard({
        быть виден всегда, а не через раз. Ниже кружков с номерами (600) — у
        выбранного маршрута об угрозе говорит сам номер. */
     instance.createPane('alarms').style.zIndex = '470';
+    zoneLayer.current = L.layerGroup().addTo(instance);
     routeLayer.current = L.layerGroup().addTo(instance);
     pinLayer.current = L.layerGroup().addTo(instance);
     freeLayer.current = L.layerGroup().addTo(instance);
@@ -1142,8 +1162,15 @@ export function MapBoard({
             list.map((one) => one.engineer.name.split(' ')[0]).join(', ')
         ]
       );
-      mark.on('mouseover', () => showInfo(nestCard, mark.getLatLng(), { r: 10 }));
-      mark.on('mouseout', hideInfo);
+      const crew = list.map((one) => one.engineer.id);
+      mark.on('mouseover', () => {
+        showInfo(nestCard, mark.getLatLng(), { r: 10 });
+        setHoverNest(crew);
+      });
+      mark.on('mouseout', () => {
+        hideInfo();
+        setHoverNest(null);
+      });
       mark.addTo(marks);
       nestMarks.current.set(key, mark);
     }
@@ -1276,6 +1303,186 @@ export function MapBoard({
 
      Порядок — по номеру маршрута: он же стоит на метках у последних точек,
      и две разные очереди на одни и те же маршруты только путали бы. */
+  /* Участки на подложке.
+
+     Три района лежат на одном городе, и по линиям не видно, где кончается
+     один и начинается другой: в центре маршруты соседних участков
+     переплетаются, а к краям расходятся. Подложка отвечает на это одним
+     пятном на район — где чья земля.
+
+     Границ участков в выгрузке нет, и выдумывать административные было бы
+     враньём. Зато есть сами точки: выезды и заявки. Берём поле вокруг них
+     и красим каждый его клочок в цвет того участка, чья точка к нему
+     ближе. Это и есть настоящая граница работы — линия, на которой один
+     участок сменяется другим; пересечься такие пятна не могут по самому
+     способу построения, у клочка земли всегда один ближайший.
+
+     Дальше восьми километров от любой точки поле остаётся пустым: за
+     городом у участков нет ни заявок, ни людей, и красить там нечего.
+
+     Клочки собираются в полосы по строкам — рисовать тысячу квадратов
+     поштучно карта не должна. Участок один — подложки нет вовсе: пятно во
+     весь город ничего не разделяет. */
+  const zoneShapes = useMemo(() => {
+    if (!zoneOf) return [];
+    const spots = new Map<string, { lat: number; lon: number }[]>();
+    for (const load of view.loads) {
+      const zone = zoneOf(load.engineer.id);
+      if (!zone) continue;
+      const list = spots.get(zone) ?? [];
+      list.push({ lat: load.engineer.home_lat, lon: load.engineer.home_lon });
+      for (const stop of load.route?.stops ?? []) {
+        const order = view.orderById.get(stop.order_id);
+        if (order) list.push({ lat: order.lat, lon: order.lon });
+      }
+      spots.set(zone, list);
+    }
+    if (spots.size < 2) return [];
+
+    const titles = [...spots.keys()];
+    const all = titles.flatMap((title, index) =>
+      spots.get(title)!.map((one) => ({ ...one, zone: index }))
+    );
+    const kx = Math.cos((all[0].lat * Math.PI) / 180);
+    /* Шаг сетки — около километра: мельче незаметно, крупнее видно
+       ступеньки. Вылет поля — те же восемь километров, что и порог. */
+    const STEP = 0.009;
+    const REACH = 8 / 111;
+    const edge = {
+      south: Math.min(...all.map((one) => one.lat)) - REACH,
+      north: Math.max(...all.map((one) => one.lat)) + REACH,
+      west: Math.min(...all.map((one) => one.lon)) - REACH / kx,
+      east: Math.max(...all.map((one) => one.lon)) + REACH / kx
+    };
+
+    const bands = titles.map(() => [] as [number, number, number, number][]);
+    const stepLon = STEP / kx;
+    for (let lat = edge.south; lat < edge.north; lat += STEP) {
+      let open: { zone: number; from: number } | null = null;
+      for (let lon = edge.west; lon < edge.east + stepLon; lon += stepLon) {
+        let mine = -1;
+        let best = REACH * REACH;
+        for (const one of all) {
+          const dy = one.lat - (lat + STEP / 2);
+          const dx = (one.lon - (lon + stepLon / 2)) * kx;
+          const far = dy * dy + dx * dx;
+          if (far < best) {
+            best = far;
+            mine = one.zone;
+          }
+        }
+        if (open && open.zone !== mine) {
+          bands[open.zone].push([lat, open.from, lat + STEP, lon]);
+          open = null;
+        }
+        if (mine >= 0 && !open) open = { zone: mine, from: lon };
+      }
+      if (open) bands[open.zone].push([lat, open.from, lat + STEP, edge.east + stepLon]);
+    }
+
+    /* У каждой полосы считаем запас — насколько далеко от неё ближайшая
+       чужая заявка. По нему подпись участка и выбирает себе место: в
+       глубине своей земли, а не у границы с соседом. Считается здесь, один
+       раз: подпись переставляется на каждое движение карты, и перебирать
+       при этом сотню чужих точек нельзя. */
+    const roomy = titles.map((_title, index) => {
+      const strangers = all.filter((one) => one.zone !== index);
+      return bands[index].map(([south, west, north, east]) => {
+        const lat = (south + north) / 2;
+        const lon = (west + east) / 2;
+        let near = Infinity;
+        for (const one of strangers) {
+          const dy = one.lat - lat;
+          const dx = (one.lon - lon) * kx;
+          near = Math.min(near, dy * dy + dx * dx);
+        }
+        return { lat, lon, room: near };
+      });
+    });
+
+    return titles.map((title, index) => ({
+      title,
+      color: ZONE_COLORS[index % ZONE_COLORS.length],
+      bands: bands[index],
+      spots: roomy[index]
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, zoneOf ? 'zones' : 'none']);
+
+  /* Кладём подложки на карту. Отдельным действием от их счёта: считаются
+     они от плана, а гасит их кнопка, и пересчитывать поле ради нажатия
+     кнопки незачем. */
+  useEffect(() => {
+    const layer = zoneLayer.current;
+    if (!layer) return;
+    layer.clearLayers();
+    if (!zonesOn) return;
+    const marks: { zone: (typeof zoneShapes)[number]; mark: L.Marker }[] = [];
+    for (const zone of zoneShapes) {
+      for (const [south, west, north, east] of zone.bands) {
+        L.rectangle(
+          [
+            [south, west],
+            [north, east]
+          ],
+          {
+            pane: 'zones',
+            /* Полосы стоят вплотную, и обводка у них была бы сеткой поперёк
+               всего пятна: красим только заливкой. */
+            stroke: false,
+            fillColor: zone.color,
+            fillOpacity: 0.24,
+            interactive: false
+          }
+        ).addTo(layer);
+      }
+      const mark = L.marker([zone.spots[0]?.lat ?? 0, zone.spots[0]?.lon ?? 0], {
+        pane: 'zones',
+        interactive: false,
+        keyboard: false,
+        icon: L.divIcon({
+          className: 'geo__zonebox',
+          html: `<span class="geo__zone" style="--tone:${zone.color}">${zone.title}</span>`,
+          iconSize: [0, 0]
+        })
+      }).addTo(layer);
+      marks.push({ zone, mark });
+    }
+
+    /* Подпись участка держится того куска его земли, который сейчас на
+       экране, и стоит в самой глубине этого куска. Прибитая к одной точке,
+       она уезжала за край при первом же движении карты: у вытянутого
+       участка «самое своё» место — дальний конец коридора за городом, и
+       подписи там никто не видит. Уехала земля участка целиком — уходит и
+       подпись: называть нечего. */
+    const place = () => {
+      const instance = map.current;
+      if (!instance) return;
+      const frame = instance.getBounds().pad(-0.06);
+      for (const { zone, mark } of marks) {
+        let best: { lat: number; lon: number; room: number } | null = null;
+        for (const spot of zone.spots) {
+          if (!frame.contains([spot.lat, spot.lon])) continue;
+          if (!best || spot.room > best.room) best = spot;
+        }
+        const node = mark.getElement();
+        if (best) {
+          mark.setLatLng([best.lat, best.lon]);
+          if (node) node.style.display = '';
+        } else if (node) {
+          node.style.display = 'none';
+        }
+      }
+    };
+
+    place();
+    const instance = map.current;
+    instance?.on('moveend zoomend', place);
+    return () => {
+      instance?.off('moveend zoomend', place);
+    };
+  }, [zoneShapes, zonesOn]);
+
   const routeList = useMemo(
     () =>
       view.loads
@@ -1750,30 +1957,43 @@ export function MapBoard({
        Заявка без инженера живёт по тому же правилу: под курсором она гасит
        соседей, щелчком — оставляет на карте себя одну. */
     const loneOver = lonely;
+    /* Заявка без инженера — своя, из этого плана. Чужая, оставшаяся от
+       соседнего раздела, не в счёт: её в этом дне нет вовсе, и «оставить на
+       карте её одну» означало бы убрать с карты всё. */
     const lonePick =
-      selectedOrder && !view.stopByOrder.has(selectedOrder) ? selectedOrder : null;
+      selectedOrder && view.orderById.has(selectedOrder) && !view.stopByOrder.has(selectedOrder)
+        ? selectedOrder
+        : null;
     const lone = lonePick;
-    /* Выбрано общее гнездо — карта затихает.
+    /* Курсор на общем гнезде — те, кто отсюда выезжает, остаются в полную
+       силу, остальной город гаснет. Ровно то же и тем же тоном, что делает
+       наведение на один маршрут: вопрос здесь такой же («а это что»), и
+       ответ на него не должен выглядеть иначе.
 
-       Спрашивают при этом про место, а не про пути: «кто отсюда выезжает».
-       Прятать чужие маршруты, как при выборе одного, здесь нечего — из
-       общего гнезда в выгрузке заказчика выезжает вся бригада, и «чужих»
-       на карте не остаётся вовсе. Поэтому гасим всё разом: и пути, и точки
-       уходят в тень, на виду остаётся сам квадрат выезда и перечень сбоку.
-       Наведение на имя в перечне возвращает его маршрут в полную силу —
-       из четырнадцати путей смотрят по одному. */
-    const crowd = nest && nest.length > 0 ? new Set(nest) : null;
-    const away = (id: string | undefined) =>
-      lone !== null || (crowd !== null && (!id || !crowd.has(id)));
-    /* Приглушён ли этот маршрут перечнем гнезда: все, кроме того, на чьё имя
-       сейчас наведён курсор. */
+       Щелчком гнездо ничего не гасит. Прежде он оставлял карту затихшей,
+       пока выбор не снимут, — и это был третий способ гасить город, со
+       своим тоном и своим правилом выхода. Гнездо отвечает перечнем тех,
+       кто из него выезжает; прозрачность — дело наведения. */
+    const crowd = hoverNest !== null && hoverNest.length > 0 ? new Set(hoverNest) : null;
+    const away = (_id: string | undefined) => lone !== null;
+    /* Приглушён ли этот маршрут: под курсором гнездо, а он из другого, или
+       под курсором невзятая заявка. */
     const muted = (id: string | undefined) =>
-      (crowd !== null && live !== id) || loneOver !== null;
+      (crowd !== null && (!id || !crowd.has(id))) || loneOver !== null;
     const thick = weightAt(map.current?.getZoom() ?? zoom);
     for (const item of stack.current) {
       const on = live === item.id;
       const hidden = away(item.id) || (pinned !== null && pinned !== item.id);
-      const opacity = hidden ? 0 : muted(item.id) ? 0.12 : live && !on ? 0.2 : 0.95;
+      /* Гнездо гасит соседей до той же четверти, что и наведение на
+         маршрут; невзятая заявка — глубже: рядом с одной точкой линии
+         мешают сильнее. */
+      const opacity = hidden
+        ? 0
+        : loneOver !== null
+          ? 0.12
+          : muted(item.id) || (live && !on)
+            ? 0.2
+            : 0.95;
       const ride = view.loads.find((load) => load.engineer.id === item.id)?.engineer.transport;
       for (const part of item.parts) {
         part.getElement()?.classList.toggle('geo__live', pinned === item.id);
@@ -1824,18 +2044,11 @@ export function MapBoard({
        выгрузке заказчика вся бригада выезжает из одного гнезда — личных
        квадратов там нет вовсе, и у выбранного маршрута начало оставалось
        безымянным, хотя все его визиты подписаны. */
-    for (const [key, mark] of nestMarks.current) {
-      /* Гнездо уходит с карты вместе со всем остальным, когда на ней
-         оставлена одна невзятая заявка или выбрано другое гнездо. Выбранное
-         остаётся: это то самое место, про которое спросили. */
-      const ownNest = crowd
-        ? view.loads.some(
-            (load) =>
-              crowd.has(load.engineer.id) &&
-              nestKey(load.engineer.home_lat, load.engineer.home_lon) === key
-          )
-        : false;
-      mark.setOpacity(lone !== null || (crowd !== null && !ownNest) ? 0 : 1);
+    for (const mark of nestMarks.current.values()) {
+      /* Гнездо уходит с карты только вместе со всем остальным — когда на
+         ней оставлена одна невзятая заявка. Наведение его не гасит: оно
+         само и есть то, на что сейчас смотрят. */
+      mark.setOpacity(lone !== null ? 0 : 1);
       mark.unbindTooltip();
     }
 
@@ -1931,7 +2144,7 @@ export function MapBoard({
       mark.addTo(layer);
       mark.getElement()?.classList.add('geo__live');
     }
-  }, [live, pinned, lonely, nest, selectedOrder, view, routesOn, runId]);
+  }, [live, pinned, lonely, hoverNest, selectedOrder, view, routesOn, runId]);
 
   /* Толщина держится в пикселях экрана, а не в метрах: и кайма соседнего
      слоя, и сама линия должны читаться одинаково и на обзоре области, и во
@@ -2348,6 +2561,32 @@ export function MapBoard({
             >
               <Icon name="map-pin" size={15} />
             </button>
+            {/* Подложки участков. Кнопка стоит там же, где маршруты и
+                точки: это третий слой карты, и спрашивают о нём тем же
+                движением. Участок один — кнопки нет: гасить нечего. */}
+            {zoneShapes.length > 0 && (
+              <button
+                type="button"
+                className={'geo__view' + (zonesOn ? ' geo__view--on' : '')}
+                onClick={() =>
+                  setZonesOn((was) => {
+                    const next = !was;
+                    try {
+                      localStorage.setItem('polet.mapzones', next ? 'on' : 'off');
+                    } catch {
+                      /* Приватное окно: выбор не переживёт перезагрузку. */
+                    }
+                    return next;
+                  })
+                }
+                aria-pressed={zonesOn}
+                aria-label="Участки на карте"
+                title={zonesOn ? 'Убрать участки' : 'Показать участки'}
+              >
+                <Icon name="layers" size={15} />
+              </button>
+            )}
+
             {/* Лёгкий режим: снимает тени под путями и точками. Тени
                 отделяют их от подложки, но стоят кадров — на обзоре трёх
                 участков с сорока маршрутами их полезно снять.
@@ -2593,13 +2832,10 @@ export function MapBoard({
             if (!at) return null;
             const spot = endSpots.get(plate.id);
             const on = live === plate.id;
-            const hidden =
-              loneNow !== null ||
-              (nest !== null && nest.length > 0 && !nest.includes(plate.id)) ||
-              (pinned !== null && pinned !== plate.id);
+            const hidden = loneNow !== null || (pinned !== null && pinned !== plate.id);
             if (hidden) return null;
             const faded =
-              (nest !== null && nest.length > 0 && live !== plate.id) || (live !== null && !on);
+              (hoverNest !== null && !hoverNest.includes(plate.id)) || (live !== null && !on);
             return (
               <button
                 key={plate.id}

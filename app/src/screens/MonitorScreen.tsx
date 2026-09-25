@@ -22,6 +22,7 @@ import { dayLabel, takeDuty, useDuty, workDays } from '../data/duty.ts';
 import { loadTraffic } from '../data/traffic.ts';
 import type { Traffic } from '../data/traffic.ts';
 import { MapBoard, routeColor, surnameOf } from '../app/MapBoard.tsx';
+import { MapPick } from '../app/MapPick.tsx';
 import { transportIcon } from '../data/dictionary.ts';
 import { routeLabel, routeNumber } from '../data/routeIds.ts';
 
@@ -32,8 +33,6 @@ interface Props {
   /** Рабочие расчёты дней, за которыми смотрят. Их планы раздел догружает
       сам и кладёт на одну карту. Пусто — смотреть не за чем. */
   runs: RunId[];
-  /** Вернуться к выбору дней. */
-  onBack: () => void;
   /** Вид раздела: «обзор» — город во весь экран с полосой живых чисел,
       «сводка» — те же числа списком, опаздывающие и состав смены. */
   mode: string;
@@ -46,6 +45,9 @@ interface Props {
       карте, сколько бы раз по заявкам этого пути ни щёлкали. */
   onShowRoute: (engineerId: string | null) => void;
   focus: number;
+  /** Выбранная заявка: её выбирают щелчком по точке, и сводка внизу слева
+      отвечает о ней. */
+  selectedOrder: string | null;
   onSelectOrder: (id: string | null) => void;
   onSelectEngineer: (id: string) => void;
 }
@@ -63,7 +65,6 @@ export function MonitorScreen({
   view,
   runId,
   runs,
-  onBack,
   mode,
   live,
   onLive,
@@ -71,6 +72,7 @@ export function MonitorScreen({
   onPin,
   onShowRoute,
   focus,
+  selectedOrder,
   onSelectOrder,
   onSelectEngineer
 }: Props) {
@@ -126,15 +128,24 @@ export function MonitorScreen({
      навсегда. */
   const awaiting = runs.filter((id) => id !== runId && !others.has(id));
 
+  /* Участки, снятые с карты. Смотрят за тремя районами разом, а разбирают
+     по одному: сорок маршрутов на одном городе — это каша, и способ из неё
+     выйти должен быть под рукой. Сняли участок — его нет ни на карте, ни в
+     числах смены: они считаются по тому, что показано, иначе полоса внизу
+     говорила бы об одном дне, а город показывал другой. */
+  const [hidden, setHidden] = useState<Set<string>>(new Set());
+  const shownRuns = runs.filter((id) => !hidden.has(id));
+
   /* Что показываем: открытый день плюс догруженные, в том порядке, в каком
      их отметили. Пока чужой день грузится, на карте просто меньше участков —
      это честнее, чем держать её пустой до последнего ответа. */
   const merged = useMemo(() => {
-    const parts = runs
+    const parts = shownRuns
       .map((id) => ({ runId: id, view: id === runId ? view : others.get(id) }))
       .filter((one): one is { runId: RunId; view: DayView } => Boolean(one.view));
     return mergeDays(parts.length > 0 ? parts : [{ runId, view }]);
-  }, [runs, runId, view, others]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shownRuns.join('|'), runId, view, others]);
   const shown = merged?.view ?? view;
 
   /* Чей маршрут, когда участков несколько: номер сквозной по базе и считается
@@ -150,25 +161,6 @@ export function MonitorScreen({
     return owner ? dayLabel(owner.runId as RunId, runDate(owner.runId as RunId)).split(' · ')[0] : null;
   };
 
-  /* Выбранное гнездо выезда: пока оно выбрано, на карте остаются только те,
-     кто отсюда выезжает, а остальной город уходит в тень.
-
-     Прежде щелчок по гнезду в мониторинге не делал ничего: ответ на него
-     держала диспетчерская, а здесь его просто не передавали — иконка
-     нажималась, и карта не отзывалась. Повторный щелчок по тому же гнезду
-     снимает выбор: раз уж на него нажимают, чтобы посмотреть, то и
-     отпускают тем же движением. */
-  const [nest, setNest] = useState<string[] | null>(null);
-  const sameNest = (ids: string[]) =>
-    nest !== null && nest.length === ids.length && ids.every((id) => nest.includes(id));
-
-  /* Пустое место карты снимает и выбор гнезда: в диспетчерской его снимает
-     крестик на сводке выбранного, а здесь сводки нет — и город остался бы в
-     тени, пока не найдёшь тот же квадрат ещё раз. */
-  const pinRoute = (id: string | null) => {
-    if (id === null) setNest(null);
-    onPin(id);
-  };
 
   /* Обстановка в городе. Читается при открытии и раз в пять минут: баллы
      держатся дольше, а чаще спрашивать чужой источник незачем. Не ответил —
@@ -227,6 +219,8 @@ export function MonitorScreen({
       }[]
     }));
     const byRun = new Map(list.map((one) => [one.run, one]));
+    /* Скрытого участка на общей карте нет, и маршрутов у него в перечне не
+       будет: перечень рассказывает про то, что видно. */
     shown.loads.forEach((load, index) => {
       const owner = merged?.owner.get(load.engineer.id) ?? { runId, engineerId: load.engineer.id };
       const group = byRun.get(owner.runId as RunId);
@@ -257,6 +251,10 @@ export function MonitorScreen({
      Список тот же, что в меню раздела, — там его и собирают. */
   const days = workDays();
   const runsOfDay = (id: RunId) => days.find((day) => day.runs.includes(id)) ?? null;
+
+  /* Выбрали маршрут или заявку — полоса чисел уступает место сводке о
+     выбранном. */
+  const picked = Boolean(pinned || selectedOrder);
 
   const cut = cutMinutes(now);
   const wall = now.getHours() * 60 + now.getMinutes();
@@ -339,29 +337,28 @@ export function MonitorScreen({
           live={live}
           onLive={onLive}
           pinned={pinned}
-          onPin={pinRoute}
+          onPin={onPin}
           focus={focus}
           onSelectOrder={(id) => {
             onSelectOrder(id);
             onShowRoute(id ? (shown.stopByOrder.get(id)?.engineerId ?? null) : null);
           }}
           onSelectEngineer={onSelectEngineer}
+          selectedOrder={selectedOrder}
           fill
           /* Перечень маршрутов у карты погашен: они разобраны по участкам
              внутри плашки смены. */
           routeList={false}
           zoneOf={zoneOf}
+          /* Щелчок по общему выезду раскрывает его участок в плашке:
+             спрашивают «кто отсюда выезжает», а перечень выезжающих лежит
+             там. Прозрачностью на карте он не заведует — это дело
+             наведения, и держит его сама карта. */
           onSelectNest={(ids) => {
-            const off = sameNest(ids);
-            setNest(off ? null : ids);
-            /* Вопрос «кто отсюда выезжает» задан щелчком по гнезду —
-               отвечает на него участок в плашке: раскрываем его сам, иначе
-               город ушёл бы в тень, а перечень остался бы свёрнутым. */
             const owner = ids.length > 0 ? merged?.owner.get(ids[0]) : undefined;
-            setOpenGroup(off || !owner ? null : (owner.runId as RunId));
+            setOpenGroup(owner ? (owner.runId as RunId) : null);
             setPickGroup(null);
           }}
-          nest={nest}
           busy={awaiting.length > 0}
           busyNote={awaiting
             .map((id) => dayLabel(id, runDate(id)).split(' · ')[0])
@@ -378,6 +375,21 @@ export function MonitorScreen({
                 </span>
               </span>
 
+              {/* Пробки — сразу под часами: это второе, что рассказывает о
+                  минуте за окном, и стоять оно должно рядом с первым, а не
+                  за перечнем участков. Нет строки — нет и сведений:
+                  источник не ответил, а выдумывать баллы нельзя, по ним
+                  судят о причинах опозданий. */}
+              {traffic && (
+                <span className="livecard__jamrow">
+                  <span className="livecard__label">Пробки в Москве</span>
+                  <span className="livecard__value">
+                    <span className={'livecard__jam livecard__jam--' + traffic.tone} />
+                    {traffic.level} {pluralWord(traffic.level, 'балл', 'балла', 'баллов')}
+                  </span>
+                </span>
+              )}
+
               <span className="livecard__rows">
                 {/* Участок за участком: кто ведёт день, сколько людей в
                     смене и — по нажатию — чьи маршруты сегодня на карте.
@@ -385,12 +397,16 @@ export function MonitorScreen({
                     три района была бы неправдой: у каждого свой рабочий
                     расчёт, и меняют их порознь. */}
                 {groups.map((group) => {
-                  const open = openGroup === group.run;
+                  const off = hidden.has(group.run);
+                  const open = openGroup === group.run && !off;
                   const picking = pickGroup === group.run;
                   const day = runsOfDay(group.run);
                   const others = day ? day.runs.filter((id) => id !== group.run) : [];
                   return (
-                    <span className="livegroup" key={group.run}>
+                    <span
+                      className={'livegroup' + (off ? ' livegroup--off' : '')}
+                      key={group.run}
+                    >
                       <span className="livegroup__head">
                         <button
                           type="button"
@@ -399,6 +415,7 @@ export function MonitorScreen({
                             setOpenGroup(open ? null : group.run);
                             setPickGroup(null);
                           }}
+                          disabled={off}
                           aria-expanded={open}
                           title={
                             open
@@ -406,9 +423,43 @@ export function MonitorScreen({
                               : `Маршруты на сегодня: ${group.place}`
                           }
                         >
-                          <Icon name={open ? 'chevron-down' : 'chevron-right'} size={12} />
-                          <span className="livegroup__place">{group.place}</span>
-                          <span className="livegroup__crew">{group.crew} инж.</span>
+                          <span className="livegroup__place">
+                            <Icon name={open ? 'chevron-down' : 'chevron-right'} size={12} />
+                            {group.place}
+                          </span>
+                          <span className="livegroup__crew">
+                            {off ? 'скрыт' : `${group.crew} инж.`}
+                          </span>
+                        </button>
+
+                        {/* Глаз снимает участок с карты и из чисел смены.
+                            Последний показанный снять нельзя: пустая карта
+                            в живом виде — не ответ ни на один вопрос. */}
+                        <button
+                          type="button"
+                          className={'livegroup__eye' + (off ? ' livegroup__eye--off' : '')}
+                          onClick={() =>
+                            setHidden((was) => {
+                              const next = new Set(was);
+                              if (next.has(group.run)) next.delete(group.run);
+                              else next.add(group.run);
+                              return next;
+                            })
+                          }
+                          aria-pressed={!off}
+                          disabled={!off && shownRuns.length <= 1}
+                          title={
+                            off
+                              ? `Вернуть ${group.place} на карту`
+                              : shownRuns.length <= 1
+                                ? 'Это последний участок на карте'
+                                : `Убрать ${group.place} с карты`
+                          }
+                        >
+                          {/* Зачёркнутого глаза в наборе знаков нет, и
+                              выдумывать его здесь незачем: погашенный глаз
+                              рядом со словом «скрыт» говорит то же самое. */}
+                          <Icon name="eye" size={13} />
                         </button>
 
                         {/* Номер расчёта — кнопка: день ведут одним планом,
@@ -489,15 +540,7 @@ export function MonitorScreen({
                                 onMouseLeave={() => onLive(null)}
                                 onFocus={() => onLive(route.id)}
                                 onBlur={() => onLive(null)}
-                                onClick={() => {
-                                  /* Выбор маршрута отменяет выбор гнезда:
-                                     это два ответа на один вопрос «что
-                                     оставить на карте», и держать их разом
-                                     нельзя. */
-                                  setNest(null);
-                                  onPin(pinned === route.id ? null : route.id);
-
-                                }}
+                                onClick={() => onPin(pinned === route.id ? null : route.id)}
                                 aria-pressed={pinned === route.id}
                                 title={`${route.number} · ${route.name} · ${route.visits} заявок · загрузка ${Math.round(
                                   route.occupancy * 100
@@ -520,18 +563,6 @@ export function MonitorScreen({
                   );
                 })}
 
-                {/* Пробки в городе. Нет строки — нет и сведений: источник не
-                    ответил, и выдумывать баллы нельзя, по ним судят о
-                    причинах опозданий. */}
-                {traffic && (
-                  <span className="livecard__row">
-                    <span className="livecard__label">Пробки в Москве</span>
-                    <span className="livecard__value">
-                      <span className={'livecard__jam livecard__jam--' + traffic.tone} />
-                      {traffic.level} {pluralWord(traffic.level, 'балл', 'балла', 'баллов')}
-                    </span>
-                  </span>
-                )}
               </span>
 
               {(beforeShift || afterShift) && (
@@ -542,40 +573,46 @@ export function MonitorScreen({
                 </span>
               )}
 
+              {/* Отметка обмена — самым тихим, что есть на плашке: она не
+                  сообщает ничего нового, она свидетельствует, что число
+                  выше живое. «Синхронизация», а не «обновлено»: обновляется
+                  вид, а сверяются с источником — и сказано про второе. */}
               <span className="livecard__foot">
-                <span className="livecard__stamp">обновлено {hhmm(wall)}</span>
-                {/* Дорога назад к выбору дней — здесь же, в плашке: она и
-                    говорит, за чем смотрим, ей и менять. */}
-                <button type="button" className="livecard__back" onClick={onBack}>
-                  Сменить день
-                </button>
+                <span className="livecard__stamp">синхронизация: {hhmm(wall)}</span>
               </span>
             </section>
           }
           /* Числа хода работы — полосой внизу, на том же месте, где в
              диспетчерской стоят итоги расчёта: там их и ищут глазами. Наверху
-             справа — состояние смены, здесь — её счёт. */
+             справа — состояние смены, здесь — её счёт.
+
+             Выбрали маршрут или заявку — на том же месте встаёт сводка о
+             выбранном, ровно как в диспетчерской. Прежде мониторинг на
+             щелчок отвечал одной подсветкой: линия становилась ярче, а что
+             это за маршрут и чья это заявка, экран не говорил. */
           aside={
-            <div className="mapdrag">
-              <section className="mapstat" aria-label="Ход работы сейчас">
-                <div className="mapstat__metrics">
-                  {tiles.map((tile) => (
-                    <span key={tile.key} className="cmetric cmetric--flat" title={tile.caption}>
-                      <span className="cmetric__label">
-                        {tile.bad && tile.value > 0 && (
-                          <span className="cmetric__dot cmetric__dot--bad" />
-                        )}
-                        {tile.label}
-                      </span>
-                      <span className="cmetric__value">
-                        {tile.value}
-                        <span className="cmetric__unit">чел.</span>
-                      </span>
-                      <span className="cmetric__caption">{tile.caption}</span>
-                    </span>
-                  ))}
-                </div>
-              </section>
+            <div className={'mapdrag' + (picked ? ' mapdrag--pick' : '')}>
+              {picked ? (
+                <MapPick
+                  view={shown}
+                  runId={runId}
+                  routeKeyOf={routeKeyOf}
+                  pinned={pinned}
+                  selectedOrder={selectedOrder}
+                  nest={null}
+                  onPickRoute={(id) => {
+                    onLive(null);
+                    onPin(id);
+                  }}
+                  onHoverRoute={onLive}
+                  onClose={() => {
+                    onSelectOrder(null);
+                    onPin(null);
+                  }}
+                />
+              ) : (
+                <MonitorTiles tiles={tiles} />
+              )}
             </div>
           }
         />
@@ -678,6 +715,35 @@ export function MonitorScreen({
           размера, и смотреть на движение людей было бы неудобно в обоих
           местах сразу. */}
     </div>
+  );
+}
+
+/* Полоса хода работы — числа смены поверх карты. Отдельным лицом, потому
+   что стоит она то на карте, то уступает место сводке выбранного, а список
+   плиток у неё один и тот же. */
+function MonitorTiles({
+  tiles
+}: {
+  tiles: { key: string; label: string; value: number; caption: string; bad: boolean }[];
+}) {
+  return (
+    <section className="mapstat" aria-label="Ход работы сейчас">
+      <div className="mapstat__metrics">
+        {tiles.map((tile) => (
+          <span key={tile.key} className="cmetric cmetric--flat" title={tile.caption}>
+            <span className="cmetric__label">
+              {tile.bad && tile.value > 0 && <span className="cmetric__dot cmetric__dot--bad" />}
+              {tile.label}
+            </span>
+            <span className="cmetric__value">
+              {tile.value}
+              <span className="cmetric__unit">чел.</span>
+            </span>
+            <span className="cmetric__caption">{tile.caption}</span>
+          </span>
+        ))}
+      </div>
+    </section>
   );
 }
 

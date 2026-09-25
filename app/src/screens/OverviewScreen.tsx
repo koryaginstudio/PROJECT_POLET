@@ -386,7 +386,6 @@ export function OverviewScreen({
            а не уводит в сводку: в этом виде экран не покидают. */
         onSelectEngineer={(id) => registry && setCard({ kind: 'engineer', id })}
         onSelectNest={setNest}
-        nest={nest}
         fill
         aside={aside}
       />

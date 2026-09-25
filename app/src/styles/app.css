@@ -16114,6 +16114,28 @@ button.subhdr__close {
   pointer-events: auto;
 }
 
+/* Подпись участка на подложке. Не плашка со стеклом, а само слово: подложка
+   лежит под всем городом, и заголовок к ней должен быть таким же тихим —
+   цветом своего участка и вразрядку, как надпись на карте, а не как окно
+   поверх неё. */
+.geo__zonebox {
+  pointer-events: none;
+}
+
+.geo__zone {
+  display: block;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--tone);
+  opacity: 0.75;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.55);
+}
+
 /* Завеса на время загрузки дня. Нужна там, где план под картой меняют на
    ходу: без неё полгорода ещё от прежнего расчёта, полгорода уже от нового,
    и разницы не видно. Завеса ловит щелчки на себя — нажимать на половину
@@ -16863,6 +16885,16 @@ button.subhdr__close {
   white-space: nowrap;
 }
 
+/* Пробки — своя строка под часами, с тем же расстоянием между столбцами,
+   что и у участков ниже. */
+.livecard__jamrow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  font-size: var(--fs-caption);
+}
+
 .livecard__rows {
   display: flex;
   flex-direction: column;
@@ -16916,10 +16948,15 @@ button.subhdr__close {
   gap: var(--sp-3);
 }
 
+/* Отметка обмена — самое тихое на плашке: её читают раз в день, когда
+   заподозрят, что числа встали. В глаза она бросаться не должна. */
 .livecard__stamp {
-  font-size: var(--fs-small);
+  font-size: 10px;
+  line-height: 1.4;
+  letter-spacing: 0.01em;
   color: var(--glass-ink-mute);
   font-variant-numeric: tabular-nums;
+  opacity: 0.75;
 }
 
 /* Дорога назад к выбору дней — тихой строкой в углу плашки: её ищут редко,
@@ -16957,10 +16994,14 @@ button.subhdr__close {
   gap: 2px;
 }
 
+/* Строка участка — сетка в три колонки, а не строка с распоркой: названия
+   у районов разной длины, и на распорке «14 инж.» у «Юго-востока» стояло на
+   сантиметр левее, чем у «Востока». Три столбца ставят число под числом и
+   номер под номером, как в любой таблице. */
 .livegroup__head {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 52px 22px 56px;
   align-items: center;
-  justify-content: space-between;
   gap: var(--sp-2);
 }
 
@@ -16972,6 +17013,8 @@ button.subhdr__close {
   display: flex;
   align-items: center;
   gap: 5px;
+  /* Стрелка не растягивает первую колонку: она стоит перед названием и
+     занимает своё место сама. */
   padding: 2px 4px;
   margin: 0 -4px;
   border: 0;
@@ -16985,8 +17028,14 @@ button.subhdr__close {
   transition: var(--t-control);
 }
 
+/* Заголовок района занимает первые две колонки: название тянется, число
+   людей прижато к правому краю своей. Ширины колонок заданы числом, а не
+   содержимым, — только так «14 инж.» у «Юго-востока» встанет ровно под
+   «14 инж.» у «Востока». */
 .livegroup__open {
-  flex: 1 1 auto;
+  display: grid;
+  grid-column: 1 / 3;
+  grid-template-columns: minmax(0, 1fr) 52px;
   min-width: 0;
 }
 
@@ -17005,9 +17054,19 @@ button.subhdr__close {
 }
 
 .livegroup__place {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Число людей — в своей колонке, вправо: так они стоят столбиком у всех
+   трёх районов. */
+.livegroup__crew {
+  justify-self: end;
 }
 
 /* Сколько людей на участке — тем же тихим тоном, что и остальные подписи:
@@ -17021,7 +17080,7 @@ button.subhdr__close {
 /* Номер расчёта — единственное на строке, что написано как значение:
    по нему и узнают, чем ведут день. */
 .livegroup__run {
-  flex: 0 0 auto;
+  justify-content: flex-end;
   font-weight: var(--fw-semibold);
   font-variant-numeric: tabular-nums;
   color: var(--glass-ink);
@@ -17030,6 +17089,51 @@ button.subhdr__close {
 .livegroup__run:disabled {
   cursor: default;
   opacity: 0.65;
+}
+
+/* Глаз участка — тише всего в строке: им пользуются, когда город стал
+   слишком густым, а не каждую минуту. Погашенный означает «участок снят с
+   карты». */
+.livegroup__eye {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--glass-ink-soft);
+  cursor: pointer;
+  transition: var(--t-control);
+}
+
+.livegroup__eye:hover:not(:disabled) {
+  background: var(--glass-hover);
+  color: var(--glass-ink);
+}
+
+.livegroup__eye:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+
+.livegroup__eye--off {
+  opacity: 0.4;
+}
+
+.livegroup__eye:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+/* Снятый участок остаётся строкой, но тускнеет весь: его нет на карте, и
+   читать в нём нечего, кроме имени и способа вернуть. */
+.livegroup--off .livegroup__place,
+.livegroup--off .livegroup__crew,
+.livegroup--off .livegroup__run {
+  opacity: 0.5;
 }
 
 .livegroup__runs,
