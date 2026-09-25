@@ -18845,3 +18845,187 @@ button.subhdr__close {
     padding: var(--sp-5) var(--sp-4);
   }
 }
+
+/* ─── отклик на курсор ────────────────────────────────────────────────────
+
+   Всё, что нажимается на карте и в плашках поверх неё, отвечает движением:
+   под курсором чуть подрастает, под нажатием проседает. Это не украшение —
+   это способ отличить живое от нарисованного: на карте поверх города лежат
+   и кнопки, и подписи, и по виду они одинаковы, пока не тронешь.
+
+   Величины намеренно скупые. Полтора процента роста на строке перечня и
+   шесть на круглой кнопке — предел, за которым движение начинает мешать
+   читать: перечень из четырнадцати строк, где каждая прыгает под курсором,
+   утомляет к третьему дню работы. Отсюда же выбор смягчения: ease-out без
+   отскока, 140 миллисекунд на подъём и 80 на нажатие — отпустить должно
+   быть заметнее, чем нажать.
+
+   Кому движение мешает или вредит, тот выключает его в системе — последним
+   правилом раздела мы это уважаем. */
+
+.geo__view,
+.geo__zoombtn,
+.geo__close,
+.livegroup__eye,
+.livegroup__open,
+.livegroup__run {
+  transition:
+    transform 140ms var(--ease-out-strong),
+    background-color 140ms var(--ease-out-strong),
+    color 140ms var(--ease-out-strong),
+    box-shadow 140ms var(--ease-out-strong);
+}
+
+.geo__view:hover:not(:disabled),
+.geo__zoombtn:hover:not(:disabled),
+.geo__close:hover:not(:disabled) {
+  transform: scale(1.06);
+}
+
+.geo__view:active:not(:disabled),
+.geo__zoombtn:active:not(:disabled),
+.geo__close:active:not(:disabled) {
+  transform: scale(0.92);
+  transition-duration: 80ms;
+}
+
+/* Кнопки в плашке смены растут от своего края, а не от середины: строка
+   участка прижата к краям плашки, и рост от середины сдвигал бы название
+   влево, а номер расчёта вправо — на полстроки танца при каждом движении
+   мыши. */
+.livegroup__open {
+  transform-origin: left center;
+}
+
+.livegroup__run,
+.livegroup__eye {
+  transform-origin: right center;
+}
+
+.livegroup__open:hover:not(:disabled),
+.livegroup__run:hover:not(:disabled),
+.livegroup__eye:hover:not(:disabled) {
+  transform: scale(1.04);
+}
+
+.livegroup__open:active:not(:disabled),
+.livegroup__run:active:not(:disabled),
+.livegroup__eye:active:not(:disabled) {
+  transform: scale(0.97);
+  transition-duration: 80ms;
+}
+
+/* Строки перечней — маршруты участка, маршруты карты, расчёты на замену.
+   Растут от левого края: номер стоит слева, по нему строку и находят
+   глазами, и уезжать ему некуда. */
+.georoutes__item,
+.livegroup__item,
+.livegroup__pick,
+.georoutes__more {
+  transform-origin: left center;
+  transition:
+    transform 140ms var(--ease-out-strong),
+    background-color 140ms var(--ease-out-strong),
+    color 140ms var(--ease-out-strong),
+    box-shadow 140ms var(--ease-out-strong);
+}
+
+.georoutes__item:hover,
+.livegroup__item:hover,
+.livegroup__pick:hover,
+.georoutes__more:hover {
+  transform: scale(1.015);
+}
+
+.georoutes__item:active,
+.livegroup__item:active,
+.livegroup__pick:active,
+.georoutes__more:active {
+  transform: scale(0.995);
+  transition-duration: 80ms;
+}
+
+/* Метка маршрута на карте. Она уже смещена от своей точки раскладкой, и
+   масштаб приходится добавлять к тому же преобразованию — иначе метка
+   прыгнет на точку. */
+.geo__end {
+  transition:
+    opacity 120ms var(--ease-out-strong),
+    transform 140ms var(--ease-out-strong);
+}
+
+.geo__end:hover {
+  transform: translate(var(--dx, 9px), calc(var(--dy, 0px) - 50%)) scale(1.12);
+}
+
+.geo__end:active {
+  transform: translate(var(--dx, 9px), calc(var(--dy, 0px) - 50%)) scale(1.04);
+  transition-duration: 80ms;
+}
+
+/* Тихая строка «сменить день», «ещё N» и прочие подписи-кнопки: у них
+   движения нет вовсе, только цвет, — но и он должен меняться не рывком. */
+.livecard__back,
+.mapstat__go {
+  transition:
+    color 140ms var(--ease-out-strong),
+    background-color 140ms var(--ease-out-strong),
+    transform 140ms var(--ease-out-strong);
+}
+
+.mapstat__go:hover {
+  transform: translateX(2px);
+}
+
+/* Сводка выбранного и перечень участка появляются с движением: они
+   встают поверх города, и возникнуть на пустом месте мгновенно — значит
+   заставить искать глазами, что изменилось. */
+.mpick,
+.livegroup__list,
+.livegroup__runs {
+  animation: rise 160ms var(--ease-out-strong) both;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .geo__view,
+  .geo__zoombtn,
+  .geo__close,
+  .livegroup__eye,
+  .livegroup__open,
+  .livegroup__run,
+  .georoutes__item,
+  .livegroup__item,
+  .livegroup__pick,
+  .georoutes__more,
+  .geo__end,
+  .mapstat__go {
+    transition: none;
+  }
+
+  .geo__view:hover:not(:disabled),
+  .geo__zoombtn:hover:not(:disabled),
+  .geo__close:hover:not(:disabled),
+  .livegroup__open:hover:not(:disabled),
+  .livegroup__run:hover:not(:disabled),
+  .livegroup__eye:hover:not(:disabled),
+  .georoutes__item:hover,
+  .livegroup__item:hover,
+  .livegroup__pick:hover,
+  .georoutes__more:hover,
+  .mapstat__go:hover {
+    transform: none;
+  }
+
+  .mpick,
+  .livegroup__list,
+  .livegroup__runs {
+    animation: none;
+  }
+}
