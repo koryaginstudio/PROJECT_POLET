@@ -54,12 +54,19 @@ interface Props {
       свой расчёт: на общей карте лежат дни трёх участков. */
   onOpenOrder: (runId: string, orderId: string) => void;
   onOpenEngineer: (dayName: string | null, engineerId: string) => void;
+  /** Собрать новый расчёт: туда ведёт предупреждение о пробках. */
+  onRecalc: () => void;
   onSelectEngineer: (id: string) => void;
 }
 
 /* Средства передвижения в том порядке, в каком их читают: сперва машины —
    их большинство, — потом всё остальное. Значки те же, что в перечнях
    маршрутов и в базах. */
+/* С какого числа баллов город считается вставшим. Пять — обычный
+   московский день; шесть и выше означает, что дорога идёт не так, как
+   заложено в расчёте. */
+const JAM_ALERT = 6;
+
 const RIDES = [
   { key: 'car', icon: 'car', title: 'Автомобиль' },
   { key: 'transit', icon: 'bus', title: 'Общественный транспорт' },
@@ -91,6 +98,7 @@ export function MonitorScreen({
   onSelectOrder,
   onOpenOrder,
   onOpenEngineer,
+  onRecalc,
   onSelectEngineer
 }: Props) {
   const [now, setNow] = useState(() => new Date());
@@ -484,12 +492,45 @@ export function MonitorScreen({
                   судят о причинах опозданий. */}
               {traffic && (
                 <span className="livecard__jamrow">
-                  <span className="livecard__label">Пробки в Москве</span>
+                  <span className="livecard__label">
+                    <Icon name="traffic-light" size={13} />
+                    Пробки в Москве
+                  </span>
                   <span className="livecard__value">
                     <span className={'livecard__jam livecard__jam--' + traffic.tone} />
                     {traffic.level} {pluralWord(traffic.level, 'балл', 'балла', 'баллов')}
                   </span>
                 </span>
+              )}
+
+              {/* Город стоит гуще, чем рассчитывал план.
+
+                  Движок о пробках не знает вовсе: время в пути у него одна
+                  оценка на весь день, а запас между визитами — те самые
+                  минуты из рычага «время и запас». Значит в день, когда
+                  город встал, план обещает больше, чем сможет: маршруты
+                  посчитаны по спокойной дороге.
+
+                  Сказать об этом должен экран — больше некому. Порог
+                  договорной: до пяти баллов в Москве идёт обычный день, с
+                  шести начинается то, чего в плане нет. */}
+              {traffic && traffic.level >= JAM_ALERT && (
+                <button
+                  type="button"
+                  className="livecard__alarm"
+                  onClick={onRecalc}
+                  title="Собрать новый расчёт с большим запасом между визитами"
+                >
+                  <Icon name="warning" size={14} />
+                  <span className="livecard__alarm-body">
+                    <b>Пробки выше расчётных</b>
+                    <span>
+                      План считался по спокойной дороге. Стоит пересчитать день с бо́льшим
+                      запасом между визитами.
+                    </span>
+                  </span>
+                  <Icon name="chevron-right" size={13} />
+                </button>
               )}
 
               <span className="livecard__rows">

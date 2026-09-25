@@ -1290,6 +1290,7 @@ export function App() {
              ни задали. */
           onOpenOrder={openOrderOf}
           onOpenEngineer={openEngineerOf}
+          onRecalc={createRunForm}
         />
         ) : (
           <MonitorGate

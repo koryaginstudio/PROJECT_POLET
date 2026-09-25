@@ -111,7 +111,10 @@ export function MapPick({
       {onOpen ? (
         <button type="button" className="mpick__title mpick__title--go" onClick={onOpen}>
           {title}
-          <Icon name="arrow-right" size={13} />
+          {/* Стрелка идёт сразу за названием, а не у правого края: с
+              распоркой между ними заголовок читался как строка таблицы,
+              где слева имя, а справа чужое значение. */}
+          <Icon name="arrow-right" size={12} className="mpick__go-arrow" />
         </button>
       ) : (
         <span className="mpick__title">{title}</span>

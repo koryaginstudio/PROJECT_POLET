@@ -16147,22 +16147,6 @@ button.subhdr__close {
   transform: scale(1.15);
 }
 
-/* Выноски от плашек к их точкам. Слой во всю карту и без событий: это
-   рисунок, а не орган управления. */
-/* Слой выносок лежит во всю карту, и событий он не берёт совсем. Правило
-   стоит после общего «дети плашек ловят курсор» нарочно: под этим общим
-   правилом слой перехватывал на себя весь город — карта переставала
-   таскаться, потому что мышь попадала в прозрачный прямоугольник поверх
-   неё, а не в саму карту. */
-.geo__plates > .geo__leads {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-  pointer-events: none;
-  color: var(--glass-ink);
-}
 
 /* Подпись участка на подложке. Не плашка со стеклом, а само слово: подложка
    лежит под всем городом, и заголовок к ней должен быть таким же тихим —
@@ -16554,8 +16538,8 @@ button.subhdr__close {
 .mpick__title--go {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 6px;
+  justify-content: flex-start;
+  gap: 5px;
   padding: 0;
   border: 0;
   background: none;
@@ -16568,6 +16552,52 @@ button.subhdr__close {
 
 .mpick__title--go:hover {
   color: var(--text-link);
+}
+
+/* Стрелка у названия — того же тона, что и подписи рядом, и чуть тусклее
+   самого названия: она показывает, что заголовок ведёт дальше, а не
+   требует внимания. Чёрной на тёмной карточке она читалась как дыра. */
+.mpick__go-arrow {
+  color: var(--glass-ink-mute, var(--text-muted));
+  opacity: 0.8;
+  transition:
+    transform 140ms var(--ease-out-strong),
+    color 140ms var(--ease-out-strong);
+}
+
+.mpick__title--go:hover .mpick__go-arrow {
+  color: inherit;
+  transform: translateX(2px);
+}
+
+/* Имя исполнителя в сводке — такая же ссылка, как и остальные: под
+   курсором подчёркивается и светлеет. Прежде она молчала, и понять, что
+   по ней можно перейти, было нельзя. */
+.mpick__link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-link);
+  font: inherit;
+  cursor: pointer;
+  text-align: right;
+  transition:
+    color 140ms var(--ease-out-strong),
+    text-decoration-color 140ms var(--ease-out-strong);
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 2px;
+}
+
+.mpick__link:hover {
+  text-decoration-color: currentColor;
+  filter: brightness(1.15);
+}
+
+.mpick__link:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+  border-radius: var(--r-xs);
 }
 
 .mpick__title--go:focus-visible {
@@ -17040,6 +17070,54 @@ button.subhdr__close {
   justify-content: space-between;
   gap: var(--sp-3);
   font-size: var(--fs-caption);
+}
+
+/* Знак в строке пробок: светофор стоит перед подписью — число баллов без
+   него читается как ещё одна строка чисел смены. */
+.livecard__label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* Город встал гуще, чем рассчитывал план. Строка нажимается: с неё идут
+   пересчитывать день. */
+.livecard__alarm {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: rgba(255, 170, 0, 0.16);
+  color: var(--warning-200, #ffd48a);
+  font-family: var(--font-sans);
+  font-size: var(--fs-small);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color 140ms var(--ease-out-strong),
+    transform 140ms var(--ease-out-strong);
+}
+
+.livecard__alarm:hover {
+  background: rgba(255, 170, 0, 0.24);
+  transform: scale(1.01);
+}
+
+.livecard__alarm:active {
+  transform: scale(0.995);
+  transition-duration: 80ms;
+}
+
+.livecard__alarm-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  line-height: var(--lh-body);
 }
 
 .livecard__rows {

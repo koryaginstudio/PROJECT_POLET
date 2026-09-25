@@ -637,6 +637,13 @@ export function MapBoard({
      снаружи: это наведение, оно кончается вместе с движением мыши, и
      рассказывать о нём экрану незачем. */
   const [hoverNest, setHoverNest] = useState<string[] | null>(null);
+  /* Курсор на самом пути — не то же, что «маршрут выбран».
+
+     Снаружи приходит одно значение на оба случая: у выбранного маршрута
+     подсветка равна выбору, и наведение на него ничего не меняло — линия
+     не прибавляла ни пикселя, и казалось, что целишься мимо. Поэтому карта
+     помнит своё: под курсором путь или нет. */
+  const [overRoute, setOverRoute] = useState<string | null>(null);
   /* Дорожная сеть — для границ участков. Читается один раз и не мешает
      карте: пока её нет, границы идут как считаются, а придёт — лягут по
      улицам. */
@@ -669,6 +676,16 @@ export function MapBoard({
   const [routesOn, setRoutesOn] = useState(true);
   /* Подложки участков. Выбор запоминается: на одном рабочем месте они
      помогают, на другом мешают, и спрашивать об этом каждое утро незачем. */
+  /* Метки маршрутов — плашки с номером и значком у конца пути. На плотной
+     карте их сорок, и иногда они мешают больше, чем помогают: выбор
+     запоминается. */
+  const [platesOn, setPlatesOn] = useState(() => {
+    try {
+      return localStorage.getItem('polet.mapplates') !== 'off';
+    } catch {
+      return true;
+    }
+  });
   const [zonesOn, setZonesOn] = useState(() => {
     try {
       return localStorage.getItem('polet.mapzones') !== 'off';
@@ -1077,8 +1094,14 @@ export function MapBoard({
            нарочно: у выбранного маршрута промах по линии попадает в пустое
            место карты и снимает выбор вместе со всеми его подписями. */
         const grip = L.polyline(path, { color, weight: 30, opacity: 0, noClip: true });
-        grip.on('mouseover', () => pick.current.onLive(load.engineer.id));
-        grip.on('mouseout', () => pick.current.onLive(null));
+        grip.on('mouseover', () => {
+          pick.current.onLive(load.engineer.id);
+          setOverRoute(load.engineer.id);
+        });
+        grip.on('mouseout', () => {
+          pick.current.onLive(null);
+          setOverRoute(null);
+        });
         grip.on('click', () => pick.current.onPin(load.engineer.id));
         grip.addTo(routes);
         grips.current.set(load.engineer.id, grip);
@@ -1374,7 +1397,9 @@ export function MapBoard({
     if (!zoneOf) return [];
     const ground = zoneSource ?? view;
     const spots = new Map<string, { lat: number; lon: number }[]>();
-    const roads: [number, number][] = [];
+    /* Дороги плана — ломаными, как они и пришли: по ним межа поедет
+       поворотами, а не прыжками от точки к точке. */
+    const roadsOfPlan: RoadLine[] = [];
     for (const load of ground.loads) {
       const zone = zoneOf(load.engineer.id);
       if (!zone) continue;
@@ -1383,7 +1408,8 @@ export function MapBoard({
       for (const stop of load.route?.stops ?? []) {
         const order = ground.orderById.get(stop.order_id);
         if (order) list.push({ lat: order.lat, lon: order.lon });
-        for (const point of stop.geometry ?? []) roads.push(point);
+        const leg = stop.geometry ?? [];
+        if (leg.length >= 2) roadsOfPlan.push(leg.map((one) => [one[0], one[1]]));
       }
       spots.set(zone, list);
     }
@@ -1567,7 +1593,12 @@ export function MapBoard({
        и притягивать к единственной трассе всё поле значило бы нарисовать
        границу там, где её нет. Там межа остаётся расчётной. */
     const REACH_ROAD = 2.5 / 111;
-    const net = roadNet.length > 0 ? new RoadIndex(roadNet, all[0].lat) : null;
+    /* Сеть берём полную, если она есть. Нет её — идём по тем дорогам, что
+       пришли с планом: это геометрии перегонов, по которым ездят сами
+       маршруты. Сеть грубее полной и есть не везде, но улицы, разделяющие
+       участки, в ней как раз те самые — по ним и ездят. */
+    const lines = roadNet.length > 0 ? roadNet : roadsOfPlan;
+    const net = lines.length > 0 ? new RoadIndex(lines, all[0].lat) : null;
     const alongRoads = (line: [number, number][]): [number, number][] => {
       if (!net) return line;
       const snaps = line.map((one) => net.nearest(one[0], one[1], REACH_ROAD));
@@ -1739,11 +1770,58 @@ export function MapBoard({
          границы сходятся в одной точке города, и «Восток» с «Югоцентром»
          вставали там плечом к плечу, будто подписывают одно и то же. */
       const busy: { x: number; y: number }[] = [];
+
+      /* Лежит ли точка внутри кольца. Обычный счёт пересечений луча:
+         нечётное число — внутри. */
+      const inside = (point: [number, number], ring: [number, number][]) => {
+        let yes = false;
+        for (let i = 0, j = ring.length - 1; i < ring.length; j = i, i += 1) {
+          const [ay, ax] = ring[i];
+          const [by, bx] = ring[j];
+          if (ay > point[0] !== by > point[0]) {
+            const cross = ((bx - ax) * (point[0] - ay)) / (by - ay) + ax;
+            if (point[1] < cross) yes = !yes;
+          }
+        }
+        return yes;
+      };
+
+      /* Подпись не имеет права лечь на чужую землю. «ВОСТОК» посреди
+         Югоцентра — прямая ложь: человек читает подпись как название того
+         места, над которым она стоит. */
+      const foreign = (point: [number, number], own: (typeof zoneShapes)[number]) =>
+        zoneShapes.some(
+          (zone) => zone !== own && zone.rings.some((ring) => inside(point, ring))
+        );
+
+      /* Место подписи: отходим от межи наружу и проверяем, куда попали.
+
+         Считаем в пикселях экрана, а не в градусах: в градусах отступ на
+         общем виде незаметен, а вблизи выбрасывает подпись за горизонт.
+         Сорок пикселей от границы — на любом масштабе это «сбоку от
+         района». Направление — от середины участка через точку межи. */
+      const outside = (zone: (typeof zoneShapes)[number], spot: [number, number], push: number) => {
+        const ys = zone.edge.map((one) => one[0]);
+        const xs = zone.edge.map((one) => one[1]);
+        const middleOf = instance.latLngToContainerPoint([
+          (Math.min(...ys) + Math.max(...ys)) / 2,
+          (Math.min(...xs) + Math.max(...xs)) / 2
+        ]);
+        const edgeAt = instance.latLngToContainerPoint(spot);
+        const dy = edgeAt.y - middleOf.y;
+        const dx = edgeAt.x - middleOf.x;
+        const len = Math.hypot(dy, dx) || 1;
+        const out = L.point(edgeAt.x + (dx / len) * push, edgeAt.y + (dy / len) * push);
+        const ll = instance.containerPointToLatLng(out);
+        return [ll.lat, ll.lng] as [number, number];
+      };
+
       /* Ищем место дважды: сперва подальше от уже занятых, а если вся
          видимая граница участка легла рядом с чужой подписью — там же, но
          не отказываясь от подписи вовсе. Безымянный район на карте хуже
-         двух подписей по соседству. */
-      const pick = (zone: (typeof zoneShapes)[number], apart: boolean) => {
+         двух подписей по соседству. На чужую землю не садимся ни в том, ни
+         в другом случае. */
+      const pick = (zone: (typeof zoneShapes)[number], apart: boolean, clean: boolean) => {
         let best: [number, number] | null = null;
         let far = -1;
         for (const spot of zone.edge) {
@@ -1752,46 +1830,36 @@ export function MapBoard({
             const at = instance.latLngToContainerPoint(spot);
             if (busy.some((one) => Math.hypot(one.x - at.x, one.y - at.y) < 120)) continue;
           }
+          /* Отходим от межи на столько, на сколько получается уйти с чужой
+             земли: сперва подальше, потом ближе. Районы лежат вплотную, и
+             сорок пикселей наружу нередко приводят прямиком к соседу. */
+          let out: [number, number] | null = null;
+          for (const push of [40, 26, 16, 8]) {
+            const spotOut = outside(zone, spot, push);
+            if (!clean || !foreign(spotOut, zone)) {
+              out = spotOut;
+              break;
+            }
+          }
+          if (!out) continue;
           /* Из видимых кусков границы берём тот, что дальше от середины
              экрана: подпись уходит к краю карты и освобождает середину под
              сами маршруты. */
           const away = Math.hypot(spot[0] - middle.lat, spot[1] - middle.lng);
           if (away > far) {
             far = away;
-            best = spot;
+            best = out;
           }
         }
         return best;
       };
 
       for (const { zone, mark } of marks) {
-        const spot = pick(zone, true) ?? pick(zone, false);
-        /* Подпись выходит за межу, наружу.
-
-           Считаем в пикселях экрана, а не в градусах: в градусах отступ на
-           общем виде незаметен, а вблизи выбрасывает подпись за горизонт.
-           Сорок пикселей от границы — на любом масштабе это ровно «сбоку
-           от района»: подпись стоит на пустом поле и не ложится на его
-           собственные маршруты.
-
-           Направление — от середины участка через точку межи. */
-        const best: [number, number] | null = spot
-          ? (() => {
-              const ys = zone.edge.map((one) => one[0]);
-              const xs = zone.edge.map((one) => one[1]);
-              const middleOf = instance.latLngToContainerPoint([
-                (Math.min(...ys) + Math.max(...ys)) / 2,
-                (Math.min(...xs) + Math.max(...xs)) / 2
-              ]);
-              const edgeAt = instance.latLngToContainerPoint(spot);
-              const dy = edgeAt.y - middleOf.y;
-              const dx = edgeAt.x - middleOf.x;
-              const len = Math.hypot(dy, dx) || 1;
-              const out = L.point(edgeAt.x + (dx / len) * 40, edgeAt.y + (dy / len) * 40);
-              const ll = instance.containerPointToLatLng(out);
-              return [ll.lat, ll.lng];
-            })()
-          : null;
+        /* Ищем по убыванию строгости: подальше от чужих подписей и не на
+           чужой земле; потом только не на чужой земле; и наконец как
+           получится — безымянный район на карте хуже подписи у соседа. */
+        const best =
+          pick(zone, true, true) ?? pick(zone, false, true) ?? pick(zone, false, false);
         if (best) busy.push(instance.latLngToContainerPoint(best));
         const node = mark.getElement();
         if (best) {
@@ -2338,18 +2406,34 @@ export function MapBoard({
             ? 0.2
             : 0.95;
       const ride = view.loads.find((load) => load.engineer.id === item.id)?.engineer.transport;
+      /* Выбранный путь и так один на карте, но под курсором он прибавляет
+         ещё: видно, что целишься в сам маршрут, а не в город под ним.
+
+         «Подсвечен» и «под курсором» — разные вещи: у выбранного маршрута
+         подсветка равна выбору, и без отдельного признака наведение на него
+         не меняло ничего. */
+      const lifted = on || pinned === item.id;
+      const under = overRoute === item.id;
+      const weight = bandWeight(thick, lifted) + (under ? thick * 0.6 + 1.6 : 0);
       for (const part of item.parts) {
         part.getElement()?.classList.toggle('geo__live', pinned === item.id);
         part.setStyle({
           color: colorOf(item.id),
-          weight: bandWeight(thick, on),
+          weight,
           opacity,
-          dashArray: dashFor(ride, bandWeight(thick, on))
+          dashArray: dashFor(ride, weight)
         });
       }
     }
     for (const [id, grip] of grips.current) {
       grip.getElement()?.classList.toggle('geo__live', pinned === id);
+      /* Ловушка скрытого маршрута курсор не ловит. Прежде ловила: при
+         выбранном маршруте мышь попадала в невидимую полосу соседнего
+         пути, подсветка уходила к нему, и сам выбранный под курсором не
+         прибавлял в толщине — казалось, что наведение не работает. */
+      const gone = away(id) || (pinned !== null && pinned !== id);
+      const node = grip.getElement() as SVGElement | null;
+      if (node) node.style.pointerEvents = gone ? 'none' : '';
     }
 
     /* Метка конца маршрута живёт одной жизнью со своей линией, но гасит и
@@ -2496,7 +2580,7 @@ export function MapBoard({
       mark.addTo(layer);
       mark.getElement()?.classList.add('geo__live');
     }
-  }, [live, pinned, lonely, hoverNest, selectedOrder, view, routesOn, runId]);
+  }, [live, pinned, lonely, hoverNest, overRoute, selectedOrder, view, routesOn, runId]);
 
   /* Толщина держится в пикселях экрана, а не в метрах: и кайма соседнего
      слоя, и сама линия должны читаться одинаково и на обзоре области, и во
@@ -2913,6 +2997,29 @@ export function MapBoard({
             >
               <Icon name="map-pin" size={15} />
             </button>
+            {/* Метки маршрутов. Прячутся отдельно от самих маршрутов:
+                линии нужны всегда, а подписи к ним — не всякую минуту. */}
+            <button
+              type="button"
+              className={'geo__view' + (platesOn ? ' geo__view--on' : '')}
+              onClick={() =>
+                setPlatesOn((was) => {
+                  const next = !was;
+                  try {
+                    localStorage.setItem('polet.mapplates', next ? 'on' : 'off');
+                  } catch {
+                    /* Приватное окно: выбор не переживёт перезагрузку. */
+                  }
+                  return next;
+                })
+              }
+              aria-pressed={platesOn}
+              aria-label="Метки маршрутов"
+              title={platesOn ? 'Убрать метки маршрутов' : 'Показать метки маршрутов'}
+            >
+              <Icon name="list" size={15} />
+            </button>
+
             {/* Подложки участков. Кнопка стоит там же, где маршруты и
                 точки: это третий слой карты, и спрашивают о нём тем же
                 движением. Участок один — кнопки нет: гасить нечего. */}
@@ -3181,63 +3288,8 @@ export function MapBoard({
             метки считает раскладка `spread`, подписи стоят над своими
             точками. */}
         <div className="geo__plates" ref={platesBox} aria-hidden={false}>
-          {/* Выноски: тонкая линия от плашки к её точке.
 
-              Плашка стоит не на точке, а рядом — иначе на плотном участке
-              они лягут друг на друга. Но отойдя, она теряет хозяина: у
-              подписи «Заявка 66315 · 16:41» посреди города десяток
-              одинаково близких точек. Линия возвращает связь и стоит
-              дёшево — волосок в четверть прозрачности, который не спорит
-              ни с маршрутом, ни с самой подписью. */}
-          <svg className="geo__leads" aria-hidden="true">
-            {endPlates.map((plate) => {
-              const at = atPoint(plate.lat, plate.lon);
-              const spot = endSpots.get(plate.id);
-              if (!at || !spot) return null;
-              const hidden = loneNow !== null || (pinned !== null && pinned !== plate.id);
-              if (hidden) return null;
-              /* Тянем к ближнему краю плашки, а не к её середине: линия,
-                 уходящая под плашку, читается как хвост, торчащий не с той
-                 стороны. */
-              const cx = at.x + spot.x + (spot.x < 0 ? spot.w : 0);
-              const cy = at.y + spot.y;
-              if (Math.hypot(cx - at.x, cy - at.y) < 14) return null;
-              return (
-                <line
-                  key={`lead-${plate.id}`}
-                  x1={at.x}
-                  y1={at.y}
-                  x2={cx}
-                  y2={cy}
-                  stroke={plate.color}
-                  strokeWidth={1}
-                  opacity={live === plate.id || pinned === plate.id ? 0.7 : 0.35}
-                />
-              );
-            })}
-            {stopPlates.map((plate) => {
-              const at = atPoint(plate.lat, plate.lon);
-              const spot = stopSpots.get(plate.key);
-              if (!at || !spot) return null;
-              const cx = at.x + spot.x + spot.w / 2;
-              const cy = at.y + spot.y + (spot.y < 0 ? spot.h : 0);
-              if (Math.hypot(cx - at.x, cy - at.y) < 14) return null;
-              return (
-                <line
-                  key={`lead-${plate.key}`}
-                  x1={at.x}
-                  y1={at.y}
-                  x2={cx}
-                  y2={cy}
-                  stroke="currentColor"
-                  strokeWidth={1}
-                  opacity={0.4}
-                />
-              );
-            })}
-          </svg>
-
-          {endPlates.map((plate) => {
+          {(platesOn ? endPlates : []).map((plate) => {
             const at = atPoint(plate.lat, plate.lon);
             if (!at) return null;
             const spot = endSpots.get(plate.id);

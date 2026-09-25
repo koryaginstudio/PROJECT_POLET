@@ -20,9 +20,9 @@
 import json, time, urllib.parse, urllib.request, sys
 
 SOUTH, WEST, NORTH, EAST = 54.684, 37.421, 55.899, 38.397
-ROWS, COLS = 4, 3
+ROWS, COLS = 8, 6
 URL = "https://overpass-api.de/api/interpreter"
-QUERY = '[out:json][timeout:120];way[highway~"^(motorway|trunk|primary|secondary)$"]({s},{w},{n},{e});out geom;'
+QUERY = '[out:json][timeout:90];way[highway~"^(motorway|trunk|primary|secondary)$"]({s},{w},{n},{e});out geom;'
 
 import os
 
@@ -49,7 +49,7 @@ for r in range(ROWS):
         if (r, c) in done_tiles:
             continue
         q = QUERY.format(s=s, w=w, n=n, e=e)
-        for attempt in range(3):
+        for attempt in range(6):
             try:
                 req = urllib.request.Request(
                     URL,
@@ -61,7 +61,7 @@ for r in range(ROWS):
                 break
             except Exception as err:
                 print(f"плитка {r}:{c} попытка {attempt+1}: {err}", flush=True)
-                time.sleep(8)
+                time.sleep(12)
         else:
             continue
         for el in data.get("elements", []):
