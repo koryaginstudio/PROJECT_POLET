@@ -7501,6 +7501,681 @@ b.ccard__bad {
   color: var(--text-muted);
 }
 
+
+/* ─── главная: вход в мониторинг ───────────────────────────────────────
+
+   Верхний блок отвечает на «что происходит сейчас» слева и «за какими днями
+   за этим смотрят» справа. Две колонки, а не два блока подряд: вопрос один,
+   и ответ на него читается одним взглядом. Узкому окну колонки не по росту —
+   там они встают друг под друга, и первым остаётся то, ради чего сюда и
+   пришли, — живые числа. */
+.homehero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(260px, 1fr);
+  gap: var(--sp-5);
+  align-items: start;
+}
+
+@media (max-width: 1340px) {
+  .homehero {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.homehero__live {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+
+.homehero__note {
+  margin: 0;
+  font-size: var(--fs-small);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.homehero__empty {
+  margin: 0;
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.homehero__days {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--r-md);
+  background: var(--surface-tile);
+  min-width: 0;
+}
+
+.homehero__days-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.homehero__days-title {
+  font-size: var(--fs-small);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+
+/* Хвост у большого числа: «14 из 205» — одно число, а не два, и вторая
+   половина не должна спорить с первой размером. */
+.homelive__of {
+  font-size: 14px;
+  font-weight: var(--fw-semibold);
+  color: var(--text-muted);
+}
+
+.homelive {
+  flex-wrap: wrap;
+  gap: var(--sp-6) var(--sp-7);
+}
+
+/* ─── опаздывающие поимённо ────────────────────────────────────────────── */
+
+.homelate {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.homelate__label {
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+}
+
+.homelate__rest {
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+}
+
+/* Тихая плашка-ссылка на запись: расчёт, инженер, участок. Служебная и не
+   заливается чёрным — настоящие действия раздела стоят кнопками ниже. */
+.homechip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border: 1px solid var(--border-hairline);
+  border-radius: 999px;
+  background: var(--white);
+  color: var(--text-primary);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 120ms var(--ease-out-strong), background 120ms var(--ease-out-strong);
+}
+
+.homechip:hover {
+  border-color: var(--ink-300);
+}
+
+.homechip:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+
+.homechip--danger {
+  border-color: var(--danger-200, var(--border-hairline));
+  color: var(--danger-600);
+}
+
+/* Плашка, которая ничего не открывает: участок в строке смены, номер
+   расчёта рядом с событием. Курсор на ней не обещает нажатия. */
+.homechip--quiet {
+  background: var(--surface-tile);
+  color: var(--text-secondary);
+  font-weight: var(--fw-medium);
+  cursor: default;
+}
+
+button.homechip--quiet {
+  cursor: pointer;
+}
+
+.homechip__num {
+  color: var(--text-muted);
+  font-weight: var(--fw-medium);
+}
+
+/* Номер расчёта в строке текста: подчёркнут пунктиром, потому что стоит
+   внутри предложения, а не рядом с ним. */
+.homelink {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--text-primary);
+  font: inherit;
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+  border-bottom: 1px dashed var(--ink-300);
+  cursor: pointer;
+}
+
+.homelink:hover {
+  color: var(--text-link-hover);
+  border-bottom-color: currentColor;
+}
+
+.homelink:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+
+/* ─── дни участков ─────────────────────────────────────────────────────── */
+
+.homedays {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.homeday {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding: 7px 9px;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  background: var(--white);
+  min-width: 0;
+}
+
+.homeday--on {
+  border-color: var(--ink-1000);
+}
+
+.homeday__pick {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+  cursor: pointer;
+}
+
+.homeday__place {
+  font-size: var(--fs-small);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.homeday__date {
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.homeday__pickrun,
+.homeday__more {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  padding: 2px 0;
+  background: none;
+  color: var(--text-muted);
+  font-size: var(--fs-small);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.homeday__pickrun:hover,
+.homeday__more:hover {
+  color: var(--text-primary);
+}
+
+.homeday__pickrun:focus-visible,
+.homeday__more:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+
+.homeday__more {
+  align-self: flex-start;
+  padding-left: 9px;
+}
+
+/* ─── прошедшие смены ──────────────────────────────────────────────────── */
+
+.homeshifts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--sp-2);
+}
+
+.homeshift {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: var(--sp-3);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--r-md);
+  background: var(--white);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 120ms var(--ease-out-strong);
+}
+
+.homeshift:hover {
+  border-color: var(--ink-300);
+}
+
+.homeshift:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+
+.homeshift__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+
+.homeshift__when {
+  font-size: var(--fs-small);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+
+.homeshift__date {
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.homeshift__value {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: var(--fw-extrabold);
+  line-height: 1.1;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Просевший день назван цветом, а не только числом: ряд из семи карточек
+   читают взглядом, а не по одной. */
+.homeshift__value--low {
+  color: var(--danger-600);
+}
+
+.homeshift__label {
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+}
+
+.homeshift__bar {
+  display: block;
+  height: 4px;
+  margin: 5px 0 3px;
+  border-radius: 999px;
+  background: var(--surface-tile);
+  overflow: hidden;
+}
+
+.homeshift__fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--ink-1000);
+}
+
+.homeshift__fact {
+  font-size: var(--fs-small);
+  color: var(--text-secondary);
+}
+
+.homeshift__fact--muted {
+  color: var(--text-muted);
+}
+
+/* ─── отработанные дни ─────────────────────────────────────────────────── */
+
+.homestat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: var(--sp-4);
+}
+
+.homestat__head,
+.homestat__row {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.9fr) minmax(120px, 1.2fr) minmax(120px, 0.9fr) 108px 96px 116px;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: 8px var(--sp-3);
+  text-align: left;
+}
+
+.homestat__head {
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+.homestat__row {
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  background: none;
+  cursor: pointer;
+  transition: background 120ms var(--ease-out-strong);
+}
+
+.homestat__row:hover {
+  background: var(--surface-tile);
+}
+
+.homestat__row:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+
+.homestat__day {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: var(--fs-small);
+  color: var(--text-primary);
+}
+
+.homestat__date {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.homestat__places {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+}
+
+.homestat__share {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-small);
+  font-variant-numeric: tabular-nums;
+}
+
+.homestat__share .homeshift__bar {
+  flex: 1 1 auto;
+  margin: 0;
+  min-width: 40px;
+}
+
+.homestat__num {
+  font-size: var(--fs-small);
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.homestat__muted {
+  color: var(--text-muted);
+}
+
+.homestat__low {
+  color: var(--danger-600);
+}
+
+/* Узкое окно: колонки сжимаются до чисел, а участки и время наблюдения
+   уходят — они объясняют, а не отвечают, и за ними всегда есть разбор
+   смены по щелчку. */
+@media (max-width: 1240px) {
+  .homestat__head,
+  .homestat__row {
+    grid-template-columns: minmax(110px, 1fr) minmax(110px, 1fr) 96px 88px;
+  }
+
+  .homestat__head > span:nth-child(2),
+  .homestat__row > .homestat__places,
+  .homestat__head > span:nth-child(6),
+  .homestat__row > span:last-child {
+    display: none;
+  }
+}
+
+/* Число записей в плитке базы: единица измерения рядом с числом, чтобы оно
+   читалось само по себе. */
+.ctile__unit {
+  font-family: var(--font-sans);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-medium);
+  color: var(--text-muted);
+}
+
+/* Строка под плитками «Дальше»: откуда сейчас берутся расчёты. */
+.homefoot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: var(--sp-4) 0 0;
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+}
+
+/* ─── окно смены ───────────────────────────────────────────────────────── */
+
+.shiftwin {
+  width: min(720px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  padding: var(--sp-5);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--r-lg);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-lg);
+  animation: tipin 180ms var(--ease-out-strong) both;
+}
+
+.shiftwin__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.shiftwin__title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.shiftwin__title h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: var(--fw-extrabold);
+  color: var(--text-primary);
+}
+
+.shiftwin__date {
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.shiftwin__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--r-sm);
+  background: var(--surface-tile);
+  color: var(--text-primary);
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.shiftwin__close:hover {
+  background: var(--surface-tile-hover);
+}
+
+.shiftwin__close:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+
+.shiftwin__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  min-height: 0;
+}
+
+.shiftwin__note {
+  margin: 0;
+  font-size: var(--fs-small);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.shiftwin__part {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.shiftwin__part-title {
+  font-size: var(--fs-small);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+
+.shiftwin__count {
+  font-weight: var(--fw-medium);
+  color: var(--text-muted);
+}
+
+.shiftwin__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.shiftwin__empty {
+  margin: 0;
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.shiftwin__gone {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  align-items: flex-start;
+}
+
+/* Журнал смены: время слева, значок рода события, строка события и, если
+   событие о расчёте, его номер плашкой справа. */
+.shiftlog {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.shiftlog__row {
+  display: grid;
+  grid-template-columns: 46px 22px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 6px var(--sp-2);
+  border-radius: var(--r-sm);
+}
+
+.shiftlog__row:hover {
+  background: var(--surface-tile);
+}
+
+.shiftlog__at {
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.shiftlog__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--surface-tile);
+  color: var(--text-secondary);
+}
+
+.shiftlog__icon--incident {
+  background: var(--danger-50, var(--surface-tile));
+  color: var(--danger-600);
+}
+
+.shiftlog__icon--duty {
+  color: var(--success-600, var(--text-secondary));
+}
+
+.shiftlog__text {
+  font-size: var(--fs-small);
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+/* ─── окно расчёта ─────────────────────────────────────────────────────── */
+
+.runwin {
+  position: relative;
+  width: min(560px, 100%);
+  padding: var(--sp-5);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--r-lg);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-lg);
+  animation: tipin 180ms var(--ease-out-strong) both;
+}
+
+/* Крестик стоит поверх карточки, а не над ней: карточка расчёта — готовая
+   вещь со своим углом, и заводить ей вторую шапку незачем. */
+.runwin__close {
+  position: absolute;
+  top: var(--sp-3);
+  right: var(--sp-3);
+  z-index: 2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shiftwin,
+  .runwin {
+    animation: none;
+  }
+}
+
 /* ─── мониторинг ──────────────────────────────────────────────────────── */
 
 /* Метка «сейчас»: точка означает «читает часы сам», а не «диспетчер подвинул».
@@ -9501,6 +10176,78 @@ b.ccard__bad {
   content: '·';
   margin-right: 5px;
   color: var(--text-muted);
+}
+
+/* Спрятанные черновики. Перечень открывается по щелчку и живёт над
+   списком: это не раздел базы, а ящик, куда убрали лишнее, — и стоять ему
+   надо там, где его закрывают, а не в конце страницы.
+
+   Строка нарочно бедная: номер, день, время и кнопка. Числа плана здесь
+   были бы обещанием, которого не сдержать, — записи нет в списке, и её
+   карточку сначала надо вернуть. */
+.dbruns__buried {
+  display: grid;
+  gap: 6px;
+}
+
+.dbruns__buried-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 7px 0;
+  border-top: 1px solid var(--border-subtle, rgba(128, 128, 128, 0.18));
+  font-size: var(--fs-small);
+  color: var(--text-secondary);
+}
+
+.dbruns__buried-code {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.dbruns__buried-note {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+
+.dbruns__buried-back {
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--text-secondary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.dbruns__buried-back:hover:not(:disabled),
+.dbruns__buried-show:hover:not(:disabled) {
+  color: var(--text-primary);
+}
+
+.dbruns__buried-back:disabled,
+.dbruns__buried-show:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+/* «показать» в итоговой строке — словом, а не кнопкой: строка читается
+   как предложение, и рамка посреди неё спорила бы с ним. */
+.dbruns__buried-show {
+  margin-left: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--text-secondary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
 }
 
 /* Запись посчитана не сегодняшним движком. Пометка тихая и без цвета
@@ -16539,6 +17286,8 @@ button.subhdr__close {
   display: flex;
   align-items: center;
   justify-content: flex-start;
+  flex-wrap: nowrap;
+  white-space: nowrap;
   gap: 5px;
   padding: 0;
   border: 0;
@@ -16558,15 +17307,16 @@ button.subhdr__close {
    самого названия: она показывает, что заголовок ведёт дальше, а не
    требует внимания. Чёрной на тёмной карточке она читалась как дыра. */
 .mpick__go-arrow {
-  color: var(--glass-ink-mute, var(--text-muted));
-  opacity: 0.8;
+  flex: 0 0 auto;
+  color: currentColor;
+  opacity: 0.55;
   transition:
     transform 140ms var(--ease-out-strong),
     color 140ms var(--ease-out-strong);
 }
 
 .mpick__title--go:hover .mpick__go-arrow {
-  color: inherit;
+  opacity: 1;
   transform: translateX(2px);
 }
 
@@ -17955,6 +18705,39 @@ button.subhdr__close {
      соседние подписи. */
   transform: translate(var(--dx, -45px), var(--dy, -32px));
   pointer-events: none;
+}
+
+/* Точка цвета маршрута перед подписью визита. */
+.geo__stoptag-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 5px;
+  vertical-align: baseline;
+  border-radius: 50%;
+  background: var(--tone, var(--glass-ink));
+}
+
+/* Подпись отзывается вместе со своей точкой: курсор на точке — плашка
+   светлеет и чуть подрастает, и видно, какая из соседних к ней
+   относится. */
+.geo__stoptag {
+  transition:
+    transform 140ms var(--ease-out-strong),
+    box-shadow 140ms var(--ease-out-strong),
+    opacity 120ms var(--ease-out-strong),
+    color 140ms var(--ease-out-strong);
+}
+
+/* Подпись уступает место подробной карточке под курсором. */
+.geo__stoptag--away {
+  opacity: 0;
+}
+
+.geo__stoptag--on {
+  color: var(--glass-ink);
+  box-shadow: var(--glass-edge), 0 0 0 1px var(--tone, transparent);
+  transform: translate(var(--dx, -45px), var(--dy, -32px)) scale(1.06);
 }
 
 /* Значок транспорта — тише номера: номер опознаёт маршрут, значок только

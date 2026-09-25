@@ -644,6 +644,10 @@ export function MapBoard({
      не прибавляла ни пикселя, и казалось, что целишься мимо. Поэтому карта
      помнит своё: под курсором путь или нет. */
   const [overRoute, setOverRoute] = useState<string | null>(null);
+  /* Точка визита под курсором: её подпись отзывается вместе с ней. Прежде
+     плашка молчала, и на плотном участке было не понять, к какой из
+     соседних точек она относится. */
+  const [overStop, setOverStop] = useState<string | null>(null);
   /* Выбранный маршрут — для обработчиков карты: они живут дольше отрисовки
      и о текущем выборе знают только отсюда. */
   const pinnedRef = useRef<string | null>(pinned);
@@ -685,9 +689,11 @@ export function MapBoard({
      запоминается. */
   const [platesOn, setPlatesOn] = useState(() => {
     try {
-      return localStorage.getItem('polet.mapplates') !== 'off';
+      /* По умолчанию погашены: на карте трёх участков сорок таких плашек, и
+         город под ними не виден. Кому нужны — включает и с этим живёт. */
+      return localStorage.getItem('polet.mapplates') === 'on';
     } catch {
-      return true;
+      return false;
     }
   });
   const [zonesOn, setZonesOn] = useState(() => {
@@ -1955,12 +1961,20 @@ export function MapBoard({
   const stopPlates = useMemo(() => {
     const load = pinned ? view.loads.find((item) => item.engineer.id === pinned) : undefined;
     if (!load?.route) return [];
-    const plates: { key: string; text: string; lat: number; lon: number }[] = [
+    const tone = colorOf(load.engineer.id);
+    const plates: {
+      key: string;
+      text: string;
+      lat: number;
+      lon: number;
+      color: string;
+    }[] = [
       {
         key: 'start',
         text: `Выезд · ${hhmm(load.route.totals.start)}${zoneName(load.engineer.id)}`,
         lat: load.engineer.home_lat,
-        lon: load.engineer.home_lon
+        lon: load.engineer.home_lon,
+        color: tone
       }
     ];
     for (const stop of load.route.stops) {
@@ -1970,7 +1984,8 @@ export function MapBoard({
         key: stop.order_id,
         text: `Заявка ${order.id} · ${hhmm(stop.start)}`,
         lat: order.lat,
-        lon: order.lon
+        lon: order.lon,
+        color: tone
       });
     }
     return plates;
@@ -2247,14 +2262,16 @@ export function MapBoard({
          за сотню пикселей, читается как подпись к чужой точке — а на
          плотной карте рядом обязательно есть чужая. Дальше сорока пяти
          пикселей не отходим, связь с точкой держит выноска. */
+      /* Места перебираем вплотную к точке и только потом дальше: подпись,
+         ушедшая на полсотни пикселей, читается как подпись к чужой точке —
+         а на плотной карте чужая рядом всегда. Дальше тридцати не
+         отходим. */
       const tries: { x: number; y: number }[] = [];
-      for (let row = 0; row < 3; row += 1) {
-        const lift = 14 + row * (h + 3);
+      for (const lift of [11, 11 + h + 2, 11 + (h + 2) * 2]) {
         tries.push({ x: -w / 2, y: -lift - h });
         tries.push({ x: -w / 2, y: lift });
       }
-      for (let row = 0; row < 2; row += 1) {
-        const side = 13 + row * 18;
+      for (const side of [10, 22]) {
         tries.push({ x: side, y: -h / 2 });
         tries.push({ x: -side - w, y: -h / 2 });
       }
@@ -2264,10 +2281,9 @@ export function MapBoard({
         const box = { x: at.x + spot.x, y: at.y + spot.y, w, h };
         let cost = 0;
         for (const seat of busy) cost += clash(box, seat);
-        if (cost === 0) {
-          best = { spot, cost };
-          break;
-        }
+        /* Дальнее место дороже ближнего даже когда свободно: подпись должна
+           стоять у своей точки, а не там, где просторнее. */
+        cost += Math.hypot(spot.x + w / 2, spot.y + h / 2) * 6;
         if (!best || cost < best.cost) best = { spot, cost };
       }
       const spot = best?.spot ?? tries[0];
@@ -2501,6 +2517,11 @@ export function MapBoard({
     for (const [key, mark] of nestMarks.current) {
       const gone = lone !== null || (pinned !== null && key !== ownNest);
       mark.setOpacity(gone ? 0 : 1);
+      /* Гнездо выбранного маршрута — его собственный выезд, и курсор оно
+         принимать обязано. Пока маршрут выбран, карта заперта: события
+         достаются только помеченному «живым», а гнездо этой пометки не
+         получало — наведение на выезд не делало ничего. */
+      mark.getElement()?.classList.toggle('geo__live', key === ownNest);
       mark.unbindTooltip();
     }
 
@@ -2587,8 +2608,14 @@ export function MapBoard({
       /* Подпись визита рисует разметка, а не Leaflet: она лежит в рамке
          карты вместе с остальными плашками, и место ей считает раскладка.
          Здесь остаётся сам кружок с номером. */
-      mark.on('mouseover', () => showInfo(rich, mark.getLatLng(), { r: 12 }));
-      mark.on('mouseout', hideInfo);
+      mark.on('mouseover', () => {
+        showInfo(rich, mark.getLatLng(), { r: 12 });
+        setOverStop(order.id);
+      });
+      mark.on('mouseout', () => {
+        hideInfo();
+        setOverStop(null);
+      });
       mark.on('click', () => {
         pickedHere.current = Date.now();
         pick.current.onSelectOrder(order.id);
@@ -3364,18 +3391,30 @@ export function MapBoard({
                   if (node) stopNodes.current.set(plate.key, node);
                   else stopNodes.current.delete(plate.key);
                 }}
-                className="geo__stoptag"
+                /* Курсор на точке — подпись уходит: поверх неё уже стоит
+                   подробная карточка, и одно и то же время висело бы дважды,
+                   в двух плашках рядом. */
+                className={
+                  'geo__stoptag' +
+                  (overStop === plate.key ? ' geo__stoptag--away' : '') +
+                  (selectedOrder === plate.key ? ' geo__stoptag--on' : '')
+                }
                 data-lat={plate.lat}
                 data-lon={plate.lon}
                 style={
                   {
                     left: `${at.x}px`,
                     top: `${at.y}px`,
+                    '--tone': plate.color,
                     '--dx': `${stopSpots.get(plate.key)?.x ?? -45}px`,
                     '--dy': `${stopSpots.get(plate.key)?.y ?? -32}px`
                   } as React.CSSProperties
                 }
               >
+                {/* Точка цвета маршрута: подпись висит рядом с точкой, но не
+                    на ней, и без цвета непонятно, чей это визит — на плотном
+                    участке рядом стоят чужие. */}
+                <i className="geo__stoptag-dot" />
                 {plate.text}
               </span>
             );

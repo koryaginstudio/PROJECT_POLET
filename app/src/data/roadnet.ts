@@ -19,17 +19,78 @@ export type RoadLine = [number, number][];
 
 let cache: Promise<RoadLine[]> | null = null;
 
-/** Сеть дорог. Читается один раз на запуск: файл в несколько мегабайт, и
-    перечитывать его на каждый пересчёт границ незачем. Нет файла — нет и
-    сети: границы тогда идут как считаются, а не по улицам. */
+/** Участки выгрузки: у каждого свой файл дорог. Список короткий и
+    постоянный — это три зоны, на которые посчитан день. */
+const ZONES = ['east', 'southeast', 'center'];
+
+/** Дороги перегонов: `roads.json` хранит их словарём «откуда-куда», и у
+    каждой записи лежит ломаная по улицам. */
+interface RoadsFile {
+  legs?: Record<string, { line?: [number, number][] }>;
+}
+
+/** Прореживание: в ломаной от маршрутизатора точки стоят через десятки
+    метров. Границе такая частота не нужна — она чертится на километрах, —
+    а каждая точка стоит памяти и времени поиска. Берём каждую третью,
+    концы оставляем всегда. */
+const thin = (line: [number, number][]): RoadLine => {
+  if (line.length < 4) return line;
+  const out = line.filter((_one, i) => i % 3 === 0);
+  const last = line[line.length - 1];
+  if (out[out.length - 1] !== last) out.push(last);
+  return out;
+};
+
+/** Сеть дорог для границ участков.
+
+    Сперва смотрим отдельный файл сети — его собирает `dataset/roadnet.py`
+    из OpenStreetMap, и он покрывает всю область, включая поля между
+    городами. Нет его — берём дороги, по которым ездят сами маршруты: они
+    приходят с выгрузкой, лежат в `roads.json` каждой зоны и покрывают как
+    раз те улицы, по которым работают участки. Это и есть те улицы, на
+    которых один район сменяется другим.
+
+    Читается один раз на запуск: тысячи ломаных, и перечитывать их на
+    каждый пересчёт границ незачем. */
 export function loadRoadNet(): Promise<RoadLine[]> {
   if (!cache) {
     cache = fetch('data/roads-net.json')
-      .then((resp) => (resp.ok ? resp.json() : []))
-      .then((rows: unknown) => (Array.isArray(rows) ? (rows as RoadLine[]) : []))
+      .then((resp) => (resp.ok ? resp.json() : null))
+      .then((rows: unknown) => (Array.isArray(rows) && rows.length > 0 ? (rows as RoadLine[]) : null))
+      .catch(() => null)
+      .then((ready) => (ready ? ready : fromPlans()))
       .catch(() => []);
   }
   return cache;
+}
+
+/** Дороги из выгрузки: перегоны всех трёх участков одной кучей. */
+async function fromPlans(): Promise<RoadLine[]> {
+  const parts = await Promise.all(
+    ZONES.map((zone) =>
+      fetch(`data/${zone}/roads.json`)
+        .then((resp) => (resp.ok ? (resp.json() as Promise<RoadsFile>) : null))
+        .catch(() => null)
+    )
+  );
+  const lines: RoadLine[] = [];
+  /* Одни и те же улицы приходят в десятке перегонов: маршруты ездят по
+     общим дорогам. Повторы выбрасываем по концам ломаной — искать
+     ближайшую дорогу среди пяти копий одной и той же незачем. */
+  const seen = new Set<string>();
+  for (const part of parts) {
+    for (const leg of Object.values(part?.legs ?? {})) {
+      const line = leg?.line;
+      if (!Array.isArray(line) || line.length < 2) continue;
+      const first = line[0];
+      const last = line[line.length - 1];
+      const key = `${first[0].toFixed(4)}:${first[1].toFixed(4)}>${last[0].toFixed(4)}:${last[1].toFixed(4)}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      lines.push(thin(line));
+    }
+  }
+  return lines;
 }
 
 /** Ближайшая точка сети к заданной: на каком отрезке какой дороги она
