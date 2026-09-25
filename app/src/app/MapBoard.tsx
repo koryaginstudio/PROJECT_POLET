@@ -1621,8 +1621,29 @@ export function MapBoard({
        участки, в ней как раз те самые — по ним и ездят. */
     const lines = roadNet.length > 0 ? roadNet : roadsOfPlan;
     const net = lines.length > 0 ? new RoadIndex(lines, all[0].lat) : null;
-    const alongRoads = (line: [number, number][]): [number, number][] => {
-      if (!net) return line;
+    /* Уплотняем межу перед посадкой на дороги. Упрощённая ломаная идёт
+       километровыми прыжками, и между её вершинами дорога успевает
+       свернуть трижды — линия срезала бы кварталы напрямую. Разбив длинный
+       отрезок на восьмисотметровые, мы даём каждому куску свою улицу. */
+    const denser = (line: [number, number][]): [number, number][] => {
+      const step = 0.8 / 111;
+      const out: [number, number][] = [];
+      for (let i = 0; i < line.length - 1; i += 1) {
+        const [ay, ax] = line[i];
+        const [by, bx] = line[i + 1];
+        const far = Math.hypot(by - ay, (bx - ax) * kx);
+        const parts = Math.max(1, Math.round(far / step));
+        for (let k = 0; k < parts; k += 1) {
+          out.push([ay + ((by - ay) * k) / parts, ax + ((bx - ax) * k) / parts]);
+        }
+      }
+      out.push(line[line.length - 1]);
+      return out;
+    };
+
+    const alongRoads = (raw: [number, number][]): [number, number][] => {
+      if (!net) return raw;
+      const line = denser(raw);
       const snaps = line.map((one) => net.nearest(one[0], one[1], REACH_ROAD));
       const out: [number, number][] = [];
       line.forEach((one, i) => {
