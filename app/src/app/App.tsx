@@ -43,6 +43,7 @@ import { SubHeader } from './SubHeader.tsx';
 import { Sidebar } from './Sidebar.tsx';
 import { DetailPanel } from './DetailPanel.tsx';
 import { InDevelopment } from '../screens/InDevelopment.tsx';
+import { HomeScreen } from '../screens/HomeScreen.tsx';
 import { MonitorScreen } from '../screens/MonitorScreen.tsx';
 import { MonitorGate } from '../screens/MonitorGate.tsx';
 import { DispatchGate } from '../screens/DispatchGate.tsx';
@@ -1287,7 +1288,23 @@ export function App() {
       {/* Главная временно скрыта плашкой «В разработке»: сам экран и данные
           для него остались как есть — см. `InDevelopment.tsx` про то, как
           вернуть его на место. */}
-      {section === 'home' && <InDevelopment label="Главная" />}
+      {/* Главная вернулась из-под плашки. Она не просто раздел меню: с неё
+          начинается показ — первый шаг тура ведёт именно сюда и обещает
+          сводку с кнопкой «Открыть диспетчерскую». Пока на её месте стояла
+          плашка, тур спотыкался на первом же шаге: кнопки не было, цепочка
+          дальше не шла. */}
+      {section === 'home' && (
+        <HomeScreen
+          day={day}
+          plan={shownDay?.plan ?? day.plan}
+          view={dayView}
+          runs={runs}
+          activeRun={runId}
+          onGoSection={goSection}
+          onOpenRun={openRun}
+          onCreate={createRunForm}
+        />
+      )}
 
       {/* Мониторинг вернулся из-под плашки: без него цепочка «план →
           что происходит → воздействие» рвалась посередине, и воздействие
