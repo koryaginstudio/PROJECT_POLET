@@ -10,13 +10,21 @@ import type { SortRule } from '../../app/SortMenu.tsx';
 import { OrderProfile } from '../../app/OrderProfile.tsx';
 import { useWidgetBoard, WidgetPeriod, withinPeriod } from '../../app/DbWidgets.tsx';
 import type { PeriodKey, WidgetDef } from '../../app/DbWidgets.tsx';
-import { onDuty, useDuty } from '../../data/duty.ts';
-import { DutyTag } from '../../app/DutyTag.tsx';
 import { DbHead, DENSITY, occupancyTiers, usePerRow, useShares } from './DbHead.tsx';
 import { DbBar, ChipKey, DbEmpty, DbMore, usePaging } from './DbBar.tsx';
 import type { DbChip } from './DbBar.tsx';
 import { DbCrewProfile } from './DbCrew.tsx';
 import { DbList } from './DbList.tsx';
+
+/** За какой срок показывать маршруты. */
+type DaySpan = 'all' | 'today' | 'week' | 'range';
+
+/* День из ISO-даты выгрузки: «2026-08-17» → «17.08.2026». Тот же вид, что в
+   базе расчётов: одна дата в двух базах не должна выглядеть по-разному. */
+const dayOf = (date: string) => {
+  const [year, month, day] = date.split('-');
+  return day ? `${day}.${month}.${year}` : date;
+};
 
 interface Props {
   registry: Registry;
@@ -42,14 +50,6 @@ interface Props {
 const PAGE = 60;
 
 const percent = (share: number) => `${Math.round(share * 100)}%`;
-
-/* Сумма пробега по списку маршрутов — словами, а не числом, если хоть у
-   одного километража нет: складывать часть маршрутов и называть это суммой
-   всех значило бы соврать о количестве. */
-const kmSum = (list: RouteRecord[]) => {
-  if (list.some((r) => r.distanceKm === null)) return 'километраж есть не у всех';
-  return `${dec(list.reduce((sum, r) => sum + (r.distanceKm ?? 0), 0))} км`;
-};
 
 /* По чему упорядочены маршруты. Первым — номер: он сквозной на всю базу, и
    по нему маршрут находят, когда пришли с ним на руках.
@@ -135,17 +135,6 @@ const SORTS: (SortRule & { value: Sort; desc: boolean })[] = [
    настроек сервиса, а не написаны руками. */
 type Filter = 'all' | 'overtime' | 'risky' | 'busy' | 'loose' | 'idle';
 
-/* Отбор по состоянию расчёта: взят ли он в работу на свой день. Маршруты
-   рабочего расчёта — это сегодняшние маршруты, остальные остались в истории
-   как варианты, и мешать их в одном списке нельзя. */
-type State = 'all' | 'duty' | 'draft';
-
-const STATES: { value: State; label: string }[] = [
-  { value: 'all', label: 'Все' },
-  { value: 'duty', label: 'В работе' },
-  { value: 'draft', label: 'Черновики' }
-];
-
 const filtersFor = (busy: number, loose: number): { value: Filter; label: string }[] => [
   { value: 'all', label: 'Все' },
   { value: 'overtime', label: 'С переработкой' },
@@ -176,20 +165,34 @@ export function DbRoutesScreen({
   const [sort, setSort] = useState<Sort>('number');
   const [desc, setDesc] = useState(false);
   const [filter, setFilter] = useState<Filter>('all');
-  /* Состояние расчёта, из которого вышел маршрут: по рабочему расчёту сегодня
-     едут, маршруты остальных прогонов того же дня — варианты к нему. Отбор
-     тот же, что в базе расчётов, и слова у него те же. */
-  const [state, setState] = useState<State>('all');
   const [run, setRun] = useState<string | null>(null);
+  /* Срок, за который показывать маршруты. День берётся тот, на который
+     считали (`run.date`), а не тот, когда расчёт завели: маршрут принадлежит
+     рабочему дню, а не минуте, в которую его посчитали.
+
+     Три ответа на «за когда»: сегодня, последняя неделя и произвольный
+     отрезок. Отрезок отдельной кнопкой, потому что он не выбирает срок сам,
+     а открывает поля, где его задают, — тот же приём, что в списке расчётов.
+
+     По умолчанию «всё»: в нынешних данных разложен один день выгрузки, и
+     открывать базу на «сегодня» значило бы встречать оператора пустым
+     экраном. */
+  const [span, setSpan] = useState<DaySpan>('all');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+
+  /* Сегодняшний день в том же виде, в каком дата стоит у расчёта: «2026-09-23».
+     Считается от часов машины, поэтому живёт в useMemo — не пересчитывать же
+     его на каждую отрисовку списка. */
+  const today = useMemo(() => {
+    const now = new Date();
+    const два = (value: number) => String(value).padStart(2, '0');
+    return `${now.getFullYear()}-${два(now.getMonth() + 1)}-${два(now.getDate())}`;
+  }, []);
+
   const [query, setQuery] = useState('');
   const paging = usePaging(PAGE);
   const dense = perRow === '6';
-  /* Подписка на журнал «день участка → рабочий расчёт»: расчёт берут в работу
-     в другом разделе, а база маршрутов обязана показать это сразу. */
-  const duty = useDuty();
-  /* Маршрут в работе — тот, чей расчёт взят на свой день. Своего состояния у
-     маршрута нет и быть не должно: он часть расчёта целиком. */
-  const working = (route: RouteRecord) => onDuty(route.run.id as RunId, route.run.date);
   /* Пороги перегруза и недогруза — из настроек сервиса, одни на все базы. */
   const { busy, loose } = useShares();
   const FILTERS = filtersFor(busy, loose);
@@ -205,6 +208,63 @@ export function DbRoutesScreen({
   );
 
   const all = registry.routes;
+
+  /* Начало последней недели — шесть суток назад, считая сегодняшние. Ровно
+     так «неделю» понимает срок доски (`withinPeriod`): одно слово в одном
+     экране не должно значить разное. */
+  const weekFrom = useMemo(() => {
+    const at = new Date();
+    at.setDate(at.getDate() - 6);
+    const два = (value: number) => String(value).padStart(2, '0');
+    return `${at.getFullYear()}-${два(at.getMonth() + 1)}-${два(at.getDate())}`;
+  }, []);
+
+  /* Попадает ли день расчёта в выбранный срок. Сравниваем строки ISO, а не
+     отметки времени: у дня выгрузки нет ни часа, ни пояса, и перевод его в
+     Date ради сравнения добавил бы к суткам смещение пояса. */
+  const inSpan = (date: string) => {
+    if (span === 'today') return date === today;
+    if (span === 'week') return date >= weekFrom && date <= today;
+    if (span === 'range') return (!from || date >= from) && (!to || date <= to);
+    return true;
+  };
+
+  /* Отрезок словами: «с 01.08.2026 по 31.08.2026», а при одной границе —
+     только она. */
+  const rangeWords =
+    from && to
+      ? `с ${dayOf(from)} по ${dayOf(to)}`
+      : from
+        ? `с ${dayOf(from)}`
+        : to
+          ? `по ${dayOf(to)}`
+          : 'без границ';
+
+  /* Чем срок назван в чипе — именительным: чип читается «Срок: неделя». */
+  const spanChip =
+    span === 'today'
+      ? `сегодня, ${dayOf(today)}`
+      : span === 'week'
+        ? `неделя, с ${dayOf(weekFrom)}`
+        : rangeWords;
+
+  /* И он же внутри фразы «За … маршрутов нет» — винительным. Две подписи, а
+     не одна на оба места: «Срок: последнюю неделю» читается как обрывок. */
+  const spanWords =
+    span === 'today'
+      ? `сегодня, ${dayOf(today)}`
+      : span === 'week'
+        ? `последнюю неделю, с ${dayOf(weekFrom)}`
+        : `период ${rangeWords}`;
+
+  /* Дни, которые вообще есть в базе. Нужны двум местам: кнопке «Сегодня» —
+     чтобы сказать, есть ли на сегодня хоть что-нибудь, — и пустому экрану,
+     который иначе молчал бы о том, где маршруты всё-таки лежат. */
+  const days = useMemo(() => {
+    const set = new Set<string>();
+    for (const route of all) if (route.run.date) set.add(route.run.date);
+    return [...set].sort();
+  }, [all]);
 
   /* Маршруты, разложенные по расчётам. Нужны карте в карточке: линия соседей
      по расчёту рисуется под своей, а карточка видит одну запись и о соседях
@@ -225,9 +285,7 @@ export function DbRoutesScreen({
     const needle = query.trim().toLowerCase();
     const picked = all.filter((route) => {
       if (run && route.run.id !== run) return false;
-      const live = onDuty(route.run.id as RunId, route.run.date);
-      if (state === 'duty' && !live) return false;
-      if (state === 'draft' && live) return false;
+      if (!inSpan(route.run.date)) return false;
       if (filter === 'overtime' && route.overtimeMinutes === 0) return false;
       if (filter === 'risky' && route.risky === 0) return false;
       if (filter === 'busy' && route.occupancy < busy) return false;
@@ -280,7 +338,7 @@ export function DbRoutesScreen({
       const diff = rank(a) - rank(b);
       return side * (diff !== 0 ? diff : tie(a, b));
     });
-  }, [all, busy, desc, filter, state, duty, loose, query, run, sort]);
+  }, [all, busy, desc, filter, from, loose, query, run, sort, span, to]);
 
   /* Сменили отбор или порядок — счётчик показанного начинается заново. */
   const narrow = <T,>(set: (value: T) => void) => (value: T) => {
@@ -308,8 +366,10 @@ export function DbRoutesScreen({
 
   const reset = () => {
     setFilter('all');
-    setState('all');
     setRun(null);
+    setSpan('all');
+    setFrom('');
+    setTo('');
     setQuery('');
     paging.reset();
   };
@@ -707,7 +767,6 @@ export function DbRoutesScreen({
             <th>В дороге</th>
             <th>В работе</th>
             <th>Простой</th>
-            <th>Пробег</th>
             <th>Занятость</th>
             <th>Переработка</th>
             <th>Риск</th>
@@ -733,10 +792,7 @@ export function DbRoutesScreen({
               }}
             >
               <td>
-                <span className="tbl__strong">
-                  {route.code}
-                  {working(route) && <DutyTag what="маршрут" />}
-                </span>
+                <span className="tbl__strong">{route.code}</span>
               </td>
               {withRun && (
                 <td>
@@ -755,7 +811,6 @@ export function DbRoutesScreen({
               <td className="tbl__num">{hoursText(route.travelMinutes)}</td>
               <td className="tbl__num">{hoursText(route.workMinutes)}</td>
               <td className="tbl__num">{hoursText(route.idleMinutes)}</td>
-              <td className="tbl__num">{route.distanceKm !== null ? `${dec(route.distanceKm)} км` : '—'}</td>
               <td>
                 <span className={'pill pill--' + (route.occupancy < loose ? 'idle' : 'success')}>
                   {percent(route.occupancy)}
@@ -784,17 +839,6 @@ export function DbRoutesScreen({
   const shown = rows.slice(0, paging.limit);
   const hidden = rows.length - shown.length;
 
-  /* Разрез по состоянию: маршруты рабочих расчётов и маршруты черновиков.
-
-     Считается по всей выборке, а не по показанному куску: рабочих маршрутов
-     в базе единицы на сотню, и в первую страницу списка они не попадают —
-     раздел «В работе» оказывался пуст при взятом в работу расчёте. Каждый
-     перечень при этом обрезан своей страницей, а «Показать ещё» добирает
-     оба. */
-  const dutyRoutes = rows.filter(working).slice(0, paging.limit);
-  const draftRoutes = rows.filter((route) => !working(route)).slice(0, paging.limit);
-  const dutyHidden = rows.length - dutyRoutes.length - draftRoutes.length;
-
   /* Активные отборы — чипами наверху. */
   const chips: DbChip[] = [];
   if (filter !== 'all') {
@@ -804,11 +848,20 @@ export function DbRoutesScreen({
       onRemove: clear(() => setFilter('all'))
     });
   }
-  if (state !== 'all') {
+  if (span !== 'all') {
     chips.push({
-      key: 'state',
-      label: STATES.find((item) => item.value === state)?.label ?? state,
-      onRemove: clear(() => setState('all'))
+      key: 'span',
+      label: (
+        <>
+          <ChipKey>Срок</ChipKey>
+          {spanChip}
+        </>
+      ),
+      onRemove: clear(() => {
+        setSpan('all');
+        setFrom('');
+        setTo('');
+      })
     });
   }
   if (run) {
@@ -834,7 +887,7 @@ export function DbRoutesScreen({
       {rows.length > 0 &&
         ` · ${pluralVisits(rows.reduce((sum, one) => sum + one.visits, 0))} · ${hoursText(
           rows.reduce((sum, one) => sum + one.travelMinutes, 0)
-        )} в дороге · ${kmSum(rows)}`}
+        )} в дороге`}
     </>
   );
 
@@ -869,14 +922,92 @@ export function DbRoutesScreen({
               />
             </div>
 
-            <div className="filters__group">
-              <span className="filters__label">Состояние</span>
-              <SegmentedControl
-                size="sm"
-                items={STATES}
-                value={state}
-                onChange={narrow((value: string) => setState(value as State))}
-              />
+            {/* Срок — первым в полосе: «что у нас на сегодня» спрашивают
+                чаще, чем «какие маршруты вышли перегруженными».
+
+                «За период» не выбирает срок сам, а раскрывает поля, где его
+                задают, — и говорит это стрелкой. Тот же приём, что в списке
+                расчётов: там произвольный отрезок тоже стоит третьей кнопкой
+                рядом с готовыми сроками. */}
+            <div className="filters__group filters__group--wide">
+              <span className="filters__label">День</span>
+              <div className="filters__stack">
+              <span className="filters__types">
+                <button
+                  type="button"
+                  className={'chip' + (span === 'today' ? ' chip--on' : '')}
+                  onClick={narrow(() => setSpan(span === 'today' ? 'all' : 'today'))}
+                  aria-pressed={span === 'today'}
+                  title={`Маршруты, посчитанные на ${dayOf(today)}`}
+                >
+                  Сегодня
+                  {span === 'today' && <Icon name="x" size={12} />}
+                </button>
+                <button
+                  type="button"
+                  className={'chip' + (span === 'week' ? ' chip--on' : '')}
+                  onClick={narrow(() => setSpan(span === 'week' ? 'all' : 'week'))}
+                  aria-pressed={span === 'week'}
+                  title={`Последние семь суток, с ${dayOf(weekFrom)}`}
+                >
+                  Неделя
+                  {span === 'week' && <Icon name="x" size={12} />}
+                </button>
+                <button
+                  type="button"
+                  className={'chip' + (span === 'range' ? ' chip--on' : '')}
+                  onClick={narrow(() => setSpan(span === 'range' ? 'all' : 'range'))}
+                  aria-expanded={span === 'range'}
+                >
+                  За период
+                  <Icon name={span === 'range' ? 'chevron-up' : 'chevron-down'} size={12} />
+                </button>
+              </span>
+
+
+              {/* Поля отрезка — строкой под кнопками, а не окошком поверх:
+                  их держат открытыми, пока подбирают границы, и окошко,
+                  закрывающееся от щелчка мимо, тут только мешало бы. */}
+              {span === 'range' && (
+                <div className="runmenu__range">
+                  <label className="runmenu__date">
+                    <span>с</span>
+                    <input
+                      type="date"
+                      value={from}
+                      max={to || undefined}
+                      onChange={(event) => narrow(setFrom)(event.currentTarget.value)}
+                    />
+                  </label>
+                  <label className="runmenu__date">
+                    <span>по</span>
+                    <input
+                      type="date"
+                      value={to}
+                      min={from || undefined}
+                      onChange={(event) => narrow(setTo)(event.currentTarget.value)}
+                    />
+                  </label>
+                  {from || to ? (
+                    <button
+                      type="button"
+                      className="createbar__reset"
+                      onClick={narrow(() => {
+                        setFrom('');
+                        setTo('');
+                      })}
+                    >
+                      Очистить
+                    </button>
+                  ) : (
+                    /* Без границ отрезок ничего не отсекает. Сказать это надо
+                       прямо: пустые поля читаются как «отбор стоит, но
+                       почему-то не работает». */
+                    <span className="runmenu__hint">пусто — показаны все</span>
+                  )}
+                </div>
+              )}
+              </div>
             </div>
 
             {registry.runs.length > 1 && (
@@ -913,51 +1044,19 @@ export function DbRoutesScreen({
 
       {rows.length === 0 ? (
         <DbEmpty
-          miss="Под этот отбор не подошёл ни один маршрут."
+          miss={
+            span !== 'all'
+              ? `За ${spanWords} маршрутов нет.` +
+                (days.length > 0
+                  ? ` В базе разложены другие дни: ${days.map(dayOf).join(', ')}.`
+                  : '')
+              : 'Под этот отбор не подошёл ни один маршрут.'
+          }
           blank="Маршрутов в базе пока нет: их строит программа расчёта, и до первого сохранённого расчёта база пуста."
           query={query.trim() !== ''}
-          filtered={filter !== 'all' || state !== 'all' || run !== null}
+          filtered={filter !== 'all' || run !== null || span !== 'all'}
           onReset={reset}
         />
-      ) : mode === 'duty' ? (
-        <>
-          <section className="panel">
-            <div className="dash__section-head">
-              <h2 className="dash__section-title">
-                <Icon name="check-circle" size={15} /> В работе
-              </h2>
-              <span className="dash__section-note">
-                {plural(dutyRoutes.length, 'маршрут', 'маршрута', 'маршрутов')}
-              </span>
-            </div>
-            {dutyRoutes.length === 0 ? (
-              <p className="runmenu__empty">
-                Ни один расчёт выборки не взят в работу. Берут кнопкой «В работу» — в карточке
-                расчёта или в подшапке диспетчерской.
-              </p>
-            ) : (
-              table(dutyRoutes)
-            )}
-          </section>
-
-          <section className="panel">
-            <div className="dash__section-head">
-              <h2 className="dash__section-title">
-                <Icon name="path" size={15} /> Не в работе
-              </h2>
-              <span className="dash__section-note">
-                {plural(draftRoutes.length, 'маршрут', 'маршрута', 'маршрутов')}
-              </span>
-            </div>
-            {draftRoutes.length === 0 ? (
-              <p className="runmenu__empty">Все маршруты выборки вышли из рабочих расчётов.</p>
-            ) : (
-              table(draftRoutes)
-            )}
-          </section>
-
-          <DbMore hidden={dutyHidden} page={PAGE} onMore={paging.more} />
-        </>
       ) : mode === 'runs' ? (
         <>
           {byRunShown.map((entry) => (
@@ -969,8 +1068,8 @@ export function DbRoutesScreen({
                 </h2>
                 <span className="dbrun__facts">
                   {plural(entry.routes.length, 'маршрут', 'маршрута', 'маршрутов')} ·{' '}
-                  {pluralVisits(entry.visits)} · {hoursText(entry.travel)} в дороге ·{' '}
-                  {kmSum(entry.routes)} · занятость {percent(entry.occupancy)}
+                  {pluralVisits(entry.visits)} · {hoursText(entry.travel)} в дороге · занятость{' '}
+                  {percent(entry.occupancy)}
                   {entry.risky > 0
                     ? ` · ${plural(entry.risky, 'рискованная остановка', 'рискованные остановки', 'рискованных остановок')}`
                     : ''}
@@ -1034,12 +1133,7 @@ export function DbRoutesScreen({
               key: route.key,
               lead: <Icon name="path" size={15} />,
               code: route.code,
-              title: (
-                <>
-                  {route.engineerName}
-                  {working(route) && <DutyTag what="маршрут" />}
-                </>
-              ),
+              title: route.engineerName,
               sub: (
                 <>
                   Расчёт {route.run.code} · {route.run.date} ·{' '}
@@ -1051,11 +1145,6 @@ export function DbRoutesScreen({
                 { label: 'Заявок', value: route.visits },
                 { label: 'В работе', value: hoursText(route.workMinutes) },
                 { label: 'В дороге', value: hoursText(route.travelMinutes) },
-                {
-                  label: 'Пробег',
-                  value: route.distanceKm !== null ? `${dec(route.distanceKm)} км` : '—',
-                  tone: route.distanceKm === null ? ('muted' as const) : undefined
-                },
                 {
                   label: 'Занятость',
                   value: percent(route.occupancy),

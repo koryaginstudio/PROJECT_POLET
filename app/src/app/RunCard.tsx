@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Icon } from "../ds/components/core/Icon.jsx";
 import type { Bounds, RouteRecord, RunStat, RunRef } from "../data/registry.ts";
 import type { RunId } from "../data/load.ts";
-import { shortStamp, stampOf } from "../data/load.ts";
+import { localRun, shortStamp, stampOf } from "../data/load.ts";
 import { dec, hoursText } from "../data/derive.ts";
 import { RunMap } from "./RunMap.tsx";
 import { WhyMark } from "./WhyMark.tsx";
@@ -161,6 +161,15 @@ export function RunCard({
             <span className="engcard__idlabel">id:</span>
             <span className="runcard__code">{row.run.code}</span>
           </span>
+          {/* Пометок состояния в шапке нет намеренно — но это не состояние, а
+              то, чем запись является: план, разложенный здесь, в браузере, а
+              не программой расчёта. Такие расчёты открываются сами, когда
+              движок погашен, и отличить их иначе не по чему. */}
+          {localRun(row.run.id) && (
+            <span className="localmark" title="Расчёт посчитан в браузере, а не программой расчёта">
+              браузер
+            </span>
+          )}
         </span>
 
         {/* Правка стоит в шапке, у номера и времени, — то есть ровно у того,

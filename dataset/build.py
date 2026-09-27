@@ -420,6 +420,12 @@ def read_rows(path: Path) -> list[Row]:
                 Row(
                     order_class=order_class,
                     skill=skill,
+                    # Статус наряда и бригада — это исход дня: кто поехал и
+                    # чем кончилось. В синтетической выгрузке их нет, и брать
+                    # их неоткуда — планировщик исхода знать не может. Поля
+                    # остаются на месте пустыми: контракт от этого не меняется,
+                    # а заполнить их сможет тот, кто разбирает уже прошедший
+                    # день, а не планирует будущий.
                     status=STATUS.get((record.get("Статус BK") or "").strip()),
                     work_type=(record.get("Тип заявки HD") or "").strip(),
                     window_start=max(minutes_of(record["Начало"]), DAY_OPEN),
@@ -459,44 +465,10 @@ def fold(text: str) -> int:
     return value
 
 
-# Имя и отчество инженера. В выгрузке их нет: колонка «Бригада» называет
-# бригаду либо одной фамилией («Бригада Соколов»), либо фамилией с именем
-# («Капитанчук Александр»). Диспетчеру же инженера надо назвать полностью —
-# он ему звонит.
-#
-# Достраивается ровно то, чего в выгрузке не оказалось, и ни буквой больше:
-# пришла одна фамилия — добавляем имя и отчество, пришли фамилия с именем —
-# только отчество, пришло ФИО целиком — не трогаем вовсе. Поэтому набор, где
-# имена уже полные, пройдёт через сборку неизменным.
-
 ENGINEER_FIRST_NAMES = [
     "Андрей", "Сергей", "Дмитрий", "Алексей", "Максим", "Евгений", "Николай",
     "Роман", "Виктор", "Олег", "Юрий", "Артём", "Григорий", "Константин",
 ]
-
-ENGINEER_PATRONYMICS = [
-    "Андреевич", "Сергеевич", "Дмитриевич", "Алексеевич", "Иванович",
-    "Петрович", "Николаевич", "Викторович", "Олегович", "Юрьевич",
-    "Михайлович", "Павлович", "Борисович", "Игоревич",
-]
-
-
-def full_name(name: str) -> str:
-    """Дополняет имя бригады до ФИО, не трогая то, что уже пришло."""
-    parts = name.split()
-    if len(parts) >= 3:
-        return name
-
-    # Держится за фамилию, а не за место в списке: одна и та же бригада
-    # встречается в двух зонах, и это один человек, а не два однофамильца.
-    # Отчество берётся от своей свёртки — общая давала на соседних фамилиях
-    # одинаковые пары «имя отчество», и зона выглядела списком родственников.
-    if len(parts) == 1:
-        parts.append(ENGINEER_FIRST_NAMES[fold(name + "·и") % len(ENGINEER_FIRST_NAMES)])
-    patronymic = ENGINEER_PATRONYMICS[fold(" ".join(parts) + "·о") % len(ENGINEER_PATRONYMICS)]
-    parts.append(patronymic)
-    return " ".join(parts)
-
 
 def contact_of(order_id: str, address: str) -> dict[str, str]:
     seed = fold(order_id + address)
@@ -523,115 +495,6 @@ def deadline_of(order_class: str, window_end: int) -> int:
     return 24 * 60 + 13 * 60  # 13:00 следующего дня
 
 
-# Транспорт инженеру. Выгрузка о нём молчит, поэтому раздаём: большинству
-# бригад автомобиль, потому что на аварию и на кабель иначе не выехать, а
-# двоим-троим в зоне — другой, чтобы ограничение по транспорту в наборе вообще
-# встречалось. Без этого проверить третью группу ограничений ТЗ было бы не на
-# чем: набор, где у всех автомобиль, ничего не доказывает.
-TRANSPORT_MIX = ["car", "car", "car", "car", "walk", "car", "car", "transit", "car", "bike"]
-
-
-@dataclass
-class Crew:
-    """Инженер, собранный из нарядов своей бригады."""
-
-    id: str
-    name: str
-    team: str
-    skills: set[str] = field(default_factory=set)
-    first: int = 24 * 60
-    last: int = 0
-    orders: int = 0
-
-
-def build_engineers(rows: list[Row], zone: str, office: tuple[float, float] | None,
-                    office_address: str, crew_ids: dict[str, str]) -> list[dict]:
-    """Инженеры зоны — из бригад, которые в этой зоне работали.
-
-    Табельный номер закреплён за человеком, а не за зоной: `crew_ids` — общий
-    на всю базу справочник «бригада → номер». Бригада Каушнян работает и на
-    Востоке, и на Юго-Востоке, и это один человек с двумя сменами, а не два
-    однофамильца. Выдать ему два номера значило бы посчитать его дважды в
-    штате и разрезать его выработку пополам.
-
-    Навыки не назначаются, а вычитываются: бригада умеет то, что она в этот день
-    делала. Это честнее любой раздачи — и даёт ровно то, чего требует ТЗ от
-    набора: разные комбинации навыков у разных исполнителей. Здесь они собраны
-    по нарядам одной зоны; тому, кто работал в двух, их сводит `unify_skills`
-    после сборки всех зон — раньше соседняя зона ещё не прочитана.
-
-    Смена считается по её же нарядам, округляется до часа и растягивается до
-    девяти часов, если вышла короче: дежурство в два часа — это артефакт
-    однодневной выгрузки, а не чей-то график.
-    """
-    crews: dict[str, Crew] = {}
-    for row in rows:
-        if not row.team:
-            continue
-        crew = crews.get(row.team)
-        if crew is None:
-            # «Бригада Соколов» → Соколов; в Центре бригады записаны людьми
-            # целиком, «Капитанчук Александр», и трогать это незачем.
-            name = re.sub(r"^Бригада\s+", "", row.team).strip()
-            crew = Crew(id="", name=name, team=row.team)
-            crews[row.team] = crew
-        crew.skills.add(row.skill)
-        crew.orders += 1
-        if row.window_end - row.window_start <= WINDOW_SPAN_LIMIT:
-            crew.first = min(crew.first, row.window_start)
-            crew.last = max(crew.last, row.window_end)
-
-    engineers = []
-    for crew in sorted(crews.values(), key=lambda c: c.name):
-        known = crew_ids.get(crew.team)
-        if known is None:
-            known = f"E{len(crew_ids) + 1:03d}"
-            crew_ids[crew.team] = known
-        crew.id = known
-        number = int(known[1:])
-        # Бригада, у которой в этот день были одни круглосуточные аварии, о
-        # своём графике не сказала ничего — ставим её в общую смену.
-        if crew.last <= crew.first:
-            crew.first, crew.last = 10 * 60, 19 * 60
-
-        start = (crew.first // 60) * 60
-        end = -(-crew.last // 60) * 60
-        if end - start < SHIFT_MIN:
-            end = start + SHIFT_MIN
-        # Смена не выходит за рабочий день: девять часов от четырёх вечера — это
-        # час ночи, и такой график получается не из данных, а из арифметики.
-        if end > DAY_CLOSE:
-            end = DAY_CLOSE
-            start = min(start, end - SHIFT_MIN)
-        start = max(start, DAY_OPEN)
-        engineers.append(
-            {
-                "id": crew.id,
-                "name": full_name(crew.name),
-                "skills": sorted(crew.skills),
-                # Опыт выгрузка не содержит. Ставим по числу нарядов за день:
-                # тому, кто вёз больше всех, вряд ли первый день.
-                "grade": 3 if crew.orders >= 8 else 2 if crew.orders >= 4 else 1,
-                "shift_start": start,
-                "shift_end": end,
-                "home_address": office_address,
-                "home_lat": office[0] if office else MOSCOW_ANCHOR[0],
-                "home_lon": office[1] if office else MOSCOW_ANCHOR[1],
-                # Транспорт закреплён за человеком через его табельный номер:
-                # инженер, который работает в двух зонах, не может в одной
-                # ездить на машине, а в другой ходить пешком.
-                "transport": TRANSPORT_MIX[number % len(TRANSPORT_MIX)],
-                "status": "on_shift",
-                "team": crew.team,
-                "zone": zone,
-                "phone": f"+7 495 {700 + number:03d}-{10 + number:02d}-{20 + number:02d}",
-                "photo": None,
-                "position": None,
-            }
-        )
-    return engineers
-
-
 def unify_skills(zones: list[dict]) -> list[str]:
     """Сводит навыки инженера, работавшего в нескольких зонах, в один набор.
 
@@ -642,9 +505,10 @@ def unify_skills(zones: list[dict]) -> list[str]:
     выходил в базу дважды, с разными навыками. Расчёт из-за этого отказывал ему
     в аварийной заявке там, где отказывать не за что.
 
-    Номер и транспорт закреплены за человеком ровно по той же причине и тем же
-    способом — `crew_ids` и `TRANSPORT_MIX`. Навыки просто нельзя свести
-    раньше: пока собирается первая зона, нарядов второй ещё никто не читал.
+    Раньше навыки выводились из нарядов, и один человек выходил в базу
+    дважды с разными наборами. Теперь штат объявлен заранее, но сведение
+    осталось: участков у человека по-прежнему может быть несколько, а навык
+    у него один.
 
     Смену и опыт это не трогает: они у зоны свои по существу. Смена — график
     конкретного дня на конкретном участке, опыт — выработка за этот день.
@@ -669,7 +533,7 @@ def unify_skills(zones: list[dict]) -> list[str]:
 # ─── сборка зоны ─────────────────────────────────────────────────────────────
 
 
-def build_zone(key: str, geo: Geocoder, first_order: int, crew_ids: dict[str, str]) -> dict:
+def build_zone(key: str, geo: Geocoder, first_order: int) -> dict:
     """Собирает зону. Нумерация сквозная по всей базе, а не своя в каждой зоне.
 
     Заказчик потребовал этого прямо: «01» в одном расчёте и «01» в другом —
@@ -681,7 +545,7 @@ def build_zone(key: str, geo: Geocoder, first_order: int, crew_ids: dict[str, st
     с суммой чужих часов.
     """
     zone = ZONES[key]
-    rows = read_rows(SOURCE / f"{key}-integral.csv")
+    rows = read_rows(SOURCE / f"{key}-synthetic.csv")
     print(f"  {zone['title']}: нарядов {len(rows)}")
 
     office = geo.find(zone["office"])
@@ -749,12 +613,36 @@ def build_zone(key: str, geo: Geocoder, first_order: int, crew_ids: dict[str, st
             }
         )
 
-    engineers = build_engineers(rows, zone["title"], office, zone["office"], crew_ids)
+    # Штат сюда не выводится. Раньше он собирался из колонки «Бригада»
+    # контрольного файла — то есть из исхода дня: кто на самом деле поехал,
+    # что делал и когда. Планировщик этого знать не может, а постановщик
+    # прямо запретил брать контрольные данные в работу. Поэтому штат —
+    # заявленное допущение: четырнадцать человек на участок, ровно тот, с
+    # которым считает движок, и лежит он готовым в `dataset/out`.
+    #
+    # Скрипт его не трогает: перезаписать здесь значило бы вернуть прежнюю
+    # раздачу с другого конца.
+    engineers = keep_engineers(key)
     print(
         f"    домов {len(points)}, не нашлось {lost}, "
         f"инженеров {len(engineers)}, заявок {len(orders)}"
     )
     return {"key": key, "title": zone["title"], "orders": orders, "engineers": engineers}
+
+
+def keep_engineers(key: str) -> list[dict]:
+    """Штат участка — тот, что уже объявлен в `dataset/out/<участок>`.
+
+    Файла нет — пустой список и предупреждение: собрать штат нам больше не
+    из чего, а придумывать его на ходу нельзя. Заявки при этом соберутся:
+    они из синтетической выгрузки и от штата не зависят.
+    """
+    path = OUT / key / "engineers.json"
+    if not path.exists():
+        print(f"    штат участка «{key}» не найден — engineers.json останется пустым")
+        return []
+    saved = json.loads(path.read_text(encoding="utf-8"))
+    return saved.get("engineers", [])
 
 
 # ─── запись ──────────────────────────────────────────────────────────────────
@@ -884,9 +772,8 @@ def main() -> None:
     # номера, на котором кончилась предыдущая.
     zones = []
     next_order = 1
-    crew_ids: dict[str, str] = {}
     for key in ZONES:
-        zone = build_zone(key, geo, next_order, crew_ids)
+        zone = build_zone(key, geo, next_order)
         zones.append(zone)
         next_order += len(zone["orders"])
     geo.save()

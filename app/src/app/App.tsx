@@ -25,7 +25,13 @@ import type { DayState, JournalEvent } from '../data/api.ts';
 import type { DispatcherActions } from './DispatcherBlock.tsx';
 import { изДвижка } from '../data/fromEngine.ts';
 import type { IncidentKind, IncidentSpec, ReplanResult } from '../data/api.ts';
-import { engineerInDay, engineerKey, loadRegistry } from '../data/registry.ts';
+import {
+  engineerInDay,
+  engineerKey,
+  loadRegistry,
+  mergeEngineers,
+  mergeOrders
+} from '../data/registry.ts';
 import type { ShiftInput } from '../data/shift.ts';
 import type { Registry, RunRef } from '../data/registry.ts';
 import { buildDayView, dayEnd, dayStart, planHorizon, plural, replanAt } from '../data/derive.ts';
@@ -1003,7 +1009,17 @@ export function App() {
       return { kind: 'client' as const, row: registry.clients.find((one) => one.key === lookup.key) ?? null };
     }
     if (lookup.kind === 'engineer') {
-      return { kind: 'engineer' as const, row: registry.engineers.find((one) => one.id === lookup.key) ?? null };
+      /* Ищем человека, а не запись: у того, кто числится на нескольких
+         участках, записей несколько, и поиск мог привести на пустую — ту,
+         где он только числится. Карточка должна открыться та же, что в
+         базе. */
+      const record = registry.engineers.find((one) => one.id === lookup.key);
+      const person = record
+        ? mergeEngineers(registry.engineers).find(
+            (one) => one.code === record.code && one.name === record.name
+          ) ?? record
+        : null;
+      return { kind: 'engineer' as const, row: person };
     }
     return { kind: 'service' as const, row: registry.services.find((one) => one.key === lookup.key) ?? null };
   }, [lookup, registry]);
@@ -1200,9 +1216,12 @@ export function App() {
        «сколько записей в ней», и число не должно меняться от того, какой
        расчёт сейчас открыт. Пока справочники не загружены, здесь нули, и
        счётчики не рисуются. */
-    dbOrders: registry?.orders.length ?? 0,
+    /* Заявок, а не записей «заявка в расчёте»: в меню стоит то же число,
+       что в самой базе. */
+    dbOrders: registry ? mergeOrders(registry.orders).length : 0,
     dbServices: registry?.services.length ?? 0,
-    dbEngineers: registry?.engineers.length ?? 0,
+    /* Людей, а не записей: в меню стоит то же число, что в самой базе. */
+    dbEngineers: registry ? mergeEngineers(registry.engineers).length : 0,
     dbClients: registry?.clients.length ?? 0,
     dbRoutes: registry?.routes.length ?? 0
   };
@@ -1210,7 +1229,11 @@ export function App() {
   /* Правая панель всегда про объект открытого расчёта. Там, где расчёта нет,
      её не показываем — и колонку под неё тоже, иначе справа остаётся пустая
      полоса, которая читается как несработавший экран. Дашборд обзорный и
-     объекта не выбирает, поэтому тоже идёт без неё. */
+     объекта не выбирает, поэтому тоже идёт без неё.
+
+     Мониторинг тоже идёт без неё, и по той же причине, что обзор: карта там
+     занимает весь экран, а числа, тревоги и люди стоят колонкой поверх неё.
+     Правая полоса рисовала бы тех же инженеров второй раз. */
   const withDetail = onPlan && !onOverview;
 
   /* Карта мониторинга во весь экран — там же, где живой вид: дни отмечены,
