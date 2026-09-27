@@ -6,7 +6,7 @@
    "key": "east",
    "title": "Восток",
    "orders": 66,
-   "engineers": 12,
+   "engineers": 14,
    "by_skill": {
     "connect": 37,
     "local": 21,
@@ -41,7 +41,7 @@
    "key": "southeast",
    "title": "Юго-Восток",
    "orders": 83,
-   "engineers": 12,
+   "engineers": 14,
    "by_skill": {
     "connect": 40,
     "local": 31,
@@ -77,7 +77,7 @@
    "key": "center",
    "title": "Центр",
    "orders": 56,
-   "engineers": 11,
+   "engineers": 14,
    "by_skill": {
     "connect": 30,
     "local": 25,
