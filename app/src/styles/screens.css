@@ -244,6 +244,239 @@
   gap: var(--sp-5);
 }
 
+/* ─── ранжированный перечень ────────────────────────────────────────────
+
+   «Кто больше всех» — то, на что диаграмма не отвечает: столбцы показывают,
+   как разложено целое, а перечень называет тех, кто его набрал. Полоса под
+   именем мерится от первой строки, поэтому у первой она всегда во всю ширину,
+   а у третьей видно, насколько та отстала. */
+.srank {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+
+.srank__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.srank__title {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-semibold);
+}
+
+.srank__note {
+  color: var(--text-secondary);
+  font-size: var(--fs-caption);
+}
+
+.srank__empty {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--fs-caption);
+}
+
+.srank__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: none;
+}
+
+/* Место, имя с полосой, число. Номер места узкой колонкой слева: без него
+   перечень читается как список, а не как «первый, второй, третий». */
+.srank__row {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--sp-2) var(--sp-3);
+  padding: var(--sp-2) 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.srank__row:last-child {
+  border-bottom: 0;
+}
+
+.srank__place {
+  color: var(--text-muted);
+  font-size: var(--fs-caption);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.srank__body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.srank__label {
+  color: var(--text-primary);
+  font-size: var(--fs-caption);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.srank__track {
+  position: relative;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--ink-100);
+  overflow: hidden;
+}
+
+.srank__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 3px;
+  background: var(--series-1);
+}
+
+/* Тревожный цвет — там, где строка не «больше всех», а «хуже всех»: хвост
+   расчёта, услуга без инженера, простой. */
+.srank__fill--bad {
+  background: var(--danger-500);
+}
+
+.srank__sub {
+  color: var(--text-secondary);
+  font-size: var(--fs-caption);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.srank__value {
+  align-self: start;
+  padding-top: 1px;
+  color: var(--text-primary);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ─── показатель против нормы ───────────────────────────────────────────
+
+   Полоса показывает не одно значение, а зоны — где норма, где стоит
+   присмотреться, где плохо, — и метку, где мы сейчас. Без зон «загрузка 82 %»
+   читают как успех. */
+.sgauges {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--sp-5);
+}
+
+.sgauge {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.sgauge__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.sgauge__label {
+  color: var(--text-primary);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-semibold);
+}
+
+.sgauge__value {
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.sgauge__value--ok {
+  color: var(--success-600);
+}
+
+.sgauge__value--warn {
+  color: var(--accent-600);
+}
+
+.sgauge__value--bad {
+  color: var(--danger-600);
+}
+
+.sgauge__track {
+  position: relative;
+  height: 10px;
+  border-radius: 5px;
+  background: var(--ink-100);
+  overflow: hidden;
+}
+
+/* Зоны приглушены, но не бледные: они фон, а не сообщение, — и всё же по ним
+   читают, где кончается норма. На тёмной теме четверть непрозрачности от
+   красного давала полосу, неотличимую от подложки, и шкала теряла левый край
+   вместе со смыслом. */
+.sgauge__zone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  opacity: 0.55;
+}
+
+.sgauge__zone--ok {
+  background: var(--success-500);
+}
+
+.sgauge__zone--warn {
+  background: var(--accent-500);
+}
+
+.sgauge__zone--bad {
+  background: var(--danger-500);
+}
+
+/* Метка — узкая полоска во всю высоту, а не точка: точка на десятипиксельной
+   полосе читается как пятно, а полоска показывает место на шкале. */
+.sgauge__mark {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 3px;
+  margin-left: -1px;
+  border-radius: 2px;
+  background: var(--ink-1000);
+}
+
+.sgauge__note {
+  color: var(--text-secondary);
+  font-size: var(--fs-caption);
+  line-height: var(--lh-caption);
+}
+
+/* Срок над объяснением пустого среза: им сюда пришли, им же отсюда и выйдут. */
+.statsblank__bar {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: var(--sp-4);
+}
+
+.statsblank__back {
+  margin-top: var(--sp-3);
+}
+
 /* ─── сворачиваемый блок для администратора ────────────────────────────── */
 
 .fold {

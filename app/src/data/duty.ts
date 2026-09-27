@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import { engineDayTitle, RUNS, zoneTitle } from './load.ts';
 import type { RunId } from './load.ts';
+import { logWatch } from './watch.ts';
 
 /* Расчёт, взятый в работу на свой день.
 
@@ -178,6 +179,18 @@ export function workDays(): WorkDay[] {
       holder: current[key] ?? null
     });
   }
+  /* Рабочим считается только тот расчёт, который в этом дне и есть.
+
+     Отметка живёт в браузере, а история приезжает от движка: расчёт могли
+     стереть, пересобрать архив, сменить набор выгрузок — и отметка осталась
+     показывать на запись, которой больше нет. Снаружи это выглядело как
+     день с рабочим расчётом, у которого нет ни плана, ни чисел: карточка
+     района вечно «загружает план», а список предлагает выбрать заново то,
+     что и так выбрано. */
+  for (const day of byKey.values()) {
+    if (day.holder && !day.runs.includes(day.holder)) day.holder = null;
+  }
+
   /* Сначала свежие дни, а внутри дня — свежие расчёты: и то и другое ищут
      глазами сверху. */
   return [...byKey.values()].sort((a, b) => b.date.localeCompare(a.date) || a.place.localeCompare(b.place));
@@ -204,6 +217,11 @@ export function takeDuty(id: RunId, date: string): void {
   const key = dayKey(id, date);
   if (current[key] === id) return;
   save({ ...current, [key]: id });
+  /* Смена диспетчера помнит это решение: какой план вёл день — первое, что
+     спрашивают у прошедшего дня, и ответ должен лежать в его журнале, а не
+     выводиться задним числом из нынешнего списка. */
+  const run = RUNS.find((one) => one.id === id);
+  logWatch('duty', `Расчёт ${run?.code ?? id} взят в работу на ${dayLabel(id, date)}`, id);
 }
 
 /** Снимает расчёт с работы. День после этого остаётся без рабочего расчёта —
@@ -216,6 +234,8 @@ export function dropDuty(id: RunId, date: string): void {
   const next = { ...current };
   delete next[key];
   save(next);
+  const run = RUNS.find((one) => one.id === id);
+  logWatch('duty', `Расчёт ${run?.code ?? id} снят с работы на ${dayLabel(id, date)}`, id);
 }
 
 function subscribe(watcher: () => void): () => void {

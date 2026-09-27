@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Icon } from '../ds/components/core/Icon.jsx';
+import { Icon, iconPath } from '../ds/components/core/Icon.jsx';
 import { PersonName } from './PersonName.tsx';
 import type { DayView } from '../data/derive.ts';
 import { hhmm, homeOf, placeOf, roadLegs, visits } from '../data/derive.ts';
@@ -13,6 +13,8 @@ import { ZONE_COLORS, zonePalette } from '../data/zones.ts';
 import { loadRoadNet, RoadIndex } from '../data/roadnet.ts';
 import type { RoadLine } from '../data/roadnet.ts';
 import { routeLabel, routeNumber } from '../data/routeIds.ts';
+import type { LiveSpot } from '../data/live.ts';
+import { pointAt, spanOf } from '../data/live.ts';
 import { MapKeys } from './MapKeys.tsx';
 
 interface Props {
@@ -49,6 +51,10 @@ interface Props {
   /** Плашка в правом верхнем углу, над перечнем маршрутов: там её место у
       всего, что рассказывает о дне целиком, а не об одном выбранном. */
   topRight?: ReactNode;
+  /** Плашка поверх города, вверху по середине. Место для того, что относится
+      не к дню и не к маршруту, а к самому виду: оговорка об опытном
+      мониторинге стоит здесь. Пусто — ничего и не рисуется. */
+  banner?: ReactNode;
   /** Имя перечня маршрутов. У мониторинга он «на сегодня»: там смотрят на
       идущий день, а не на любой из архива. */
   routesTitle?: string;
@@ -80,6 +86,17 @@ interface Props {
       передвижения прячет маршруты, но земли участка не меняет: пешие ушли
       с карты — район остался тем же. Не задан — считается по показанному. */
   zoneSource?: DayView;
+  /** Где инженеры сейчас — по одной записи на того, у кого есть маршрут.
+
+      Задан — карта показывает идущий день: пройденная часть пути лежит в
+      цвете маршрута, непройденная гаснет до серой, а на самом инженере
+      горит живая точка. Не задан — карта рисует план как есть, без деления
+      на прошлое и будущее: в диспетчерской смотрят на весь день целиком, и
+      серая половина города там ничего не объясняла бы.
+
+      Считает его `buildLiveSpots`; карта только кладёт место на свою
+      ломаную — ту, что нарисована, с веером на общих улицах. */
+  progress?: Map<string, LiveSpot> | null;
   /** Чей это маршрут, когда на карте день не один. Номер маршрута сквозной
       по всей базе и считается от пары «расчёт — инженер»; при нескольких
       участках разом один `runId` на всех выдал бы соседнему участку чужие
@@ -94,7 +111,20 @@ interface Props {
 const TONE = {
   done: '#2FD97D',
   risk: '#FF5B52',
-  free: '#8A8A8A'
+  free: '#8A8A8A',
+  /* Куда инженер ещё не доехал: и остаток пути, и заявки на нём.
+
+     Не цвет, а его отсутствие: холодный серый не спорит ни с одним из
+     двенадцати маршрутных оттенков — на карте остаётся видно то, что уже
+     пройдено. Но и пропасть он не имеет права: диспетчер смотрит на живой
+     вид, чтобы понять, куда человек едет дальше. Поэтому в покое остаток
+     едва виден, а под курсором и у выбранного маршрута выходит почти в
+     полную силу — спрашивают о нём наведением.
+
+     Серый именно серый, без синевы: холодный оттенок на тёмной подложке
+     читался как ещё один маршрутный цвет, синий, и непройденный путь
+     выглядел чьим-то чужим. */
+  ahead: '#9A9A9A'
 };
 
 /* У каждого маршрута свой цвет: на двенадцати путях через один город серая
@@ -348,10 +378,62 @@ export const surnameOf = (name: string) => {
    знаке. */
 const nestKey = (lat: number, lon: number) => `${Math.round(lat * 1e5)}:${Math.round(lon * 1e5)}`;
 
-const card = (tone: string, head: string, lines: string[]) =>
+/* Карточка живой точки. От обычной отличается подвалом: состояние и счёт
+   визитов вынесены из строк отдельной полосой.
+
+   Прежде и то и другое лежало последними строками наравне с адресами — и
+   тонуло в них: «4 из 6 заявок закрыто» тем же кеглем и тем же тоном, что и
+   «едет туда-то», глазом не находилось вовсе, а состояние читалось только
+   из того, какими словами начата первая строка. Между тем диспетчер
+   спрашивает о человеке ровно две вещи: всё ли у него в порядке и сколько
+   он успел. Им и место отдельное. */
+const flowCard = (
+  tone: string,
+  head: string,
+  lines: string[],
+  state: { label: string; tone: 'ok' | 'warn' | 'bad' },
+  done: number,
+  total: number
+) =>
+  card(
+    tone,
+    head,
+    lines,
+    statePill(state) + `<span class="gtip__count"><b>${done}</b> из ${total} заявок</span>`
+  );
+
+const card = (tone: string, head: string, lines: string[], foot?: string) =>
   `<span class="gtip"><span class="gtip__head"><i class="gtip__dot" style="background:${tone}"></i>${head}</span>` +
   lines.map((line) => `<span class="gtip__line">${line}</span>`).join('') +
+  (foot ? `<span class="gtip__foot">${foot}</span>` : '') +
   '</span>';
+
+/** Состояние строкой с цветной точкой — общий вид для всего, что имеет
+    состояние: и для инженера, и для заявки. */
+const statePill = (state: { label: string; tone: string }) =>
+  `<span class="gtip__state gtip__state--${state.tone}">${state.label}</span>`;
+
+/** Значок средства передвижения разметкой, а не React: метка внутри живого
+    знака собирается строкой, и вклеивать глиф приходится самому. Источник
+    глифов при этом один и тот же — набор системы. */
+const rideGlyph = (transport: string | null | undefined, size = 11) => {
+  const d = iconPath(transportIcon(transport ?? ''));
+  return d
+    ? `<svg viewBox="0 0 256 256" width="${size}" height="${size}" fill="currentColor"` +
+        ` aria-hidden="true" style="display:block;flex:0 0 auto;opacity:.75"><path d="${d}"/></svg>`
+    : '';
+};
+
+/** «маршрут» в нужном числе: счёт в кучке читают словами, а не цифрой с
+    сокращением. */
+const pluralRoutes = (count: number) => {
+  const tail = count % 10;
+  const teen = count % 100;
+  if (teen >= 11 && teen <= 14) return 'маршрутов';
+  if (tail === 1) return 'маршрут';
+  if (tail >= 2 && tail <= 4) return 'маршрута';
+  return 'маршрутов';
+};
 
 /** Средство передвижения словами. Поле необязательное: движок 1.1 его не
     отдаёт, и тогда о транспорте сказать нечего. */
@@ -387,6 +469,7 @@ export function MapBoard({
   fill = false,
   aside = null,
   topRight = null,
+  banner = null,
   routesTitle = 'Маршруты',
   routeList: routeListOn = true,
   zoneOf,
@@ -394,7 +477,8 @@ export function MapBoard({
   zoneSource,
   busy = false,
   busyNote = '',
-  routeKeyOf
+  routeKeyOf,
+  progress = null
 }: Props) {
   /* Чей маршрут: при одном дне — открытый расчёт и сам инженер, при
      нескольких — то, что назвал звавший. */
@@ -416,6 +500,12 @@ export function MapBoard({
   const pinLayer = useRef<L.LayerGroup | null>(null);
   const freeLayer = useRef<L.LayerGroup | null>(null);
   const seqLayer = useRef<L.LayerGroup | null>(null);
+  /* Живой вид: пройденная часть путей и точки самих инженеров. Своими
+     слоями, а не внутри маршрутов, — те пересобираются от данных, а эти
+     двигаются каждую секунду, и пересобирать из-за секунды весь день
+     незачем. */
+  const trailLayer = useRef<L.LayerGroup | null>(null);
+  const dotLayer = useRef<L.LayerGroup | null>(null);
   /* Рамка карты: карточка под курсором живёт в ней, а не в слое Leaflet, и
      её место считается от этого угла. */
   const plotBox = useRef<HTMLDivElement>(null);
@@ -454,6 +544,27 @@ export function MapBoard({
   /* Раскладка путей по слоям. Считается от данных, а толщина из неё — от
      масштаба, поэтому она живёт отдельно от самих линий. */
   const lanes = useRef<Map<string, Lane>>(new Map());
+  /* Ломаные, как они лежат на карте сейчас: с веером на общих улицах и с
+     накопленными длинами. Живая точка едет по нарисованной нитке, а не по
+     оси дороги, иначе она шла бы рядом со своей же линией; считать веер
+     заново на каждую секунду нельзя — это перепроекция тысяч вершин, —
+     поэтому он лежит здесь и пересчитывается вместе с масштабом. */
+  const fans = useRef<Map<string, { path: [number, number][]; cum: number[] }>>(new Map());
+  /* Пройденная часть пути — одна линия на маршрут, поверх серого плана. */
+  const trails = useRef<Map<string, L.Polyline>>(new Map());
+  /* Сами инженеры: зелёная точка на том месте, где человек сейчас. */
+  const dots = useRef<Map<string, L.Marker>>(new Map());
+  /* Какой знак сейчас у точки: в пути он один, на заявке другой, и менять
+     разметку без нужды — значит гасить пульсацию на каждом шаге. */
+  const dotKind = useRef<Map<string, string>>(new Map());
+  /* Что точка рассказывает о себе. Подсказку собирают данные, а показывает
+     её наведение — и между ними секунда, за которую место успевает
+     поменяться; поэтому готовая карточка лежит здесь. */
+  const dotCard = useRef<Map<string, string>>(new Map());
+  /* Чьи метки сейчас собраны в кучку: у них своей подписи нет. */
+  const inPack = useRef<Set<string>>(new Set());
+  /* Сами кучки: их, как и плашки, двигает по карте не React. */
+  const packNodes = useRef<Map<string, HTMLElement>>(new Map());
   /* Невидимая широкая копия линии: попасть курсором в трёхпиксельный путь
      невозможно, поэтому события ловит она, а рисует — тонкая. */
   const grips = useRef<Map<string, L.Polyline>>(new Map());
@@ -780,11 +891,24 @@ export function MapBoard({
        быть виден всегда, а не через раз. Ниже кружков с номерами (600) — у
        выбранного маршрута об угрозе говорит сам номер. */
     instance.createPane('alarms').style.zIndex = '470';
+    /* Пройденная часть путей — поверх всех линий плана (400) и под точками
+       заявок (450). Слой, а не порядок отрисовки: пройденное принадлежит
+       прошлому и должно лежать поверх любого серого плана, в том числе
+       чужого, — иначе на общей улице история одного маршрута уходила бы под
+       будущее соседнего.
+
+       Живые точки — выше всего своего (номера визитов стоят на 600): точка
+       инженера это то, ради чего открыт мониторинг, и прятаться ей не за
+       чем. */
+    instance.createPane('trail').style.zIndex = '440';
+    instance.createPane('flow').style.zIndex = '660';
     zoneLayer.current = L.layerGroup().addTo(instance);
     routeLayer.current = L.layerGroup().addTo(instance);
+    trailLayer.current = L.layerGroup().addTo(instance);
     pinLayer.current = L.layerGroup().addTo(instance);
     freeLayer.current = L.layerGroup().addTo(instance);
     seqLayer.current = L.layerGroup().addTo(instance);
+    dotLayer.current = L.layerGroup().addTo(instance);
     map.current = instance;
 
     /* Карта считает свой размер один раз при создании: если контейнер потом
@@ -951,6 +1075,16 @@ export function MapBoard({
       watch.disconnect();
       instance.remove();
       map.current = null;
+      /* Живые слои принадлежат этой карте и уходят вместе с нею. Иначе
+         следующая карта получает ссылки на линии и точки, которых на ней
+         нет: они сочтены нарисованными, а на экране их не видно — ровно
+         это и вышло на двойном подключении, которым React проверяет
+         уборку. Остальные слои этим не болеют: их пересобирает разметка
+         дня, а живые живут между её сборками. */
+      trails.current.clear();
+      dots.current.clear();
+      dotKind.current.clear();
+      dotCard.current.clear();
     };
   }, []);
 
@@ -1003,6 +1137,201 @@ export function MapBoard({
       for (const layer of layers) layer.remove();
     };
   }, [base]);
+
+  /* Ломаные, как они лежат на карте, — с веером и с накопленными длинами.
+     Пересчитываются вместе с масштабом: веер задан в пикселях экрана, и на
+     каждой ступени нитка лежит чуть иначе. Живая точка обязана ехать по той
+     же нитке, что нарисована. */
+  const remapFans = () => {
+    const instance = map.current;
+    if (!instance) return;
+    const atZoom = instance.getZoom();
+    const next = new Map<string, { path: [number, number][]; cum: number[] }>();
+    for (const [id, lane] of lanes.current) {
+      /* Нитка, ни с кем не делящая дорогу, от масштаба не зависит: она лежит
+         по оси своей улицы на любой ступени. Мерить её заново на каждое
+         движение колеса незачем — берём прежние меры. */
+      const plain = lane.slots.every((slot) => slot === 0);
+      const had = fans.current.get(id);
+      if (plain && had && had.path === lane.points) {
+        next.set(id, had);
+        continue;
+      }
+      const path = plain ? lane.points : fanned(lane, atZoom);
+      next.set(id, { path, cum: spanOf(path) });
+    }
+    fans.current = next;
+  };
+
+  /* Отметка хода: меняется, когда кто-то переходит к следующей точке или
+     меняет занятие. Разметка карты зависит от неё, а не от самого живого
+     вида: тот новый каждую секунду, а перекрашивать город секундно незачем —
+     между переходами на карте меняется только место точки. */
+  const stepKey = useMemo(
+    () =>
+      progress
+        ? [...progress].map(([id, spot]) => `${id}:${spot.stopIndex}:${spot.kind}`).join('|')
+        : '',
+    [progress]
+  );
+
+  /* Заявки, до которых инженер ещё не доехал. Они гаснут вместе со своим
+     куском пути: на живой карте открытая заявка — это обещание, а не факт,
+     и в полную силу горит то, что уже сделано, и то, что делается сейчас.
+
+     Заявка под ногами (инженер на ней работает) сюда не попадает: её и так
+     держит пульсирующее кольцо, и гасить место, где идёт работа, значило бы
+     прятать главное. */
+  const ahead = useMemo(() => {
+    const set = new Set<string>();
+    if (!progress) return set;
+    for (const [id, spot] of progress) {
+      if (spot.kind === 'done') continue;
+      const route = view.routeByEngineer.get(id);
+      if (!route) continue;
+      const from = spot.kind === 'site' ? spot.stopIndex + 1 : spot.stopIndex;
+      for (let i = from; i < route.stops.length; i += 1) set.add(route.stops[i].order_id);
+    }
+    return set;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stepKey, view]);
+
+  /* Где инженер на своей ломаной прямо сейчас — точкой на карте.
+
+     Считается в двух местах: живой слой ставит по нему знак, а разметка —
+     метку маршрута и сборку меток при отдалении. Формула одна, иначе метка
+     оказалась бы не у того человека, о котором говорит. */
+  const liveAt = (id: string, spot: LiveSpot): [number, number] | null => {
+    const fan = fans.current.get(id);
+    const lane = lanes.current.get(id);
+    if (!fan || !lane || fan.path.length < 2) return null;
+    const to = lane.breaks[spot.stopIndex] ?? fan.path.length - 1;
+    const from = spot.stopIndex > 0 ? (lane.breaks[spot.stopIndex - 1] ?? 0) : 0;
+    const last = fan.cum.length - 1;
+    const head = fan.cum[Math.min(from, last)] ?? 0;
+    const tail = fan.cum[Math.min(to, last)] ?? 0;
+    const gone =
+      spot.kind === 'done' ? fan.cum[last] : head + Math.max(0, tail - head) * spot.share;
+    return pointAt(fan.path, fan.cum, gone).point;
+  };
+
+  /* Состояние каждой заявки на эту минуту: выполнена, в работе или ещё нет.
+
+     Живая карта отвечает на «как идёт день», и у заявки в этом ответе своё
+     место: точка на ней показывает этап плана и риск срыва, но не говорит
+     главного — сделана она уже или ещё ждёт. Прежде это можно было вывести
+     только по цвету линии под нею и по тому, где стоит зелёная точка;
+     теперь это сказано словом в её же карточке.
+
+     Слово журнала сильнее плана: диспетчер отметил «выполнено» или
+     «сорвано» — так и пишем, часы тут ни при чём. */
+  const orderState = useMemo(() => {
+    const map = new Map<string, { label: string; tone: 'ok' | 'warn' | 'bad' | 'idle' }>();
+    if (!progress) return map;
+    for (const [id, spot] of progress) {
+      const route = view.routeByEngineer.get(id);
+      if (!route) continue;
+      route.stops.forEach((stop, at) => {
+        const said = view.reported[stop.order_id];
+        if (said === 'сорвано') {
+          map.set(stop.order_id, { label: 'Сорвана', tone: 'bad' });
+          return;
+        }
+        if (said === 'выполнено' || spot.kind === 'done' || at < spot.stopIndex) {
+          map.set(stop.order_id, { label: 'Выполнена', tone: 'ok' });
+          return;
+        }
+        if (at === spot.stopIndex && spot.kind === 'site') {
+          map.set(stop.order_id, { label: 'В работе', tone: 'warn' });
+          return;
+        }
+        map.set(stop.order_id, { label: 'Ещё не выполнена', tone: 'idle' });
+      });
+    }
+    return map;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stepKey, view]);
+  /* Карточку заявки собирают при наведении, а состояние меняется тактами —
+     читаем его из ссылки, а не из замыкания той минуты, когда точка
+     рисовалась. */
+  const states = useRef(orderState);
+  states.current = orderState;
+
+  /* Как сейчас выглядит путь: цвет, толщина, прозрачность, рисунок штриха.
+
+     Считается в одном месте, потому что спрашивают в двух — линии плана и
+     пройденная часть живого вида, — и разойтись им нельзя: гася город под
+     курсором, они гасли бы порознь, и на притихшей карте оставалась бы
+     яркая история одного маршрута. */
+  const bandLook = (id: string) => {
+    /* Невзятая заявка, выбранная щелчком, оставляет на карте себя одну. */
+    const lone =
+      selectedOrder && view.orderById.has(selectedOrder) && !view.stopByOrder.has(selectedOrder)
+        ? selectedOrder
+        : null;
+    const overNest = hoverNest !== null && hoverNest.length > 0;
+    const on = live === id;
+    const hidden = lone !== null || (pinned !== null && pinned !== id);
+    const opacity = hidden ? 0 : lonely !== null ? 0.12 : overNest || (live && !on) ? 0.2 : 0.95;
+    const thick = weightAt(map.current?.getZoom() ?? zoom);
+    const weight =
+      bandWeight(thick, on || pinned === id) + (overRoute === id ? thick * 0.6 + 1.6 : 0);
+    const ride = view.loads.find((load) => load.engineer.id === id)?.engineer.transport;
+    return { opacity, weight, color: colorOf(id), ride };
+  };
+
+  /* Разметка путей: план, его пройденная часть и живые точки — одним
+     проходом.
+
+     Прежде цвет и прозрачность линий считала подсветка, и этого хватало:
+     путь был один и целиком. В живом виде он поделён — пройденное в цвете,
+     будущее серым, — и делят его данные, которые меняются каждую секунду,
+     а гасят его наведение и выбор, которые меняются от руки. Сойтись они
+     обязаны в одном месте, иначе секундное обновление возвращало бы цвет
+     тому, что притихло под курсором. */
+  const paintBands = () => {
+    for (const item of stack.current) {
+      const { opacity, weight, color, ride } = bandLook(item.id);
+      /* Путь поделён живой точкой: серым идёт то, куда инженер ещё не
+         доехал. Полупрозрачным нарочно — это не второй цвет на карте, а
+         обещание плана, до которого дело не дошло. */
+      const split = progress?.has(item.id) ?? false;
+      /* Под курсором и у выбранного маршрута остаток выходит почти в полную
+         силу: на вопрос «куда он поедет дальше» отвечают наведением, и
+         ответ должен быть виден, а не угадываться. */
+      const looked = live === item.id || pinned === item.id;
+      for (const part of item.parts) {
+        part.getElement()?.classList.toggle('geo__live', pinned === item.id);
+        part.setStyle({
+          color: split ? TONE.ahead : color,
+          weight,
+          opacity: split ? opacity * (looked ? 0.95 : 0.42) : opacity,
+          dashArray: dashFor(ride, weight)
+        });
+      }
+    }
+    /* Пройденное — цветом и толщиной самого маршрута: это он и есть, только
+       его прошлое. */
+    for (const [id, trail] of trails.current) {
+      const { opacity, weight, color, ride } = bandLook(id);
+      trail.getElement()?.classList.toggle('geo__live', pinned === id);
+      trail.setStyle({ color, weight, opacity, dashArray: dashFor(ride, weight) });
+    }
+    /* Живая точка гаснет вместе со своим маршрутом: выбрали один путь —
+       остальные люди уходят с карты, как и их линии. Приглушённая остаётся
+       видимой, но в полсилы: она всё-таки человек на смене. */
+    for (const [id, dot] of dots.current) {
+      const { opacity } = bandLook(id);
+      dot.setOpacity(opacity === 0 ? 0 : opacity < 0.5 ? 0.5 : 1);
+      const node = dot.getElement();
+      if (node) node.style.pointerEvents = opacity === 0 ? 'none' : '';
+    }
+  };
+  /* Разметку двигают и действия, а они видят тот вид, в котором создавались.
+     Живая точка обновляется каждую секунду и спрашивать о подсветке должна
+     о нынешней, а не о той, что была при её рождении. */
+  const paint = useRef(paintBands);
+  paint.current = paintBands;
 
   /* Слои дня: линии маршрутов, точки заявок, квадраты выезда. */
   useEffect(() => {
@@ -1069,6 +1398,9 @@ export function MapBoard({
         }),
       LAYERS + 1
     );
+    /* Меры для живой точки — сразу за раскладкой: она едет по нарисованной
+       нитке, а не по оси дороги. */
+    remapFans();
 
     const thick = weightAt(instance.getZoom());
 
@@ -1288,11 +1620,26 @@ export function MapBoard({
         fillOpacity: 1,
         className: 'geo__pin'
       });
-      const orderCard = card(mine ?? TONE.free, `${order.id} · ${order.work_title}`, [
-        placeOf(order),
-        `${order.district} · окно ${hhmm(order.window_start)}–${hhmm(order.window_end)}`,
-        engineer ? engineer.name : 'Инженер не назначен'
-      ]);
+      /* Собирается при наведении, а не заранее: состояние заявки меняется
+         тактами живого вида, а точки на карте пересобираются от плана. */
+      const orderCard = () =>
+        card(
+          mine ?? TONE.free,
+          `${order.id} · ${order.work_title}`,
+          [
+            placeOf(order),
+            `${order.district} · окно ${hhmm(order.window_start)}–${hhmm(order.window_end)}`,
+            engineer ? engineer.name : 'Инженер не назначен'
+          ],
+          /* Заявке без инженера состояния не полагается: она не «ещё не
+             выполнена», её просто некому выполнять, и сказано об этом
+             строкой выше. */
+          states.current.has(order.id)
+            ? statePill(states.current.get(order.id)!)
+            : placement
+              ? undefined
+              : statePill({ label: 'Без инженера', tone: 'bad' })
+        );
       /* Ловушка курсора вокруг точки. Кружок заявки — девять пикселей в
          поперечнике, и промахнуться по нему легче, чем попасть: щелчок
          уходил мимо, в пустое место карты, и вместо карточки заявки снимал
@@ -1318,7 +1665,7 @@ export function MapBoard({
         pick.current.onSelectOrder(order.id);
       });
       marker.on('mouseover', () => {
-        showInfo(orderCard, marker.getLatLng(), {
+        showInfo(orderCard(), marker.getLatLng(), {
           r: pinOuter(instance.getZoom(), Boolean(placement))
         });
         /* Точка под курсором подрастает: девять пикселей на карте с сотней
@@ -1952,6 +2299,16 @@ export function MapBoard({
         const last = stops[stops.length - 1];
         const order = last ? view.orderById.get(last.order_id) : undefined;
         if (!order) return null;
+        /* В живом виде метка принадлежит человеку, а не концу его пути: у
+           того, кто сейчас едет или работает, её несёт сама живая точка, и
+           второй такой же плашки на карте быть не должно.
+
+           Тот, кто ещё не вышел, стоит у своего адреса выезда — метку
+           переносим туда же: она говорит, где человек, а не где он окажется
+           к вечеру. У закончившего смену конец пути и есть его место. */
+        const spot = progress?.get(load.engineer.id);
+        if (spot && spot.kind !== 'before' && spot.kind !== 'done') return null;
+        const home = spot?.kind === 'before';
         const color = routeColor(index);
         const key = routeKey(load.engineer.id);
         const number = routeLabel(routeNumber(key.runId, key.engineerId));
@@ -1960,11 +2317,13 @@ export function MapBoard({
           number,
           color,
           ride: transportIcon(load.engineer.transport ?? ''),
-          lat: order.lat,
-          lon: order.lon,
+          lat: home ? load.engineer.home_lat : order.lat,
+          lon: home ? load.engineer.home_lon : order.lon,
           card: card(color, `${number} · ${load.engineer.name}`, [
-            `Последняя заявка: ${order.id}${last ? ` · ${hhmm(last.finish)}` : ''}`,
-            placeOf(order),
+            home
+              ? `Выезжает из: ${homeOf(load.engineer)}`
+              : `Последняя заявка: ${order.id}${last ? ` · ${hhmm(last.finish)}` : ''}`,
+            home ? `Смена с ${hhmm(load.engineer.shift_start)}` : placeOf(order),
             `${rideOf(load.engineer.transport)} · ${visits(load.visits)} · загрузка ${Math.round(
               load.occupancy * 100
             )}%`
@@ -1972,8 +2331,11 @@ export function MapBoard({
         };
       })
       .filter((one): one is NonNullable<typeof one> => one !== null);
+    /* От отметки хода, а не от живого вида целиком: тот новый каждый такт, а
+       плашка переезжает, только когда человек вышел на смену или закончил
+       её. */
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view, routesOn, runId]);
+  }, [view, routesOn, runId, stepKey]);
 
   /* Постоянные подписи выбранного маршрута: его выезд и каждый его визит.
 
@@ -2041,6 +2403,7 @@ export function MapBoard({
     };
     for (const node of endNodes.current.values()) put(node);
     for (const node of stopNodes.current.values()) put(node);
+    for (const node of packNodes.current.values()) put(node);
     const info = infoBox.current;
     if (info) put(info);
   };
@@ -2175,7 +2538,7 @@ export function MapBoard({
     if (plot) {
       const area = plot.getBoundingClientRect();
       for (const one of plot.querySelectorAll<HTMLElement>(
-        '.geo__side, .geo__deck, .georoutes, .mapdrag, .geo__close, .geo__credit'
+        '.geo__side, .geo__deck, .georoutes, .mapdrag, .geo__close, .geo__credit, .geobanner'
       )) {
         const box = one.getBoundingClientRect();
         if (box.width === 0 || box.height === 0) continue;
@@ -2444,40 +2807,17 @@ export function MapBoard({
     /* Приглушён ли этот маршрут: под курсором точка выезда или невзятая
        заявка — в обоих случаях смотрят на точку, а не на пути. */
     const muted = (_id: string | undefined) => overNest || loneOver !== null;
-    const thick = weightAt(map.current?.getZoom() ?? zoom);
-    for (const item of stack.current) {
-      const on = live === item.id;
-      const hidden = away(item.id) || (pinned !== null && pinned !== item.id);
-      /* Гнездо гасит соседей до той же четверти, что и наведение на
-         маршрут; невзятая заявка — глубже: рядом с одной точкой линии
-         мешают сильнее. */
-      const opacity = hidden
-        ? 0
-        : loneOver !== null
-          ? 0.12
-          : muted(item.id) || (live && !on)
-            ? 0.2
-            : 0.95;
-      const ride = view.loads.find((load) => load.engineer.id === item.id)?.engineer.transport;
-      /* Выбранный путь и так один на карте, но под курсором он прибавляет
-         ещё: видно, что целишься в сам маршрут, а не в город под ним.
+    /* Гнездо гасит соседей до той же четверти, что и наведение на маршрут;
+       невзятая заявка — глубже: рядом с одной точкой линии мешают сильнее.
+       Сами числа прозрачности и толщины лежат в `bandLook` — там же, где их
+       спрашивает живой вид.
 
-         «Подсвечен» и «под курсором» — разные вещи: у выбранного маршрута
-         подсветка равна выбору, и без отдельного признака наведение на него
-         не меняло ничего. */
-      const lifted = on || pinned === item.id;
-      const under = overRoute === item.id;
-      const weight = bandWeight(thick, lifted) + (under ? thick * 0.6 + 1.6 : 0);
-      for (const part of item.parts) {
-        part.getElement()?.classList.toggle('geo__live', pinned === item.id);
-        part.setStyle({
-          color: colorOf(item.id),
-          weight,
-          opacity,
-          dashArray: dashFor(ride, weight)
-        });
-      }
-    }
+       Выбранный путь и так один на карте, но под курсором он прибавляет
+       ещё: видно, что целишься в сам маршрут, а не в город под ним.
+       «Подсвечен» и «под курсором» — разные вещи: у выбранного маршрута
+       подсветка равна выбору, и без отдельного признака наведение на него
+       не меняло ничего. */
+    paint.current();
     for (const [id, grip] of grips.current) {
       grip.getElement()?.classList.toggle('geo__live', pinned === id);
       /* Ловушка скрытого маршрута курсор не ловит. Прежде ловила: при
@@ -2572,8 +2912,17 @@ export function MapBoard({
       /* Точку подсвеченного маршрута прячем: на её месте встанет кружок с
          номером — ровно на тех же координатах, а не рядом. */
       const replaced = numbered.has(orderId);
-      const opacity = replaced || hidden ? 0 : dim ? 0.2 : 1;
-      marker.setStyle({ opacity, fillOpacity: opacity });
+      /* Заявка, до которой инженер ещё не доехал, гаснет вместе со своим
+         куском пути и берёт его же тон: на живой карте это обещание плана,
+         а не сделанная работа. Знак «под угрозой» при этом остаётся в
+         полную силу — он предупреждает как раз о том, что впереди. */
+      const waiting = ahead.has(orderId);
+      const opacity = replaced || hidden ? 0 : dim ? 0.2 : waiting ? 0.5 : 1;
+      marker.setStyle({
+        opacity,
+        fillOpacity: opacity,
+        color: waiting ? TONE.ahead : mine ? colorOf(mine) : TONE.free
+      });
       /* Ловушка исчезает вместе с точкой: иначе на спрятанной заявке
          оставался бы невидимый кружок, который ловит щелчки. */
       const grip = orderGrips.current.get(orderId);
@@ -2621,11 +2970,19 @@ export function MapBoard({
            щёлкают, даже когда всё остальное на карте выключено. */
         interactive: true
       });
-      const rich = card(TONE[tone], `${seat}. ${order.id} · ${order.work_title}`, [
-        placeOf(order),
-        `${order.district} · окно ${hhmm(order.window_start)}–${hhmm(order.window_end)}`,
-        `визит ${hhmm(stop.start)}–${hhmm(stop.finish)} · запас ${stop.slack_minutes} мин`
-      ]);
+      const rich = card(
+        TONE[tone],
+        `${seat}. ${order.id} · ${order.work_title}`,
+        [
+          placeOf(order),
+          `${order.district} · окно ${hhmm(order.window_start)}–${hhmm(order.window_end)}`,
+          `визит ${hhmm(stop.start)}–${hhmm(stop.finish)} · запас ${stop.slack_minutes} мин`
+        ],
+        /* Номера визитов живут только у выбранного маршрута, и состояние
+           у них то же самое, что у самой точки: карточка одна и та же
+           заявка, рассказанная подробнее. */
+        orderState.has(order.id) ? statePill(orderState.get(order.id)!) : undefined
+      );
       /* Подпись визита рисует разметка, а не Leaflet: она лежит в рамке
          карты вместе с остальными плашками, и место ей считает раскладка.
          Здесь остаётся сам кружок с номером. */
@@ -2644,7 +3001,8 @@ export function MapBoard({
       mark.addTo(layer);
       mark.getElement()?.classList.add('geo__live');
     }
-  }, [live, pinned, lonely, hoverNest, overRoute, selectedOrder, view, routesOn, runId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [live, pinned, lonely, hoverNest, overRoute, selectedOrder, view, routesOn, runId, stepKey]);
 
   /* Толщина держится в пикселях экрана, а не в метрах: и кайма соседнего
      слоя, и сама линия должны читаться одинаково и на обзоре области, и во
@@ -2693,9 +3051,12 @@ export function MapBoard({
   useEffect(() => {
     const instance = map.current;
     if (!instance || instance.getZoom() === undefined) return;
+    /* Заодно пересчитаны и меры, по которым едет живая точка: веер сдвинул
+       нитку, и место инженера на ней сдвинулось вместе с нею. */
+    remapFans();
     for (const [id, lane] of lanes.current) {
       if (lane.slots.every((slot) => slot === 0)) continue;
-      const path = fanned(lane, instance.getZoom());
+      const path = fans.current.get(id)?.path ?? lane.points;
       grips.current.get(id)?.setLatLngs(path);
       /* Перегоны режем по тем же границам, что и при сборке: иначе линия
          разъедется на стыках. */
@@ -2714,6 +3075,264 @@ export function MapBoard({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [zoom, view, base]);
+
+  /* Живой вид: где инженеры сейчас.
+
+     Три вещи разом, и все три об одном — о минуте, которая идёт.
+
+     Первая: зелёная точка на самом человеке. Она пульсирует, потому что
+     пульсирует то, что живо: на карте, где всё остальное стоит, движение —
+     единственный способ сказать «это происходит сейчас», и глаз находит его
+     сам, не разбирая цветов.
+
+     Вторая: пройденная часть пути. Она лежит отдельной линией поверх серого
+     плана, а не режется из его перегонов, и это не уловка. Перегоны
+     нарисованы по очереди нарочно — так на перекрёстке видно, какой из них
+     сверху, а значит, куда инженер сворачивает; резать их ещё и по живой
+     точке значило бы пересобирать разметку дюжины путей каждую секунду.
+     Одна линия сверху даёт то же самое одним движением.
+
+     Третья: серое будущее. Его красит общая разметка (`paintBands`) — там
+     же, где гаснет город под курсором.
+
+     Обновляется каждую секунду, и поэтому здесь нет ни сборки, ни разбора:
+     слои живут между обновлениями, а меняются у них только координаты. */
+  useEffect(() => {
+    const trailGroup = trailLayer.current;
+    const dotGroup = dotLayer.current;
+    if (!map.current || !trailGroup || !dotGroup) return;
+
+    /* Живого вида нет — на карте чистый план. Снимаем всё живое разом, но
+       только если оно там было: пустая работа каждую секунду ни к чему. */
+    if (!progress || progress.size === 0) {
+      if (trails.current.size === 0 && dots.current.size === 0) return;
+      trailGroup.clearLayers();
+      dotGroup.clearLayers();
+      trails.current.clear();
+      dots.current.clear();
+      dotKind.current.clear();
+      dotCard.current.clear();
+      paint.current();
+      return;
+    }
+
+    /* Кто на карте был и кто на ней есть: по разнице снимаем выбывших —
+       участок сняли с карты, отбор по транспорту спрятал пеших, смена
+       кончилась. */
+    const was = trails.current.size + dots.current.size;
+    const alive = new Set<string>();
+
+    for (const [id, spot] of progress) {
+      const fan = fans.current.get(id);
+      const lane = lanes.current.get(id);
+      if (!fan || !lane || fan.path.length < 2) continue;
+      alive.add(id);
+      const { color, weight, opacity, ride } = bandLook(id);
+
+      /* Докуда дошёл. Доля перегона считается по времени, а ложится на
+         длину: вершины маршрутизатор ставит густо на поворотах и редко на
+         прямых, и «половина вершин» — это не половина пути.
+
+         Само место считает `liveAt` — оно же нужно разметке; здесь остаётся
+         только найти вершину перед ним, чтобы отрезать пройденную часть. */
+      const point = liveAt(id, spot);
+      if (!point) continue;
+      const to = lane.breaks[spot.stopIndex] ?? fan.path.length - 1;
+      const from = spot.stopIndex > 0 ? (lane.breaks[spot.stopIndex - 1] ?? 0) : 0;
+      const last = fan.cum.length - 1;
+      const head = fan.cum[Math.min(from, last)] ?? 0;
+      const tail = fan.cum[Math.min(to, last)] ?? 0;
+      const gone =
+        spot.kind === 'done' ? fan.cum[last] : head + Math.max(0, tail - head) * spot.share;
+      const { index } = pointAt(fan.path, fan.cum, gone);
+
+      /* Пройденная часть — от начала пути до этого места. До выхода на смену
+         её нет вовсе: весь день впереди. */
+      let trail = trails.current.get(id);
+      if (!trail) {
+        trail = L.polyline([], {
+          color,
+          weight,
+          opacity,
+          interactive: false,
+          noClip: true,
+          pane: 'trail',
+          className: 'geo__road',
+          dashArray: dashFor(ride, weight),
+          lineCap: 'round'
+        });
+        trail.addTo(trailGroup);
+        trails.current.set(id, trail);
+      }
+      trail.setLatLngs(
+        spot.kind === 'before' ? [] : [...fan.path.slice(0, index + 1), point]
+      );
+
+      /* Точка — только у того, чей день идёт: до смены и после неё
+         пульсировать нечему, и зелёная точка на пустом маршруте обещала бы
+         работу, которой нет. */
+      const going = spot.kind === 'ride' || spot.kind === 'site' || spot.kind === 'wait';
+      const dot = dots.current.get(id);
+      /* Чем знак отличается от прежнего: занятием и меткой. Разметку меняем
+         только при расхождении — иначе пульсация начиналась бы заново на
+         каждом такте. */
+      if (!going) {
+        if (dot) {
+          dot.remove();
+          dots.current.delete(id);
+          dotKind.current.delete(id);
+          dotCard.current.delete(id);
+        }
+        continue;
+      }
+
+      /* Что точка расскажет о себе. Собирается здесь, а показывается при
+         наведении: между тем и этим четверть секунды, за которую место
+         успевает поменяться. */
+      const load = view.loads.find((one) => one.engineer.id === id);
+      const key = routeKey(id);
+      const number = routeLabel(routeNumber(key.runId, key.engineerId));
+      const name = load ? load.engineer.name : id;
+      const lines: string[] = [];
+      if (spot.kind === 'ride') {
+        lines.push(`Едет: ${spot.from} → ${spot.to}`);
+        lines.push(`Будет в ${hhmm(spot.arrive)} · ехать ${spot.left} мин`);
+      } else if (spot.kind === 'site') {
+        lines.push(`Работает: ${spot.to}`);
+        lines.push(`С ${hhmm(spot.start)} · осталось ${spot.left} мин`);
+      } else {
+        lines.push(`Свободен: ${spot.from}`);
+        lines.push(`Выезд через ${spot.left} мин · дальше ${spot.to}`);
+      }
+
+      /* Состояние словами — то, ради чего на точку наводят. Три ответа, и
+         каждый о сроке заявки, а не о занятии: опоздание — уже факт,
+         «впритык» — оценка движка (запас у визита мал, и опоздание
+         вероятно), «по плану» — всё остальное. */
+      const state =
+        spot.lateMinutes > 0
+          ? { label: `Опаздывает на ${spot.lateMinutes} мин`, tone: 'bad' as const }
+          : spot.risk === 'high'
+            ? { label: 'Идёт впритык к сроку', tone: 'warn' as const }
+            : { label: 'Идёт по плану', tone: 'ok' as const };
+
+      dotCard.current.set(
+        id,
+        flowCard(color, `${number} · ${name}`, lines, state, spot.visitsDone, spot.visitsTotal)
+      );
+
+      /* Знак у точки один на весь путь и один на всю стоянку: в дороге она
+         едет, на заявке — стоит и дышит. Разметку меняем только со сменой
+         знака, иначе пульсация начиналась бы заново каждую секунду.
+
+         Метка маршрута лежит внутри самого знака, а не отдельной плашкой на
+         карте. Прежде она стояла у последней заявки пути — там, где инженер
+         окажется к вечеру, — и на живой карте отвечала не на тот вопрос:
+         диспетчер ищет глазами, где человек сейчас, а номер маршрута лежал
+         в другом конце города. Внутри знака она едет вместе с ним и тем же
+         переходом — догонять её не приходится, а стоит это ничего: знак
+         двигают одним `transform`, метка едет в нём.
+
+         Тем же самым тумблером «метки» она и гасится: это та же метка, и
+         спрашивать о ней дважды незачем. */
+      const kind = spot.kind === 'ride' ? 'ride' : 'site';
+      /* Метка та же, что у неподвижных: цветная точка, значок средства
+         передвижения, номер. Значок здесь вклеивается разметкой, а не
+         React-значком, — и это не мелочь: без него у едущих метка была
+         короче, чем у стоящих, и на карте выходило, будто у одних инженеров
+         транспорт известен, а у других нет. */
+      const goesBy = load ? load.engineer.transport : null;
+      const tag = platesOn && !inPack.current.has(id)
+        ? `<span class="geo__end geo__end--flow">` +
+          `<i class="geo__end-dot" style="background:${color}"></i>` +
+          `${rideGlyph(goesBy)}<b>${number}</b></span>`
+        : '';
+      const icon = () =>
+        L.divIcon({
+          className: 'flowpin',
+          html:
+            `<span class="flow flow--${kind}">` +
+            `<i class="flow__wave"></i><i class="flow__core"></i>${tag}</span>`,
+          iconSize: [28, 28],
+          iconAnchor: [14, 14]
+        });
+
+      if (!dot) {
+        const mark = L.marker(point, {
+          icon: icon(),
+          pane: 'flow',
+          keyboard: false,
+          /* Наведение на точку — это вопрос о человеке, и отвечает на него
+             тот же порядок, что и наведение на его линию: путь поднимается,
+             остальные гаснут, а карточка говорит, куда он едет. */
+          interactive: true
+        });
+        mark.on('mouseover', () => {
+          const html = dotCard.current.get(id);
+          if (html) showInfo(html, mark.getLatLng(), { r: 13 });
+          pick.current.onLive(id);
+          setOverRoute(id);
+        });
+        mark.on('mouseout', () => {
+          hideInfo();
+          pick.current.onLive(null);
+          setOverRoute(null);
+        });
+        mark.on('click', () => pick.current.onPin(id));
+        mark.addTo(dotGroup);
+        dots.current.set(id, mark);
+        dotKind.current.set(id, `${kind}|${tag}`);
+      } else {
+        /* Точка доезжает до нового места переходом, и это верно, пока она
+           едет. Но срез отводят и рукой — тогда человек не переезжает через
+           полгорода, а оказывается в другом часе дня, и «плавный переезд»
+           через весь город был бы враньём о поездке, которой не было.
+           Дальний скачок ставим разом, без перехода.
+
+           Порог с запасом: на самом быстром ходу между тактами проходит
+           четверть минуты пути — сотни метров, а не километры. */
+        const was = dot.getLatLng();
+        const leap = Math.abs(was.lat - point[0]) > 0.02 || Math.abs(was.lng - point[1]) > 0.04;
+        const node = dot.getElement();
+        if (leap && node) {
+          node.style.transition = 'none';
+          dot.setLatLng(point);
+          /* Заставляем браузер применить переезд до того, как вернём
+             переход: иначе он сольёт оба изменения в одно и всё равно
+             поедет. */
+          void node.getBoundingClientRect();
+          node.style.transition = '';
+        } else {
+          dot.setLatLng(point);
+        }
+        const mark = `${kind}|${tag}`;
+        if (dotKind.current.get(id) !== mark) {
+          dot.setIcon(icon());
+          dotKind.current.set(id, mark);
+        }
+      }
+    }
+
+    for (const [id, trail] of [...trails.current]) {
+      if (alive.has(id)) continue;
+      trail.remove();
+      trails.current.delete(id);
+    }
+    for (const [id, dot] of [...dots.current]) {
+      if (alive.has(id)) continue;
+      dot.remove();
+      dots.current.delete(id);
+      dotKind.current.delete(id);
+      dotCard.current.delete(id);
+    }
+
+    /* Появились или исчезли живые линии — разметку путей надо пересчитать:
+       у поделённого маршрута будущее уходит в серое, у вернувшегося в план
+       возвращается цвет. На каждую секунду этого не делаем: состав меняется
+       редко, а красить дюжину путей заново шестьдесят раз в минуту незачем. */
+    if (was !== trails.current.size + dots.current.size) paint.current();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [progress, view, zoom, routesOn, platesOn]);
 
   /* Развернули или свернули — карта пересчитывает свой размер. Leaflet
      считает его один раз и сам про изменение не узнает: без этого половина
@@ -2852,6 +3471,12 @@ export function MapBoard({
       else layer.remove();
     };
     show(routeLayer.current, routesOn);
+    /* Пройденная часть уходит вместе с маршрутами: это тот же путь, только
+       его прошлое. Живые точки остаются — их выключают не кнопкой
+       «маршруты», а тем, что смена кончилась: в мониторинге спрашивают, где
+       люди, и убрать линии, чтобы разглядеть город, это не то же, что
+       перестать видеть людей. */
+    show(trailLayer.current, routesOn);
     show(pinLayer.current, pinsOn);
     show(freeLayer.current, pinsOn);
 
@@ -2933,6 +3558,167 @@ export function MapBoard({
      выбранная щелчком. Плашки маршрутов при ней уходят все. */
   const loneNow =
     lonely ?? (selectedOrder && !view.stopByOrder.has(selectedOrder) ? selectedOrder : null);
+
+  /* ─── кучки меток ────────────────────────────────────────────────────
+     Отдалили карту — и сорок меток ложатся друг на друга.
+
+     На обзоре города метки перестают быть подписями: в одном месте их
+     три-четыре, они налезают краями, и прочесть нельзя ни одну. Раскладка
+     (`spread`) разводит их по сторонам, но разводить на обзоре области
+     некуда — расстояние между соседями там меньше самой метки.
+
+     Поэтому близкие собираются в одну: вместо четырёх нечитаемых подписей
+     стоит одна с числом. Нажатие приближает карту к этому месту — метки
+     расходятся сами и снова читаются порознь. Это и есть ответ на «сколько
+     их там»: не подпись, а способ посмотреть.
+
+     Считается в пикселях экрана, а не в градусах: слипаются метки от
+     близости на экране, и ни от чего больше. Поэтому на близком обзоре
+     кучки не возникают сами собой — там метки и так далеко друг от друга.
+
+     Порог по осям, а не по кругу: метка — пилюля шириной в четыре высоты,
+     и по горизонтали соседи мешают друг другу с большего расстояния.
+
+     Меру берём по самим точкам, а не по ширине подписей, и это осознанная
+     уступка. По ширине подписи кучка собиралась, едва метки задевали друг
+     друга краями, — а глаз к этому времени уже прекрасно различал две
+     отдельные точки, и на карте вместо двух читаемых подписей вставало
+     «3 маршрута». Хуже каши только каша, которой нет: диспетчер видит
+     несколько точек и число вместо ответа.
+
+     Поэтому собираем только тех, кто слился на экране в одно пятно, —
+     порог чуть шире самой точки со знаком. Подписи у разошедшихся соседей
+     местами перекрываются, и это честнее: перекрытие видно и разбирается
+     приближением, а скрытая за числом подпись не видна никак. */
+  const PACK_X = 38;
+  const PACK_Y = 16;
+  const marks = (() => {
+    if (!platesOn || !routesOn || pinned !== null || loneNow !== null) return [];
+    const list: {
+      id: string;
+      number: string;
+      color: string;
+      ride: string;
+      name: string;
+      lat: number;
+      lon: number;
+    }[] = [];
+    view.loads.forEach((load, index) => {
+      if (!load.route || load.route.stops.length === 0) return;
+      const spot = progress?.get(load.engineer.id);
+      /* Живая метка едет вместе с инженером, неподвижная стоит у своей
+         плашки — в кучку они попадают наравне: на экране это одинаковые
+         подписи, и слипаются они одинаково. */
+      const live =
+        spot && spot.kind !== 'before' && spot.kind !== 'done'
+          ? liveAt(load.engineer.id, spot)
+          : null;
+      const plate = endPlates.find((one) => one.id === load.engineer.id);
+      const at = live ?? (plate ? ([plate.lat, plate.lon] as [number, number]) : null);
+      if (!at) return;
+      const key = routeKey(load.engineer.id);
+      list.push({
+        id: load.engineer.id,
+        number: routeLabel(routeNumber(key.runId, key.engineerId)),
+        color: routeColor(index),
+        ride: transportIcon(load.engineer.transport ?? ''),
+        name: load.engineer.name,
+        lat: at[0],
+        lon: at[1]
+      });
+    });
+    return list;
+  })();
+
+  const packs = (() => {
+    const spots = marks
+      .map((mark) => ({ mark, at: atPoint(mark.lat, mark.lon) }))
+      .filter((one): one is { mark: (typeof marks)[number]; at: { x: number; y: number } } =>
+        one.at !== null
+      );
+    const taken = new Set<number>();
+    const out: {
+      key: string;
+      x: number;
+      y: number;
+      lat: number;
+      lon: number;
+      members: (typeof marks)[number][];
+    }[] = [];
+    for (let i = 0; i < spots.length; i += 1) {
+      if (taken.has(i)) continue;
+      const group = [i];
+      for (let j = i + 1; j < spots.length; j += 1) {
+        if (taken.has(j)) continue;
+        if (
+          Math.abs(spots[i].at.x - spots[j].at.x) < PACK_X &&
+          Math.abs(spots[i].at.y - spots[j].at.y) < PACK_Y
+        ) {
+          group.push(j);
+          taken.add(j);
+        }
+      }
+      if (group.length < 2) continue;
+      group.forEach((k) => taken.add(k));
+      const members = group.map((k) => spots[k].mark);
+      out.push({
+        key: members.map((one) => one.id).join('|'),
+        x: group.reduce((sum, k) => sum + spots[k].at.x, 0) / group.length,
+        y: group.reduce((sum, k) => sum + spots[k].at.y, 0) / group.length,
+        lat: members.reduce((sum, one) => sum + one.lat, 0) / members.length,
+        lon: members.reduce((sum, one) => sum + one.lon, 0) / members.length,
+        members
+      });
+    }
+
+    /* Второй проход — по самим кучкам.
+
+       Порог первого прохода взят по точкам, и это верно для подписей: они
+       расходятся рано. Но на обзоре области рядом оказываются уже не точки,
+       а сами кучки — три числа в одном месте читаются не лучше трёх
+       подписей. Поэтому слипшиеся кучки сливаются в одну, и мера тут своя:
+       размер самой метки с числом.
+
+       Повторяем, пока есть что сливать: слияние двух сдвигает середину, и
+       новая кучка может оказаться рядом с третьей. Их единицы, и цикл
+       короткий. */
+    const PACK_JOIN_X = 46;
+    const PACK_JOIN_Y = 20;
+    for (let again = true; again; ) {
+      again = false;
+      for (let i = 0; i < out.length && !again; i += 1) {
+        for (let j = i + 1; j < out.length; j += 1) {
+          if (
+            Math.abs(out[i].x - out[j].x) < PACK_JOIN_X &&
+            Math.abs(out[i].y - out[j].y) < PACK_JOIN_Y
+          ) {
+            const members = [...out[i].members, ...out[j].members];
+            const share = (pick: (one: (typeof out)[number]) => number) =>
+              (pick(out[i]) * out[i].members.length + pick(out[j]) * out[j].members.length) /
+              members.length;
+            out[i] = {
+              key: members.map((one) => one.id).join('|'),
+              x: share((one) => one.x),
+              y: share((one) => one.y),
+              lat: share((one) => one.lat),
+              lon: share((one) => one.lon),
+              members
+            };
+            out.splice(j, 1);
+            again = true;
+            break;
+          }
+        }
+      }
+    }
+
+    return out;
+  })();
+
+  /* Кто ушёл в кучку — своей метки не рисует. Живому знаку это сообщает
+     ссылка: его разметку собирает слой, а не это место. */
+  const packed = new Set(packs.flatMap((pack) => pack.members.map((one) => one.id)));
+  inPack.current = packed;
 
   return (
     <div
@@ -3278,6 +4064,12 @@ export function MapBoard({
           </div>
         )}
 
+        {/* Оговорка о самом виде — вверху по середине города. Место выбрано
+            тем, что оно единственное свободное: слева столбик масштаба,
+            справа плашка смены, внизу числа, а посередине карта — и её
+            верхний край глаз проходит первым. */}
+        {banner && <div className="geobanner">{banner}</div>}
+
         {/* Правый верхний угол: плашка о дне целиком, под нею перечень
             маршрутов. Оба стоят в одном столбце, а не порознь: иначе плашка
             легла бы поверх перечня, и одно закрывало бы другое. */}
@@ -3360,6 +4152,8 @@ export function MapBoard({
             const on = live === plate.id;
             const hidden = loneNow !== null || (pinned !== null && pinned !== plate.id);
             if (hidden) return null;
+            /* Ушла в кучку — вместо неё стоит одна метка с числом. */
+            if (packed.has(plate.id)) return null;
             const faded = hoverNest !== null || (live !== null && !on);
             return (
               <button
@@ -3401,6 +4195,58 @@ export function MapBoard({
               </button>
             );
           })}
+
+          {/* Кучка меток: сколько маршрутов сошлось в одном месте экрана.
+
+              Нажатие приближает карту к ним — метки расходятся и снова
+              читаются порознь. Наведение отвечает списком: кто именно
+              там. */}
+          {packs.map((pack) => (
+            <button
+              key={pack.key}
+              type="button"
+              ref={(node) => {
+                if (node) packNodes.current.set(pack.key, node);
+                else packNodes.current.delete(pack.key);
+              }}
+              className="geo__pack"
+              data-lat={pack.lat}
+              data-lon={pack.lon}
+              style={{ left: `${pack.x}px`, top: `${pack.y}px` }}
+              onMouseEnter={(event) =>
+                showInfo(
+                  card(
+                    TONE.free,
+                    `${pack.members.length} ${pluralRoutes(pack.members.length)} рядом`,
+                    [
+                      pack.members
+                        .map((one) => `${one.number} · ${surnameOf(one.name)}`)
+                        .join('<br/>'),
+                      'Нажмите, чтобы приблизить'
+                    ]
+                  ),
+                  L.latLng(pack.lat, pack.lon),
+                  { node: event.currentTarget }
+                )
+              }
+              onMouseLeave={hideInfo}
+              onClick={() => {
+                const instance = map.current;
+                if (!instance) return;
+                hideInfo();
+                const bounds = L.latLngBounds(
+                  pack.members.map((one) => [one.lat, one.lon] as [number, number])
+                );
+                /* Не ближе двора: кучка из двух соседних домов иначе
+                   выбрасывала бы карту на максимальное приближение. */
+                instance.fitBounds(bounds.pad(0.6), { maxZoom: 15 });
+              }}
+              title={`${pack.members.length} ${pluralRoutes(pack.members.length)} рядом`}
+            >
+              <Icon name="route" size={11} />
+              <b>{pack.members.length}</b>
+            </button>
+          ))}
 
           {stopPlates.map((plate) => {
             const at = atPoint(plate.lat, plate.lon);

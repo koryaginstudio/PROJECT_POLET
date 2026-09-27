@@ -8,6 +8,7 @@ import { RunMap } from "./RunMap.tsx";
 import { WhyMark } from "./WhyMark.tsx";
 import { service } from "../data/service.ts";
 import { DutyButton } from "./DutyButton.tsx";
+import { RunStateTag } from "./RunStateTag.tsx";
 
 interface Props {
   row: RunStat;
@@ -161,6 +162,10 @@ export function RunCard({
             <span className="engcard__idlabel">id:</span>
             <span className="runcard__code">{row.run.code}</span>
           </span>
+          {/* Что стало с расчётом: ведёт день, отработал его или лежит ни к
+              какому дню не привязанный. Стоит у номера — там же, где и в
+              списке с таблицей: одна вещь, одно место. */}
+          <RunStateTag run={row.run.id} date={row.run.date} />
         </span>
 
         {/* Правка стоит в шапке, у номера и времени, — то есть ровно у того,

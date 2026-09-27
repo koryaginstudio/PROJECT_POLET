@@ -5,6 +5,7 @@ import {
   ContractError,
   createRun,
   deleteRun,
+  hideEngineRun,
   updateRun,
   latestRun,
   loadDay,
@@ -13,6 +14,7 @@ import {
   engineDayTitle,
   loadPlaces,
   runCode,
+  runDay,
   runEntry,
   RUNS
 } from '../data/load.ts';
@@ -28,7 +30,7 @@ import type { IncidentKind, IncidentSpec, ReplanResult } from '../data/api.ts';
 import { engineerInDay, engineerKey, loadRegistry } from '../data/registry.ts';
 import type { ShiftInput } from '../data/shift.ts';
 import type { Registry, RunRef } from '../data/registry.ts';
-import { buildDayView, dayEnd, dayStart, planHorizon, plural, replanAt } from '../data/derive.ts';
+import { buildDayView, dayEnd, dayStart, hhmm, planHorizon, plural, replanAt } from '../data/derive.ts';
 import { setPlanHorizon, useService } from '../data/service.ts';
 import { Header } from './Header.tsx';
 import { DemoMode } from './DemoMode.tsx';
@@ -36,7 +38,7 @@ import { WelcomeGate } from './WelcomeGate.tsx';
 import { SubHeader } from './SubHeader.tsx';
 import { Sidebar } from './Sidebar.tsx';
 import { DetailPanel } from './DetailPanel.tsx';
-import { InDevelopment } from '../screens/InDevelopment.tsx';
+import { HomeScreen } from '../screens/HomeScreen.tsx';
 import { MonitorScreen } from '../screens/MonitorScreen.tsx';
 import { MonitorGate } from '../screens/MonitorGate.tsx';
 import { DispatchGate } from '../screens/DispatchGate.tsx';
@@ -53,7 +55,7 @@ import { DbRoutesScreen } from '../screens/db/DbRoutesScreen.tsx';
 import { DbEngineersScreen } from '../screens/db/DbEngineersScreen.tsx';
 import { DbServicesScreen } from '../screens/db/DbServicesScreen.tsx';
 import { DbRunsScreen } from '../screens/db/DbRunsScreen.tsx';
-import { CompareScreen } from '../screens/CompareScreen.tsx';
+import { StatsScreen } from '../screens/StatsScreen.tsx';
 import { SettingsScreen } from '../screens/SettingsScreen.tsx';
 import { OrderProfile } from './OrderProfile.tsx';
 import { CREW_ENGINE_LOCK, CrewProfile } from './CrewProfile.tsx';
@@ -61,6 +63,8 @@ import { ClientProfile } from './ClientProfile.tsx';
 import { ServiceProfile } from './ServiceProfile.tsx';
 import type { Hit } from '../data/find.ts';
 import { RunEditDialog } from './RunEditDialog.tsx';
+import { RunWindow } from './RunWindow.tsx';
+import { ShiftWindow } from './ShiftWindow.tsx';
 import { ManualDialog } from './ManualDialog.tsx';
 import { IncidentDialog } from './IncidentDialog.tsx';
 import { isDbSection } from './nav.ts';
@@ -68,7 +72,9 @@ import type { SectionId } from './nav.ts';
 import { firstView, readRoute, sameRoute, writeRoute } from './route.ts';
 import type { Route } from './route.ts';
 import { COMPARE_MAX } from './compare.ts';
-import { dropDuty, useDuty } from '../data/duty.ts';
+import { dayLabel, dropDuty, useDuty, workDays } from '../data/duty.ts';
+import { logWatch, startWatch, stopWatch, todayKey, useShifts } from '../data/watch.ts';
+import { endMonitor, startMonitor } from '../data/monitor.ts';
 import { OVERVIEW } from './selection.ts';
 import type { Selection } from './selection.ts';
 import { DayFail } from './DayFail.tsx';
@@ -82,6 +88,23 @@ import '../styles/screens.css';
    Один на все дороги — ленту, базу, карту, кнопку «назад», — чтобы человек
    узнавал его, а не читал каждый раз заново. */
 const LEAVE_QUESTION = 'Пересчёт не сохранён — уйти и потерять его?';
+
+/** Объявленное событие словами — для журнала смены.
+
+    Говорит о том, что случилось в дне, а не о том, чем это считали:
+    «Пантелеев О. В. выбыл до конца дня», а не «replan kind=disabled». Имя
+    приходит снаружи — план знает людей, а событие только их номера; нет
+    имени — остаётся номер, и это честнее прочерка. */
+function incidentWords(spec: IncidentSpec, who?: string): string {
+  if (spec.kind === 'urgent') {
+    const count = spec.urgent ?? 1;
+    return count > 1 ? `Объявлено ${plural(count, 'авария', 'аварии', 'аварий')}` : 'Объявлена авария';
+  }
+  if (spec.kind === 'cancel') return `Снята заявка ${spec.orderId ?? ''}`.trim();
+  const name = who ?? spec.engineerId ?? 'инженер';
+  if (spec.kind === 'disabled') return `${name} выбыл до конца дня`;
+  return `${name} задержался на ${spec.minutes ?? 0} мин`;
+}
 
 export function App() {
   /* Где мы находимся, написано в адресе: раздел, вкладка внутри него, шаг
@@ -163,6 +186,50 @@ export function App() {
     () => watched.map((key) => dutyMap[key]).filter((id): id is RunId => Boolean(id)),
     [watched, dutyMap]
   );
+
+  /* ─── смена наблюдения ────────────────────────────────────────────────
+
+     День работы диспетчера остаётся в журнале смен (`watch.ts`): за какими
+     участками смотрели, сколько времени раздел был открыт и что за день
+     произошло. Отсюда это и заводится — оболочка единственная знает и о
+     переходе к живому виду, и об уходе из него.
+
+     Перейти к наблюдению можно и с Главной, минуя меню мониторинга: дни
+     отмечены там же, и спрашивать о них второй раз незачем. */
+  const enterWatch = () => {
+    const places = workDays()
+      .filter((day) => watched.includes(day.key))
+      .map((day) => day.label);
+    startWatch(places, watchRuns);
+    /* Запуск наблюдения сам заводит свою запись: список прошедших
+       мониторингов в воротах раздела собирается из них, и заводить его
+       руками диспетчеру нечем и незачем. */
+    startMonitor(places, watchRuns);
+    setWatching(true);
+    if (section !== 'monitor') nav({ section: 'monitor', view: firstView('monitor') });
+  };
+
+  /* Наблюдение кончилось — ушли из раздела, сняли все дни или вернулись к
+     меню. Время в журнале перестаёт копиться, и в нём появляется отметка о
+     конце: смена, у которой не видно, когда её закрыли, читается как
+     брошенная посреди дня. */
+  const watchingLive = section === 'monitor' && watching && watchRuns.length > 0;
+  useEffect(() => {
+    if (watchingLive) return;
+    stopWatch();
+    endMonitor();
+  }, [watchingLive]);
+  /* Журнал смен: Главная читает его сама, оболочке он нужен для окна
+     разбора — смена меняется на ходу, пока мониторинг открыт, и окно
+     обязано показывать её нынешнее состояние, а не то, каким оно было в
+     минуту открытия. */
+  const journal = useShifts();
+  /* Расчёт, раскрытый карточкой поверх экрана, и смена, раскрытая разбором.
+     Оба окна живут здесь, а не на Главной: открываются они и с неё, и друг
+     из друга — из журнала смены в её расчёт, — а стоять одно внутри другого
+     они не должны. */
+  const [runCard, setRunCard] = useState<RunId | null>(null);
+  const [shiftDate, setShiftDate] = useState<string | null>(null);
   /* Запись, которую правят. Окно живёт здесь, а не в базе: после правки надо
      пересобрать справочники, а держит их этот уровень. */
   const [editing, setEditing] = useState<RunRef | null>(null);
@@ -442,6 +509,32 @@ export function App() {
     refreshRuns();
   };
 
+  /* Спрятать черновик из списка. Расчёты программы расчёта не удаляются —
+     у неё нет такой ручки, и это её решение: номер записи она выдаёт как
+     «длина архива плюс один», и вырванная середина отдала бы новому расчёту
+     занятый номер. Зато запись можно убрать из списка: она остаётся в
+     архиве и открывается по своему номеру, а справочники перестают считать
+     её день второй раз.
+
+     Дежурство за спрятанным расчётом не снимаем: запись жива, и человек
+     может вернуть её. Мониторинг такую отметку отбросит сам — он сверяется
+     с историей. */
+  const hideRunFromList = async () => {
+    if (!editing) return;
+    const gone = editing.id;
+    try {
+      if (!(await hideEngineRun(gone, true))) return;
+    } catch {
+      /* Программа расчёта не ответила — окно остаётся открытым, запись на
+         месте. Молчать тут можно: ничего не случилось. */
+      return;
+    }
+    setEditing(null);
+    setCompare((prev) => prev.filter((id) => id !== gone));
+    if (runId === gone) nav({ runId: latestRun(), stage: 'gate' });
+    refreshRuns();
+  };
+
   /* ─── правка дня и несохранённое состояние ──────────────────────────
 
      День пошёл не так, как посчитали: авария, инженер выбыл, инженер
@@ -492,6 +585,13 @@ export function App() {
       if (ticket !== replanTicket.current) return;
       setReplan(result);
       setLastSpec(withBase);
+      /* Событие дня — в журнал смены: к вечеру «почему день просел» ищут
+         именно здесь, а не в архиве расчётов. Пишем то, что объявили, а не
+         то, что вышло: пересчёт диспетчер может и не сохранить. */
+      const who = withBase.engineerId
+        ? day?.plan.engineers.find((one) => one.id === withBase.engineerId)?.name
+        : undefined;
+      logWatch('incident', `${incidentWords(withBase, who)} · пересчёт от ${hhmm(withBase.at)}`, runId);
     } catch (failure) {
       if (ticket !== replanTicket.current) return;
       setIncidentFailed(
@@ -735,6 +835,11 @@ export function App() {
     try {
       const entry = adoptEngineRun(await saveReplan(draft.spec, `Правка расчёта ${runCode(runId)}`));
       refreshRuns();
+      logWatch(
+        'replan',
+        `Пересчёт остатка дня сохранён записью ${entry.code} — от расчёта ${runCode(runId)}`,
+        entry.id
+      );
       if (ticket !== replanTicket.current) return;
       setDraft(null);
       showRun(entry.id);
@@ -838,18 +943,23 @@ export function App() {
      поля как у любого экрана. */
   const onMap = onPlan && view === 'map';
 
-  const goSection = (id: SectionId) => {
+  /* Второй довод, `slot`, нужен тем переходам, что ведут не в раздел, а в его
+     вкладку: плитка «Сравнить расчёты» на главной обязана открыть сравнение, а
+     не сводку статистики, за которой сравнение лежит. */
+  const goSection = (id: SectionId, slot?: string) => {
     /* Переход между разделами шаг диспетчерской не трогает: открытый расчёт
        остаётся открытым. Повторный щелчок по уже открытому разделу — другое
        дело: это не переход, а просьба вернуться к его началу. В диспетчерской
        начало — вопрос «создать или выбрать» (ворота), в сравнении — свой
        набор, а не чужая запись из архива, которую разглядывали. */
-    if (id === section) {
+    if (id === section && !slot) {
       if (id === 'dispatch') {
         nav({ view: firstView('dispatch'), stage: 'gate' });
         return;
       }
-      if (id === 'compare') {
+      /* Сравнение стало вкладкой статистики, и просьба «к своему набору»
+         относится к нему одному: на других вкладках сбрасывать нечего. */
+      if (id === 'stats' && view === 'compare') {
         setCompareReset((n) => n + 1);
         return;
       }
@@ -862,7 +972,7 @@ export function App() {
         return;
       }
     }
-    nav({ section: id, view: firstView(id) });
+    nav({ section: id, view: slot ?? firstView(id) });
   };
 
   /* Открыть расчёт без вопросов — для тех мест, где терять уже нечего:
@@ -1131,6 +1241,7 @@ export function App() {
     try {
       const entry = await createRun(params, zone, undefined, shift);
       refreshRuns();
+      logWatch('run', `Посчитан расчёт ${entry.code} · ${dayLabel(entry.id, entry.date)}`, entry.id);
       /* Посчитанный день открывается сразу. Окно пересчёта после этого
          не показываем: раньше оно всплывало само с погашенными
          переключателями и читалось как «что-то не доделано», хотя расчёт
@@ -1192,10 +1303,6 @@ export function App() {
     routes: ready?.day.plan.routes.length ?? 0,
     engineers: ready?.day.plan.meta.engineers_total ?? 0,
     runs: runs?.length ?? 0,
-    /* Сколько расчётов отобрано к сравнению. Цифра у пункта меню — то же
-       число, что в заголовке экрана: набор собирают в базе расчётов, а
-       видеть, сколько набралось, нужно не выходя из неё. */
-    compare: compare.length,
     /* Цифры баз — из справочников, а не из открытого дня: база отвечает на
        «сколько записей в ней», и число не должно меняться от того, какой
        расчёт сейчас открыт. Пока справочники не загружены, здесь нули, и
@@ -1261,10 +1368,29 @@ export function App() {
      здесь уже не пустые: это те же значения, но проверенные. */
   const dayScreens = (day: Day, dayView: DayView) => (
     <>
-      {/* Главная временно скрыта плашкой «В разработке»: сам экран и данные
-          для него остались как есть — см. `InDevelopment.tsx` про то, как
-          вернуть его на место. */}
-      {section === 'home' && <InDevelopment label="Главная" />}
+      {/* Главная — вход в сервис: живые числа дня, прошедшие смены, история
+          расчётов, статистика по отработанным дням и дороги в базы. Всё,
+          что с неё открывается по-крупному, открывается окнами поверх:
+          расчёт карточкой из базы, смена — своим разбором. */}
+      {section === 'home' && (
+        <HomeScreen
+          day={day}
+          plan={day.plan}
+          view={dayView}
+          runs={runs}
+          registry={registry}
+          activeRun={runId}
+          watched={watched}
+          watching={watching}
+          onWatch={setWatched}
+          onEnterWatch={enterWatch}
+          onGoSection={goSection}
+          onOpenRunCard={setRunCard}
+          onOpenShift={setShiftDate}
+          onOpenEngineer={(key) => setLookup({ kind: 'engineer', key })}
+          onCreate={createRunForm}
+        />
+      )}
 
       {/* Мониторинг вернулся из-под плашки: без него цепочка «план →
           что происходит → воздействие» рвалась посередине, и воздействие
@@ -1296,7 +1422,13 @@ export function App() {
           <MonitorGate
             watched={watched}
             onWatch={setWatched}
-            onEnter={() => setWatching(true)}
+            onEnter={enterWatch}
+            /* Из прошедшего мониторинга — в расчёт, который вёл район: та же
+               карточка, что в базах. */
+            onOpenRun={setRunCard}
+            /* Карта района и числа его плана берутся из справочника — того
+               же, которым живут базы. */
+            registry={registry}
           />
         ))}
 
@@ -1499,26 +1631,29 @@ export function App() {
             />
           )}
 
-          {section === 'compare' && (
-            <CompareScreen
-              picks={compare}
-              registry={registry}
-              runs={runs}
-              resetToken={compareReset}
-              active={stage === 'plan' ? runId : null}
-              onToggle={toggleCompare}
-              onClear={() => setCompare([])}
-              onRestore={(ids) => setCompare(ids.slice(0, COMPARE_MAX))}
-              onGoRuns={() => goSection('db-runs')}
-              onOpen={openRunFromDb}
-              onOpenMap={openRunMap}
-              onGo={goToRun}
-            />
-          )}
-
-          {/* Статистика временно скрыта плашкой «В разработке»: сама она
-              и данные для неё остались как есть — см. InDevelopment.tsx. */}
-          {section === 'stats' && <InDevelopment label="Статистика" />}
+          {/* Статистика читает все расчёты сразу, поэтому ждёт справочники,
+              как и базы. Сравнение внутри неё — вкладка «Сравнение»: экран
+              переехал туда целиком вместе с лентой отбора в подшапке. */}
+          {section === 'stats' &&
+            (!registry ? (
+              registryPending
+            ) : (
+              <StatsScreen
+                registry={registry}
+                mode={view}
+                active={stage === 'plan' ? runId : null}
+                onOpenRun={openRunFromDb}
+                picks={compare}
+                runs={runs}
+                compareReset={compareReset}
+                onToggle={toggleCompare}
+                onClear={() => setCompare([])}
+                onRestore={(ids) => setCompare(ids.slice(0, COMPARE_MAX))}
+                onGoRuns={() => goSection('db-runs')}
+                onOpenMap={openRunMap}
+                onGo={goToRun}
+              />
+            ))}
 
           {onDb &&
             (!registry ? (
@@ -1534,6 +1669,7 @@ export function App() {
                 compare={compare}
                 onCompare={toggleCompare}
                 onEdit={setEditing}
+                onRefresh={refreshRuns}
               />
             ) : section === 'db-services' ? (
               <DbServicesScreen registry={registry} mode={view} onOpenRun={openRunFromDb} />
@@ -1698,6 +1834,54 @@ export function App() {
         onClose={() => setEditing(null)}
         onSave={saveRun}
         onDelete={dropRun}
+        onHide={hideRunFromList}
+      />
+
+      {/* Разбор расчёта поверх экрана: та же карточка, что в базе расчётов.
+          Открывается с Главной и из журнала смены — оттуда, где стоит номер
+          расчёта, но нет места его разобрать. */}
+      <RunWindow
+        run={runCard}
+        registry={registry}
+        active={stage === 'plan' ? runId : null}
+        onClose={() => setRunCard(null)}
+        onOpen={openRunFromDb}
+        onOpenMap={(id) => openRunMap(id)}
+        onGo={goToRun}
+        onOpenRoute={openRouteMap}
+        onOpenEngineer={(id, engineerId) =>
+          setLookup({ kind: 'engineer', key: engineerKey(runDay(id), engineerId) })
+        }
+        onEdit={setEditing}
+        onGoRuns={() => {
+          setRunCard(null);
+          goSection('db-runs');
+        }}
+      />
+
+      {/* Разбор смены: как прошёл день и что в нём происходило по часам.
+          Смена читается из журнала на каждый его пересчёт — пока мониторинг
+          открыт, она растёт прямо под окном. */}
+      <ShiftWindow
+        shift={shiftDate ? (journal.find((one) => one.date === shiftDate) ?? null) : null}
+        onClose={() => setShiftDate(null)}
+        /* Из журнала смены — в её расчёт: окно смены закрывается, на его
+           место встаёт карточка расчёта. Два окна друг поверх друга
+           диспетчер закрывал бы дважды, не понимая, почему. */
+        onOpenRun={(id) => {
+          setShiftDate(null);
+          setRunCard(id);
+        }}
+        /* «Смотреть» есть только у сегодняшней смены: живой вид показывает
+           то, что происходит сейчас, и вчерашнего дня в нём нет. */
+        onWatch={
+          shiftDate === todayKey() && watchRuns.length > 0
+            ? () => {
+                setShiftDate(null);
+                enterWatch();
+              }
+            : undefined
+        }
       />
 
       {/* Карточка найденной записи — поверх любого экрана.

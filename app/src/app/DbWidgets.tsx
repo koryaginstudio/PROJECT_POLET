@@ -740,6 +740,15 @@ interface Options {
   fallback: string[];
   /** Отбор срока — его рисует база: от него зависит и то, что она посчитала. */
   filter?: ReactNode;
+  /** Заголовок панели. По умолчанию «Статистика» — над базой доска и есть её
+      статистика. В самом разделе статистики так назвать её нельзя: там всё
+      статистика, и заголовок обязан называть разрез — «Расчёты», «Заявки». */
+  title?: string;
+  /** Доска раскрыта всегда, без выключателя. Над базой она сводка поверх
+      списка и потому сворачивается: приходят за записями. В разделе
+      статистики она сама и есть то, за чем пришли, и выключатель предлагал бы
+      спрятать экран от того, кто его открыл. */
+  fixed?: boolean;
 }
 
 /** Доска отдаётся одним куском: отбор, кнопка набора и сетка — части одного
@@ -754,7 +763,14 @@ export interface Board {
    живёт на своей плитке и опознаётся её именем. */
 type Open = { kind: 'none' } | { kind: 'picker' } | { kind: 'plus' } | { kind: 'shape'; key: string };
 
-export function useWidgetBoard({ storeKey, catalogue, fallback, filter }: Options): Board {
+export function useWidgetBoard({
+  storeKey,
+  catalogue,
+  fallback,
+  filter,
+  title = 'Статистика',
+  fixed = false
+}: Options): Board {
   const known = new Set(catalogue.map((item) => item.key));
   const [saved, setSaved] = useState<Saved>(() => readSaved(storeKey, fallback, known));
   const [open, setOpen] = useState<Open>({ kind: 'none' });
@@ -768,13 +784,13 @@ export function useWidgetBoard({ storeKey, catalogue, fallback, filter }: Option
      Дальше состояние живёт в самом экране: раскрыл — смотрит, ушёл и
      вернулся — снова как в настройке. Помнить это за диспетчера мы не
      беремся: настройка для того и есть. */
-  const [board, setBoard] = useState(() => service().dbStats === 'open');
+  const [board, setBoard] = useState(() => fixed || service().dbStats === 'open');
   /* Доска досталa своё место и стоит спокойно — можно вернуть ей выпадающие
      списки. Пока она едет, обёртка режет по своей высоте, иначе меню набора и
      выбор вида вылезали бы из схлопнутой панели; как только движение
      кончилось, обрезку снимаем — иначе эти же меню обрезались бы у раскрытой
      доски, где они и нужны. */
-  const [settled, setSettled] = useState(board);
+  const [settled, setSettled] = useState(fixed || board);
 
   useEffect(() => {
     if (!board) {
@@ -1147,26 +1163,39 @@ export function useWidgetBoard({ storeKey, catalogue, fallback, filter }: Option
             раскрывают, терялась среди подписей. Теперь это полноценная шапка
             своей панели — заголовок того же роста, что «База расчётов» под
             ней, значок слева, число плиток и слово с птичкой справа, — и
-            нажимается она вся целиком, а не значок в ней. */}
-        <button
-          type="button"
-          className="wboard__head"
-          aria-expanded={board}
-          onClick={() => setBoard((was) => !was)}
-        >
-          <span className="wboard__mark" aria-hidden="true">
-            <Icon name="bar-chart-3" size={15} />
-          </span>
-          <span className="wboard__title">Статистика</span>
-          {/* Числа плиток у заголовка нет: пилюля с цифрой читалась как метка
-              состояния — «пять чего-то требует внимания», — а говорила всего
-              лишь, сколько плиток набрано. Сколько их, видно, как только
-              доску раскрыли, и до того это знание никому не нужно. */}
-          <span className="wboard__more">
-            {board ? 'Свернуть' : 'Показать'}
-            <Icon name="chevron-down" size={13} />
-          </span>
-        </button>
+            нажимается она вся целиком, а не значок в ней.
+
+            У закреплённой доски выключателя нет вовсе, и шапка тогда не
+            кнопка, а обычный заголовок: нажатие, которое ничего не делает,
+            хуже отсутствующего. */}
+        {fixed ? (
+          <div className="wboard__head wboard__head--fixed">
+            <span className="wboard__mark" aria-hidden="true">
+              <Icon name="bar-chart-3" size={15} />
+            </span>
+            <span className="wboard__title">{title}</span>
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="wboard__head"
+            aria-expanded={board}
+            onClick={() => setBoard((was) => !was)}
+          >
+            <span className="wboard__mark" aria-hidden="true">
+              <Icon name="bar-chart-3" size={15} />
+            </span>
+            <span className="wboard__title">{title}</span>
+            {/* Числа плиток у заголовка нет: пилюля с цифрой читалась как метка
+                состояния — «пять чего-то требует внимания», — а говорила всего
+                лишь, сколько плиток набрано. Сколько их, видно, как только
+                доску раскрыли, и до того это знание никому не нужно. */}
+            <span className="wboard__more">
+              {board ? 'Свернуть' : 'Показать'}
+              <Icon name="chevron-down" size={13} />
+            </span>
+          </button>
+        )}
 
         {/* Раскрывается ростом, а не появлением: строка из `0fr` в `1fr` тянет
             высоту обёртки к настоящей высоте содержимого, и панель разъезжает

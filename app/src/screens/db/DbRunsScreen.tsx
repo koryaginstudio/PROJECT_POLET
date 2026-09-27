@@ -12,7 +12,7 @@ import { COMPARE_MAX } from '../../app/compare.ts';
 import { useWidgetBoard, WidgetPeriod, withinPeriod } from '../../app/DbWidgets.tsx';
 import { service } from '../../data/service.ts';
 import { onDuty, useDuty } from '../../data/duty.ts';
-import { DutyTag } from '../../app/DutyTag.tsx';
+import { RunStateTag } from '../../app/RunStateTag.tsx';
 import type { PeriodKey } from '../../app/DbWidgets.tsx';
 import type { WidgetDef } from '../../app/DbWidgets.tsx';
 import { DbHead } from './DbHead.tsx';
@@ -924,7 +924,7 @@ export function DbRunsScreen({
             title: (
               <>
                 {row.run.date ? dayOf(row.run.date) : `Расчёт ${row.run.code}`}
-                {working(row) && <DutyTag />}
+                <RunStateTag run={row.run.id} date={row.run.date} />
               </>
             ),
             sub: (
@@ -1014,7 +1014,7 @@ export function DbRunsScreen({
                         <span>
                           <span className="tbl__strong">
                             {row.run.code}
-                            {working(row) && <DutyTag />}
+                            <RunStateTag run={row.run.id} date={row.run.date} />
                           </span>
                           <span className="tbl__sub">{stampOf(row.run.created)}</span>
                         </span>

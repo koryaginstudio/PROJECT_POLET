@@ -172,3 +172,33 @@
 .dutytag svg {
   flex: 0 0 auto;
 }
+
+/* Отработавший день — фиолетовым. Не зелёный: зелёный в этой системе значит
+   «идёт сейчас», и вчерашний план в нём читался бы как сегодняшняя работа.
+   Не серый: отработал — это состоявшийся факт, а не отсутствие. */
+.dutytag--served {
+  background: color-mix(in srgb, #A46BD8 16%, transparent);
+  color: #7A45B0;
+}
+
+/* Не назначен — самым тихим, какой есть: это не событие, а его отсутствие,
+   и в ряду карточек такая пометка должна читаться последней. */
+.dutytag--idle {
+  background: var(--surface-tile);
+  color: var(--text-muted);
+  font-weight: var(--fw-medium);
+}
+
+/* Тёмная тема — по тому же правилу, что и все цвета сервиса: системная,
+   если её не отменили вручную, и явная. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .dutytag--served {
+    background: color-mix(in srgb, #a46bd8 26%, transparent);
+    color: #d3b4f0;
+  }
+}
+
+:root[data-theme='dark'] .dutytag--served {
+  background: color-mix(in srgb, #a46bd8 26%, transparent);
+  color: #d3b4f0;
+}

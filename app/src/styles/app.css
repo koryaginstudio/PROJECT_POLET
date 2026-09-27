@@ -1670,11 +1670,26 @@ body {
    мельче номера вдвое, и по центру она вставала бы серединой строчной высоты
    против середины прописной — то есть заметно выше, чем читается «перед
    номером». */
+/* Номер не сжимается: рядом с ним стоит пометка состояния, и в узкой
+   карточке ужималось именно то, ради чего шапка и нужна, — «R004»
+   превращалось в «RO». Сжимается пометка, она длиннее и терпит. */
 .runcard__id {
   display: flex;
   align-items: baseline;
   gap: 4px;
+  flex: 0 0 auto;
+}
+
+/* В карточке пометка идёт без значка: место в шапке делят номер, состояние
+   и «Изменить», и слово состояния важнее картинки при нём. */
+.runcard__ident .dutytag {
   min-width: 0;
+  padding: 1px 6px;
+  white-space: nowrap;
+}
+
+.runcard__ident .dutytag svg {
+  display: none;
 }
 
 .runcard__code {
@@ -4430,6 +4445,163 @@ button.ministage:hover:not(:disabled) {
   line-height: 1.35;
   color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
+}
+
+/* Оговорка о самом виде — поверх города, вверху по середине.
+
+   Тихая, но постоянная: она не о дне и не о маршруте, а о том, чему верить
+   на этой карте, и уйти со временем не может — верить будут ровно столько
+   же. Стекло то же, что у остальных плашек карты, ширина ограничена, чтобы
+   строка не растягивалась через весь город. */
+.geobanner {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  /* Выше всего, что лежит на карте: меток маршрутов, точек, плашек. Она
+     оговорка обо всей карте разом, и уходить под то, о чём говорит, не
+     имеет права — прежде метка маршрута накрывала её собой. */
+  z-index: 620;
+  pointer-events: auto;
+}
+
+/* Ровно две строки — не больше и не меньше.
+
+   Оговорка постоянная, и место на городе она занимает каждую минуту работы:
+   в одну строку она растянулась бы через полкарты, в три — стала бы
+   объявлением. Ширина подобрана под две строки мелкого кегля, и текст
+   написан под неё же. */
+.geonote {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 408px;
+  padding: 5px 6px 5px 10px;
+  border-radius: var(--r-control);
+  background: var(--glass);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-edge-sm), var(--glass-line);
+  color: var(--glass-ink-soft);
+  font-size: var(--fs-small);
+  line-height: 1.3;
+}
+
+.geonote__body {
+  flex: 1 1 auto;
+}
+
+.geonote svg {
+  flex: 0 0 auto;
+  color: var(--glass-ink);
+}
+
+.geonote b {
+  color: var(--glass-ink);
+  font-weight: var(--fw-semibold);
+}
+
+/* Крестик — тем же тихим весом, что и остальные служебные кнопки карты. */
+.geonote__close {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: none;
+  color: var(--glass-ink-mute);
+  cursor: pointer;
+  transition:
+    background 140ms var(--ease-out-strong),
+    color 140ms var(--ease-out-strong);
+}
+
+.geonote__close:hover {
+  background: var(--glass-hover);
+  color: var(--glass-ink);
+}
+
+/* Подвал карточки живой точки: состояние и счёт визитов.
+
+   Отделены чертой и стоят в ряд, потому что отвечают на два разных вопроса
+   и оба — главные. Строкой ниже адресов они читались бы последними, а
+   спрашивают о них первыми. */
+.gtip__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-top: 5px;
+  padding-top: 6px;
+  border-top: 1px solid var(--glass-line-color, rgba(255, 255, 255, 0.12));
+}
+
+.gtip__state {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
+}
+
+/* Точка перед словами — тот же приём, что у этапов заявки: цвет говорит
+   быстрее слова, а слово не даёт ошибиться в цвете. */
+.gtip__state::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: var(--r-pill);
+  background: currentColor;
+}
+
+/* Тона состояний берутся у стекла, а не у страницы.
+
+   Это была прямая ошибка: цвета брались из тем страницы
+   (`--success-600` и соседи), а карточка лежит на стекле карты, и стекло
+   у неё своё — тёмное на тёмной подложке и белое на светлой. Тёмно-зелёное
+   слово по тёмному стеклу не читалось вовсе: «Выполнена» было видно только
+   тому, кто знал, что оно там написано.
+
+   Поэтому тон задаётся рядом со стеклом и вместе с ним меняется. Значения
+   те же, какими карта красит саму себя: выполненное зелёное, срыв красный —
+   одна палитра на линии, точки и слова о них. */
+.gtip__state--ok {
+  color: var(--tip-ok);
+}
+
+.gtip__state--warn {
+  color: var(--tip-warn);
+}
+
+.gtip__state--bad {
+  color: var(--tip-bad);
+}
+
+/* Ещё не сделано — не беда и не успех, а просто «пока нет». Тон
+   приглушённый, тот же серый, каким на карте идёт непройденный путь: это
+   одно и то же состояние, сказанное в двух местах. */
+.gtip__state--idle {
+  color: var(--glass-ink-mute);
+}
+
+/* Счёт визитов — числом, а не строкой: «сколько он успел» спрашивают о
+   числе, и оно обязано читаться, не читая подписи. */
+.gtip__count {
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.gtip__count b {
+  font-size: var(--fs-body-s);
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
 }
 
 .leaflet-container {
@@ -7438,10 +7610,27 @@ b.ccard__bad {
   color: var(--danger-600);
 }
 
+/* Карточки расчётов — рядами по три или по шесть, а не «сколько влезет».
+
+   Автоподбор колонок давал ряд из пяти и одинокую шестую под ним: ряд
+   читается как список, а хвост под ним — как забытая карточка. Числа
+   колонок кратны шести, и последний ряд всегда полон. */
 .homeruns {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--sp-2);
+}
+
+@media (min-width: 1100px) {
+  .homeruns {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1760px) {
+  .homeruns {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
 }
 
 .homerun {
@@ -7754,9 +7943,12 @@ button.homechip--quiet {
 
 /* ─── прошедшие смены ──────────────────────────────────────────────────── */
 
+/* Карточки смен — по ширине ряда, а не по числу карточек: `auto-fill`
+   держит места пустыми, и единственная запись в журнале остаётся карточкой,
+   а не полосой во весь экран. */
 .homeshifts {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: var(--sp-2);
 }
 
@@ -8205,6 +8397,289 @@ button.homechip--quiet {
   font-weight: var(--fw-regular);
   color: var(--text-muted);
 }
+
+/* Отведённая рукой минута: часы перестают быть часами, и сказать об этом
+   обязан их собственный вид. Тон тревожный не нарочно — он служебный: по
+   этому времени нельзя звонить в бригаду. */
+.livenow--hand .livenow__dot {
+  background: var(--warning-600, var(--accent-600));
+}
+
+/* Оговорка «это не текущее время» — на странице сводки.
+
+   Мониторинг отвечает на «что происходит сейчас», и всякое число на нём
+   читают как настоящее положение дел. Стоит отвести срез — и все они
+   становятся прошлым или будущим, оставаясь на вид живыми. По таким числам
+   звонят в бригаду, поэтому оговорка стоит над ними и в полный голос, а не
+   подписью при часах. */
+.stalenote {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: 0 0 var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--warning-600, var(--accent-600));
+  border-radius: var(--r-control);
+  background: color-mix(in srgb, var(--warning-600, var(--accent-600)) 10%, transparent);
+  color: var(--text-primary);
+  font-size: var(--fs-caption);
+  line-height: 1.4;
+}
+
+.stalenote svg {
+  flex: 0 0 auto;
+  color: var(--warning-600, var(--accent-600));
+}
+
+.stalenote__back {
+  flex: 0 0 auto;
+  margin-left: auto;
+  height: var(--control-h-sm);
+  padding: 0 12px;
+  border: 1px solid var(--warning-600, var(--accent-600));
+  border-radius: var(--r-pill);
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+}
+
+.stalenote__back:hover {
+  background: color-mix(in srgb, var(--warning-600, var(--accent-600)) 18%, transparent);
+}
+
+/* ─── ручка среза ─────────────────────────────────────────────────────────
+   Служебная снасть: нужна, чтобы посмотреть на живой вид в час, когда смены
+   нет, и чтобы показать движение, не дожидаясь его. Поэтому она тихая —
+   в полсилы, пока её не тронут, — и занимает одну строку. */
+.livehand {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  /* В плашке карты ручка занимает её ширину, а на странице сводки — своё
+     место: рельс во весь лист читался бы как главное на экране, а он
+     служебный. */
+  max-width: 360px;
+  opacity: 0.5;
+  transition: opacity 160ms var(--ease-out-strong);
+}
+
+.livehand:hover,
+.livehand:focus-within,
+.livehand--on {
+  opacity: 1;
+}
+
+/* Рельс со шкалой — одним столбцом: подписи часов обязаны стоять ровно под
+   своими местами на рельсе, а значит, жить в одной с ним колонке. */
+.livehand__track {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 110px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.livehand__rail {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  height: 3px;
+  margin: 0;
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, currentColor 22%, transparent);
+  cursor: pointer;
+}
+
+/* Шкала: засечка на каждый час, подпись через три. Ритм в три часа читается
+   сам, а тринадцать чисел подряд в углу карты не поместились бы. */
+.livehand__scale {
+  position: relative;
+  height: 13px;
+}
+
+.livehand__tick {
+  position: absolute;
+  top: 0;
+  width: 1px;
+  height: 3px;
+  transform: translateX(-50%);
+  background: color-mix(in srgb, currentColor 25%, transparent);
+}
+
+.livehand__tick--named {
+  height: 4px;
+  background: color-mix(in srgb, currentColor 45%, transparent);
+}
+
+.livehand__tick b {
+  position: absolute;
+  top: 5px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 9px;
+  font-weight: var(--fw-regular);
+  line-height: 1;
+  letter-spacing: 0;
+  opacity: 0.72;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Где на шкале стоят настоящие часы. Видна, только когда срез отведён
+   рукой: пока он идёт по часам, её место занимает сам ползунок. */
+.livehand__wall {
+  position: absolute;
+  top: -8px;
+  width: 2px;
+  height: 11px;
+  border-radius: var(--r-pill);
+  transform: translateX(-50%);
+  background: var(--accent-600);
+}
+
+.livehand__rail::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 11px;
+  height: 11px;
+  border: 0;
+  border-radius: 50%;
+  background: currentColor;
+  cursor: pointer;
+}
+
+.livehand__rail::-moz-range-thumb {
+  width: 11px;
+  height: 11px;
+  border: 0;
+  border-radius: 50%;
+  background: currentColor;
+  cursor: pointer;
+}
+
+/* Ряд под рельсом — тремя местами: ход слева, пуск посередине, выход
+   справа. Под рельсом, а не сбоку: ему нужна вся ширина — по нему целятся в
+   час дня.
+
+   Сетка из трёх столбцов, где крайние равны, а не поток с отступами: пуск
+   обязан стоять ровно под серединой шкалы, а не там, куда его вытолкнут
+   соседи своей шириной. */
+.livehand__keys {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 4px;
+}
+
+.livehand__speeds {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Пуск и остановка — главное на ряду, и вес у них больше, чем у хода.
+
+   Знаком, а не словом: треугольник и две полоски понимают, не читая, и
+   ровно они стоят на этом месте у всего, что играет время. Слова «пуск» и
+   «стоп» в ряду из коротких подписей читались как ещё одна подпись, а не
+   как то, что нажимают. */
+.livehand__run {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, currentColor 32%, transparent);
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, currentColor 8%, transparent);
+  color: inherit;
+  font: inherit;
+  font-size: var(--fs-micro, 11px);
+  font-weight: var(--fw-semibold);
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background 140ms var(--ease-out-strong),
+    border-color 140ms var(--ease-out-strong);
+}
+
+.livehand__run:hover {
+  background: color-mix(in srgb, currentColor 18%, transparent);
+}
+
+.livehand__run--on {
+  border-color: color-mix(in srgb, currentColor 60%, transparent);
+  background: color-mix(in srgb, currentColor 22%, transparent);
+}
+
+/* Возврат к часам — словами, без обводки: это не третий ход, а отказ от
+   ручки вовсе, и выглядеть он должен иначе, чем то, чем правят. */
+.livehand__back {
+  justify-self: end;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: var(--fs-micro, 11px);
+  line-height: 1;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+.livehand__back:hover {
+  opacity: 1;
+}
+
+/* Пока ручку не трогали, возвращаться некуда: слово остаётся на месте, но
+   не зовёт. Убирать его вовсе нельзя — ряд бы дёргался. */
+.livehand__back--off {
+  cursor: default;
+  opacity: 0.32;
+  text-decoration: none;
+}
+
+/* Кнопки словами, а не знаками: «×60», «пуск» и «стоп» говорят ровно то,
+   что делают, а знаков хода и паузы в наборе нет, и выдумывать их ради
+   служебной снасти незачем — рисованный от руки значок в наборе, собранном
+   из одной гарнитуры, виден сразу. */
+.livehand__key {
+  flex: 0 0 auto;
+  height: 20px;
+  padding: 0 7px;
+  border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+  border-radius: var(--r-pill);
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: var(--fs-micro, 11px);
+  line-height: 1;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition:
+    background 140ms var(--ease-out-strong),
+    border-color 140ms var(--ease-out-strong),
+    opacity 140ms var(--ease-out-strong);
+}
+
+.livehand__key:hover {
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+
+.livehand__key--on {
+  border-color: color-mix(in srgb, currentColor 55%, transparent);
+  background: color-mix(in srgb, currentColor 18%, transparent);
+  font-weight: var(--fw-semibold);
+}
+
+
 
 .alerts {
   display: flex;
@@ -12060,6 +12535,17 @@ button.homechip--quiet {
 
 .wboard__head:hover {
   background: var(--ink-50);
+}
+
+/* Закреплённая доска — в разделе статистики: сворачивать там нечего, и шапка
+   не кнопка. Значит, ни курсора-руки, ни подсветки под мышью: и то и другое
+   обещало бы нажатие. */
+.wboard__head--fixed {
+  cursor: default;
+}
+
+.wboard__head--fixed:hover {
+  background: none;
 }
 
 .wboard__head:focus-visible {
@@ -16643,6 +17129,11 @@ button.subhdr__close {
      тёмном он берётся светлее — тёмно-оранжевый по тёмному не читается. */
   --glass-name: var(--accent-700);
   --glass-solid: rgba(255, 255, 255, 0.94);
+  /* Состояния на стекле: выполнено, в работе, беда. На белом стекле —
+     тёмные и насыщенные, на тёмном переопределены ниже. */
+  --tip-ok: #0E7C45;
+  --tip-warn: #9A6100;
+  --tip-bad: #C22C24;
 }
 
 /* Тёмная подложка: стекло тёмное, а не белое.
@@ -16668,6 +17159,11 @@ button.subhdr__close {
   --glass-hover: rgba(255, 255, 255, 0.14);
   --glass-name: var(--accent-500);
   --glass-solid: rgba(16, 16, 16, 0.9);
+  /* На тёмном стекле — те же тона, какими карта красит выполненное и
+     сорванное: светлее подложки, иначе слова не видно. */
+  --tip-ok: #2FD97D;
+  --tip-warn: #EFC05C;
+  --tip-bad: #FF7A72;
 }
 
 /* ─── что написано на стекле ──────────────────────────────────────────────
@@ -16864,8 +17360,9 @@ button.subhdr__close {
   top: var(--sp-3);
   /* Справа внизу стоит пульт карты — полоса итогов до него не дотягивается
      и переносит плитки на строку раньше. Перекрыть органы управления она не
-     может ни при какой ширине окна. */
-  right: calc(var(--sp-3) + 58px);
+     может ни при какой ширине окна. Пульт лёг вдоль нижнего края, и места
+     ему нужно не 46 пикселей столбика, а вся его длина. */
+  right: calc(var(--sp-3) + 336px);
   bottom: var(--sp-3);
   /* К самому краю карты, вровень со столбиком масштаба: прежде полоса
      отступала от края на ширину этого столбика, хотя стоит она внизу, где
@@ -17607,22 +18104,32 @@ button.subhdr__close {
    всплывающей подсказки. Поэтому пульт шире кластера масштаба — ровно на
    слово, — и выступает над картой вправо. */
 .geo__deck {
-  /* Правый нижний угол: слева внизу стоит полоса итогов и карточки
-     выбранного, и они прижаты к самому краю карты — столбик органов
-     управления там только мешал. Над сноской об источнике подложки:
-     она занимает у нижнего края одну строку. */
+  /* Полосой вдоль нижнего края, справа, а не столбиком у правого борта.
+
+     Столбиком он занимал всю правую сторону сверху донизу и спорил с тем,
+     что стоит в правом верхнем углу: плашка смены растёт от пробок и от
+     числа участков, перечень маршрутов — от их числа, и в обоих случаях
+     верхние кнопки пульта уходили под них. Спор этот неразрешим по месту:
+     обе стороны растут по данным, а угол один.
+
+     Внизу же места ровно столько, сколько нужно: полоса итогов кончается
+     задолго до правого края, и пульт встаёт за нею, ничего не перекрывая.
+     Над сноской об источнике подложки: она занимает у нижнего края одну
+     строку. */
   position: absolute;
   right: var(--sp-3);
   bottom: calc(var(--sp-3) + 14px);
   z-index: 500;
-  width: 46px;
+  max-width: calc(100% - 2 * var(--sp-3));
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
+  justify-content: flex-end;
+  /* Не влезло — переносим строкой вверх, а не режем: кнопка, уехавшая за
+     край, потеряна совсем. */
+  flex-wrap: wrap;
   gap: 6px;
-  /* Сверху и снизу просторнее, чем по бокам: столбик значков вплотную к краю
-     плашки читался как обрезанный. */
-  padding: 10px 6px;
+  padding: 6px 8px;
   border-radius: var(--r-control);
   background: var(--glass);
   backdrop-filter: var(--glass-blur);
@@ -17632,21 +18139,21 @@ button.subhdr__close {
 
 .geo__deck-group {
   display: flex;
-  flex-direction: column;
-  align-self: stretch;
+  flex-direction: row;
+  align-items: center;
   gap: 4px;
 }
 
-/* Вид подложки — три значка столбиком, под чертой от переключателей слоёв:
-   это другой вопрос, «на чём рисовать», а не «что рисовать». */
+/* Вид подложки — три значка в ряд, за чертой от переключателей слоёв: это
+   другой вопрос, «на чём рисовать», а не «что рисовать». Черта из
+   горизонтальной стала боковой вместе с самим пультом. */
 .geo__views {
-  width: 100%;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   gap: 4px;
-  padding-top: 6px;
-  border-top: 1px solid var(--border-hairline);
+  padding-left: 6px;
+  border-left: 1px solid var(--glass-hair, var(--border-hairline));
 }
 
 .geo__view {
@@ -17685,12 +18192,17 @@ button.subhdr__close {
 
 /* Предупреждение о прямых перегонах: появляется только тогда, когда ломаных
    по улицам нет вовсе. */
+/* Предупреждение о неизвестных дорогах — своей строкой над кнопками: в ряд
+   с ними оно растянуло бы пульт через полкарты. */
 .geo__flat {
+  flex: 1 0 100%;
   display: inline-flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 4px;
-  padding-top: 8px;
-  border-top: 1px solid var(--border-hairline);
+  order: -1;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--glass-hair, var(--border-hairline));
   font-size: var(--fs-small);
   line-height: 1.25;
   color: var(--warning-600);
@@ -17788,6 +18300,58 @@ button.subhdr__close {
   color: var(--glass-ink-soft);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+
+/* Пометка «не текущее время» — первой строкой карточки, поверх карты.
+
+   Кнопкой, а не надписью: сказав «вы смотрите не тот час», честно тут же
+   дать выход — одно нажатие возвращает к часам. Тон служебно-тревожный,
+   тот же, что у метки настоящего времени на шкале: это одно и то же
+   сообщение, сказанное дважды — словом и местом. */
+.livecard__stale-note {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid color-mix(in srgb, var(--warning-600, #E5B44F) 70%, transparent);
+  border-radius: var(--r-control);
+  background: color-mix(in srgb, var(--warning-600, #E5B44F) 18%, transparent);
+  color: var(--glass-ink);
+  font: inherit;
+  font-size: var(--fs-caption);
+  text-align: left;
+  cursor: pointer;
+  transition: background 140ms var(--ease-out-strong);
+}
+
+.livecard__stale-note:hover {
+  background: color-mix(in srgb, var(--warning-600, #E5B44F) 28%, transparent);
+}
+
+.livecard__stale-note svg {
+  flex: 0 0 auto;
+}
+
+.livecard__stale-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  line-height: 1.25;
+}
+
+.livecard__stale-body span {
+  color: var(--glass-ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.livecard__stale-back {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding-left: var(--sp-2);
+  color: var(--glass-ink-soft);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 /* Пробки — своя строка под часами, с тем же расстоянием между столбцами,
@@ -18435,6 +18999,623 @@ button.subhdr__close {
   color: var(--text-secondary);
 }
 
+/* День, разложенный в планах, — строкой под часами: тише даты и часов, но
+   тем же кеглем, что подписи разделов. */
+.mongate__plan {
+  font-size: var(--fs-body-s);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── карточки районов ────────────────────────────────────────────────
+
+   Район показан так же, как расчёт в базе: имя сверху, город картой, числа
+   под ней. Трёх районов на строку хватает — столько их и есть в выгрузке; на
+   узком окне карточки встают в одну колонку, а не сжимаются до нечитаемой. */
+.zonegrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--sp-3);
+}
+
+.zcard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--r-md);
+  background: var(--surface-card);
+  transition: border-color 120ms var(--ease-out-strong), background-color 120ms var(--ease-out-strong),
+    box-shadow 120ms var(--ease-out-strong);
+}
+
+.zcard:hover {
+  border-color: var(--ink-300);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Отмеченный район — рамкой в акцентном тоне и лёгкой заливкой шапки:
+   заливать карточку целиком нельзя, под ней стоит карта. */
+.zcard--on {
+  border-color: var(--accent-500);
+  box-shadow: 0 0 0 1px var(--accent-500) inset;
+}
+
+.zcard__head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  cursor: pointer;
+}
+
+.zcard__place {
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-body);
+  color: var(--text-primary);
+}
+
+/* Точка цвета района — та же метка, что и на карте живого вида: по ней
+   карточку и пятно на городе узнают друг в друге. */
+.zcard__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  align-self: center;
+}
+
+.zcard__made {
+  font-size: var(--fs-caption);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+
+.zcard__date {
+  margin-left: auto;
+  font-size: var(--fs-caption);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+
+/* Место карты, когда карты нет: справочник ещё грузится или на район
+   вовсе ничего не посчитано. Пустая дыра в карточке читалась бы как сбой. */
+.zcard__blank {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 16 / 9;
+  margin-bottom: var(--sp-3);
+  border: 1px dashed var(--border-hairline);
+  border-radius: var(--r-sm);
+  background: var(--surface-tile);
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+
+.zcard .rmap {
+  margin-bottom: 0;
+}
+
+.zcard__run {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  min-width: 0;
+  font-size: var(--fs-body-s);
+  color: var(--text-primary);
+}
+
+/* Предложенный расчёт помечен иначе, чем выбранный: тише и другим знаком —
+   иначе «предложен» и «в работе» читаются одинаково, а это разные вещи. */
+.zcard__offer-icon {
+  align-self: center;
+  color: var(--text-muted);
+}
+
+/* Четыре числа плана в карточке района. В ряд они не помещаются — подписи
+   «Маршрутов» и «Покрытие» обрезаются до огрызков, — поэтому встают
+   вчетвером по два. */
+.zcard__nums {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.zcard__nums .engquick__tile {
+  padding: 6px var(--sp-3);
+  border: 0;
+}
+
+.zcard__nums .engquick__tile:nth-child(2n) {
+  border-left: 1px solid var(--border-hairline);
+}
+
+.zcard__nums .engquick__tile:nth-child(n + 3) {
+  border-top: 1px solid var(--border-hairline);
+}
+
+.zcard__nums .engquick__tile:nth-child(2n + 1) {
+  padding-left: 0;
+}
+
+.zcard__nums .engquick__label {
+  white-space: normal;
+}
+
+.zcard__more {
+  width: 100%;
+  justify-content: center;
+}
+
+/* Выбор расчёта: кнопка внизу карточки, список — поверх неё.
+
+   Поверх, а не внутри: у района бывает дюжина расчётов, и список внутри
+   карточки раздвигал её вместе со всем рядом — соседние районы уезжали вниз
+   от нажатия, к которому не имеют отношения. */
+.zcard__pick {
+  position: relative;
+  margin-top: auto;
+}
+
+/* Список шире карточки: в трёх колонках строки — номер, три числа и день
+   расчёта, — и в ширину карточки они переносились бы по слогам. Он и так
+   лежит поверх, так что расти ему есть куда. */
+.zpick {
+  position: absolute;
+  left: 0;
+  right: auto;
+  min-width: 100%;
+  width: max-content;
+  max-width: 330px;
+  bottom: calc(100% + 6px);
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-2);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--r-md);
+  background: var(--white);
+  box-shadow: var(--shadow-lg, var(--shadow-md));
+}
+
+.zpick__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+
+.zpick__title {
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+
+.zpick__sorts {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--r-pill);
+  background: var(--surface-tile);
+}
+
+.zpick__sort {
+  padding: 2px 8px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: none;
+  font-family: var(--font-sans);
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.zpick__sort--on {
+  background: var(--white);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.zpick__sort:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+
+/* Список прокручивается внутри себя: дюжина расчётов не должна уезжать за
+   край экрана вместе с карточкой. */
+.zpick__list {
+  display: flex;
+  flex-direction: column;
+  max-height: 210px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.zpick__run {
+  display: grid;
+  grid-template-columns: 14px auto auto 1fr auto;
+  gap: var(--sp-2);
+  align-items: baseline;
+  padding: 5px 6px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: none;
+  font-family: var(--font-sans);
+  font-size: var(--fs-body-s);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 120ms var(--ease-out-strong);
+}
+
+.zpick__run:hover:not(:disabled) {
+  background: var(--ink-50);
+}
+
+.zpick__run:disabled {
+  cursor: default;
+  background: var(--accent-100);
+}
+
+/* Место под отметку держится всегда — и у невыбранных строк: иначе строки
+   разъезжаются на ширину значка. */
+.zpick__mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  color: var(--accent-600);
+}
+
+.zpick__no {
+  font-size: var(--fs-caption);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.zpick__code {
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+/* Три числа через косую черту — те же, что в ленте диспетчерской. */
+.zpick__meta {
+  font-size: var(--fs-caption);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.zpick__made {
+  font-size: var(--fs-caption);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.zpick__empty {
+  padding: 6px;
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+
+/* Дорога ко всей истории района — тихой строкой под списком: к ней идут,
+   когда привязанный расчёт не годится. */
+.zpick__all {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 5px 8px;
+  border: 0;
+  border-top: 1px solid var(--border-hairline);
+  border-radius: 0;
+  background: none;
+  font-family: var(--font-sans);
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.zpick__all:hover {
+  color: var(--text-primary);
+}
+
+.zpick__all:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+
+/* Кнопка «Отметить все» — в ряду заголовка, тихой строкой: это удобство на
+   каждый день, а не решение, ради которого заводят приметную кнопку. */
+.gatehero__note {
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+
+.mday__all {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  background: none;
+  font-family: var(--font-sans);
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background-color 120ms var(--ease-out-strong), color 120ms var(--ease-out-strong);
+}
+
+.mday__all:hover {
+  background: var(--ink-50);
+  color: var(--text-primary);
+}
+
+.mday__all:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+
+/* ─── ворота мониторинга: который сейчас час ──────────────────────────
+
+   Первое, что говорит раздел, — какое это «сейчас». Поэтому день и часы
+   стоят крупно и в одну строку, а слово «Мониторинг» — надстрочной
+   подписью над ними: название раздела диспетчер и так знает, а число и
+   время читает. */
+.mongate__hero {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.mongate__label {
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.mongate__now {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-3) var(--sp-4);
+}
+
+.mongate__day {
+  margin: 0;
+  font-family: var(--font-display, var(--font-sans));
+  font-size: var(--fs-h1);
+  font-weight: var(--fw-semibold);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+/* Часы той же величины, что день, но цифрами в моноширинной сетке: минута
+   сменяется на месте, не сдвигая соседние знаки. */
+.mongate__clock {
+  font-size: var(--fs-h1);
+  font-weight: var(--fw-semibold);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-600);
+}
+
+/* ─── прошедшие мониторинги ───────────────────────────────────────────
+
+   Карточками, как расчёты в базе: у записи есть номер, числа и разбор по
+   районам, и всё это читают сверху вниз одной плиткой. В один ряд — не
+   больше двух: разбор по районам занимает всю ширину карточки. */
+/* Ряд записей — как у расчётов в базе: по четыре.
+
+   Колонки считаются по ширине самой полосы, а не по ширине окна: раздел
+   живёт рядом с боковым меню, и по окну ряд получался то на карточку шире,
+   то на карточку уже, чем помещается. `auto-fill`, а не `auto-fit`: одна
+   запись занимает своё место в ряду, а не растягивается на всю полосу. */
+.monlist {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(285px, 1fr));
+  gap: var(--sp-3);
+}
+
+.moncard {
+  /* Карточка сама себе мерка: в широком окне их два в ряд, в узком — один,
+     и перестраивать разбор по районам надо по её ширине, а не по ширине
+     окна. */
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--r-md);
+  background: var(--surface-card);
+  transition: border-color 120ms var(--ease-out-strong), box-shadow 120ms var(--ease-out-strong);
+}
+
+.moncard:hover {
+  border-color: var(--ink-300);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Числа мониторинга — парами: значения здесь двойные («132 из 205»), и
+   вчетвером в строку они не помещаются ни в одной колонке.
+
+   Черта между ними рисуется решёткой, а не «каждому, кроме первого»: в две
+   строки такое правило оставляет первую клетку без черты, а третью — с
+   лишней, и сетка выглядит сдвинутой. */
+.moncard .engquick {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* Кегль числа меньше, чем в базах: здесь значения двойные — «168 из 205», —
+   и в четверти ряда крупная цифра переносилась бы по слогам. */
+.moncard .engquick__value {
+  font-size: 17px;
+  white-space: nowrap;
+}
+
+.moncard .engquick__tile {
+  padding: 8px var(--sp-3);
+  border: 0;
+}
+
+.moncard .engquick__tile:nth-child(2n) {
+  border-left: 1px solid var(--border-hairline);
+}
+
+.moncard .engquick__tile:nth-child(n + 3) {
+  border-top: 1px solid var(--border-hairline);
+}
+
+.moncard .engquick__tile:nth-child(2n + 1) {
+  padding-left: 0;
+}
+
+.moncard .engquick__label {
+  white-space: normal;
+}
+
+.moncard__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-2) var(--sp-3);
+}
+
+.moncard__ident {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.moncard__code {
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+.moncard__when {
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+
+/* Срывы сроков — красной плашкой. Строка о них стоит среди нейтральных
+   чисел, и тоном она отличается от них так же, как беда от сводки. */
+.moncard__late {
+  display: flex;
+  align-items: center;
+  line-height: var(--lh-body);
+  gap: 6px;
+  margin: 0;
+  padding: 6px var(--sp-3);
+  border-radius: var(--r-sm);
+  background: var(--danger-100, rgba(201, 85, 111, 0.12));
+  color: var(--danger-600, #b03a52);
+  font-size: var(--fs-caption);
+}
+
+.moncard__parts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.moncard__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.moncard__empty {
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+
+.monpart__list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  background: var(--border-hairline);
+}
+
+/* Строка района: имя, расчёт, дата и три числа. Числа выровнены по правому
+   краю столбцами — так их сравнивают между районами, а не читают по одному. */
+.monpart {
+  display: grid;
+  grid-template-columns: minmax(90px, 1fr) auto auto;
+  gap: 2px var(--sp-3);
+  align-items: baseline;
+  padding: 8px 10px;
+  background: var(--surface-tile);
+  font-size: var(--fs-body-s);
+}
+
+.monpart__place {
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+
+.monpart__run {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: var(--font-sans);
+  font-size: var(--fs-caption);
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-600);
+  border-bottom: 1px dotted var(--accent-500);
+  cursor: pointer;
+}
+
+.monpart__run:disabled {
+  color: var(--text-secondary);
+  border-bottom-color: transparent;
+  cursor: default;
+}
+
+.monpart__date {
+  font-size: var(--fs-caption);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.monpart__nums {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.monpart__nums b {
+  color: var(--text-primary);
+}
+
+/* Карточка пошире — числа районов встают в ряд, а не столбиком. Мерка
+   идёт по содержимому карточки, без её полей: в сетке из двух колонок на
+   обычном мониторе это около 500 пикселей. */
+@container (min-width: 460px) {
+  .monpart {
+    grid-template-columns: minmax(90px, 1fr) auto auto repeat(3, minmax(0, auto));
+  }
+
+  .monpart__nums {
+    grid-column: auto;
+    text-align: right;
+  }
+}
+
 /* Часы вне смены: план показан на её границу, и молчать об этом нельзя —
    иначе нули на плашке читаются как «все стоят». */
 .livecard__off {
@@ -18750,6 +19931,63 @@ button.subhdr__close {
 
 .geo__end b {
   font-weight: var(--fw-semibold);
+}
+
+/* Кучка меток: сколько маршрутов сошлось в одном месте экрана.
+
+   Та же пилюля, что и метка маршрута, но без цвета: она не о маршруте, а о
+   том, что их здесь несколько. Число крупнее подписи — за ним и смотрят. */
+.geo__pack {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+  padding: 0 8px 0 6px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--glass-solid);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-edge-sm), var(--glass-line);
+  color: var(--glass-ink);
+  font-family: var(--font-sans);
+  font-size: var(--fs-small);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  white-space: nowrap;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  transition:
+    transform 140ms var(--ease-out-strong),
+    background 140ms var(--ease-out-strong);
+}
+
+.geo__pack svg {
+  color: var(--glass-ink-mute);
+}
+
+.geo__pack b {
+  font-size: var(--fs-body-s);
+  font-weight: var(--fw-bold);
+}
+
+.geo__pack:hover {
+  transform: translate(-50%, -50%) scale(1.08);
+}
+
+/* Метка маршрута внутри живого знака: она едет вместе с инженером.
+
+   Та же плашка, что стоит у неподвижных, — и вид у неё тот же: разные
+   метки одного и того же на одной карте читались бы как разные вещи.
+   Отличается только тем, что место ей задаёт не раскладка, а сам знак:
+   она висит справа от точки и уезжает вместе с нею. */
+.geo__end--flow {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(13px, -50%);
+  pointer-events: none;
 }
 
 /* Цветная метка слева — тот же цвет, что у линии и у обводки её точек. */
@@ -20160,6 +21398,176 @@ button.subhdr__close {
   from {
     opacity: 0;
     transform: translateY(3px) scale(0.98);
+  }
+}
+
+/* ─── живая точка инженера ────────────────────────────────────────────────
+   Где человек находится прямо сейчас — по плану, который считал движок.
+
+   Пульсация здесь несёт смысл, а не украшает. На карте поверх города лежат
+   сотни точек и десятки путей, и все они стоят; движение — единственный
+   способ сказать «это происходит в эту минуту», и глаз находит его сам,
+   не разбирая ни цветов, ни подписей.
+
+   Зелёный один на все состояния нарочно: цвет отвечает на «живое ли это»,
+   а не на «как идут дела». О делах на карте говорят сами заявки — этапом и
+   риском срыва, — и третий язык цвета там ни к чему.
+
+   Отличаются состояния формой. В пути — плотное ядро с расходящейся волной:
+   так рисуют движущийся источник. На заявке — то же ядро в медленно дышащем
+   кольце: человек стоит на месте и работает. */
+.flowpin {
+  /* Обёртка Leaflet: ловить курсор должно ядро, а не её пустые углы. */
+  background: none;
+  border: 0;
+  /* Точка доезжает, а не прыгает.
+
+     Положение приходит тактами: раздел сверяется с часами четыре раза в
+     секунду, а на ускоренном ходу между двумя тактами инженер успевает
+     проехать четверть минуты пути. Без перехода это скачок по карте
+     каждые четверть секунды — смотреть на такое движение нельзя. Переход
+     ровно в такт и строго равномерный: точка едет, а не подпрыгивает с
+     оттяжкой на концах.
+
+     Двигает её `transform`, и потому переход ничего не стоит: его считает
+     видеокарта, не трогая города под точкой. */
+  transition: transform 250ms linear;
+}
+
+/* Пока карту тащат или масштабируют, переход снимается: там место точки
+   меняет сама карта, и доезжать ей некуда — она обязана стоять в своём
+   месте на городе, а не догонять его. */
+.geo--moving .flowpin {
+  transition: none;
+}
+
+.flow {
+  position: relative;
+  display: block;
+  width: 34px;
+  height: 34px;
+  /* Зелёный у точки свой, а не системный.
+
+     Системный `--success-500` — тон для текста и плашек на белом листе: на
+     бумаге он спокойный, на тёмной карте среди двенадцати ярких маршрутов
+     он грязное пятно, и человека на ней не видно вовсе. Здесь нужен
+     сигнальный: светлее подложки, чище любого маршрутного оттенка и один
+     на весь живой вид. */
+  --flow-ink: #2bff8f;
+}
+
+.flow__core {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 13px;
+  height: 13px;
+  margin: -6.5px 0 0 -6.5px;
+  border-radius: 50%;
+  background: var(--flow-ink);
+  /* Белая кайма и тёмный ореол вокруг неё: так точку видно и на тёмной
+     схеме, и на светлой, и на снимке города — три подложки, и ни одна не
+     должна её съесть. Свечение снаружи добавляет ей веса, не увеличивая
+     самого кружка. */
+  /* Белая кайма и тёмный ободок вокруг неё: так точку видно и на тёмной
+     схеме, и на светлой, и на снимке города — три подложки, и ни одна не
+     должна её съесть.
+
+     Обе тени без размытия, и это не вкус. Карта эта к рисованию
+     чувствительна: сорок маршрутов и двести перегонов, и одни только тени
+     слоёв роняли перетаскивание до 38 кадров. Размытое свечение вокруг
+     каждой из сорока точек — та же плата, только каждый кадр: точка живая,
+     она дышит и едет, и всё, что под нею, пересчитывается заново. Чёткие
+     кольца дают тот же вес даром. */
+  box-shadow:
+    0 0 0 2.5px #ffffff,
+    0 0 0 4.5px rgba(8, 16, 12, 0.7);
+  transition:
+    transform 140ms var(--ease-out-strong),
+    box-shadow 140ms var(--ease-out-strong);
+}
+
+.flow__wave {
+  position: absolute;
+  inset: 5px;
+  border-radius: 50%;
+  background: var(--flow-ink);
+  opacity: 0.38;
+  animation: flowwave 2s var(--ease-out-strong) infinite;
+  /* Волна идёт своим слоем: она меняет только размер и прозрачность, и,
+     вынесенная в отдельный слой, рисуется видеокартой, не трогая города под
+     собой. Без этого каждая из сорока волн заставляла браузер шестьдесят раз
+     в секунду перерисовывать кусок карты под точкой — вместе они и клали
+     карту. */
+  will-change: transform, opacity;
+}
+
+/* На заявке — кольцо вместо волны: оно не расходится, а дышит на месте. */
+.flow--site .flow__wave {
+  inset: 2px;
+  background: none;
+  border: 2.5px solid var(--flow-ink);
+  opacity: 0.85;
+  animation: flowring 2.8s ease-in-out infinite;
+}
+
+/* Под курсором точка прибавляет в весе: видно, что целишься в человека, а
+   не в город под ним, — тем же приёмом, каким отзываются точки заявок. */
+.flowpin:hover .flow__core {
+  transform: scale(1.45);
+  box-shadow:
+    0 0 0 2.5px #ffffff,
+    0 0 0 5.5px rgba(8, 16, 12, 0.8);
+}
+
+/* Пока карту тащат или масштабируют, точки перестают дышать.
+
+   По тому же правилу, по которому на время жеста гаснут тени слоёв и стекло
+   меток: в движении разглядывать пульсацию всё равно некому, а платить за
+   неё приходится каждым кадром жеста. Карта встала — точки задышали снова. */
+.geo--moving .flow__wave {
+  animation: none;
+  opacity: 0.32;
+}
+
+@keyframes flowwave {
+  from {
+    transform: scale(0.4);
+    opacity: 0.5;
+  }
+  to {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+@keyframes flowring {
+  0%,
+  100% {
+    transform: scale(0.72);
+    opacity: 0.75;
+  }
+  50% {
+    transform: scale(1.06);
+    opacity: 0.22;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Движение выключено — точка остаётся: она отвечает на «где человек»,
+     и молчать ей нельзя. Живой её держит кольцо, а не пульс. */
+  .flow__wave {
+    animation: none;
+    opacity: 0.45;
+  }
+
+  .flow--site .flow__wave {
+    animation: none;
+    transform: scale(0.95);
+  }
+
+  .flowpin:hover .flow__core {
+    transform: none;
   }
 }
 

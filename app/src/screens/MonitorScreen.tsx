@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Icon } from '../ds/components/core/Icon.jsx';
 import type { DayView } from '../data/derive.ts';
 import {
   buildDayView,
   buildLiveRoster,
-  cutMinutes,
+  clampDay,
   dayDot,
   dayEnd,
   dayStart,
@@ -19,6 +19,9 @@ import type { LiveEngineer } from '../data/derive.ts';
 import { loadDay, runCode, runDate, runDay } from '../data/load.ts';
 import type { RunId } from '../data/load.ts';
 import { dayLabel, takeDuty, useDuty, workDays } from '../data/duty.ts';
+import { markWatch } from '../data/watch.ts';
+import { markMonitor } from '../data/monitor.ts';
+import { buildLiveSpots } from '../data/live.ts';
 import { loadTraffic } from '../data/traffic.ts';
 import type { Traffic } from '../data/traffic.ts';
 import { MapBoard, routeColor, surnameOf } from '../app/MapBoard.tsx';
@@ -67,6 +70,17 @@ interface Props {
    заложено в расчёте. */
 const JAM_ALERT = 6;
 
+/* Как часто раздел сверяется с часами, миллисекунды. */
+const BEAT_MS = 250;
+
+/* Скорости ручки: настоящее время и ускоренный ход. Двух хватает: между
+   «как в жизни» и «день за десять минут» третьей меры нет — её выбирали бы
+   дольше, чем она экономит. */
+const SPEEDS = [
+  { value: 1, label: '×1', title: 'Время идёт как настоящее' },
+  { value: 60, label: '×60', title: 'Ускоренный ход: минута плана за секунду' }
+];
+
 const RIDES = [
   { key: 'car', icon: 'car', title: 'Автомобиль' },
   { key: 'transit', icon: 'bus', title: 'Общественный транспорт' },
@@ -110,6 +124,99 @@ export function MonitorScreen({
     const id = window.setInterval(() => setNow(new Date()), 20_000);
     return () => window.clearInterval(id);
   }, []);
+
+  /* Секундный такт — для живых точек на карте.
+
+     Числа смены от него не зависят: в данных ничего чаще минуты не меняется,
+     и пересчитывать состав смены каждую секунду не за чем. А вот инженер,
+     переставляемый раз в минуту, читается как поломка — стоит двадцать
+     секунд, потом прыгает на квартал. Поэтому такт частый, а срез,
+     по которому считаются числа, по-прежнему целая минута. */
+  /* Такт чаще секунды нарочно. Точка на карте доезжает между тактами сама —
+     плавность ей даёт переход, — но переход идёт по прямой, а дорога
+     поворачивает: чем реже такт, тем заметнее точка срезает углы. Четверть
+     секунды — та мера, при которой на ускоренном ходу срезка меньше
+     толщины линии.
+
+     Числа смены от такта не зависят: они считаются по целой минуте среза и
+     между её сменами не пересчитываются. */
+  const [beat, setBeat] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setBeat(Date.now()), BEAT_MS);
+    return () => window.clearInterval(id);
+  }, []);
+
+  /* Ручка среза.
+
+     Мониторинг живёт по настенным часам — и это правильно: он отвечает на
+     «что происходит сейчас». Но данные под ним — план на день выгрузки, и в
+     три часа ночи или в восемь утра на карте не происходит ничего: смена
+     ещё не началась, точек нет, и показать живой вид нельзя вовсе.
+     Диспетчеру же и руководителю случается смотреть на него именно в эти
+     часы.
+
+     Поэтому рядом с часами стоит ручка: срез можно отвести на любой час
+     смены и пустить время быстрее — минута плана за секунду. Тихая нарочно:
+     по умолчанию её нет, есть настоящее время, и вернуться к нему — одно
+     нажатие. Пока ручка отведена, часы прямо говорят, что показан не
+     нынешний час, а выбранный: подменять время молча нельзя, по нему
+     сверяются с бригадой.
+
+     `null` — идём по часам. Иначе минута среза, ход (во сколько раз время
+     идёт быстрее настоящего) и признак того, что оно идёт. Ход и пуск
+     разведены нарочно: скорость выбирают один раз, а останавливают и
+     пускают много, и кнопка «стоп», стирающая выбранную скорость, заставляла
+     бы выбирать её заново после каждой остановки. */
+  const [hand, setHand] = useState<{ at: number; speed: number; play: boolean } | null>(null);
+
+  /* Оговорку об опытном виде можно убрать с карты — она честная, но не
+     новость: прочитав её однажды, диспетчер работает дальше. Закрытие живёт
+     ровно столько, сколько открыт раздел: вернулся в мониторинг — оговорка
+     снова на месте. Помнить её закрытой навсегда нельзя, пока настоящего
+     отслеживания нет: карта каждый раз обещает то, чего не делает. */
+  const [noteOff, setNoteOff] = useState(false);
+  /* Когда ручку двигали в последний раз. Ход считается от настоящего
+     времени, а не от числа тактов: такт может задержаться — вкладка ушла в
+     тень, браузер сберёг батарею, — и счёт по тактам отстал бы от часов. */
+  const handAt = useRef(0);
+
+  /* Ход ручки. Срез растёт ровно на столько, сколько прошло настоящего
+     времени, помноженное на выбранный ход. Дошли до конца смены — ручка
+     сама встаёт: дальше в плане ничего нет. */
+  useEffect(() => {
+    if (!hand || !hand.play) return;
+    const now = Date.now();
+    const went = Math.max(0, now - (handAt.current || now));
+    handAt.current = now;
+    if (went === 0) return;
+    setHand((was) => {
+      if (!was || !was.play) return was;
+      const next = was.at + (went / 60_000) * was.speed;
+      /* Догнали настоящее время — ручка не нужна: отпускаем её, и раздел
+         снова идёт по часам. Останавливать срез на месте было бы хуже:
+         диспетчер остался бы с замершим городом и оговоркой о неактуальном
+         времени там, где время как раз стало актуальным. */
+      return next >= ceiling ? null : { ...was, at: next };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [beat]);
+
+  /* Тронуть ручку. Отдельным действием, потому что зовут его трое: ползунок,
+     выбор хода и кнопка пуска, — и каждому надо не забыть отметить, откуда
+     считать прошедшее время. Что не названо, то остаётся прежним: сменили
+     скорость — время продолжает идти, тронули ползунок — скорость та же. */
+  const setSlice = (change: { at?: number; speed?: number; play?: boolean }) => {
+    handAt.current = Date.now();
+    setHand((was) => {
+      const base = was ?? { at: ceiling, speed: 1, play: true };
+      const at = change.at ?? base.at;
+      return {
+        at: Math.min(ceiling, Math.max(dayStart(), at)),
+        speed: change.speed ?? base.speed,
+        play: change.play ?? base.play
+      };
+    });
+  };
 
   /* Дни участков, за которыми смотрят, кладутся на одну карту.
 
@@ -202,16 +309,32 @@ export function MonitorScreen({
 
   /* Чей маршрут, когда участков несколько: номер сквозной по базе и считается
      от пары «расчёт — инженер», а не от составного номера с общей карты. */
-  const routeKeyOf = (engineerId: string) =>
-    merged?.owner.get(engineerId) ?? { runId, engineerId };
+  const routeKeyOf = useCallback(
+    (engineerId: string) => merged?.owner.get(engineerId) ?? { runId, engineerId },
+    [merged, runId]
+  );
 
   /* Чей это участок. На общей карте лежат дни трёх районов, и место выезда
      у них бывает одно на всех: без имени участка «Общий выезд» не говорит
-     главного — чья это бригада. */
-  const zoneOf = (engineerId: string) => {
-    const owner = merged?.owner.get(engineerId);
-    return owner ? dayLabel(owner.runId as RunId, runDate(owner.runId as RunId)).split(' · ')[0] : null;
-  };
+     главного — чья это бригада.
+
+     Запомнено намертво, и это не бережливость ради бережливости. По этим
+     двум определителям карта считает земли участков — межу по дорожной сети
+     города, сотни ломаных, четверть секунды работы. Считает она их заново,
+     когда определитель приходит другим, а созданный в ходе отрисовки он
+     другой всегда. Пока раздел перерисовывался раз в двадцать секунд, этого
+     никто не замечал; с живыми точками он ожил каждую секунду — и карта
+     встала намертво, пересчитывая границы города по шестьдесят раз в
+     минуту. */
+  const zoneOf = useCallback(
+    (engineerId: string) => {
+      const owner = merged?.owner.get(engineerId);
+      return owner
+        ? dayLabel(owner.runId as RunId, runDate(owner.runId as RunId)).split(' · ')[0]
+        : null;
+    },
+    [merged]
+  );
 
 
   /* Обстановка в городе. Читается при открытии и раз в пять минут: баллы
@@ -303,7 +426,10 @@ export function MonitorScreen({
     () => zonePalette(runs.map((id) => dayLabel(id, runDate(id)).split(' · ')[0])),
     [runs]
   );
-  const zoneTint = (title: string) => tints.get(title) ?? 'var(--glass-ink-soft)';
+  const zoneTint = useCallback(
+    (title: string) => tints.get(title) ?? 'var(--glass-ink-soft)',
+    [tints]
+  );
 
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const [pickGroup, setPickGroup] = useState<string | null>(null);
@@ -353,10 +479,44 @@ export function MonitorScreen({
      выбранном. */
   const picked = Boolean(pinned || selectedOrder);
 
-  const cut = cutMinutes(now);
-  const wall = now.getHours() * 60 + now.getMinutes();
+  /* Время на часах — дробными минутами: внутри минуты живая точка едет, и
+     без дробной части она стояла бы и прыгала. */
+  const tick = new Date(beat);
+  const wallFine = tick.getHours() * 60 + tick.getMinutes() + tick.getSeconds() / 60;
+  /* Срез, на котором стоит весь раздел: по часам или отведённый ручкой. */
+  const flow = hand ? hand.at : wallFine;
+  /* Числа смены считаются по целой минуте: в плане ничего дробнее нет, и
+     пересчитывать состав шестьдесят раз в минуту незачем. */
+  const cut = clampDay(Math.floor(flow));
+  const wall = Math.floor(flow);
+  /* Настоящее время — им подписана синхронизация: обмен идёт сейчас, куда бы
+     ни отвели срез. */
+  const sync = Math.floor(wallFine);
+
+  /* Докуда можно отвести срез. Дальше настоящего времени — нельзя: за ним
+     у мониторинга нет ответа. План на остаток дня, конечно, известен — но
+     это план, а не то, что происходит; живой вид, показывающий половину
+     седьмого в половине пятого, обещал бы знание будущего, которого нет ни
+     у кого. Назад — сколько угодно: прошлое сегодняшней смены уже случилось.
+
+     Часы прижаты к границам смены: до её начала отводить некуда, и ручка
+     стоит на первой минуте. */
+  const ceiling = clampDay(Math.floor(wallFine));
+
+  /* Показанное время разошлось с настоящим. Не то же, что «ручка тронута»:
+     на ходу ×1 срез идёт вровень с часами и показывает ровно ту же минуту —
+     кричать о неактуальном времени, когда оно актуально, значит приучить
+     не читать предупреждение вовсе. Расходится — говорим. */
+  const stale = hand !== null && Math.abs(wall - sync) >= 1;
   const beforeShift = wall < dayStart();
   const afterShift = wall > dayEnd();
+
+  /* Где инженеры на этот срез. Считается по дробной минуте — тем и живёт
+     карта: точка едет внутри минуты, а не переставляется на её границе.
+
+     По показанному, а не по всему наблюдаемому: снятый с карты участок точек
+     не получает, и отбор по транспорту убирает их вместе с линиями. */
+  const spots = useMemo(() => buildLiveSpots(shown, flow), [shown, flow]);
   /* Какой день разложен в плане. Часы идут настенные, а план — на день
      выгрузки, и без подписи «сейчас 14:20» на плане 17 августа читалось бы
      как сегодняшнее положение дел. */
@@ -376,6 +536,72 @@ export function MonitorScreen({
     for (const row of roster) map.set(row.status, (map.get(row.status) ?? 0) + 1);
     return map;
   }, [roster]);
+
+  /* Отметка в журнале смены: раздел открыт, и вот что в нём видно на эту
+     минуту.
+
+     Пишется здесь, а не в оболочке: только живой вид знает, за какими
+     участками смотрят и что с ними к этому часу. Числа те же, что на полосе
+     итогов, — второй раз они нигде не считаются. Отметка идёт с шагом
+     самого раздела (раз в двадцать секунд), а журнал уже сам решает, что из
+     этого записать: см. `markWatch`. */
+  const visitsDone = useMemo(() => roster.reduce((sum, row) => sum + row.visitsDone, 0), [roster]);
+  const ordersAll = shown.orderById.size;
+  const assignedShare = ordersAll > 0 ? ((ordersAll - shown.unassigned.length) / ordersAll) * 100 : 0;
+
+  /* Разбор по районам для записи мониторинга. Считается по дням районов
+     порознь, а не по общей карте: вопрос «сколько инженеров было на Востоке
+     и сколько маршрутов они закрыли» задают о районе.
+
+     Берём все наблюдаемые районы, а не показанные: снятый с карты район из
+     наблюдения не выходит — его сняли, чтобы разглядеть соседа, — и отбор по
+     средству передвижения к записи тоже не относится. */
+  const parts = useMemo(() => {
+    return runs
+      .map((id) => {
+        const day = id === runId ? view : others.get(id);
+        if (!day) return null;
+        const crew = buildLiveRoster(day, cut);
+        const routes = crew.filter((row) => row.route && row.route.stops.length > 0);
+        return {
+          run: id,
+          place: dayLabel(id, runDate(id)).split(' · ')[0],
+          date: runDate(id),
+          engineers: crew.length,
+          onShift: crew.filter((row) => row.status !== 'off').length,
+          routes: routes.length,
+          /* Пройденный маршрут — тот, у которого позади все точки. Это и
+             есть «маршрутов выполнено»: маршрут кончается последней
+             заявкой, и половина пути выполнением не считается. */
+          routesDone: routes.filter((row) => row.visitsDone >= row.visitsTotal).length,
+          orders: day.orderById.size,
+          done: crew.reduce((sum, row) => sum + row.visitsDone, 0)
+        };
+      })
+      .filter((part): part is NonNullable<typeof part> => part !== null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runs.join('|'), runId, view, others, cut]);
+
+  useEffect(() => {
+    const result = {
+      orders: ordersAll,
+      done: visitsDone,
+      onShift: roster.filter((row) => row.status !== 'off').length,
+      engineers: roster.length,
+      late: counts.get('overdue') ?? 0,
+      assigned: assignedShare
+    };
+    markWatch(result);
+    /* Та же отметка идёт в запись запуска: смена копит календарный день,
+       запись — одно наблюдение с его районами. */
+    markMonitor(result, parts);
+    /* Отметка идёт по своим часам — раз в двадцать секунд, — а не по всякой
+       перемене чисел. На ускоренном ходу срез пробегает минуту за секунду, и
+       привязка к числам смены писала бы журнал по четыре раза в секунду:
+       журнал рассказывает о наблюдении, а не о каждом кадре. Числа он берёт
+       те, что видны в эту минуту. */
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [now]);
 
   /* Ход работы числами. Одни и те же в обоих видах — в обзоре полосой поверх
      города, в сводке плитками над списком, — поэтому считаются один раз.
@@ -398,15 +624,145 @@ export function MonitorScreen({
     }
   ];
 
+  /* Часы смены для шкалы под рельсом и место минуты на ней, долей ширины. */
+  const atPercent = (minute: number) => {
+    const span = dayEnd() - dayStart();
+    if (span <= 0) return 0;
+    const held = Math.min(dayEnd(), Math.max(dayStart(), minute));
+    return ((held - dayStart()) / span) * 100;
+  };
+  const hourMarks: number[] = [];
+  for (let minute = Math.ceil(dayStart() / 60) * 60; minute <= dayEnd(); minute += 60) {
+    hourMarks.push(minute);
+  }
+
+  /* Ручка среза — тихой строкой при часах: рельс по смене, кнопка хода и
+     возврат к настоящему времени. Стоит она в обоих видах раздела, потому
+     что срез в них один: отвели его в обзоре — сводка отвечает о том же
+     часе. */
+  const handRow = (
+    <span className={'livehand' + (hand ? ' livehand--on' : '')}>
+      <span className="livehand__track">
+        <input
+          type="range"
+          className="livehand__rail"
+          min={dayStart()}
+          max={ceiling}
+          step={1}
+          value={Math.min(ceiling, Math.max(dayStart(), wall))}
+          /* Отвели ползунок — время пошло. Прежде оно вставало на выбранной
+             минуте и стояло, пока не нажмут ход: диспетчер отводил срез,
+             смотрел на замерший город и не понимал, почему живой вид не
+             живой. Ход при этом берётся прежний: остановили нарочно —
+             значит, и смотреть хотят стоп-кадр. */
+          onChange={(e) => setSlice({ at: Number(e.target.value), play: true })}
+          aria-label="Срез времени внутри смены"
+          title="Отвести срез на другой час смены"
+        />
+        {/* Шкала под рельсом. Без неё ползунок — просто полоска: отвести
+            срез «на два часа назад» по ней можно только наугад, а диспетчер
+            думает часами. Засечка на каждый час, подпись через три: в углу
+            карты места на тринадцать чисел нет, а ритм в три часа читается
+            сам. Красная метка — настоящее время: когда срез отведён рукой,
+            сразу видно, насколько далеко он ушёл от часов. */}
+        <span className="livehand__scale" aria-hidden="true">
+          {hourMarks.map((minute) => {
+            const named = (minute / 60) % 3 === 0;
+            return (
+              <span
+                key={minute}
+                className={'livehand__tick' + (named ? ' livehand__tick--named' : '')}
+                style={{ left: `${atPercent(minute)}%` }}
+              >
+                {named && <b>{hhmm(minute).slice(0, 2)}</b>}
+              </span>
+            );
+          })}
+          {hand && (
+            <span
+              className="livehand__wall"
+              style={{ left: `${atPercent(sync)}%` }}
+              title={`Настоящее время: ${hhmm(sync)}`}
+            />
+          )}
+        </span>
+      </span>
+      {/* Ряд под шкалой разведён по трём местам, и каждое отвечает за своё.
+
+          Слева — ход: во сколько раз время быстрее настоящего. Выбирают его
+          редко и заранее, поэтому он и стоит с краю.
+
+          Посередине, ровно под серединой шкалы, — пуск и остановка. Это то,
+          что нажимают чаще всего, и место у него главное.
+
+          Справа — выход: возврат к настоящему времени. Не кнопка, а ссылка
+          словами: кнопка рядом с двумя рядами кнопок читалась бы как третий
+          ход, а это не ход, а отказ от ручки вовсе. */}
+      <span className="livehand__keys">
+        <span className="livehand__speeds">
+          {SPEEDS.map((step) => (
+            <button
+              key={step.value}
+              type="button"
+              className={
+                'livehand__key' + (hand && hand.speed === step.value ? ' livehand__key--on' : '')
+              }
+                    onClick={() => setSlice({ speed: step.value, play: true })}
+              title={step.title}
+              aria-pressed={Boolean(hand && hand.speed === step.value)}
+            >
+              {step.label}
+            </button>
+          ))}
+        </span>
+
+        <button
+          type="button"
+          className={'livehand__run' + (hand?.play ? ' livehand__run--on' : '')}
+          onClick={() => setSlice({ play: !hand?.play })}
+          title={
+            hand?.play
+              ? 'Остановить: срез замрёт на этой минуте'
+              : 'Пустить время от этой минуты'
+          }
+          aria-pressed={Boolean(hand?.play)}
+          aria-label={hand?.play ? 'Остановить время' : 'Пустить время'}
+        >
+          <Icon name={hand?.play ? 'pause' : 'play'} size={12} />
+        </button>
+
+        {hand ? (
+          <button type="button" className="livehand__back" onClick={() => setHand(null)}>
+            к часам
+          </button>
+        ) : (
+          <span className="livehand__back livehand__back--off">к часам</span>
+        )}
+      </span>
+    </span>
+  );
+
   /* Часы настенные и не замирают: срез плана прижат к границам смены, и это
      сказано отдельной строкой, а не подменой времени — «21:00, обновлено
-     21:30» читалось как поломка. */
+     21:30» читалось как поломка.
+
+     Отведённая ручка говорит о себе прямо: показан выбранный час, а не
+     нынешний, и настоящее время стоит рядом. Подменять время молча нельзя —
+     по нему сверяются с бригадой. */
   const clock = (
-    <span className="livenow" title="Текущее время: раздел показывает состояние плана на эту минуту и обновляется сам">
+    <span
+      className={'livenow' + (stale ? ' livenow--hand' : '')}
+      title={
+        stale
+          ? `Срез отведён рукой: показано положение плана на ${hhmm(wall)}. Настоящее время — ${hhmm(sync)}`
+          : 'Текущее время: раздел показывает состояние плана на эту минуту и обновляется сам'
+      }
+    >
       <span className="livenow__dot" />
       {hhmm(wall)}
       <span className="livenow__stamp">
-        {planDay ? `план от ${planDay} · ` : ''}обновлено {hhmm(wall)}
+        {planDay ? `план от ${planDay} · ` : ''}
+        {stale ? `срез рукой · часы ${hhmm(sync)}` : `обновлено ${hhmm(sync)}`}
       </span>
     </span>
   );
@@ -442,6 +798,10 @@ export function MonitorScreen({
           }}
           onSelectEngineer={onSelectEngineer}
           selectedOrder={selectedOrder}
+          /* Где люди сейчас: точка на каждом, пройденное в цвете, будущее
+             серым. В диспетчерской этого нет — там смотрят на день целиком,
+             и делить его на прошлое и будущее нечем. */
+          progress={spots}
           fill
           /* Перечень маршрутов у карты погашен: они разобраны по участкам
              внутри плашки смены. */
@@ -469,21 +829,84 @@ export function MonitorScreen({
               return alone ? new Set() : new Set(runs.filter((id) => id !== run));
             });
           }}
+          /* Оговорка о том, что это за вид. Живые точки считаются по плану
+             расчёта, а не по приборам инженеров: в выгрузке заказчика
+             отслеживания нет и в контракте движка его тоже нет. Без этой
+             оговорки карта обещает то, чего не делает, — и первый же
+             вопрос «почему инженер на карте там, а по телефону в другом
+             месте» будет задан не ей, а нам. Молчать об этом нельзя,
+             прятать в подсказку — тоже: на карту смотрят, а не читают её. */
+          banner={
+            noteOff ? null : (
+              <span className="geonote">
+                <Icon name="info" size={12} />
+                <span className="geonote__body">
+                  <b>Опытный вид мониторинга.</b> Инженеры двигаются по плану расчёта:
+                  отслеживания с их приборов пока нет.
+                </span>
+                <button
+                  type="button"
+                  className="geonote__close"
+                  onClick={() => setNoteOff(true)}
+                  aria-label="Закрыть оговорку"
+                  title="Закрыть: вернётся при следующем заходе в мониторинг"
+                >
+                  <Icon name="x" size={11} />
+                </button>
+              </span>
+            )
+          }
           busy={awaiting.length > 0}
           busyNote={awaiting
             .map((id) => dayLabel(id, runDate(id)).split(' · ')[0])
             .join(', ')}
           topRight={
-            <section className="livecard" aria-label="Смена сейчас">
+            <section
+              className={'livecard' + (stale ? ' livecard--stale' : '')}
+              aria-label="Смена сейчас"
+            >
+              {/* Пометка о неактуальном времени — первой строкой карточки.
+
+                  Мониторинг отвечает на «что происходит сейчас», и всё, что
+                  на нём написано, читают как настоящее положение дел. Стоит
+                  отвести срез — и каждое число на экране становится прошлым
+                  или будущим, оставаясь на вид живым. По таким числам звонят
+                  в бригаду и переставляют заявки, поэтому оговорка здесь не
+                  тонкая подпись при часах, а первое, что видно, и не гаснет,
+                  пока срез отведён.
+
+                  Кнопкой, а не надписью: сказав «вы смотрите не тот час»,
+                  честно тут же дать выход. */}
+              {stale && (
+                <button
+                  type="button"
+                  className="livecard__stale-note"
+                  onClick={() => setHand(null)}
+                  title="Вернуться к настоящему времени"
+                >
+                  <Icon name="warning" size={13} />
+                  <span className="livecard__stale-body">
+                    <b>Не текущее время</b>
+                    <span>
+                      Срез {hhmm(wall)} · часы {hhmm(sync)}
+                    </span>
+                  </span>
+                  <span className="livecard__stale-back">к часам</span>
+                </button>
+              )}
               <span className="livecard__now">
                 <span className="livecard__dot" aria-hidden="true" />
                 <span className="livecard__time">{hhmm(wall)}</span>
                 {/* День рядом с часами: смотрят на живую смену, и «12:20»
-                    без дня недели одинаково подходит любому вторнику. */}
+                    без дня недели одинаково подходит любому вторнику.
+                    Отведённая ручка занимает это же место словом «срез» и
+                    настоящим временем: иначе выбранный час читался бы как
+                    нынешний. */}
                 <span className="livecard__when">
-                  / {weekdayName(now)} / {dayDot(now)}
+                  {stale ? `/ срез / часы ${hhmm(sync)}` : `/ ${weekdayName(now)} / ${dayDot(now)}`}
                 </span>
               </span>
+              {handRow}
 
               {/* Пробки — сразу под часами: это второе, что рассказывает о
                   минуте за окном, и стоять оно должно рядом с первым, а не
@@ -762,7 +1185,7 @@ export function MonitorScreen({
                   выше живое. «Синхронизация», а не «обновлено»: обновляется
                   вид, а сверяются с источником — и сказано про второе. */}
               <span className="livecard__foot">
-                <span className="livecard__stamp">синхронизация: {hhmm(wall)}</span>
+                <span className="livecard__stamp">синхронизация: {hhmm(sync)}</span>
               </span>
             </section>
           }
@@ -823,6 +1246,23 @@ export function MonitorScreen({
           <h2 className="dash__section-title">Ход работы</h2>
           {clock}
         </div>
+
+        {/* Та же оговорка, что и на карте: числа под нею сняты не с часов. */}
+        {stale && (
+          <p className="stalenote">
+            <Icon name="warning" size={14} />
+            <span>
+              <b>Не текущее время.</b> Числа ниже сняты со среза {hhmm(wall)}, а на часах{' '}
+              {hhmm(sync)}: это положение плана на выбранную минуту, а не то, что происходит
+              сейчас.
+            </span>
+            <button type="button" className="stalenote__back" onClick={() => setHand(null)}>
+              К часам
+            </button>
+          </p>
+        )}
+
+        {handRow}
 
         {offShift}
 

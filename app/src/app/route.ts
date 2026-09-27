@@ -77,8 +77,13 @@ export function readRoute(hash: string): Route {
      сильнее настройки: ею делятся, и открыться она обязана там, куда ведёт. */
   if (parts.length === 0 && !query) return START();
   const first = parts[0] ?? '';
-  const section: SectionId = isSection(first) ? first : 'home';
-  const slot = parts[1] ?? '';
+  /* Сравнение было отдельным разделом и стало вкладкой статистики. Ссылки на
+     него живут в закладках и в переписке, и по общему правилу «непонятный
+     раздел — дашборд» они открывались бы не там, куда ведут. Поэтому старое
+     имя раздела читается как новый адрес его вкладки. */
+  const moved = first === 'compare';
+  const section: SectionId = moved ? 'stats' : isSection(first) ? first : 'home';
+  const slot = moved ? 'compare' : parts[1] ?? '';
   const params = new URLSearchParams(query ?? '');
   const plan = params.get('plan');
 
