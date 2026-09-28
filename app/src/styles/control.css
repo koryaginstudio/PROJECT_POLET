@@ -239,80 +239,19 @@
 .manual__note { font-size: var(--fs-caption); color: var(--text-secondary); }
 .manual__err { margin: 0; font-size: var(--fs-body-s); color: var(--danger-600, #b3261e); }
 
-/* Шаги ручного воздействия: что случилось → с кем → когда.
 
-   Нумерованный список, а не форма: диспетчеру нужен разговор, а не бланк.
-   Следующий шаг появляется, когда отвечен предыдущий, — иначе экран
-   спрашивает «с кем», не зная ещё «что». */
-.steps { display: flex; flex-direction: column; gap: 16px; margin: 0; padding: 0; list-style: none; }
-.step { display: flex; gap: 12px; align-items: flex-start; }
-.step__n {
-  flex: 0 0 24px; height: 24px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  background: var(--ink-100); color: var(--text-secondary);
-  font-size: var(--fs-caption); font-weight: var(--fw-semibold);
-}
-.step--done .step__n { background: var(--ink-1000); color: var(--white); }
-.step__body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
-.step__title { font-size: var(--fs-body-s); font-weight: var(--fw-semibold); color: var(--text-primary); }
 
+/* Ручной блок опирается на разметку окна «Внести правку»
+   (`incident__kinds`, `incident__kind`, `incident__params`,
+   `incident__field`) — своего оформления у него почти нет. Здесь только
+   то, чего в окне не было: две группы событий и строка подтверждения.
+
+   Группа нужна потому, что событий восемь, а не четыре: без неё «Выехал»
+   и «Выбыл» стоят вперемешку и разбирать их приходится глазами. */
+.manual { display: flex; flex-direction: column; gap: 12px; }
+.manual__group { display: flex; flex-direction: column; gap: 6px; }
+.manual__group + .manual__group { margin-top: 2px; }
+.manual__group-title { font-size: var(--fs-caption); color: var(--text-secondary); }
+.manual__go { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 2px; }
 .manual__ok { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-caption); color: var(--text-secondary); }
-
-/* Выбор события — карточки, как в базах.
-
-   Взято оформление `.runcard`: тот же волосяной контур, тот же радиус и
-   белый фон. Экран не должен объяснять, что это за элементы, — человек
-   уже видел такие в «Расчётах» и «Заявках».
-
-   Выбранная не заливается чёрным: заливка кричит и спорит с карточками
-   событий ниже, где чёрным набран только текст. Хватает контура потемнее
-   и точки слева — минимум, которого достаточно, чтобы глаз нашёл выбор.
-*/
-.choices { display: flex; flex-direction: column; gap: 8px; }
-.choices + .choices { margin-top: 12px; }
-.choices__title {
-  font-size: var(--fs-caption);
-  color: var(--text-secondary);
-}
-.choices__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
-  gap: 8px;
-}
-
-.choice {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 44px;
-  padding: 10px 12px 10px 28px;
-  border: 1px solid var(--border-hairline);
-  border-radius: var(--r-md);
-  background: var(--white);
-  color: var(--text-primary);
-  font-family: var(--font-sans);
-  font-size: var(--fs-body-s);
-  text-align: left;
-  cursor: pointer;
-  transition: var(--t-control);
-}
-
-/* Точка выбора: пустой кружок, у выбранной — залитый. */
-.choice::before {
-  content: '';
-  position: absolute;
-  left: 11px;
-  width: 9px;
-  height: 9px;
-  border: 1px solid var(--ink-300);
-  border-radius: 50%;
-  background: transparent;
-  transition: var(--t-control);
-}
-
-.choice:hover { border-color: var(--ink-300); }
-.choice:focus-visible { outline: none; box-shadow: var(--ring-focus); }
-
-.choice--on { border-color: var(--ink-1000); }
-.choice--on::before { border-color: var(--ink-1000); background: var(--ink-1000); }
+.manual__err { margin: 0; font-size: var(--fs-body-s); color: var(--danger-600, #b3261e); }

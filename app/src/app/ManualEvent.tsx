@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Button } from '../ds/components/core/Button.jsx';
 import { Icon } from '../ds/components/core/Icon.jsx';
-import { Input } from '../ds/components/forms/Input.jsx';
 import { Select } from '../ds/components/forms/Select.jsx';
 import type { Engineer, Order } from '../data/contract.ts';
 import { hhmm } from '../data/derive.ts';
@@ -33,24 +32,35 @@ import type { JournalEvent } from '../data/api.ts';
     «Новом расчёте». */
 type Kind = Exclude<JournalEvent['kind'], 'order_new'>;
 
-/* Подписи короткие — «Выехал», а не «Инженер выехал»: события разложены
-   по двум группам, и группа уже сказала, про кого речь. Длинная подпись в
-   карточке переносится на две строки и заставляет читать, а не узнавать. */
-const СОБЫТИЯ: { value: Kind; label: string; про: 'заявку' | 'инженера' }[] = [
-  { value: 'assigned', label: 'Передать другому', про: 'заявку' },
-  { value: 'dispatched', label: 'Отправить наряд', про: 'заявку' },
-  { value: 'en_route', label: 'Выехал', про: 'заявку' },
-  { value: 'done', label: 'Выполнена', про: 'заявку' },
-  { value: 'failed', label: 'Сорвалась', про: 'заявку' },
-  { value: 'engineer_delayed', label: 'Задержится', про: 'инженера' },
-  { value: 'engineer_out', label: 'Выбыл', про: 'инженера' },
-  { value: 'engineer_back', label: 'Вернулся в строй', про: 'инженера' }
+/* Событие: заголовок, иконка и строчка «что это» — ровно как в окне
+   «Внести правку» на сводке. Там это уже придумано и работает, второго
+   языка для того же разговора заводить незачем. */
+const СОБЫТИЯ: {
+  value: Kind; title: string; what: string; icon: string; про: 'заявку' | 'инженера';
+}[] = [
+  { value: 'assigned', title: 'Передать другому', icon: 'shuffle', про: 'заявку',
+    what: 'Заявку забирает другой инженер — по звонку или по вашему решению.' },
+  { value: 'dispatched', title: 'Отправить наряд', icon: 'truck', про: 'заявку',
+    what: 'Наряд ушёл инженеру: он знает адрес и время.' },
+  { value: 'en_route', title: 'Выехал', icon: 'navigation-arrow', про: 'заявку',
+    what: 'Инженер в пути к этой заявке.' },
+  { value: 'done', title: 'Выполнена', icon: 'check-circle', про: 'заявку',
+    what: 'Работа закрыта, инженер свободен.' },
+  { value: 'failed', title: 'Сорвалась', icon: 'x-circle', про: 'заявку',
+    what: 'Не пустили, никого нет дома, не успели в окно или отказались.' },
+  { value: 'engineer_delayed', title: 'Задержится', icon: 'clock', про: 'инженера',
+    what: 'Прокол, пробка, затянулась прошлая заявка — выйдет позже.' },
+  { value: 'engineer_out', title: 'Выбыл', icon: 'user', про: 'инженера',
+    what: 'Сегодня его не будет — заболел, отозвали, машина не поехала.' },
+  { value: 'engineer_back', title: 'Вернулся в строй', icon: 'check', про: 'инженера',
+    what: 'Снова на маршруте: остаток дня можно на него рассчитывать.' }
 ];
 
 const ГРУППЫ: { про: 'заявку' | 'инженера'; title: string }[] = [
   { про: 'заявку', title: 'По заявке' },
   { про: 'инженера', title: 'По инженеру' }
 ];
+
 
 const ПРИЧИНЫ = [
   { value: 'no_show', label: 'Абонента нет дома' },
@@ -127,137 +137,131 @@ export function ManualEvent({ engineers, orders, cut, busy, failed, onEvent, ord
     else if (проЗаявку) onEvent({ kind: kind as 'dispatched' | 'en_route' | 'done', order }, at);
     else if (kind === 'engineer_delayed') onEvent({ kind, engineer, minutes }, at);
     else onEvent({ kind: kind as 'engineer_out' | 'engineer_back', engineer }, at);
-    setЗаписано(`${выбрано!.label.toLowerCase()} — записано на ${hhmm(at)}`);
+    setЗаписано(`${выбрано!.title.toLowerCase()} — записано на ${hhmm(at)}`);
   };
 
   /* Шаги открываются по мере ответов: пока не сказано, что случилось,
      спрашивать «с кем» не о чем. Сразу все поля на экране — это форма, а
      диспетчеру нужен разговор: случилось вот это, вот с кем, вот когда. */
-  const шаг2 = Boolean(выбрано);
-  const шаг3 = шаг2 && !мало;
-
-  const Шаг = ({ n, title, done, children }: {
-    n: number; title: string; done?: boolean; children: React.ReactNode;
-  }) => (
-    <li className={'step' + (done ? ' step--done' : '')}>
-      <span className="step__n">{done ? <Icon name="check" size={13} /> : n}</span>
-      <div className="step__body">
-        <span className="step__title">{title}</span>
-        {children}
-      </div>
-    </li>
-  );
 
   return (
     <div className="manual">
-      <ol className="steps">
-        <Шаг n={1} title="Событие" done={шаг2}>
-          {ГРУППЫ.map((группа) => (
-            <div className="choices" key={группа.про}>
-              <span className="choices__title">{группа.title}</span>
-              <div className="choices__grid">
-                {СОБЫТИЯ.filter((one) => one.про === группа.про).map((one) => (
-                  <button
-                    key={one.value}
-                    type="button"
-                    className={'choice' + (kind === one.value ? ' choice--on' : '')}
-                    aria-pressed={kind === one.value}
-                    onClick={() => {
-                      setKind(one.value);
-                      /* Выбор сбрасывается: заявка, выбранная для
-                         «сорвалось», к «инженер выбыл» отношения не имеет,
-                         и тянуть её дальше значило бы записать не то. */
-                      setOrder('');
-                      setEngineer('');
-                      setЗаписано(null);
-                    }}
-                  >
-                    {one.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
-        </Шаг>
+      {/* Разметка окна «Внести правку» со сводки: подзаголовок, строки
+          событий с иконкой и пояснением, под ними поля. Тот же разговор —
+          тот же язык; второй набор классов для него завести было бы
+          обманом узнавания. */}
+      <h4 className="incident__subtitle">Что случилось</h4>
 
-        {шаг2 && (
-          <Шаг n={2} title={проЗаявку ? 'По какой заявке' : 'С кем'} done={шаг3}>
-            <div className="manual__row">
-              {проЗаявку && (
-                <Select
-                  className="manual__field"
-                  id="manual-order"
-                  value={order}
-                  onChange={(e: { target: { value: string } }) => setOrder(e.target.value)}
-                  options={[
-                    { value: '', label: orders.length ? 'Выберите заявку' : 'Заявок в расчёте нет' },
-                    ...orders.map((one) => ({ value: one.id, label: подпись(one) }))
-                  ]}
-                />
-              )}
-              {нуженИнженер && (
-                <Select
-                  className="manual__field"
-                  id="manual-engineer"
-                  label={kind === 'assigned' ? 'Кому передать' : undefined}
-                  value={engineer}
-                  onChange={(e: { target: { value: string } }) => setEngineer(e.target.value)}
-                  options={[
-                    { value: '', label: engineers.length ? 'Выберите инженера' : 'Инженеров нет' },
-                    ...engineers.map((one) => ({ value: one.id, label: `${one.id} · ${one.name}` }))
-                  ]}
-                />
-              )}
-              {kind === 'failed' && (
-                <Select
-                  className="manual__field"
-                  id="manual-reason"
-                  label="Почему"
-                  value={reason}
-                  onChange={(e: { target: { value: string } }) => setReason(e.target.value as Reason)}
-                  options={ПРИЧИНЫ.map((one) => ({ value: one.value, label: one.label }))}
-                />
-              )}
-              {kind === 'engineer_delayed' && (
-                <Input
-                  className="manual__field manual__field--narrow"
-                  id="manual-minutes"
-                  label="На сколько, мин"
-                  type="number"
-                  value={String(minutes)}
-                  onChange={(e: { currentTarget: { value: string } }) =>
-                    setMinutes(Number(e.currentTarget.value))
-                  }
-                />
-              )}
-            </div>
-          </Шаг>
-        )}
-
-        {шаг3 && (
-          <Шаг n={3} title="Когда">
-            <div className="manual__row">
-              <Input
-                className="manual__field manual__field--narrow"
-                id="manual-at"
-                type="time"
-                value={hhmm(at)}
-                onChange={(e: { currentTarget: { value: string } }) => {
-                  const [h, m] = e.currentTarget.value.split(':').map(Number);
-                  if (Number.isFinite(h) && Number.isFinite(m)) {
-                    setAt(h * 60 + m);
-                    setСвоёВремя(true);
-                  }
+      {ГРУППЫ.map((группа) => (
+        <div className="manual__group" key={группа.про}>
+          <span className="manual__group-title">{группа.title}</span>
+          <div className="incident__kinds">
+            {СОБЫТИЯ.filter((one) => one.про === группа.про).map((one) => (
+              <button
+                key={one.value}
+                type="button"
+                className={'incident__kind' + (kind === one.value ? ' incident__kind--on' : '')}
+                aria-pressed={kind === one.value}
+                onClick={() => {
+                  setKind(one.value);
+                  /* Выбор сбрасывается: заявка, выбранная для «сорвалось»,
+                     к «инженер выбыл» отношения не имеет. */
+                  setOrder('');
+                  setEngineer('');
+                  setЗаписано(null);
                 }}
+              >
+                <span className="incident__kind-top">
+                  <Icon name={one.icon} size={15} />
+                  <span className="incident__kind-title">{one.title}</span>
+                </span>
+                <span className="incident__kind-what">{one.what}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+
+      {выбрано && (
+        <div className="incident__params">
+          {проЗаявку && (
+            <label className="incident__field">
+              <span className="incident__field-label">Какая заявка</span>
+              <Select
+                size="sm"
+                id="manual-order"
+                value={order}
+                onChange={(e: { target: { value: string } }) => setOrder(e.target.value)}
+                options={[
+                  { value: '', label: orders.length ? 'Выберите заявку' : 'Заявок в расчёте нет' },
+                  ...orders.map((one) => ({ value: one.id, label: подпись(one) }))
+                ]}
               />
-              <span className="manual__note">
-                По умолчанию — момент ползунка. Событие ляжет в тот же журнал, что и
-                кнопки под заявкой.
+            </label>
+          )}
+
+          {нуженИнженер && (
+            <label className="incident__field">
+              <span className="incident__field-label">
+                {kind === 'assigned' ? 'Кому передать' : 'Кто'}
               </span>
-            </div>
-          </Шаг>
-        )}
-      </ol>
+              <Select
+                size="sm"
+                id="manual-engineer"
+                value={engineer}
+                onChange={(e: { target: { value: string } }) => setEngineer(e.target.value)}
+                options={[
+                  { value: '', label: engineers.length ? 'Выберите инженера' : 'Инженеров нет' },
+                  ...engineers.map((one) => ({ value: one.id, label: `${one.id} · ${one.name}` }))
+                ]}
+              />
+            </label>
+          )}
+
+          {kind === 'failed' && (
+            <label className="incident__field">
+              <span className="incident__field-label">Почему</span>
+              <Select
+                size="sm"
+                id="manual-reason"
+                value={reason}
+                onChange={(e: { target: { value: string } }) => setReason(e.target.value as Reason)}
+                options={ПРИЧИНЫ.map((one) => ({ value: one.value, label: one.label }))}
+              />
+            </label>
+          )}
+
+          {kind === 'engineer_delayed' && (
+            <label className="incident__field">
+              <span className="incident__field-label">На сколько</span>
+              <Select
+                size="sm"
+                id="manual-minutes"
+                value={String(minutes)}
+                onChange={(e: { target: { value: string } }) => setMinutes(Number(e.target.value))}
+                options={[15, 30, 40, 60, 90, 120].map((d) => ({ value: String(d), label: `${d} мин` }))}
+              />
+            </label>
+          )}
+
+          <label className="incident__field">
+            <span className="incident__field-label">Когда случилось</span>
+            <input
+              className="rule__input"
+              id="manual-at"
+              type="time"
+              value={hhmm(at)}
+              onChange={(e) => {
+                const [h, m] = e.currentTarget.value.split(':').map(Number);
+                if (Number.isFinite(h) && Number.isFinite(m)) {
+                  setAt(h * 60 + m);
+                  setСвоёВремя(true);
+                }
+              }}
+            />
+          </label>
+        </div>
+      )}
 
       <div className="manual__go">
         <Button
@@ -279,11 +283,8 @@ export function ManualEvent({ engineers, orders, cut, busy, failed, onEvent, ord
       {failed && (
         <p className="manual__err">
           <b>Событие не записано.</b>{' '}
-          {/* Фраза движка, а не наша обёртка. Он отказывает по делу и
-              говорит, чего не хватило — «заявка никому не назначена:
-              сначала назначьте исполнителя». В ручном меню это и есть
-              ответ: человек сам выбрал, что записать, и должен узнать,
-              почему не вышло, а не «проверьте выбранные значения». */}
+          {/* Фраза движка, а не наша обёртка: он отказывает по делу и
+              говорит, чего не хватило. */}
           {чистаяПричина(failed.detail) || failed.message}
         </p>
       )}
