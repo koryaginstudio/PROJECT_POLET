@@ -237,6 +237,42 @@ export function DemoMode({
     current.go?.();
   }, [open, step]);
 
+  /* Нажатие по цели ведёт показ дальше — и это не должно зависеть от
+     кадров.
+
+     Прежде слушатель вешался внутри цикла подсветки, а тот живёт на
+     requestAnimationFrame. Кадры идут, только пока вкладка на виду: стоит
+     показу уехать в фон — свернули окно, открыли соседнюю вкладку, вывели
+     на второй экран и смотрят там — и цикл замирает. Цель на экране есть,
+     человек по ней нажимает, переход происходит, а показ остаётся на том
+     же шаге и дальше не идёт.
+
+     Поэтому цель вооружается своим таймером: пять раз в секунду проверить
+     селектор — расход никакой, а показ идёт и в фоне. */
+  useEffect(() => {
+    if (!open || confirmClose) return;
+    let armed: HTMLElement | null = null;
+    let off: (() => void) | null = null;
+    const arm = () => {
+      const el = current.find?.() ?? null;
+      if (el === armed) return;
+      off?.();
+      off = null;
+      armed = el;
+      if (!el) return;
+      const onClick = () => next();
+      el.addEventListener('click', onClick, { once: true });
+      off = () => el.removeEventListener('click', onClick);
+    };
+    arm();
+    const timer = window.setInterval(arm, 200);
+    return () => {
+      window.clearInterval(timer);
+      off?.();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, confirmClose, step]);
+
   /* Подсветка держится за цель каждый кадр и без переходов: цель ездит со
      скроллом, и любое сглаживание читается как «подсветка отстаёт».
      Настоящее нажатие по цели ведёт показ дальше само.
@@ -258,8 +294,6 @@ export function DemoMode({
        скруглением. Ореол — отдельным узлом поверх: в одной тени он лёг бы
        под тьму и пропал. */
     let raf = 0;
-    let armed: HTMLElement | null = null;
-    let off: (() => void) | null = null;
     let dim: HTMLElement | null = null;
     let pulse: HTMLElement | null = null;
     let printed = '';
@@ -325,22 +359,11 @@ export function DemoMode({
         }
       }
 
-      if (el !== armed) {
-        off?.();
-        off = null;
-        if (el) {
-          const onClick = () => next();
-          el.addEventListener('click', onClick, { once: true });
-          off = () => el.removeEventListener('click', onClick);
-        }
-        armed = el;
-      }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => {
       cancelAnimationFrame(raf);
-      off?.();
       hide();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

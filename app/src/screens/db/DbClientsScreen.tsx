@@ -440,7 +440,10 @@ export function DbClientsScreen({ registry, mode, onOpenRun }: Props) {
     <>
       <b>{plural(rows.length, 'адрес', 'адреса', 'адресов')}</b> в выборке
       {rows.length !== all.length && ` из ${all.length}`}
-      {` · ${plural(new Set(rows.map((one) => one.company)).size, 'компания', 'компании', 'компаний')}`}
+      {/* Считаем сети, а не подписи точек: у подписи второй точки сети стоит
+          номер филиала, и по ним компаний выходило ровно столько же, сколько
+          адресов, — число, которое ничего не говорит. */}
+      {` · ${plural(new Set(rows.map((one) => one.chain)).size, 'компания', 'компании', 'компаний')}`}
       {` · ${plural(rows.reduce((sum, one) => sum + one.orders, 0), 'заявка', 'заявки', 'заявок')}`}
       {` · покрытие ${Math.round(
         (rows.reduce((sum, one) => sum + one.assigned, 0) /

@@ -3,10 +3,11 @@ import { Icon } from '../../ds/components/core/Icon.jsx';
 import { SegmentedControl } from '../../ds/components/forms/SegmentedControl.jsx';
 import { uniqueShifts } from '../../data/registry.ts';
 import type { EngineerRecord, Registry } from '../../data/registry.ts';
+import { mergeEngineers } from '../../data/registry.ts';
 import { dec, hhmm, hoursText, plural, visits as pluralVisits } from '../../data/derive.ts';
 import { skillIcon, skillName, transportName } from '../../data/dictionary.ts';
 import { photosFor } from '../../data/photos.ts';
-import { CLASH_TEXT, crewTeam, EngineerCard, postsClash } from '../../app/EngineerCard.tsx';
+import { clashText, crewTeam, EngineerCard, listWords, postsClash } from '../../app/EngineerCard.tsx';
 import { SortMenu } from '../../app/SortMenu.tsx';
 import type { SortRule } from '../../app/SortMenu.tsx';
 import { useWidgetBoard, WidgetPeriod, withinPeriod } from '../../app/DbWidgets.tsx';
@@ -144,7 +145,10 @@ export function DbEngineersScreen({
      первого. */
   const [opened, setOpened] = useState<EngineerRecord | null>(null);
 
-  const all = registry.engineers;
+  /* Люди, а не записи справочника: человек, который числится на нескольких
+     участках, приходит оттуда несколькими записями — с работой на своём
+     участке и нулями на чужих. В базе он один, см. `mergeEngineers`. */
+  const all = useMemo(() => mergeEngineers(registry.engineers), [registry]);
 
   /* Снимки раздаются на весь штат сразу, а не на выборку: иначе отбор по
      навыку менял бы людям лица. */
@@ -554,11 +558,11 @@ export function DbEngineersScreen({
         shape: 'number',
         data: {
           value: String(clashes.length),
-          caption: clashes.length === 1 ? 'человек в двух участках разом' : 'человек в двух участках разом',
+          caption: 'человек числится на нескольких участках разом',
           tone: clashes.length > 0 ? 'bad' : 'ok',
           facts:
             clashes.length > 0
-              ? clashes.slice(0, 3).map((row) => `${row.name} — ${row.posts.map((post) => post.zone).join(' и ')}`)
+              ? clashes.slice(0, 3).map((row) => `${row.name} — ${listWords(row.posts.map((post) => post.zone))}`)
               : ['смены по участкам не пересекаются'],
           parts: clashes.map((row) => ({
             key: row.id,
@@ -754,6 +758,11 @@ export function DbEngineersScreen({
      эта строка — на «а что сейчас на экране». Числа выбраны по вопросу самой
      базы: кто у нас есть, сколько они отработали и сколько раз выходили
      впустую. */
+  /* Участков несколько у всех до единого? Тогда метка конфликта никого не
+     выделяет — см. `clashMark`. Считаем по всей базе, а не по выборке: отбор
+     из одного человека не должен ни зажигать метку, ни гасить её. */
+  const clashAll = all.length > 0 && all.every((one) => postsClash(one));
+
   const summary = rows.length > 0 && (
     <>
       <b>{plural(rows.length, 'инженер', 'инженера', 'инженеров')}</b> в выборке
@@ -768,15 +777,32 @@ export function DbEngineersScreen({
         'смены',
         'смен'
       )} без маршрута`}
+      {clashAll && (
+        <span className="crewpro__muted">
+          {' · '}у всех участков несколько, смены в них совпадают — так приходит штат из
+          программы расчёта
+        </span>
+      )}
     </>
   );
 
-  /* Метка конфликта штата — одна на строку и таблицу. */
+  /* Метка конфликта штата — одна на строку и таблицу.
+
+     Метка молчит, когда участков несколько у всех до единого. Так приходит
+     штат из программы расчёта: она кладёт в план каждого участка всех
+     инженеров, приписав каждому офис этого участка, — и «числится в трёх
+     местах разом» оказывается верно про каждого. Предупреждение, которое
+     горит у всех, ничего не выделяет; общий случай сказан один раз строкой
+     над базой. Различает кого-то из штата — метка на месте.
+
+     Считаем по всей базе, а не по выборке: отбор из одного человека не
+     должен ни зажигать метку, ни гасить её. */
+
   const clashMark = (engineer: EngineerRecord) =>
-    postsClash(engineer) ? (
-      <span className="ordcard__urgent" title={`${engineer.name}: ${CLASH_TEXT}`}>
+    !clashAll && postsClash(engineer) ? (
+      <span className="ordcard__urgent" title={`${engineer.name}: ${clashText(engineer.posts.length)}`}>
         <Icon name="warning" size={11} />
-        {CLASH_TEXT}
+        {clashText(engineer.posts.length)}
       </span>
     ) : null;
 
@@ -1038,6 +1064,7 @@ export function DbEngineersScreen({
               <EngineerCard
                 key={engineer.id}
                 row={engineer}
+                clashQuiet={clashAll}
                 seat={index + 1}
                 onOpen={() => setOpened(engineer)}
                 photo={photos.get(engineer.id)}
@@ -1076,7 +1103,7 @@ export function DbEngineersScreen({
                   {engineer.transport ? ` · ${transportName(engineer.transport)}` : ''}
                   {team ? ` · бригада ${team}` : ''}
                   {engineer.posts.length > 0
-                    ? ` · ${engineer.posts.map((post) => post.zone).join(' и ')}`
+                    ? ` · ${listWords(engineer.posts.map((post) => post.zone))}`
                     : ''}
                   {` · смена ${hhmm(engineer.shiftStart)}–${hhmm(engineer.shiftEnd)}`}
                 </>

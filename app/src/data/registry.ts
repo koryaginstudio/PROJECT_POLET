@@ -20,7 +20,7 @@ import { occupancyMean, placeOf, roadPath } from './derive.ts';
 import { isUrgent, orderClosed } from './dictionary.ts';
 import { routeLabel, routeNumbers } from './routeIds.ts';
 import { clientLabel, clientNumbers } from './clientIds.ts';
-import { companyOf } from './companies.ts';
+import { chainOf, companyOf } from './companies.ts';
 
 export interface RunRef {
   id: RunId;
@@ -93,6 +93,9 @@ export interface ClientRecord {
       нет — там точка обслуживания и контактное лицо, — поэтому название
       берётся из своего справочника по номеру точки, см. `companies.ts`. */
   company: string;
+  /** Сеть, которой точка принадлежит, — то же имя без номера филиала. По нему
+      считают, сколько в базе компаний: точек больше, чем сетей. */
+  chain: string;
   /** Как точку называют в интерфейсе: адрес дома либо район. */
   address: string;
   district: string;
@@ -478,27 +481,165 @@ export interface Registry {
   missingZones: string[];
 }
 
-/** Заявка — одна строка. Из всех прогонов одного номера остаётся самый
-    свежий: номер, адрес, окно приёма и крайний срок у них одни и те же, а
-    инженер и место в маршруте — ответ расчёта, и показывать надо последний.
+/** Заявка и то, что с ней было по расчётам. */
+export interface OrderInRuns extends OrderRecord {
+  /** В скольких расчётах эта заявка стояла. */
+  runsCount: number;
+  /** В скольких из них осталась без инженера. */
+  freeCount: number;
+}
 
-    Справочник отвечает на «что у нас за хозяйство», а не «что было в каждом
-    прогоне». Пересчитав один и тот же участок десять раз, диспетчер получал
-    десять строк на одну аварию и число заявок, в которое никто не верит:
-    база услуг на том же экране считала по номерам и расходилась с доской
-    наверху в четыре раза.
+/** Заявки, а не записи «заявка в расчёте».
 
-    Разрез по прогонам никуда не делся — он живёт вкладкой «По расчётам» и
-    базой расчётов, где прогон и есть предмет разговора. */
-export function uniqueOrders(rows: OrderRecord[]): OrderRecord[] {
-  const latest = new Map<string, OrderRecord>();
-  for (const row of rows) {
-    const kept = latest.get(row.id);
-    /* Время счёта, а не порядок в списке: архив программы расчёта
-       дописывается в историю целиком, и порядок в нём — не хронология. */
-    if (!kept || row.run.created.localeCompare(kept.run.created) > 0) latest.set(row.id, row);
+    Заявка уникальна парой «расчёт + номер», и это верно: номера в прогонах
+    повторяются, а стоят за ними разные точки и окна. Но день пересчитывают по
+    многу раз, и в базе одна и та же работа стояла столько раз, сколько было
+    расчётов: шестьдесят шесть заявок давали триста девяносто шесть строк,
+    отличавшихся только хвостом «расчёт R001 … R009». Поиск по номеру выдавал
+    шесть одинаковых попаданий, а в меню стояло «Заявки 396» — вшестеро
+    больше, чем работы на самом деле.
+
+    Заявка опознаётся днём и номером. Днём, а не одним номером: номера
+    повторяются между днями, и тогда это разные работы.
+
+    Записью остаётся та, что из самого свежего расчёта: база отвечает на «что
+    у нас сейчас», а свежий расчёт и есть «сейчас». Сколько расчётов заявку
+    видели и в скольких она осталась без инженера — рядом числами. */
+export function mergeOrders(orders: OrderRecord[]): OrderInRuns[] {
+  const заявками = new Map<string, OrderRecord[]>();
+  for (const one of orders) {
+    const ключ = `${one.run.date} · ${one.id}`;
+    const список = заявками.get(ключ);
+    if (список) список.push(one);
+    else заявками.set(ключ, [one]);
   }
-  return [...latest.values()];
+
+  return [...заявками.values()].map((список) => {
+    const свежая = [...список].sort((a, b) => b.run.created.localeCompare(a.run.created))[0];
+    return {
+      ...свежая,
+      runsCount: список.length,
+      freeCount: список.filter((one) => !one.engineerId).length
+    };
+  });
+}
+
+/** Заявки без разреза по расчётам — то же схлопывание, но без счётчиков.
+
+    Карточкам клиента, инженера и услуги нужен простой перечень работ: они
+    показывают, что за заявка и когда её везут, а не сколько расчётов её
+    видели. Считается через `mergeOrders`, чтобы правило «одна заявка — одна
+    строка» было в программе одно, а не два похожих. */
+export function uniqueOrders(rows: OrderRecord[]): OrderRecord[] {
+  return mergeOrders(rows);
+}
+
+/** Люди, а не записи справочника.
+
+    Движок отдаёт штат отдельно по каждому участку, и ключ записи —
+    «участок:номер» (см. `engineerKey`): у движка E00 есть на каждом участке,
+    и это разные люди. Но штат приходит и из ведомости, где один и тот же
+    человек числится на нескольких участках сразу, — и тогда ключ разводит
+    его на две-три записи вместо того, чтобы собрать участки в `posts`, как
+    это поле и задумано. Сейчас за расчётом из трёх участков стоят 42 записи
+    и 14 человек: один инженер трижды, с работой на своём участке и нулями на
+    чужих.
+
+    Один человек опознаётся по табельному и имени сразу. По одному табельному
+    нельзя — тогда склеились бы как раз разные E00; имя здесь и есть то, что
+    их различает.
+
+    Числа складываются: записи одного человека разложены по участкам и не
+    пересекаются, поэтому сумма — его работа целиком. Занятость — среднее,
+    поэтому она взвешена по числу маршрутов, а не сложена. Всё, что описывает
+    самого человека — смена, транспорт, телефон, — берётся у той записи, где
+    он работал: на чужом участке он числится, но не выходит.
+
+    Ключом остаётся ключ главной записи: по нему из карточки заявки и из
+    маршрута открывают инженера, и подменять его нельзя. */
+export function mergeEngineers(engineers: EngineerRecord[]): EngineerRecord[] {
+  const людьми = new Map<string, EngineerRecord[]>();
+  for (const one of engineers) {
+    const кто = `${one.code} · ${one.name}`;
+    const список = людьми.get(кто);
+    if (список) список.push(one);
+    else людьми.set(кто, [one]);
+  }
+
+  const собрать = (список: EngineerRecord[]): EngineerRecord => {
+    if (список.length === 1) return список[0];
+    /* Главная запись — та, где человек работал больше всего: у неё и смена,
+       и офис выезда настоящие. */
+    const главная = [...список].sort((a, b) => b.routes - a.routes || b.runs - a.runs)[0];
+    const сумма = (взять: (one: EngineerRecord) => number) =>
+      список.reduce((итог, one) => итог + взять(one), 0);
+    const маршрутов = сумма((one) => one.routes);
+    return {
+      ...главная,
+      /* Навыки — главной записи, а не объединение по участкам. Движок
+         проверяет навык у той записи инженера, что стоит в плане этого
+         участка (`planner.tryPlace`), и навыки у одного человека по участкам
+         расходятся: у E00 на юго-востоке их три, а на востоке и в югоцентре
+         один. Объединить их значило бы обещать оператору человека, которому
+         движок на его же участке откажет. */
+      runs: сумма((one) => one.runs),
+      routes: маршрутов,
+      visits: сумма((one) => one.visits),
+      travelMinutes: сумма((one) => one.travelMinutes),
+      workMinutes: сумма((one) => one.workMinutes),
+      overtimeMinutes: сумма((one) => one.overtimeMinutes),
+      idleRuns: сумма((one) => one.idleRuns),
+      occupancyMean:
+        маршрутов === 0
+          ? 0
+          : сумма((one) => one.occupancyMean * one.routes) / маршрутов,
+      posts: список.flatMap((one) => one.posts),
+      byRun: список
+        .flatMap((one) => one.byRun)
+        .sort((a, b) => a.created.localeCompare(b.created))
+    };
+  };
+
+  return [...людьми.values()].map(собрать);
+}
+
+/** Кто может взять услугу. */
+export interface ServiceCrew {
+  /** Может выполнить: есть навык и подходит транспорт. */
+  able: EngineerRecord[];
+  /** Есть навык — без оглядки на транспорт. */
+  skilled: EngineerRecord[];
+  /** Навык есть, а транспорт не тот: взять не может, хотя работу знает.
+      Это единственная причина, по которой умеющий не может поехать, —
+      других жёстких условий у планировщика нет. */
+  blocked: EngineerRecord[];
+  /** Известен ли транспорт инженеров. Движок 1.1 этого поля не отдаёт, и
+      тогда считать по нему нельзя: пустое поле — это «неизвестно», а не
+      «транспорта нет». */
+  transportKnown: boolean;
+}
+
+/** Кто может выполнить услугу — по навыку и по транспорту сразу.
+
+    Оба условия жёсткие: планировщик отказывает и за навык (`no_skill`), и за
+    транспорт (`no_vehicle`), см. `planner.tryPlace`. Считать по одному навыку
+    нельзя — у «Работы с кабелем» навык есть у тридцати из тридцати пяти, а
+    автомобиль из них у двадцати двух: восемь человек поехать не смогут, и
+    обещать их оператору значит соврать.
+
+    Когда транспорт инженеров неизвестен целиком (движок 1.1), условие
+    снимается: `able` равен `skilled`, а `transportKnown` говорит, что ответ
+    посчитан без него. */
+export function serviceCrew(service: ServiceRecord, engineers: EngineerRecord[]): ServiceCrew {
+  const люди = mergeEngineers(engineers);
+  const skilled = люди.filter((one) => one.skills.includes(service.skill));
+  const transportKnown = люди.some((one) => one.transport !== null);
+  const able =
+    service.requiredTransport && transportKnown
+      ? skilled.filter((one) => one.transport === service.requiredTransport)
+      : skilled;
+  const ableIds = new Set(able.map((one) => one.id));
+  return { able, skilled, blocked: skilled.filter((one) => !ableIds.has(one.id)), transportKnown };
 }
 
 /** Ключ точки обслуживания: адрес, а если его нет — район с координатами.
@@ -513,7 +654,7 @@ function buildClients(plans: { run: RunRef; plan: Plan }[]): ClientRecord[] {
   /* Копится запись без номера и без заказчика: номер выдаётся в самом конце,
      всем адресам разом, а заказчик — по этому номеру, и до тех пор ни того,
      ни другого у точки просто нет. */
-  type Building = Omit<ClientRecord, 'code' | 'number' | 'company'> & {
+  type Building = Omit<ClientRecord, 'code' | 'number' | 'company' | 'chain'> & {
     minutes: number[];
     typeSet: Set<string>;
     runSet: Set<string>;
@@ -599,6 +740,7 @@ function buildClients(plans: { run: RunRef; plan: Plan }[]): ClientRecord[] {
       code: clientLabel(numbers.get(entry.key) ?? 0),
       number: numbers.get(entry.key) ?? 0,
       company: companyOf(numbers.get(entry.key) ?? 0),
+      chain: chainOf(numbers.get(entry.key) ?? 0),
       address: entry.address,
       district: entry.district,
       lat: entry.lat,

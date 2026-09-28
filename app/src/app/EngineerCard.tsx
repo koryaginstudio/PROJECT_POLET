@@ -40,11 +40,29 @@ export function postsClash(row: Pick<EngineerRecord, 'posts'>): boolean {
   return false;
 }
 
+/* Числительное словом. Участков у человека бывает и три: пока штат приходил
+   разрозненными записями, больше двух в одной не сходилось, и текст метки был
+   написан на «двух» намертво. */
+const COUNT_WORDS: Record<number, string> = { 2: 'двух', 3: 'трёх', 4: 'четырёх' };
+
 /** Текст метки конфликта — один на карточку, строку и таблицу. */
-export const CLASH_TEXT = 'в двух участках, смены пересекаются';
+export const clashText = (posts: number) =>
+  `в ${COUNT_WORDS[posts] ?? 'нескольких'} участках, смены пересекаются`;
+
+/** Перечисление словами: «Восток, Юго-восток и Югоцентр». Склейка через «и»
+   давала «Восток и Юго-восток и Югоцентр» — на двух это читалось, на трёх
+   уже нет. */
+export function listWords(items: string[]): string {
+  if (items.length < 2) return items.join('');
+  return `${items.slice(0, -1).join(', ')} и ${items[items.length - 1]}`;
+}
 
 interface Props {
   row: EngineerRecord;
+  /** Конфликт участков есть у всех до единого — значит, он никого не
+      выделяет, и карточка о нём молчит: общий случай сказан строкой над
+      базой. Решает это база, карточка своего ряда не видит. */
+  clashQuiet?: boolean;
   /** Какой по счёту в списке. Список отбирают и переупорядочивают, поэтому
       номер приходит снаружи: карточка своего места в ряду не знает. */
   seat?: number;
@@ -94,6 +112,7 @@ export function EngineerCard({
   photo,
   dense = false,
   skills = [],
+  clashQuiet = false,
   workedMinutes,
   workMinutes,
   travelMinutes
@@ -104,7 +123,7 @@ export function EngineerCard({
     row.posts.every(
       (post) => post.shiftStart === row.posts[0].shiftStart && post.shiftEnd === row.posts[0].shiftEnd
     );
-  const clash = postsClash(row);
+  const clash = !clashQuiet && postsClash(row);
   /* Порог недогруза — общий на все базы, а не своё число в каждой карточке. */
   const loose = row.occupancyMean > 0 && row.occupancyMean < looseShare();
   const team = crewTeam(row);
@@ -190,7 +209,7 @@ export function EngineerCard({
               график, а конфликт штата — и место смены занимает красная
               метка. */}
           {clash
-            ? CLASH_TEXT
+            ? clashText(row.posts.length)
             : sameShift
               ? `${hhmm(row.shiftStart)}–${hhmm(row.shiftEnd)}`
               : 'смена по участкам'}

@@ -3,15 +3,13 @@ import { Icon } from '../../ds/components/core/Icon.jsx';
 import { SegmentedControl } from '../../ds/components/forms/SegmentedControl.jsx';
 import type { Registry, RouteRecord, RunRef } from '../../data/registry.ts';
 import type { RunId } from '../../data/load.ts';
-import { hiddenCount, hiddenRuns, hideEngineRun, stampOf } from '../../data/load.ts';
-import type { EngineRun } from '../../data/api.ts';
+import { localRun, stampOf } from '../../data/load.ts';
 import { dec, hoursText, plural } from '../../data/derive.ts';
 import { skillName } from '../../data/dictionary.ts';
 import { RunCard } from '../../app/RunCard.tsx';
 import { COMPARE_MAX } from '../../app/compare.ts';
 import { useWidgetBoard, WidgetPeriod, withinPeriod } from '../../app/DbWidgets.tsx';
 import { service } from '../../data/service.ts';
-import { onDuty, useDuty } from '../../data/duty.ts';
 import { RunStateTag } from '../../app/RunStateTag.tsx';
 import type { PeriodKey } from '../../app/DbWidgets.tsx';
 import type { WidgetDef } from '../../app/DbWidgets.tsx';
@@ -42,10 +40,6 @@ interface Props {
   onCompare: (id: RunId) => void;
   /** Открыть правку записи: номер, время создания, заметка. */
   onEdit: (run: RunRef) => void;
-  /** Пересобрать историю и справочники: вернули спрятанный черновик, и
-      база обязана показать его следующей же отрисовкой. Необязательный:
-      без него база просто уберёт строку из перечня спрятанных. */
-  onRefresh?: () => void;
 }
 
 /* Плотность строки — это выбор между «разглядеть» и «охватить», а не просто
@@ -124,24 +118,6 @@ const FILTERS: { value: Filter; label: string }[] = [
   { value: 'clean', label: 'Всё распределено' }
 ];
 
-/* Отбор по состоянию: взят ли расчёт в работу.
-
-   Кнопка «В работу» говорит, по какому из расчётов дня работают на самом
-   деле; остальные прогоны того же дня — черновики к нему. До сих пор это
-   знала только сама кнопка: в базе рабочий расчёт лежал вперемешку с
-   черновиками, и найти «тот, по которому сегодня едут» можно было, только
-   открыв каждый.
-
-   Отбор делит базу надвое и работает во всех видах сразу — в списке, в
-   карточках, в таблице и в разрезе по состоянию. */
-type State = 'all' | 'duty' | 'draft';
-
-const STATES: { value: State; label: string }[] = [
-  { value: 'all', label: 'Все' },
-  { value: 'duty', label: 'В работе' },
-  { value: 'draft', label: 'Черновики' }
-];
-
 /* База расчётов. Здесь они лежат как история, а не как выбор на сегодня:
    переключаться между прогонами удобнее в подшапке диспетчерской, а сюда
    приходят посмотреть, что вообще считали и с каким результатом. */
@@ -154,8 +130,7 @@ export function DbRunsScreen({
   onGo,
   compare,
   onCompare,
-  onEdit,
-  onRefresh
+  onEdit
 }: Props) {
   /* С какой плотности открывается база — настройка сервиса: одному важно
      разглядеть карту дня, другому охватить историю строками. */
@@ -163,12 +138,7 @@ export function DbRunsScreen({
   const [sort, setSort] = useState<Sort>('date');
   const [desc, setDesc] = useState(true);
   const [filter, setFilter] = useState<Filter>('all');
-  const [state, setState] = useState<State>('all');
   const [query, setQuery] = useState('');
-  /* Список «день участка → рабочий расчёт». Подписка нужна затем, что
-     «В работу» нажимают прямо здесь, на карточке, — и база обязана тут же
-     переложить запись из черновиков в работу. */
-  const duty = useDuty();
   const paging = usePaging(PAGE);
 
   /* Сменили отбор или порядок — счётчик показанного начинается заново. */
@@ -185,14 +155,9 @@ export function DbRunsScreen({
 
   const reset = () => {
     setFilter('all');
-    setState('all');
     setQuery('');
     paging.reset();
   };
-
-  /* Взят ли расчёт в работу на свой день. Считается через общий журнал, а не
-     флажком на записи: у дня участка хозяин один, и знает об этом журнал. */
-  const working = (row: (typeof all)[number]) => onDuty(row.run.id, row.run.date);
   const dense = perRow === '6';
 
   const all = registry.stats.byRun;
@@ -223,9 +188,6 @@ export function DbRunsScreen({
       const left = row.orders - row.assigned;
       if (filter === 'loose' && left === 0) return false;
       if (filter === 'clean' && left > 0) return false;
-      const live = onDuty(row.run.id, row.run.date);
-      if (state === 'duty' && !live) return false;
-      if (state === 'draft' && live) return false;
       if (!needle) return true;
       return (
         row.run.code.toLowerCase().includes(needle) || row.run.created.toLowerCase().includes(needle)
@@ -252,7 +214,7 @@ export function DbRunsScreen({
       const diff = rank(a) - rank(b);
       return side * (diff !== 0 ? diff : a.run.code.localeCompare(b.run.code));
     });
-  }, [all, desc, filter, state, duty, query, sort]);
+  }, [all, desc, filter, query, sort]);
 
   /* Повторный щелчок по выбранному правилу переворачивает порядок; щелчок по
      другому — переключает правило и берёт его сторону по умолчанию. */
@@ -452,7 +414,7 @@ export function DbRunsScreen({
       },
       {
         key: 'coverage-trend',
-        title: 'Прогноз по расчётам',
+        title: 'Покрытие по расчётам',
         note: 'Как менялась доля закрытых заявок от расчёта к расчёту',
         shape: 'line',
         data: {
@@ -461,7 +423,7 @@ export function DbRunsScreen({
           caption: 'в последнем расчёте',
           tone: (runs[runs.length - 1]?.coverage ?? 1) < 0.8 ? 'bad' : 'ok',
           series: series((row) => Math.round(row.coverage * 1000) / 10),
-          legend: 'прогноз выполнения, %'
+          legend: 'покрытие, %'
         }
       },
       {
@@ -613,38 +575,6 @@ export function DbRunsScreen({
     )
   });
 
-  /* Карточки расчётов. Вынесены в одно место: ими рисует и обычный вид, и
-     разрез по состоянию, и расходиться этим двум нельзя. */
-  const cards = (list: typeof shown) => (
-    <div
-      className={'runs__grid' + (dense ? ' runs__grid--dense' : '')}
-      style={{ '--per-row': perRow } as React.CSSProperties}
-    >
-      {list.map((row) => (
-        <RunCard
-          key={row.run.id}
-          row={row}
-          bounds={registry.bounds}
-          routes={routesByRun.get(row.run.id) ?? []}
-          /* Кнопки «Открыть» в базе нет: карточка открывает расчёт целиком,
-             щелчком в любое своё место, и кнопка внизу была второй дорогой
-             туда же. Внизу осталось одно — отбор к сравнению и «В работу»:
-             они никуда не уводят, и сами собой карточка их не сделает. */
-          showOpen={false}
-          isActive={row.run.id === active}
-          picked={compare.includes(row.run.id)}
-          pickBlocked={compare.length >= COMPARE_MAX}
-          dense={dense}
-          onOpen={onOpen}
-          onOpenMap={onOpenMap}
-          onGo={onGo}
-          onCompare={onCompare}
-          onEdit={onEdit}
-        />
-      ))}
-    </div>
-  );
-
   /* Активные отборы — чипами наверху. Каждый снимается своим крестиком. */
   const chips: DbChip[] = [];
   if (filter !== 'all') {
@@ -655,61 +585,8 @@ export function DbRunsScreen({
     });
   }
 
-  if (state !== 'all') {
-    chips.push({
-      key: 'state',
-      label: STATES.find((item) => item.value === state)?.label ?? state,
-      onRemove: clear(() => setState('all'))
-    });
-  }
-
   const shown = rows.slice(0, paging.limit);
   const hidden = rows.length - shown.length;
-
-  /* Разрез по состоянию: рабочие расчёты и черновики — двумя перечнями.
-
-     Считается по всей выборке, а не по показанному куску: рабочий расчёт
-     дня один на десяток прогонов, и в первую страницу он попадает не
-     всегда — раздел «В работе» оказывался бы пуст при взятом в работу
-     расчёте. Каждый перечень обрезан своей страницей. */
-  const working_ = rows.filter(working).slice(0, paging.limit);
-  const drafts = rows.filter((row) => !working(row)).slice(0, paging.limit);
-
-  /* Спрятанные черновики. В списке их нет — движок их не отдаёт, — но
-     сказать, что они есть, надо: иначе «спрятал и потерял». Число берём у
-     движка, сами записи спрашиваем только по щелчку: за ними отдельный
-     запрос, и делать его каждому, кто открыл базу, незачем. */
-  const [buried, setBuried] = useState<EngineRun[] | null>(null);
-  const [buriedCount, setBuriedCount] = useState(hiddenCount());
-  const [busy, setBusy] = useState(false);
-
-  const openBuried = async () => {
-    setBusy(true);
-    try {
-      const list = await hiddenRuns();
-      setBuried(list);
-      setBuriedCount(hiddenCount());
-    } catch {
-      /* Не ответила — оставляем как было: строка со счётчиком никуда не
-         делась, щёлкнуть можно ещё раз. */
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const restore = async (id: string) => {
-    setBusy(true);
-    try {
-      await hideEngineRun(id, false);
-      setBuried((prev) => (prev ?? []).filter((one) => one.id !== id));
-      setBuriedCount(hiddenCount());
-      onRefresh?.();
-    } catch {
-      /* То же самое: запись осталась спрятанной, строка на месте. */
-    } finally {
-      setBusy(false);
-    }
-  };
 
   /* Итог выборки — над списком, а не под ним: это ответ на «что дал отбор»,
      и внизу, за прокруткой, его никто не читает. Числа выбраны по вопросу
@@ -735,53 +612,8 @@ export function DbRunsScreen({
           )}`}
         </>
       )}
-      {buriedCount > 0 && (
-        <>
-          {` · спрятано ${buriedCount}`}
-          {buried === null && (
-            <button type="button" className="dbruns__buried-show" onClick={openBuried} disabled={busy}>
-              показать
-            </button>
-          )}
-        </>
-      )}
     </>
   );
-
-  /* Перечень спрятанных — под полосой отбора и только когда его открыли.
-     Строка короткая: номер, день и когда завели, — этого хватает, чтобы
-     узнать свой черновик и вернуть его. Числа плана здесь не нужны: за
-     ними запись надо открывать, а её в списке нет. */
-  const buriedPanel =
-    buried === null ? null : (
-      <section className="panel dbruns__buried">
-        <div className="dash__section-head">
-          <h2 className="dash__section-title">Спрятанные черновики</h2>
-          <span className="dbrun__facts">
-            {buried.length === 0
-              ? 'Ни одного: всё вернули'
-              : `${plural(buried.length, 'запись', 'записи', 'записей')} вне списка · ` +
-                'они целы в архиве программы расчёта и открываются по своему номеру'}
-          </span>
-        </div>
-        {buried.map((one) => (
-          <div key={one.id} className="dbruns__buried-row">
-            <span className="dbruns__buried-code">{one.code}</span>
-            <span className="dbruns__buried-day">{one.date}</span>
-            <span className="dbruns__buried-when">заведён {stampOf(one.created)}</span>
-            {one.note && <span className="dbruns__buried-note">{one.note}</span>}
-            <button
-              type="button"
-              className="dbruns__buried-back"
-              onClick={() => restore(one.id)}
-              disabled={busy}
-            >
-              Вернуть в список
-            </button>
-          </div>
-        ))}
-      </section>
-    );
 
   return (
     <div className="dash enter">
@@ -832,19 +664,6 @@ export function DbRunsScreen({
               />
             </div>
 
-            {/* Состояние — второй отбор, рядом с первым: «что вышло» и «по
-                какому из них работают» — разные вопросы, и складываются они
-                по «и». */}
-            <div className="filters__group">
-              <span className="filters__label">Состояние</span>
-              <SegmentedControl
-                size="sm"
-                items={STATES}
-                value={state}
-                onChange={narrow((value: string) => setState(value as State))}
-              />
-            </div>
-
             {/* Плотность строки — только у карточек: в таблице и в списке
                 строка одна и в строке она одна. */}
             {mode !== 'table' && mode !== 'list' && (
@@ -857,53 +676,14 @@ export function DbRunsScreen({
         </DbBar>
       </DbHead>
 
-      {buriedPanel}
-
       {rows.length === 0 ? (
         <DbEmpty
           miss="Под этот отбор не подошёл ни один расчёт."
           blank="Расчётов в истории пока нет: первый появится, когда день разложат в диспетчерской."
           query={query.trim() !== ''}
-          filtered={filter !== 'all' || state !== 'all'}
+          filtered={filter !== 'all'}
           onReset={reset}
         />
-      ) : mode === 'duty' ? (
-        <>
-          <section className="panel">
-            <div className="dash__section-head">
-              <h2 className="dash__section-title">
-                <Icon name="check-circle" size={15} /> В работе
-              </h2>
-              <span className="dash__section-note">
-                {plural(working_.length, 'расчёт', 'расчёта', 'расчётов')}
-              </span>
-            </div>
-            {working_.length === 0 ? (
-              <p className="runmenu__empty">
-                Ни один расчёт не взят в работу. Берут кнопкой «В работу» — в карточке расчёта или
-                в подшапке диспетчерской.
-              </p>
-            ) : (
-              cards(working_)
-            )}
-          </section>
-
-          <section className="panel">
-            <div className="dash__section-head">
-              <h2 className="dash__section-title">
-                <Icon name="stack" size={15} /> Не в работе
-              </h2>
-              <span className="dash__section-note">
-                {plural(drafts.length, 'расчёт', 'расчёта', 'расчётов')}
-              </span>
-            </div>
-            {drafts.length === 0 ? (
-              <p className="runmenu__empty">Все расчёты выборки взяты в работу.</p>
-            ) : (
-              cards(drafts)
-            )}
-          </section>
-        </>
       ) : mode === 'list' ? (
         /* Список: расчёт — строка, и в ней ровно то, ради чего в историю
            заходят. Покрытие первым: это ответ на «как посчиталось», всё
@@ -925,6 +705,14 @@ export function DbRunsScreen({
               <>
                 {row.run.date ? dayOf(row.run.date) : `Расчёт ${row.run.code}`}
                 <RunStateTag run={row.run.id} date={row.run.date} />
+                {/* И вторая метка, у самого имени записи: список — вид по
+                    умолчанию, и в нём расчёт, разложенный браузером, ничем не
+                    отличался от расчёта программы. */}
+                {localRun(row.run.id) && (
+                  <span className="localmark" title="Расчёт посчитан в браузере, а не программой расчёта">
+                    браузер
+                  </span>
+                )}
               </>
             ),
             sub: (
@@ -934,19 +722,10 @@ export function DbRunsScreen({
                 {plural(row.routes, 'маршрут', 'маршрута', 'маршрутов')} · {row.engineersOnRoute} из{' '}
                 {row.engineersTotal} инженеров с маршрутом
                 {row.run.id === active ? ' · открыт в диспетчерской' : ''}
-                {/* Запись посчитана не сегодняшним движком. В строке — три
-                    слова, чтобы её было видно в ряду; вся фраза движка — в
-                    подсказке: что именно устарело, план или числа на
-                    карточке, он говорит сам и по-разному. */}
-                {row.run.drift && (
-                  <span className="runcard__drift" title={row.run.drift}>
-                    считан другим движком
-                  </span>
-                )}
               </>
             ),
             cells: [
-              { label: 'Прогноз', value: percent(row.coverage), tone: row.coverage < 0.8 ? ('warn' as const) : undefined },
+              { label: 'Покрытие', value: percent(row.coverage), tone: row.coverage < 0.8 ? ('warn' as const) : undefined },
               { label: 'Разложено', value: `${row.assigned}/${row.orders}` },
               {
                 label: 'Без инженера',
@@ -994,7 +773,7 @@ export function DbRunsScreen({
               <thead>
                 <tr>
                   <th>Расчёт</th>
-                  <th>Прогноз</th>
+                  <th>Покрытие</th>
                   <th>Разложено</th>
                   <th>Доля плана</th>
                   <th>Без инженера</th>
@@ -1076,7 +855,36 @@ export function DbRunsScreen({
           </div>
         </section>
       ) : (
-        cards(shown)
+        <>
+          <div
+            className={'runs__grid' + (dense ? ' runs__grid--dense' : '')}
+            style={{ '--per-row': perRow } as React.CSSProperties}
+          >
+          {shown.map((row) => (
+            <RunCard
+              key={row.run.id}
+              row={row}
+              bounds={registry.bounds}
+              routes={routesByRun.get(row.run.id) ?? []}
+              /* Кнопки «Открыть» в базе нет: карточка открывает расчёт
+                 целиком, щелчком в любое своё место, и кнопка внизу была
+                 второй дорогой туда же. Внизу осталось одно — отбор к
+                 сравнению и «В работу»: они никуда не уводят, и сами собой
+                 карточка их не сделает. */
+              showOpen={false}
+              isActive={row.run.id === active}
+              picked={compare.includes(row.run.id)}
+              pickBlocked={compare.length >= COMPARE_MAX}
+              dense={dense}
+              onOpen={onOpen}
+              onOpenMap={onOpenMap}
+              onGo={onGo}
+              onCompare={onCompare}
+              onEdit={onEdit}
+            />
+          ))}
+          </div>
+        </>
       )}
 
       {/* «Показать ещё» — одна на все три вида: обрезается отрисовка, а
