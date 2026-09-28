@@ -20,9 +20,9 @@ export type Row = string[];
 
 /** Что принимает каждая кнопка импорта. */
 export const ACCEPT = {
+  xlsx: '.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   csv: '.csv,text/csv,text/plain',
-  md: '.md,.markdown,text/markdown',
-  xlsx: '.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  json: '.json,application/json'
 } as const;
 
 export type ImportKind = keyof typeof ACCEPT;
@@ -41,6 +41,57 @@ function cell(value: string): string {
 
 export function rowsToCsv(rows: Row[]): string {
   return rows.map((row) => row.map(cell).join(DELIMITER)).join('\r\n');
+}
+
+/* ─── JSON ────────────────────────────────────────────────────────────── */
+
+/** Выгрузка JSON в строки таблицы.
+
+    Принимаем то, что действительно приносят: список записей
+    (`[{...}, {...}]`), такой же список внутри обёртки (`{"orders": [...]}` —
+    имя поля любое, лишь бы список был один) и готовую таблицу списком
+    списков, где первая строка — шапка.
+
+    Шапка собирается по всем записям, а не по первой: в выгрузках поля
+    гуляют от записи к записи, и столбец, появившийся в середине файла,
+    пропал бы целиком. Порядок — в каком поля встретились впервые.
+
+    Значение, которое само оказалось объектом или списком, кладём как есть
+    (текстом JSON): выдумывать за него разбор нельзя, а потерять его тем
+    более. */
+export function jsonToRows(text: string): Row[] {
+  const cell = (value: unknown): string => {
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'object') return JSON.stringify(value);
+    return String(value);
+  };
+
+  let data: unknown = JSON.parse(text);
+  if (data && typeof data === 'object' && !Array.isArray(data)) {
+    const lists = Object.values(data as Record<string, unknown>).filter(Array.isArray);
+    if (lists.length !== 1) return [];
+    data = lists[0];
+  }
+  if (!Array.isArray(data) || data.length === 0) return [];
+
+  /* Готовая таблица: список списков, первая строка — шапка. */
+  if (Array.isArray(data[0])) return (data as unknown[][]).map((row) => row.map(cell));
+
+  const head: string[] = [];
+  for (const one of data) {
+    if (!one || typeof one !== 'object') continue;
+    for (const key of Object.keys(one as Record<string, unknown>)) {
+      if (!head.includes(key)) head.push(key);
+    }
+  }
+  if (head.length === 0) return [];
+  return [
+    head,
+    ...data.map((one) => {
+      const row = (one ?? {}) as Record<string, unknown>;
+      return head.map((key) => cell(row[key]));
+    })
+  ];
 }
 
 /* ─── Markdown ────────────────────────────────────────────────────────── */
@@ -256,11 +307,11 @@ export async function xlsxToRows(buffer: ArrayBuffer): Promise<Row[]> {
 export async function toUploadBytes(kind: ImportKind, file: File): Promise<ArrayBuffer> {
   if (kind === 'csv') return file.arrayBuffer();
   const rows =
-    kind === 'md' ? mdToRows(await file.text()) : await xlsxToRows(await file.arrayBuffer());
+    kind === 'json' ? jsonToRows(await file.text()) : await xlsxToRows(await file.arrayBuffer());
   if (rows.length < 2) {
     throw new Error(
-      kind === 'md'
-        ? 'в файле нет таблицы: нужна шапка и хотя бы одна строка заявки'
+      kind === 'json'
+        ? 'в файле нет записей: нужен список заявок, а не одна запись или пустой список'
         : 'на первом листе книги нет таблицы: нужна шапка и хотя бы одна строка заявки'
     );
   }
