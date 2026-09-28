@@ -581,6 +581,13 @@ export function HomeScreen({
             заявок закрыто
           </p>
 
+          {/* Части внутри карточки разведены подписанными чертами: свод,
+              средние и сами дни отвечают на разные вопросы, а стояли одной
+              стопкой — глаз читал их как один длинный список. */}
+          <div className="homepart">
+            <span>В среднем за всё время</span>
+          </div>
+
           <div className="dbstats">
             <div className="dbstat">
               <span className="dbstat__value">{percent(board.share)}</span>
@@ -605,6 +612,12 @@ export function HomeScreen({
           {/* Ряд дней: у каждого своя полоса выполнения, и слабый день виден
               в ряду сразу — без чтения чисел. Лучший и слабый названы
               вслух: это первое, о чём спрашивают, посмотрев на ряд. */}
+          <div className="homepart">
+            <span>
+              Дни под наблюдением · {board.rows.length}
+            </span>
+          </div>
+
           <div className="homemons">
             {board.rows.map((one) => (
               <button
@@ -682,11 +695,19 @@ export function HomeScreen({
             </button>
           </div>
         ) : (
-          <div className="homeshifts">
-            {shifts.slice(0, SHIFTS_SHOWN).map((shift) => (
-              <ShiftCard key={shift.date} shift={shift} onOpen={() => onOpenShift(shift.date)} />
-            ))}
-          </div>
+          <>
+            <div className="homepart">
+              <span>
+                Смены по дням · {shifts.length}
+              </span>
+            </div>
+
+            <div className="homeshifts">
+              {shifts.slice(0, SHIFTS_SHOWN).map((shift) => (
+                <ShiftCard key={shift.date} shift={shift} onOpen={() => onOpenShift(shift.date)} />
+              ))}
+            </div>
+          </>
         )}
       </section>
 
@@ -826,9 +847,10 @@ export function HomeScreen({
       <section className="panel">
         <div className="dash__section-head">
           <h2 className="dash__section-title">Базы данных</h2>
-          <span className="dash__section-note">
-            {registry ? 'Записи по всем расчётам сразу' : 'Собираем справочники…'}
-          </span>
+          {/* Пока справочники собираются, об этом надо сказать: числа у
+              кнопок в это время пустые. Собрались — говорить нечего, и
+              подписи нет: числа стоят у самих кнопок. */}
+          {!registry && <span className="dash__section-note">Собираем справочники…</span>}
         </div>
         <div className="tiles">
           <DbTile
