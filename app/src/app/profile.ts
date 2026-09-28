@@ -11,7 +11,9 @@ export interface Dispatcher {
 
 export const CURRENT_DISPATCHER: Dispatcher = {
   name: 'Корягин Антон Юрьевич',
-  role: 'Диспетчер · смена А',
+  /* Не должность в чьём-то штате, а кто мы на этом проекте: команда
+     «Белые воротнички», представляющая своё решение заказчику. */
+  role: 'Представитель (Белые воротнички)',
   shiftStart: '08:00',
   shiftEnd: '20:00',
   photo: '/avatar.png'
