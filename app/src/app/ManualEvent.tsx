@@ -62,6 +62,16 @@ const ГРУППЫ: { про: 'заявку' | 'инженера'; title: string
 ];
 
 
+/* Чем пересобирать остаток дня после отметки. Окно правки знает четыре
+   события, наших восемь: «выбыл» ложится на «инженер выбыл», «задержится»
+   на «задержится», «сорвалась» на «отказ абонента». Остальное — на
+   аварию: она единственная про «пришло сверх плана». */
+const КУДА: Partial<Record<Kind, 'urgent' | 'cancel' | 'disabled' | 'delayed'>> = {
+  engineer_out: 'disabled',
+  engineer_delayed: 'delayed',
+  failed: 'cancel'
+};
+
 const ПРИЧИНЫ = [
   { value: 'no_show', label: 'Абонента нет дома' },
   { value: 'no_access', label: 'Не пустили' },
@@ -83,6 +93,9 @@ export interface ManualProps {
   onEvent: (event: JournalEvent, at: number) => void;
   /** Заявка словами диспетчера — адрес, а не код. */
   orderLabel?: (id: string) => string;
+  /** Открыть окно правки на подходящем событии: отметить — одно дело,
+      пересобрать остаток дня — другое, и второе делает движок. */
+  onRecalc?: (kind: 'urgent' | 'cancel' | 'disabled' | 'delayed') => void;
 }
 
 /** Отказ движка без служебных приставок. Приходит он как
@@ -95,7 +108,9 @@ const чистаяПричина = (detail: string) =>
     .replace(/^\s*(плохой параметр|ошибка)\s*:\s*/i, '')
     .trim();
 
-export function ManualEvent({ engineers, orders, cut, busy, failed, onEvent, orderLabel }: ManualProps) {
+export function ManualEvent({
+  engineers, orders, cut, busy, failed, onEvent, orderLabel, onRecalc
+}: ManualProps) {
   /* Начинаем с невыбранного: первый шаг — это вопрос, а не готовый
      ответ. Подставленное заранее событие читается как «уже решено», и
      человек жмёт «Записать», не заметив, что записывает не то. */
@@ -150,8 +165,6 @@ export function ManualEvent({ engineers, orders, cut, busy, failed, onEvent, ord
           событий с иконкой и пояснением, под ними поля. Тот же разговор —
           тот же язык; второй набор классов для него завести было бы
           обманом узнавания. */}
-      <h4 className="incident__subtitle">Что случилось</h4>
-
       {ГРУППЫ.map((группа) => (
         <div className="manual__group" key={группа.про}>
           <span className="manual__group-title">{группа.title}</span>
@@ -273,6 +286,16 @@ export function ManualEvent({ engineers, orders, cut, busy, failed, onEvent, ord
         >
           {busy ? 'Записываю…' : 'Записать'}
         </Button>
+        {onRecalc && (
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => onRecalc(КУДА[kind as Kind] ?? 'urgent')}
+            iconLeft={<Icon name="lightning" size={14} />}
+          >
+            Пересчитать остаток дня
+          </Button>
+        )}
         {записано && !failed && (
           <span className="manual__ok">
             <Icon name="check-circle" size={14} /> {записано}

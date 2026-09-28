@@ -1612,6 +1612,15 @@ export function App() {
                   orderLabel: (id: string) => {
                     const order = ready.view.orderById.get(id);
                     return order ? order.address ?? order.work_title : id;
+                  },
+                  /* Пересчёт открывается тем же окном правки, что и
+                     прежде с карточек: отметить — одно дело, пересобрать
+                     остаток дня — другое, и делает его движок. */
+                  onRecalc: (kind: IncidentKind) => {
+                    setIncidentKind(kind);
+                    setReplan(null);
+                    setIncidentFailed(null);
+                    setIncidentOpen(true);
                   }
                 }
               : undefined

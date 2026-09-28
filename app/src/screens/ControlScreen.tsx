@@ -1,13 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Icon } from '../ds/components/core/Icon.jsx';
-import { Badge } from '../ds/components/core/Badge.jsx';
 import { Button } from '../ds/components/core/Button.jsx';
 import { StatTile } from '../ds/components/data/StatTile.jsx';
 import { hhmm, pluralWord } from '../data/derive.ts';
 import type { IncidentKind, Staffing } from '../data/api.ts';
 import { engineSilent, loadStaffing, resetJournal } from '../data/api.ts';
 import { humanAfter } from '../data/errors.ts';
-import { IMPACT } from '../data/impact.ts';
 import { replanBlocked } from '../app/replanBlocked.ts';
 import { ManualEvent } from '../app/ManualEvent.tsx';
 import type { ManualProps } from '../app/ManualEvent.tsx';
@@ -68,61 +66,8 @@ interface Props {
    начинаются здесь. Если пересчитать нельзя, причина стоит над карточками,
    а не в конце экрана: серые кнопки без объяснения рядом — загадка. */
 
-interface Kind {
-  key: IncidentKind;
-  icon: string;
-  title: string;
-  what: string;
-}
 
-const KINDS: Kind[] = [
-  {
-    key: 'urgent',
-    icon: 'alert-triangle',
-    title: 'Авария',
-    what: 'В середине дня приходят срочные заявки, которых не было в плане.'
-  },
-  {
-    key: 'disabled',
-    icon: 'user',
-    title: 'Инженер выбыл',
-    what: 'Сегодня его не будет — заболел, отозвали, машина не поехала.'
-  },
-  {
-    key: 'delayed',
-    icon: 'clock',
-    title: 'Инженер задержится',
-    what: 'Прокол, пробка, затянулась прошлая заявка — выйдет на маршрут позже.'
-  },
-  {
-    /* Третье событие пересчёта из ТЗ. Его здесь не было вовсе. */
-    key: 'cancel',
-    icon: 'x-circle',
-    title: 'Абонент отказался',
-    what: 'Заявку сняли — по звонку или уже на месте. Освободилось время.'
-  }
-];
 
-/* Пояснение для экрана: первая фраза видна, остальное — под «Подробнее».
-   Длинные абзацы писались для жюри, а диспетчеру, который заходит сюда в
-   середине дня, нужна одна строка «что здесь делают». Остальное не
-   выбрасываем: оно по-прежнему отвечает на вопрос «почему так». */
-function Lede({ text }: { text: string }) {
-  const end = text.indexOf('. ');
-  if (end < 0) return <p className="clients__lede ctl__lede-first">{text}</p>;
-  return (
-    <div className="ctl__lede">
-      <p className="ctl__lede-first">{text.slice(0, end + 1)}</p>
-      <details className="ctl__more">
-        <summary>
-          <Icon name="chevron-right" size={14} />
-          Подробнее
-        </summary>
-        <p className="ctl__more-body">{text.slice(end + 2)}</p>
-      </details>
-    </div>
-  );
-}
 
 /* Ошибка словами диспетчера: что случилось — своё, жирным; что делать —
    общим разбором (`humanAfter`, errors.ts): по виду сбоя и коду ответа, а не
@@ -156,12 +101,10 @@ export function ControlScreen({
   live,
   canReplan,
   savedReplan = false,
-  onPick,
   day,
   base,
   onJournalReset,
   orderLabel = (id) => id,
-  urgentStart = null,
   manual
 }: Props) {
   const blocked = replanBlocked(live, savedReplan, canReplan);
@@ -227,6 +170,11 @@ export function ControlScreen({
 
   return (
     <div className="dash enter ctl">
+      {/* Одна панель, а не две. Прежде «Управление воздействием» было
+          заголовком с одной фразой и без содержимого, а под ним отдельной
+          панелью стоял выбор события — два заголовка про одно и то же
+          место. Объяснение тоже одной строкой: раскрывать «Подробнее»
+          ради второй фразы незачем, она короче самой кнопки. */}
       <section className="panel">
         <div className="dash__section-head">
           <h2 className="dash__section-title">Управление воздействием</h2>
@@ -234,106 +182,16 @@ export function ControlScreen({
             план расчёта {runCode}, от {hhmm(cut)} до конца смены
           </span>
         </div>
-        <Lede
-          text={
-            'День пошёл не так, как посчитали — здесь объявляют, что случилось, и остаток смены ' +
-            'пересобирается за полторы секунды. Заявки, которые к этому времени по прогнозу дня ' +
-            'уже закрыты, не трогаются, а исполнителя у остальных без нужды не меняют.'
-          }
-        />
-      </section>
-
-      {manual && live && (
-        <section className="panel">
-          <div className="dash__section-head">
-            {/* Не «Что случилось»: так называется секция карточек ниже,
-                и два одинаковых заголовка на одном экране читаются как
-                одно и то же место. Здесь отмечают, там — смотрят цену. */}
-            <h2 className="dash__section-title">Отметить событие</h2>
-            <span className="dash__section-note">три шага: что, с кем, когда</span>
-          </div>
-          {/* Четыре карточки выше выбирают за человека — движку сказано
-              `auto`. Для показа это верно, для работы нет: у диспетчера
-              звонит конкретный инженер про конкретный адрес. Здесь он
-              называет и то, и другое сам. */}
-          <Lede
-            text={
-              'Выберите, что случилось, — дальше экран сам спросит, с кем и во сколько. ' +
-              'Ничего не угадывается: инженер и заявка берутся из этого расчёта. Ниже, на ' +
-              'карточках событий, видно, что даёт пересчёт в каждом случае и стоит ли его жать.'
-            }
-          />
-          <ManualEvent {...manual} />
-        </section>
-      )}
-
-
-      {/* Четыре события, а не одна кнопка «ЧП». Это не удобство, а вывод из
-          замеров: жать пересчёт стоит в трёх случаях из четырёх, и диспетчер
-          должен видеть, в каком он сейчас. У каждой карточки — видимая
-          строка-кнопка «Пересчитать от ЧЧ:ММ →»: прежде кнопкой была вся
-          карточка, и догадаться, что на неё жмут, было не из чего. */}
-      <section className="panel">
-        <div className="dash__section-head">
-          <h2 className="dash__section-title">Что случилось</h2>
-          <span className="dash__section-note">четыре разных события, не одно</span>
-        </div>
-
-        {blocked && (
-          <div className="solvefail ctl__blocked">
-            <Icon name="alert-triangle" size={16} />
-            <span>
-              <b>Пересчитать сейчас нельзя. {blocked.what}</b> {blocked.todo}
-            </span>
-          </div>
+        <p className="ctl__lede-first">
+          День пошёл не так, как посчитали: отметьте, что случилось, и
+          остаток смены пересобирается за полторы секунды.
+        </p>
+        {manual && live && <ManualEvent {...manual} />}
+        {!live && (
+          <p className="ctl__lede-first">
+            Программа расчёта не запущена — отмечать и пересчитывать нечем.
+          </p>
         )}
-
-        <div className="actgrid">
-          {KINDS.map((kind) => ({ ...kind, ...IMPACT[kind.key] })).map((kind) => (
-            <div key={kind.key} className="actcard">
-              <span className="actcard__top">
-                <span className="actcard__icon">
-                  <Icon name={kind.icon} size={16} />
-                </span>
-                <span className="actcard__title">{kind.title}</span>
-                <Badge tone={kind.verdict === 'press' ? 'danger' : 'neutral'}>
-                  {kind.verdictText}
-                </Badge>
-              </span>
-              <p className="actcard__what">{kind.what}</p>
-              <span className="actcard__rows">
-                <span className="actcard__row">
-                  <span>Стоит дню</span>
-                  <b>{kind.cost}</b>
-                </span>
-                <span className="actcard__row">
-                  <span>Пересчёт вернёт</span>
-                  <b>{kind.back}</b>
-                </span>
-              </span>
-              {/* Числа выше — не факт, а оценка по замерам: сколько дней и
-                  прогонов за ней стоит, сказано прямо здесь, а не спрятано
-                  за ссылкой «подробнее» — так их не примут за точный расчёт
-                  этого конкретного дня. */}
-              {kind.basis && (
-                <p className="actcard__basis">
-                  <Icon name="info" size={12} />
-                  {kind.basis}
-                </p>
-              )}
-              <Button
-                className="actcard__go"
-                variant="secondary"
-                onClick={() => onPick(kind.key)}
-                disabled={blocked !== null}
-                iconRight={<Icon name="arrow-right" size={16} />}
-              >
-                Пересчитать от{' '}
-                {hhmm(kind.key === 'urgent' && urgentStart !== null ? Math.max(cut, urgentStart) : cut)}
-              </Button>
-            </div>
-          ))}
-        </div>
       </section>
 
       {day && live && (
@@ -400,34 +258,6 @@ export function ControlScreen({
         </section>
       )}
 
-      <section className="panel">
-        <div className="dash__section-head">
-          <h2 className="dash__section-title">Чего это будет стоить</h2>
-        </div>
-        <Lede
-          text={
-            'На каждое воздействие приходит не только новый план, но и его цена. Это и есть то, ' +
-            'ради чего сюда заходят: пересчитать можно всегда, а вот нужно ли — вопрос, на который ' +
-            'до сих пор отвечали на глаз.'
-          }
-        />
-        <div className="setrow">
-          <span className="setrow__key">Заявок выиграли</span>
-          <span className="setrow__val">
-            сколько влезло после пересчёта против того, сколько влезло бы без него
-          </span>
-        </div>
-        <div className="setrow">
-          <span className="setrow__key">Кого не тронули</span>
-          <span className="setrow__val">
-            доля заявок, сохранивших исполнителя — по тем, кого событие не касалось
-          </span>
-        </div>
-        <div className="setrow">
-          <span className="setrow__key">Судьба заявок выбывшего</span>
-          <span className="setrow__val">подхватили другие · остались за ним · не влезли никуда</span>
-        </div>
-      </section>
 
       {day && live && (
         <section className="panel">
@@ -435,21 +265,14 @@ export function ControlScreen({
             <h2 className="dash__section-title">События дня</h2>
             <span className="dash__section-note">журнал диспетчера по этому участку</span>
           </div>
-          {/* Четыре события выше пересчитывают от прогноза дня (`source=sim`),
-              от журнала — только «Закрепить и пересчитать». Прежде здесь
-              стояло «пересчёт от событий дня идёт от этого», и отмеченное
-              «сорвалось» пересчёт события молча считал выполненным. Когда
-              события переведут на журнал — поправить и этот текст. */}
-          <Lede
-            text={
-              'Ваши отметки — выполнено, сорвалось, отправлено, в пути, закреплено — хранятся в ' +
-              'журнале; от него пересчитывает «Закрепить и пересчитать» в диспетчерской, а четыре ' +
-              'события выше пока считают от прогноза дня. Что к моменту события уже сделано, для ' +
-              'них берётся из прогноза, а не из ваших отметок: отмеченное «сорвалось» такой ' +
-              'пересчёт не увидит. Сбросить — вернуть день к утреннему плану: проиграли сценарий, ' +
-              'показали, начали заново.'
-            }
-          />
+          {/* Прежде здесь объяснялось, чем отличается пересчёт от журнала
+              и пересчёт от прогноза дня: на экране стояли четыре карточки,
+              считавшие от прогноза. Карточек больше нет, объяснять нечего —
+              осталось то, ради чего секция и есть: сброс. */}
+          <p className="ctl__lede-first">
+            Ваши отметки хранятся в журнале участка. Сбросить — вернуть день к
+            утреннему плану: проиграли сценарий, показали, начали заново.
+          </p>
           {confirmReset ? (
             <div className="ctl__ask">
               <span className="ctl__ask-text">
