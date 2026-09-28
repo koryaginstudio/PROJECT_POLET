@@ -256,21 +256,37 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
   const runsIn = (key: PeriodKey) =>
     registry.runs.filter((one) => withinPeriod(one.created, key));
 
-  /* Срез: заявки расчётов, попавших в срок. */
+  /* Срез: заявки расчётов, попавших в срок.
+
+     Отдаёт две вещи, и путать их нельзя. `заявки` — схлопнутые, по одной
+     строке на заявку: это то, что стоит под подписью «Заявок» и в
+     разбивках, потому что база заявок отвечает на «что у нас есть».
+     `записи` — «заявка в расчёте», по строке на прогон: по ним считается
+     ряд по расчётам и «на расчёт», и иначе они врали бы — заявка, взятая
+     в двух расчётах, числилась бы только в последнем, и у прежнего
+     прогона в ряду стоял бы ноль.
+
+     До 28 сентября виджеты считали по записям, а подписаны были
+     «Заявок»: на экране рядом стояли «Заявок 271» в статистике и
+     «205 заявок в выборке» в списке, при 205 заявках на самом деле.
+     271 — это 66 (Восток) x 2 + 83 + 56, потому что Восток посчитан
+     дважды; выдавало это соседнее «68 на расчёт», ровно 271 / 4. */
   const scope = useMemo(() => {
-    const list = all.filter((order) => withinPeriod(order.run.created, period));
-    const runIds = new Set(list.map((order) => order.run.id));
-    return { list, runs: runIds.size };
+    const записи = all.filter((order) => withinPeriod(order.run.created, period));
+    const runIds = new Set(записи.map((order) => order.run.id));
+    return { list: mergeOrders(записи), записи, runs: runIds.size };
   }, [all, period]);
 
   const widgets = useMemo<WidgetDef[]>(() => {
-    const list = scope.list;
+    const list = scope.list;          // заявки: под подписью «Заявок»
+    const записи = scope.записи;      // «заявка в расчёте»: ряд и «на расчёт»
     const assigned = list.filter((order) => order.engineerId);
     const free = list.length - assigned.length;
     const urgent = list.filter((order) => isUrgent(order.priorityClass, order.priority));
     const access = list.filter((order) => order.needsAccess);
     const tight = list.filter((order) => order.slaDeadline - order.windowEnd <= 0);
     const minutes = list.reduce((sum, order) => sum + order.estMinutes, 0);
+    const минутЗаписей = записи.reduce((sum, order) => sum + order.estMinutes, 0);
     const perRun = (value: number) => value / Math.max(scope.runs, 1);
     const top = <T,>(items: T[], size = 6) => items.slice(0, size);
 
@@ -280,7 +296,7 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
       string,
       { code: string; created: string; total: number; assigned: number; minutes: number }
     >();
-    for (const order of list) {
+    for (const order of записи) {
       const cell =
         byRun.get(order.run.id) ??
         { code: order.run.code, created: order.run.created, total: 0, assigned: 0, minutes: 0 };
@@ -331,7 +347,7 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
           facts: [
             `${assigned.length} в маршруте`,
             `${free} без инженера`,
-            `${Math.round(perRun(list.length))} на расчёт`
+            `${Math.round(perRun(записи.length))} на расчёт`
           ],
           whole: true,
           parts: [
@@ -367,7 +383,7 @@ export function DbOrdersScreen({ registry, mode, onOpenRun, onOpenMap }: Props) 
           caption: 'работы на объектах',
           facts: [
             `${Math.round(minutes / Math.max(list.length, 1))} мин средняя заявка`,
-            `${hoursText(perRun(minutes))} на расчёт`
+            `${hoursText(perRun(минутЗаписей))} на расчёт`
           ],
           series: series((cell) => Math.round(cell.minutes / 6) / 10),
           legend: 'часов работы в расчёте'
