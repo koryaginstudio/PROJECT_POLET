@@ -33,15 +33,23 @@ import type { JournalEvent } from '../data/api.ts';
     «Новом расчёте». */
 type Kind = Exclude<JournalEvent['kind'], 'order_new'>;
 
+/* Подписи короткие — «Выехал», а не «Инженер выехал»: события разложены
+   по двум группам, и группа уже сказала, про кого речь. Длинная подпись в
+   карточке переносится на две строки и заставляет читать, а не узнавать. */
 const СОБЫТИЯ: { value: Kind; label: string; про: 'заявку' | 'инженера' }[] = [
-  { value: 'assigned', label: 'Передать заявку другому инженеру', про: 'заявку' },
+  { value: 'assigned', label: 'Передать другому', про: 'заявку' },
   { value: 'dispatched', label: 'Отправить наряд', про: 'заявку' },
-  { value: 'en_route', label: 'Инженер выехал', про: 'заявку' },
-  { value: 'done', label: 'Заявка выполнена', про: 'заявку' },
-  { value: 'failed', label: 'Заявка сорвалась', про: 'заявку' },
-  { value: 'engineer_delayed', label: 'Инженер задержится', про: 'инженера' },
-  { value: 'engineer_out', label: 'Инженер выбыл', про: 'инженера' },
-  { value: 'engineer_back', label: 'Инженер вернулся в строй', про: 'инженера' }
+  { value: 'en_route', label: 'Выехал', про: 'заявку' },
+  { value: 'done', label: 'Выполнена', про: 'заявку' },
+  { value: 'failed', label: 'Сорвалась', про: 'заявку' },
+  { value: 'engineer_delayed', label: 'Задержится', про: 'инженера' },
+  { value: 'engineer_out', label: 'Выбыл', про: 'инженера' },
+  { value: 'engineer_back', label: 'Вернулся в строй', про: 'инженера' }
+];
+
+const ГРУППЫ: { про: 'заявку' | 'инженера'; title: string }[] = [
+  { про: 'заявку', title: 'По заявке' },
+  { про: 'инженера', title: 'По инженеру' }
 ];
 
 const ПРИЧИНЫ = [
@@ -144,25 +152,32 @@ export function ManualEvent({ engineers, orders, cut, busy, failed, onEvent, ord
     <div className="manual">
       <ol className="steps">
         <Шаг n={1} title="Событие" done={шаг2}>
-          <div className="step__choices">
-            {СОБЫТИЯ.map((one) => (
-              <button
-                key={one.value}
-                type="button"
-                className={'choice' + (kind === one.value ? ' choice--on' : '')}
-                onClick={() => {
-                  setKind(one.value);
-                  /* Выбор сбрасывается: заявка, выбранная для «сорвалось»,
-                     к «инженер выбыл» отношения не имеет, и тянуть её
-                     дальше значило бы записать не то. */
-                  setOrder('');
-                  setEngineer('');
-                }}
-              >
-                {one.label}
-              </button>
-            ))}
-          </div>
+          {ГРУППЫ.map((группа) => (
+            <div className="choices" key={группа.про}>
+              <span className="choices__title">{группа.title}</span>
+              <div className="choices__grid">
+                {СОБЫТИЯ.filter((one) => one.про === группа.про).map((one) => (
+                  <button
+                    key={one.value}
+                    type="button"
+                    className={'choice' + (kind === one.value ? ' choice--on' : '')}
+                    aria-pressed={kind === one.value}
+                    onClick={() => {
+                      setKind(one.value);
+                      /* Выбор сбрасывается: заявка, выбранная для
+                         «сорвалось», к «инженер выбыл» отношения не имеет,
+                         и тянуть её дальше значило бы записать не то. */
+                      setOrder('');
+                      setEngineer('');
+                      setЗаписано(null);
+                    }}
+                  >
+                    {one.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
         </Шаг>
 
         {шаг2 && (
