@@ -78,9 +78,9 @@ import type { SectionId } from './nav.ts';
 import { firstView, readRoute, sameRoute, writeRoute } from './route.ts';
 import type { Route } from './route.ts';
 import { COMPARE_MAX } from './compare.ts';
-import { dayLabel, dropDuty, useDuty, workDays } from '../data/duty.ts';
+import { dayLabel, dropDuty, takeDuty, useDuty, workDays } from '../data/duty.ts';
 import { logWatch, startWatch, stopWatch, todayKey, useShifts } from '../data/watch.ts';
-import { endMonitor, startMonitor } from '../data/monitor.ts';
+import { endMonitor, monitorCode, monitors, startMonitor } from '../data/monitor.ts';
 import { OVERVIEW } from './selection.ts';
 import type { Selection } from './selection.ts';
 import { DayFail } from './DayFail.tsx';
@@ -212,6 +212,7 @@ export function App() {
        руками диспетчеру нечем и незачем. */
     startMonitor(places, watchRuns);
     setWatching(true);
+    setWatchDay(todayKey());
     if (section !== 'monitor') nav({ section: 'monitor', view: firstView('monitor') });
   };
 
@@ -225,6 +226,105 @@ export function App() {
     stopWatch();
     endMonitor();
   }, [watchingLive]);
+
+  /* ─── какой мониторинг открыт ─────────────────────────────────────────
+
+     Запись мониторинга ключуется календарным днём наблюдения — не днём
+     плана: планы считают заранее, а смотрят за ними в тот день, когда по
+     ним работают. Поэтому открытый мониторинг держится отдельным
+     состоянием, а не выводится из дат расчётов.
+
+     Пусто — живой вид ещё не открывали. Открыли «В работу» — это
+     сегодняшняя запись; лентой в подшапке можно перейти в прошедшую, чтобы
+     посмотреть, как шёл вчерашний день. Она и есть «неактуальный
+     мониторинг». */
+  const [watchDay, setWatchDay] = useState<string | null>(null);
+  const liveDay = todayKey();
+  /* Прошлый день смотрят, а не ведут: журнал смены и запись мониторинга
+     копят сегодняшнюю работу, и вчерашние числа в них — ложь. Отметки на
+     это время останавливаются и возобновляются при возврате к сегодняшнему
+     дню. */
+  const reviewing = watchingLive && watchDay !== null && watchDay !== liveDay;
+
+  /* Перейти к другому мониторингу — тем же движением, каким в диспетчерской
+     переключают расчёт: лентой в подшапке.
+
+     Переход в прошедший день спрашивает. Мониторинг отвечает на «что
+     происходит сейчас», и всё на нём читают как настоящее положение дел;
+     вчерашний план, разложенный на нынешний час, выглядит точно так же. Раз
+     экран не может отличить одно от другого сам по себе, спросить обязан
+     переход. */
+  const pickMonitor = (id: string) => {
+    if (id === watchDay) return;
+    const row = monitors().find((one) => one.id === id);
+    if (!row) return;
+
+    /* Какими днями участков вести выбранный мониторинг: записи известны
+       расчёты, а день участка ищется по ним в истории. Расчёты могли и
+       стереть — тогда вести нечем, и переход честно об этом говорит. */
+    const days = workDays();
+    /* На один день участка запись может называть несколько расчётов: за день
+       план меняли, а запись копит всё, чем этот день вели. Берём последний —
+       записи пополняются по ходу дня, и последний в списке и есть тот, чем
+       день кончили. */
+    const byDay = new Map<string, { key: string; date: string; run: RunId }>();
+    for (const run of row.runs) {
+      const day = days.find((one) => one.runs.includes(run));
+      if (day) byDay.set(day.key, { key: day.key, date: day.date, run });
+    }
+    const picked = [...byDay.values()];
+    if (picked.length === 0) {
+      window.alert(
+        `Мониторинг ${monitorCode(row.no)} вести нечем: расчётов, по которым он шёл, в истории больше нет.`
+      );
+      return;
+    }
+
+    if (id !== liveDay) {
+      const when = id.split('-').reverse().join('.');
+      const ok = window.confirm(
+        `Мониторинг ${monitorCode(row.no)} за ${when} — не сегодняшний.\n\n` +
+          'Вы будете смотреть неактуальный мониторинг: люди и числа на экране ' +
+          'расставлены по плану того дня на нынешний час, а не по тому, что ' +
+          'происходит сейчас. Наблюдение за сегодняшним днём на это время ' +
+          'приостановится.\n\nОткрыть?'
+      );
+      if (!ok) return;
+    }
+
+    for (const one of picked) takeDuty(one.run, one.date);
+    setWatched(picked.map((one) => one.key));
+    setWatching(true);
+    setWatchDay(id);
+
+    /* Записи ведёт только сегодняшний день. Вернулись к нему — наблюдение
+       продолжается с той же записи, ушли в прошлый — отметки замолкают. */
+    if (id === liveDay) {
+      const places = picked.map((one) => dayLabel(one.run, one.date));
+      startWatch(places, picked.map((one) => one.run));
+      startMonitor(places, picked.map((one) => one.run));
+    } else {
+      stopWatch();
+      endMonitor();
+    }
+  };
+
+  /* Уход из открытого мониторинга спрашивает.
+
+     Живой вид — единственный экран сервиса, который работает непрерывно:
+     диспетчер держит его открытым всю смену, а раздел копит время
+     наблюдения и пишет запись дня. Щелчок по соседнему пункту меню
+     обрывает и то и другое, и обрывает молча — прежде о выходе узнавали
+     по исчезнувшей карте. Вопрос стоит ровно там, где решение принимают. */
+  const leaveWatch = (): boolean => {
+    if (!watchingLive) return true;
+    return window.confirm(
+      'Вы уходите с мониторинга.\n\n' +
+        'Живой вид закроется, наблюдение за сменой остановится, а время в ' +
+        'записи дня перестанет копиться. Вернуться можно в любую минуту — ' +
+        'запись дня продолжится с того же места.\n\nУйти?'
+    );
+  };
   /* Журнал смен: Главная читает его сама, оболочке он нужен для окна
      разбора — смена меняется на ходу, пока мониторинг открыт, и окно
      обязано показывать её нынешнее состояние, а не то, каким оно было в
@@ -974,10 +1074,15 @@ export function App() {
          из раздела стояла в ней случайным гостем. Раздел в меню — то самое
          место, где просят «начать сначала». */
       if (id === 'monitor') {
+        /* Возврат к выбору районов — тот же уход из живого вида, и
+           спрашивает он о том же. */
+        if (!leaveWatch()) return;
         setWatching(false);
         return;
       }
     }
+    /* Уход из открытого мониторинга в соседний раздел. */
+    if (id !== section && !leaveWatch()) return;
     nav({ section: id, view: slot ?? firstView(id) });
   };
 
@@ -1026,6 +1131,9 @@ export function App() {
      маршрута нет, и это единственное место, где его смотрят как есть. */
   const openRouteMap = (id: RunId, engineerId: string) => {
     if (id !== runId && !leaveDraft()) return;
+    /* Из поиска можно уехать и с открытого мониторинга — спрашиваем о том
+       же, о чём спрашивает переход по меню. */
+    if (!leaveWatch()) return;
     setCut(dayStart());
     keepRoute.current = true;
     setPinnedRoute(engineerId);
@@ -1071,6 +1179,7 @@ export function App() {
      нём не переоткрывая — момент и выбранный объект остаются как были. */
   const goToRun = (id: RunId) => {
     if (id !== runId && !leaveDraft()) return;
+    if (!leaveWatch()) return;
     nav({ runId: id, stage: 'plan', section: 'dispatch', view: firstView('dispatch') });
   };
 
@@ -1424,7 +1533,12 @@ export function App() {
           view={dayView}
           runId={runId}
           runs={watchRuns}
-          mode={view}
+          /* Прошедший день смотрят, а не ведут: отметки в журнал смены и в
+             запись мониторинга на это время замолкают. */
+          logging={!reviewing}
+          /* Чужой день говорит о себе сам: оговорка стоит первой строкой
+             плашки смены и не гаснет, пока смотрят прошедшую запись. */
+          reviewDay={reviewing ? watchDay : null}
           live={liveRoute}
           onLive={setHoverRoute}
           pinned={pinnedRoute}
@@ -1605,7 +1719,7 @@ export function App() {
         registry={registry}
         onFind={openHit}
         onHome={() => goSection('home')}
-        onOpenSettings={() => nav({ section: 'engine', view: 'service' })}
+        onOpenSettings={() => goSection('engine', 'service')}
       />
 
       <SubHeader
@@ -1619,6 +1733,11 @@ export function App() {
         onOpenRun={openRun}
         compare={compare}
         onCompare={toggleCompare}
+        /* Лента мониторингов — только в открытом живом виде: в воротах
+           раздела те же записи стоят карточками с разбором по районам. */
+        monitorDay={watchDay ?? liveDay}
+        monitorToday={liveDay}
+        onPickMonitor={watchingLive ? pickMonitor : undefined}
       />
 
       <div className="shell__body">

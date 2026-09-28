@@ -2,6 +2,7 @@ import { SegmentedControl } from '../ds/components/forms/SegmentedControl.jsx';
 import { Button } from '../ds/components/core/Button.jsx';
 import { Icon } from '../ds/components/core/Icon.jsx';
 import { RunTabs } from './RunTabs.tsx';
+import { MonitorTabs } from './MonitorTabs.tsx';
 import type { RunId, DaySummary } from '../data/load.ts';
 import { runDate } from '../data/load.ts';
 import { DutyButton } from './DutyButton.tsx';
@@ -26,6 +27,12 @@ interface Props {
   /** Закрыть открытый расчёт. Передаётся только там, где есть что закрывать:
       на открытом плане диспетчерской. */
   onCloseRun?: () => void;
+  /** Лента мониторингов. Передаётся только из открытого живого вида: в
+      воротах раздела записи стоят карточками, и вторая их строка была бы
+      тем же списком над тем же списком. */
+  monitorDay?: string | null;
+  monitorToday?: string;
+  onPickMonitor?: (id: string) => void;
 }
 
 export function SubHeader({
@@ -38,7 +45,10 @@ export function SubHeader({
   planPending = false,
   compare,
   onCompare,
-  onCloseRun
+  onCloseRun,
+  monitorDay = null,
+  monitorToday = '',
+  onPickMonitor
 }: Props) {
   const config = SUBHEADER[section];
   /* Расчёт выбирают там, где он есть. Разделы, которые читают все расчёты
@@ -63,7 +73,12 @@ export function SubHeader({
       {config.views.length > 1 && !planPending && (
         <SegmentedControl size="sm" items={config.views} value={view} onChange={onViewChange} />
       )}
-      {(withTabs || crossRun) && <span className="subhdr__divider" />}
+      {(withTabs || crossRun || onPickMonitor) && <span className="subhdr__divider" />}
+      {/* Мониторинг ленты расчётов не показывает — см. `showsRunTabs`, — но
+          свою ленту имеет: в ней не планы, а дни наблюдения. */}
+      {onPickMonitor && (
+        <MonitorTabs active={monitorDay} today={monitorToday} onPick={onPickMonitor} />
+      )}
       {picking && (
         <RunTabs
           runs={runs}
@@ -80,7 +95,7 @@ export function SubHeader({
       {withTabs && <RunTabs runs={runs} active={activeRun} onOpen={onOpenRun} />}
       {/* Ленты нет — её место занимает распорка, иначе кнопки справа
           съезжают к заголовку. */}
-      {runScoped && !withTabs && <div className="subhdr__spacer" />}
+      {runScoped && !withTabs && !onPickMonitor && <div className="subhdr__spacer" />}
       {/* Пометки «Все расчёты» здесь нет: раздел и так стоит в меню под
           своим именем, а лента расчётов в нём не показана — обещать нечего. */}
       {crossRun && !picking && <div className="subhdr__spacer" />}

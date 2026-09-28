@@ -1627,8 +1627,11 @@ body {
   min-height: 0;
 }
 
+/* Шапка переносится: в узкой колонке номер, пометка состояния и «Изменить»
+   в одну строку не помещаются и наезжали друг на друга. */
 .runcard__head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--sp-2);
@@ -2782,6 +2785,24 @@ body {
 /* Чипы ленты не сжимаются: номер расчёта нельзя ужать до многоточия. */
 .runtabs__item {
   flex: 0 0 auto;
+}
+
+/* «Ещё N» у ленты мониторингов — не кнопка: остальные записи лежат
+   карточками в воротах раздела, а не в выпадающем списке. Подпись без
+   нажатия честнее кнопки, которая ничего не открывает. */
+.runtabs__more--flat {
+  cursor: default;
+}
+
+/* Точка у сегодняшней записи в ленте мониторингов: живое наблюдение одно,
+   и отличать его от прошлых дней надо с одного взгляда. Тот же зелёный,
+   каким живой вид помечает идущие часы. */
+.montabs__live {
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--success-600, #3E9B64);
 }
 
 /* Номер и его итог в одном чипе. Номер — то, чем расчёт называют, поэтому он
@@ -7946,6 +7967,151 @@ button.homechip--quiet {
 /* Карточки смен — по ширине ряда, а не по числу карточек: `auto-fill`
    держит места пустыми, и единственная запись в журнале остаётся карточкой,
    а не полосой во весь экран. */
+/* ─── шапка Главной ───────────────────────────────────────────────────
+
+   День и часы крупно, название раздела под ними подписью: то же устройство,
+   что в воротах мониторинга. Раздел отвечает на «что происходит сейчас», и
+   первое, что он говорит, — какое это «сейчас». */
+.homehead {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: var(--sp-4);
+}
+
+.homehead__day {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-3);
+  margin: 0;
+  font-family: var(--font-display, var(--font-sans));
+  font-size: var(--fs-h1);
+  font-weight: var(--fw-semibold);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+/* Часы в моноширинной сетке: минута сменяется на месте, не сдвигая
+   соседние знаки. */
+.homehead__clock {
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-600);
+}
+
+.homehead__title {
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* Свод выборки на Главной — тот же, что над списками в базах, только с
+   отбивкой от заголовка. */
+.home__summary {
+  margin: calc(-1 * var(--sp-2)) 0 var(--sp-3);
+}
+
+/* ─── ряд мониторингов ────────────────────────────────────────────────
+
+   Каждый день — узкой плиткой с полосой выполнения: слабый день виден в
+   ряду раньше, чем прочитано хоть одно число. */
+.homemons {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+}
+
+.homemon {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: var(--sp-3);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--r-md);
+  background: var(--surface-card);
+  font-family: var(--font-sans);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 120ms var(--ease-out-strong), background-color 120ms var(--ease-out-strong);
+}
+
+.homemon:hover {
+  border-color: var(--ink-300);
+  background: var(--ink-50);
+}
+
+.homemon:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+
+.homemon__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+
+.homemon__code {
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+.homemon__when {
+  font-variant-numeric: tabular-nums;
+}
+
+.homemon__value {
+  font-family: var(--font-display, var(--font-sans));
+  font-size: 22px;
+  font-weight: var(--fw-semibold);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+/* Слабый день — красным и числом, и полосой: в ряду одинаковых плиток это
+   единственное, что отличает его без чтения. */
+.homemon--low .homemon__value {
+  color: var(--danger-600);
+}
+
+.homemon__bar {
+  display: block;
+  height: 4px;
+  border-radius: var(--r-pill);
+  background: var(--surface-tile);
+  overflow: hidden;
+}
+
+.homemon__fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--r-pill);
+  background: var(--accent-500);
+}
+
+.homemon--low .homemon__fill {
+  background: var(--danger-600);
+}
+
+.homemon__facts {
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+
+/* Плитка свода с бедой внутри: число красное, подпись прежняя. */
+.dbstat--bad .dbstat__value {
+  color: var(--danger-600);
+}
+
 .homeshifts {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -18656,6 +18822,24 @@ button.subhdr__close {
 
 .livecard__stale-note:hover {
   background: color-mix(in srgb, var(--warning-600, #E5B44F) 28%, transparent);
+}
+
+/* Оговорка о чужом дне — та же плашка, но не кнопка: вернуться к часам
+   можно, к сегодняшнему дню — нельзя, его выбирают лентой мониторингов.
+   Обещать нажатие там, где ничего не произойдёт, хуже, чем не обещать. */
+.livecard__stale-note--day,
+.livecard__stale-note--day:hover {
+  cursor: default;
+  background: color-mix(in srgb, var(--warning-600, #E5B44F) 18%, transparent);
+}
+
+/* Плашка смены растёт по самой длинной своей строке, а строк в ней немного
+   и все короткие — кроме этой. Без потолка оговорка вытягивала плашку на
+   две трети экрана и наезжала на карту; с потолком она переносится по
+   словам, а ширину плашке по-прежнему задают часы и участки. */
+.livecard__stale-note--day .livecard__stale-body span {
+  max-width: 30ch;
+  white-space: normal;
 }
 
 .livecard__stale-note svg {

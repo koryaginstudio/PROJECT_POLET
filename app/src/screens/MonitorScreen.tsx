@@ -9,13 +9,10 @@ import {
   dayEnd,
   dayStart,
   hhmm,
-  LIVE_STATUS_ORDER,
   mergeDays,
-  placeOf,
   pluralWord,
   weekdayName
 } from '../data/derive.ts';
-import type { LiveEngineer } from '../data/derive.ts';
 import { loadDay, runCode, runDate, runDay } from '../data/load.ts';
 import type { RunId } from '../data/load.ts';
 import { dayLabel, takeDuty, useDuty, workDays } from '../data/duty.ts';
@@ -37,9 +34,13 @@ interface Props {
   /** Рабочие расчёты дней, за которыми смотрят. Их планы раздел догружает
       сам и кладёт на одну карту. Пусто — смотреть не за чем. */
   runs: RunId[];
-  /** Вид раздела: «обзор» — город во весь экран с полосой живых чисел,
-      «сводка» — те же числа списком, опаздывающие и состав смены. */
-  mode: string;
+  /** Пишутся ли отметки в журнал смены и в запись мониторинга. Гасится,
+      когда смотрят прошедший день: числа вчерашнего плана, записанные в
+      сегодняшнюю смену, — не отметка, а ложь о том, как шёл этот день. */
+  logging?: boolean;
+  /** День прошедшего мониторинга, если смотрят его, а не сегодняшний. ISO.
+      Пусто — открыт живой день. */
+  reviewDay?: string | null;
   view: DayView;
   live: string | null;
   onLive: (engineerId: string | null) => void;
@@ -88,10 +89,6 @@ const RIDES = [
   { key: 'bike', icon: 'bicycle', title: 'Велосипед' }
 ];
 
-const RANK: Record<string, number> = Object.fromEntries(
-  LIVE_STATUS_ORDER.map((key, index) => [key, index])
-);
-
 /* Мониторинг. Диспетчерская отвечает на «каким должен быть план» и живёт от
    среза, который двигает диспетчер; мониторинг отвечает на «что происходит
    сейчас» и читает то же время, что на часах, — сам, без ручки. Здесь нет
@@ -101,7 +98,8 @@ export function MonitorScreen({
   view,
   runId,
   runs,
-  mode,
+  logging = true,
+  reviewDay = null,
   live,
   onLive,
   pinned,
@@ -521,16 +519,15 @@ export function MonitorScreen({
      выгрузки, и без подписи «сейчас 14:20» на плане 17 августа читалось бы
      как сегодняшнее положение дел. */
   const planDay = runDate(runId).split('-').reverse().join('.');
+  /* Мониторинг не сегодняшнего дня. Раздел отвечает на «что происходит
+     сейчас», и всё на нём читают как настоящее положение дел; но смотреть
+     можно и прошедшую запись — её выбирают лентой мониторингов в подшапке.
+     Тогда на карте не работа за окном, а план того дня, разложенный на
+     нынешний час, и молчать об этом нельзя: по таким числам звонят в
+     бригаду. Оговорка стоит первой строкой плашки и не гаснет. */
+  const reviewStamp = reviewDay ? reviewDay.split('-').reverse().join('.') : null;
 
   const roster = useMemo(() => buildLiveRoster(shown, cut), [shown, cut]);
-  const sorted = useMemo(
-    () => [...roster].sort((a, b) => RANK[a.status] - RANK[b.status] || a.engineer.name.localeCompare(b.engineer.name)),
-    [roster]
-  );
-  const alerts = useMemo(
-    () => sorted.filter((row) => row.status === 'overdue'),
-    [sorted]
-  );
   const counts = useMemo(() => {
     const map = new Map<string, number>();
     for (const row of roster) map.set(row.status, (map.get(row.status) ?? 0) + 1);
@@ -591,10 +588,12 @@ export function MonitorScreen({
       late: counts.get('overdue') ?? 0,
       assigned: assignedShare
     };
-    markWatch(result);
-    /* Та же отметка идёт в запись запуска: смена копит календарный день,
-       запись — одно наблюдение с его районами. */
-    markMonitor(result, parts);
+    if (logging) {
+      markWatch(result);
+      /* Та же отметка идёт в запись запуска: смена копит календарный день,
+         запись — одно наблюдение с его районами. */
+      markMonitor(result, parts);
+    }
     /* Отметка идёт по своим часам — раз в двадцать секунд, — а не по всякой
        перемене чисел. На ускоренном ходу срез пробегает минуту за секунду, и
        привязка к числам смены писала бы журнал по четыре раза в секунду:
@@ -742,614 +741,479 @@ export function MonitorScreen({
     </span>
   );
 
-  /* Часы настенные и не замирают: срез плана прижат к границам смены, и это
-     сказано отдельной строкой, а не подменой времени — «21:00, обновлено
-     21:30» читалось как поломка.
-
-     Отведённая ручка говорит о себе прямо: показан выбранный час, а не
-     нынешний, и настоящее время стоит рядом. Подменять время молча нельзя —
-     по нему сверяются с бригадой. */
-  const clock = (
-    <span
-      className={'livenow' + (stale ? ' livenow--hand' : '')}
-      title={
-        stale
-          ? `Срез отведён рукой: показано положение плана на ${hhmm(wall)}. Настоящее время — ${hhmm(sync)}`
-          : 'Текущее время: раздел показывает состояние плана на эту минуту и обновляется сам'
-      }
-    >
-      <span className="livenow__dot" />
-      {hhmm(wall)}
-      <span className="livenow__stamp">
-        {planDay ? `план от ${planDay} · ` : ''}
-        {stale ? `срез рукой · часы ${hhmm(sync)}` : `обновлено ${hhmm(sync)}`}
-      </span>
-    </span>
-  );
-
-  const offShift =
-    beforeShift || afterShift ? (
-      <p className="clients__lede">
-        {beforeShift
-          ? `Смена по плану начинается в ${hhmm(dayStart())}: часы ещё вне рабочего окна, показано положение на её начало.`
-          : `Смена по плану закончилась в ${hhmm(dayEnd())}: часы уже вне рабочего окна, показано положение на её конец.`}
-      </p>
-    ) : null;
-
   /* Обзор — город во весь экран, как в диспетчерской, а числа полосой поверх
      него. Мониторинг отвечает на «как идёт работа», и ответ этот прежде
      всего зрительный: где люди сейчас, кто куда едет. Таблица под картой на
      этот вопрос отвечала последней — до неё доезжали колесом. */
-  if (mode === 'overview') {
-    return (
-      <div className="mapview enter">
-        <MapBoard
-          view={shown}
-          runId={runId}
-          routeKeyOf={routeKeyOf}
-          live={live}
-          onLive={onLive}
-          pinned={pinned}
-          onPin={onPin}
-          focus={focus}
-          onSelectOrder={(id) => {
-            onSelectOrder(id);
-            onShowRoute(id ? (shown.stopByOrder.get(id)?.engineerId ?? null) : null);
-          }}
-          onSelectEngineer={onSelectEngineer}
-          selectedOrder={selectedOrder}
-          /* Где люди сейчас: точка на каждом, пройденное в цвете, будущее
-             серым. В диспетчерской этого нет — там смотрят на день целиком,
-             и делить его на прошлое и будущее нечем. */
-          progress={spots}
-          fill
-          /* Перечень маршрутов у карты погашен: они разобраны по участкам
-             внутри плашки смены. */
-          routeList={false}
-          zoneOf={zoneOf}
-          zoneTint={zoneTint}
-          zoneSource={whole}
-          /* Щелчок по общему выезду раскрывает его участок в плашке:
-             спрашивают «кто отсюда выезжает», а перечень выезжающих лежит
-             там. Прозрачностью на карте он не заведует — это дело
-             наведения, и держит его сама карта. */
-          onSelectNest={(ids) => {
-            const owner = ids.length > 0 ? merged?.owner.get(ids[0]) : undefined;
-            const run = owner ? (owner.runId as RunId) : null;
-            setOpenGroup(run);
-            setPickGroup(null);
-            /* Щелчок по общему выезду оставляет на карте один его участок:
-               спрашивают «кто отсюда выезжает», а соседние районы к ответу
-               не относятся. Повторный щелчок по тому же гнезду возвращает
-               всех — иначе, разобравшись с одним участком, пришлось бы
-               искать его глаз в плашке, чтобы вернуть остальные. */
-            if (!run) return;
-            setHidden((was) => {
-              const alone = runs.length - was.size === 1 && !was.has(run);
-              return alone ? new Set() : new Set(runs.filter((id) => id !== run));
-            });
-          }}
-          /* Оговорка о том, что это за вид. Живые точки считаются по плану
-             расчёта, а не по приборам инженеров: в выгрузке заказчика
-             отслеживания нет и в контракте движка его тоже нет. Без этой
-             оговорки карта обещает то, чего не делает, — и первый же
-             вопрос «почему инженер на карте там, а по телефону в другом
-             месте» будет задан не ей, а нам. Молчать об этом нельзя,
-             прятать в подсказку — тоже: на карту смотрят, а не читают её. */
-          banner={
-            noteOff ? null : (
-              <span className="geonote">
-                <Icon name="info" size={12} />
-                <span className="geonote__body">
-                  <b>Опытный вид мониторинга.</b> Инженеры двигаются по плану расчёта:
-                  отслеживания с их приборов пока нет.
-                </span>
-                <button
-                  type="button"
-                  className="geonote__close"
-                  onClick={() => setNoteOff(true)}
-                  aria-label="Закрыть оговорку"
-                  title="Закрыть: вернётся при следующем заходе в мониторинг"
-                >
-                  <Icon name="x" size={11} />
-                </button>
-              </span>
-            )
-          }
-          busy={awaiting.length > 0}
-          busyNote={awaiting
-            .map((id) => dayLabel(id, runDate(id)).split(' · ')[0])
-            .join(', ')}
-          topRight={
-            <section
-              className={'livecard' + (stale ? ' livecard--stale' : '')}
-              aria-label="Смена сейчас"
-            >
-              {/* Пометка о неактуальном времени — первой строкой карточки.
-
-                  Мониторинг отвечает на «что происходит сейчас», и всё, что
-                  на нём написано, читают как настоящее положение дел. Стоит
-                  отвести срез — и каждое число на экране становится прошлым
-                  или будущим, оставаясь на вид живым. По таким числам звонят
-                  в бригаду и переставляют заявки, поэтому оговорка здесь не
-                  тонкая подпись при часах, а первое, что видно, и не гаснет,
-                  пока срез отведён.
-
-                  Кнопкой, а не надписью: сказав «вы смотрите не тот час»,
-                  честно тут же дать выход. */}
-              {stale && (
-                <button
-                  type="button"
-                  className="livecard__stale-note"
-                  onClick={() => setHand(null)}
-                  title="Вернуться к настоящему времени"
-                >
-                  <Icon name="warning" size={13} />
-                  <span className="livecard__stale-body">
-                    <b>Не текущее время</b>
-                    <span>
-                      Срез {hhmm(wall)} · часы {hhmm(sync)}
-                    </span>
-                  </span>
-                  <span className="livecard__stale-back">к часам</span>
-                </button>
-              )}
-              <span className="livecard__now">
-                <span className="livecard__dot" aria-hidden="true" />
-                <span className="livecard__time">{hhmm(wall)}</span>
-                {/* День рядом с часами: смотрят на живую смену, и «12:20»
-                    без дня недели одинаково подходит любому вторнику.
-                    Отведённая ручка занимает это же место словом «срез» и
-                    настоящим временем: иначе выбранный час читался бы как
-                    нынешний. */}
-                <span className="livecard__when">
-                  {stale ? `/ срез / часы ${hhmm(sync)}` : `/ ${weekdayName(now)} / ${dayDot(now)}`}
-                </span>
-              </span>
-              {handRow}
-
-              {/* Пробки — сразу под часами: это второе, что рассказывает о
-                  минуте за окном, и стоять оно должно рядом с первым, а не
-                  за перечнем участков. Нет строки — нет и сведений:
-                  источник не ответил, а выдумывать баллы нельзя, по ним
-                  судят о причинах опозданий. */}
-              {traffic && (
-                <span className="livecard__jamrow">
-                  <span className="livecard__label">
-                    <Icon name="traffic-light" size={13} />
-                    Пробки в Москве
-                  </span>
-                  <span className="livecard__value">
-                    <span className={'livecard__jam livecard__jam--' + traffic.tone} />
-                    {traffic.level} {pluralWord(traffic.level, 'балл', 'балла', 'баллов')}
-                  </span>
-                </span>
-              )}
-
-              {/* Город стоит гуще, чем рассчитывал план.
-
-                  Движок о пробках не знает вовсе: время в пути у него одна
-                  оценка на весь день, а запас между визитами — те самые
-                  минуты из рычага «время и запас». Значит в день, когда
-                  город встал, план обещает больше, чем сможет: маршруты
-                  посчитаны по спокойной дороге.
-
-                  Сказать об этом должен экран — больше некому. Порог
-                  договорной: до пяти баллов в Москве идёт обычный день, с
-                  шести начинается то, чего в плане нет. */}
-              {traffic && traffic.level >= JAM_ALERT && (
-                <button
-                  type="button"
-                  className="livecard__alarm"
-                  onClick={onRecalc}
-                  title="Собрать новый расчёт с большим запасом между визитами"
-                >
-                  <Icon name="warning" size={14} />
-                  <span className="livecard__alarm-body">
-                    <b>Пробки выше расчётных</b>
-                    <span>
-                      План считался по спокойной дороге. Стоит пересчитать день с бо́льшим
-                      запасом между визитами.
-                    </span>
-                  </span>
-                  <Icon name="chevron-right" size={13} />
-                </button>
-              )}
-
-              <span className="livecard__rows">
-                {/* Участок за участком: кто ведёт день, сколько людей в
-                    смене и — по нажатию — чьи маршруты сегодня на карте.
-                    Участков бывает три, и общая подпись «расчёт R013» на
-                    три района была бы неправдой: у каждого свой рабочий
-                    расчёт, и меняют их порознь. */}
-                {groups.map((group) => {
-                  const off = hidden.has(group.run);
-                  const open = openGroup === group.run && !off;
-                  const picking = pickGroup === group.run;
-                  const day = runsOfDay(group.run);
-                  const others = day ? day.runs.filter((id) => id !== group.run) : [];
-                  return (
-                    <span
-                      className={'livegroup' + (off ? ' livegroup--off' : '')}
-                      key={group.run}
-                    >
-                      <span
-                        className={'livegroup__head' + (open ? ' livegroup__head--open' : '')}
-                      >
-                        <button
-                          type="button"
-                          className={'livegroup__open' + (open ? ' livegroup__open--on' : '')}
-                          onClick={() => {
-                            setOpenGroup(open ? null : group.run);
-                            setPickGroup(null);
-                          }}
-                          disabled={off}
-                          aria-expanded={open}
-                          title={
-                            open
-                              ? `Свернуть маршруты: ${group.place}`
-                              : `Маршруты на сегодня: ${group.place}`
-                          }
-                        >
-                          <span className="livegroup__place">
-                            <Icon name={open ? 'chevron-down' : 'chevron-right'} size={12} />
-                            {/* Цвет участка — тот же, каким он закрашен на
-                                карте: точка связывает строку в плашке с
-                                пятном на городе. */}
-                            <i
-                              className="livegroup__tone"
-                              style={{ background: zoneTint(group.place) }}
-                            />
-                            {group.place}
-                          </span>
-                          <span className="livegroup__crew">
-                            {off ? 'скрыт' : `${group.crew} инж.`}
-                          </span>
-                        </button>
-
-                        {/* Номер расчёта — кнопка: день ведут одним планом,
-                            а посчитано их несколько, и менять план проще
-                            там же, где написано, каким ведут. */}
-                        <button
-                          type="button"
-                          className={'livegroup__run' + (picking ? ' livegroup__run--on' : '')}
-                          onClick={() => {
-                            setPickGroup(picking ? null : group.run);
-                            setOpenGroup(null);
-                          }}
-                          aria-expanded={picking}
-                          disabled={others.length === 0 && !picking}
-                          title={
-                            others.length === 0
-                              ? `${group.code} — единственный расчёт на этот день`
-                              : `Ведёт ${group.code} · сменить расчёт`
-                          }
-                        >
-                          {group.code}
-                          <Icon name="chevron-down" size={11} />
-                        </button>
-                        {/* Глаз снимает участок с карты и из чисел смены.
-                            Последний показанный снять нельзя: пустая карта
-                            в живом виде — не ответ ни на один вопрос. */}
-                        <button
-                          type="button"
-                          className={'livegroup__eye' + (off ? ' livegroup__eye--off' : '')}
-                          onClick={() =>
-                            setHidden((was) => {
-                              const next = new Set(was);
-                              if (next.has(group.run)) next.delete(group.run);
-                              else next.add(group.run);
-                              return next;
-                            })
-                          }
-                          aria-pressed={!off}
-                          disabled={!off && shownRuns.length <= 1}
-                          title={
-                            off
-                              ? `Вернуть ${group.place} на карту`
-                              : shownRuns.length <= 1
-                                ? 'Это последний участок на карте'
-                                : `Убрать ${group.place} с карты`
-                          }
-                        >
-                          {/* Зачёркнутого глаза в наборе знаков нет, и
-                              выдумывать его здесь незачем: погашенный глаз
-                              рядом со словом «скрыт» говорит то же самое. */}
-                          <Icon name="eye" size={13} />
-                        </button>
-                      </span>
-
-                      {/* Чем ещё можно вести этот день. Выбранный расчёт
-                          встаёт на работу сразу — карта под завесой
-                          перекладывается на его план. */}
-                      {picking && (
-                        <span className="livegroup__runs">
-                          {others.length === 0 ? (
-                            <span className="livegroup__empty">
-                              Других расчётов на этот день нет
-                            </span>
-                          ) : (
-                            others.map((id) => (
-                              <button
-                                key={id}
-                                type="button"
-                                className="livegroup__pick"
-                                onClick={() => {
-                                  takeDuty(id, day?.date ?? group.date);
-                                  setPickGroup(null);
-                                }}
-                                title={`Вести ${group.place} расчётом ${runCode(id)}`}
-                              >
-                                <span className="livegroup__pick-code">{runCode(id)}</span>
-                                <span className="livegroup__pick-note">взять в работу</span>
-                              </button>
-                            ))
-                          )}
-                        </span>
-                      )}
-
-                      {/* Маршруты участка. Наведение подсвечивает путь на
-                          карте, нажатие оставляет его одного — то же, что
-                          делал общий перечень, только теперь видно, чей
-                          маршрут. */}
-                      {open && (
-                        <span className="livegroup__list">
-                          {group.routes.length === 0 ? (
-                            <span className="livegroup__empty">
-                              Маршрутов нет: план на этот участок пуст.
-                            </span>
-                          ) : (
-                            group.routes.map((route) => (
-                              <button
-                                key={route.id}
-                                type="button"
-                                className={
-                                  'livegroup__item' +
-                                  (chosen === route.id ? ' livegroup__item--on' : '') +
-                                  (live === route.id && chosen !== route.id
-                                    ? ' livegroup__item--live'
-                                    : '')
-                                }
-                                onMouseEnter={() => onLive(route.id)}
-                                onMouseLeave={() => onLive(null)}
-                                onFocus={() => onLive(route.id)}
-                                onBlur={() => onLive(null)}
-                                onClick={() => onPin(pinned === route.id ? null : route.id)}
-                                data-route={route.id}
-                                aria-pressed={pinned === route.id}
-                                title={`${route.number} · ${route.name} · ${route.visits} заявок · загрузка ${Math.round(
-                                  route.occupancy * 100
-                                )}%`}
-                              >
-                                <span
-                                  className="livegroup__dot"
-                                  style={{ background: route.color }}
-                                />
-                                <Icon name={route.ride} size={12} />
-                                <span className="livegroup__num">{route.number}</span>
-                                <span className="livegroup__who">{surnameOf(route.name)}</span>
-                                <span className="livegroup__visits">{route.visits}</span>
-                              </button>
-                            ))
-                          )}
-                        </span>
-                      )}
-                    </span>
-                  );
-                })}
-
-              </span>
-
-              {/* Кто чем едет. Ряд стоит под участками: сперва «где чья
-                  земля», потом «на чём по ней ездят». Нажатая кнопка
-                  оставляет на карте только свой вид, нажатые вместе —
-                  несколько; отжать все значит вернуть весь город. */}
-              <span className="liverides">
-                {RIDES.map((ride) => {
-                  const on = rides.has(ride.key);
-                  const count = tally.get(ride.key) ?? 0;
-                  return (
-                    <button
-                      key={ride.key}
-                      type="button"
-                      className={'liveride' + (on ? ' liveride--on' : '')}
-                      onClick={() =>
-                        setRides((was) => {
-                          const next = new Set(was);
-                          if (next.has(ride.key)) next.delete(ride.key);
-                          else next.add(ride.key);
-                          return next;
-                        })
-                      }
-                      aria-pressed={on}
-                      disabled={count === 0 && !on}
-                      title={`${ride.title}: ${count} на смене`}
-                    >
-                      <Icon name={ride.icon} size={13} />
-                      <span className="liveride__count">{count}</span>
-                    </button>
-                  );
-                })}
-              </span>
-
-              {(beforeShift || afterShift) && (
-                <span className="livecard__off">
-                  {beforeShift
-                    ? `Смена по плану с ${hhmm(dayStart())} — показано её начало.`
-                    : `Смена по плану до ${hhmm(dayEnd())} — показан её конец.`}
-                </span>
-              )}
-
-              {/* Отметка обмена — самым тихим, что есть на плашке: она не
-                  сообщает ничего нового, она свидетельствует, что число
-                  выше живое. «Синхронизация», а не «обновлено»: обновляется
-                  вид, а сверяются с источником — и сказано про второе. */}
-              <span className="livecard__foot">
-                <span className="livecard__stamp">синхронизация: {hhmm(sync)}</span>
-              </span>
-            </section>
-          }
-          /* Числа хода работы — полосой внизу, на том же месте, где в
-             диспетчерской стоят итоги расчёта: там их и ищут глазами. Наверху
-             справа — состояние смены, здесь — её счёт.
-
-             Выбрали маршрут или заявку — на том же месте встаёт сводка о
-             выбранном, ровно как в диспетчерской. Прежде мониторинг на
-             щелчок отвечал одной подсветкой: линия становилась ярче, а что
-             это за маршрут и чья это заявка, экран не говорил. */
-          aside={
-            <div className={'mapdrag' + (picked ? ' mapdrag--pick' : '')}>
-              {picked ? (
-                <MapPick
-                  view={shown}
-                  runId={runId}
-                  routeKeyOf={routeKeyOf}
-                  pinned={pinned}
-                  selectedOrder={selectedOrder}
-                  nest={null}
-                  onPickRoute={(id) => {
-                    onLive(null);
-                    onPin(id);
-                  }}
-                  onHoverRoute={onLive}
-                  onClose={() => {
-                    onSelectOrder(null);
-                    onPin(null);
-                  }}
-                  /* Разбор записи — поверх карты. Чей это расчёт, знает
-                     общая карта: у заявки спрашиваем её инженера, у
-                     инженера — день его участка. */
-                  onOpenOrder={(id) => {
-                    const who = shown.stopByOrder.get(id)?.engineerId;
-                    const owner = who ? merged?.owner.get(who) : undefined;
-                    onOpenOrder(owner?.runId ?? runId, id);
-                  }}
-                  onOpenEngineer={(id) => {
-                    const owner = merged?.owner.get(id);
-                    onOpenEngineer(runDay(owner?.runId ?? runId), owner?.engineerId ?? id);
-                  }}
-                />
-              ) : (
-                <MonitorTiles tiles={tiles} />
-              )}
-            </div>
-          }
-        />
-      </div>
-    );
-  }
-
   return (
-    <div className="dash enter">
-      <section className="panel">
-        <div className="dash__section-head">
-          <h2 className="dash__section-title">Ход работы</h2>
-          {clock}
-        </div>
-
-        {/* Та же оговорка, что и на карте: числа под нею сняты не с часов. */}
-        {stale && (
-          <p className="stalenote">
-            <Icon name="warning" size={14} />
-            <span>
-              <b>Не текущее время.</b> Числа ниже сняты со среза {hhmm(wall)}, а на часах{' '}
-              {hhmm(sync)}: это положение плана на выбранную минуту, а не то, что происходит
-              сейчас.
-            </span>
-            <button type="button" className="stalenote__back" onClick={() => setHand(null)}>
-              К часам
-            </button>
-          </p>
-        )}
-
-        {handRow}
-
-        {offShift}
-
-        <div className="dbstats">
-          <div className="dbstat">
-            <span className="dbstat__value">{counts.get('working') ?? 0}</span>
-            <span className="dbstat__label">На объекте</span>
-          </div>
-          <div className="dbstat">
-            <span className="dbstat__value">{counts.get('enroute') ?? 0}</span>
-            <span className="dbstat__label">В пути</span>
-          </div>
-          <div className="dbstat">
-            <span className="dbstat__value">{counts.get('overdue') ?? 0}</span>
-            <span className="dbstat__label">Опаздывают</span>
-          </div>
-          <div className="dbstat">
-            <span className="dbstat__value">{counts.get('done') ?? 0}</span>
-            <span className="dbstat__label">Освободились</span>
-          </div>
-          <div className="dbstat">
-            <span className="dbstat__value">{(counts.get('before') ?? 0) + (counts.get('no-route') ?? 0)}</span>
-            <span className="dbstat__label">Ещё не в работе</span>
-          </div>
-        </div>
-      </section>
-
-      {alerts.length > 0 && (
-        <section className="panel">
-          <div className="dash__section-head">
-            <h2 className="dash__section-title">Требуют внимания</h2>
-            <span className="dash__section-note">{alerts.length} опаздывают прямо сейчас</span>
-          </div>
-          <div className="alerts">
-            {alerts.map((row) => (
+    <div className="mapview enter">
+      <MapBoard
+        view={shown}
+        runId={runId}
+        routeKeyOf={routeKeyOf}
+        live={live}
+        onLive={onLive}
+        pinned={pinned}
+        onPin={onPin}
+        focus={focus}
+        onSelectOrder={(id) => {
+          onSelectOrder(id);
+          onShowRoute(id ? (shown.stopByOrder.get(id)?.engineerId ?? null) : null);
+        }}
+        onSelectEngineer={onSelectEngineer}
+        selectedOrder={selectedOrder}
+        /* Где люди сейчас: точка на каждом, пройденное в цвете, будущее
+           серым. В диспетчерской этого нет — там смотрят на день целиком,
+           и делить его на прошлое и будущее нечем. */
+        progress={spots}
+        fill
+        /* Перечень маршрутов у карты погашен: они разобраны по участкам
+           внутри плашки смены. */
+        routeList={false}
+        zoneOf={zoneOf}
+        zoneTint={zoneTint}
+        zoneSource={whole}
+        /* Щелчок по общему выезду раскрывает его участок в плашке:
+           спрашивают «кто отсюда выезжает», а перечень выезжающих лежит
+           там. Прозрачностью на карте он не заведует — это дело
+           наведения, и держит его сама карта. */
+        onSelectNest={(ids) => {
+          const owner = ids.length > 0 ? merged?.owner.get(ids[0]) : undefined;
+          const run = owner ? (owner.runId as RunId) : null;
+          setOpenGroup(run);
+          setPickGroup(null);
+          /* Щелчок по общему выезду оставляет на карте один его участок:
+             спрашивают «кто отсюда выезжает», а соседние районы к ответу
+             не относятся. Повторный щелчок по тому же гнезду возвращает
+             всех — иначе, разобравшись с одним участком, пришлось бы
+             искать его глаз в плашке, чтобы вернуть остальные. */
+          if (!run) return;
+          setHidden((was) => {
+            const alone = runs.length - was.size === 1 && !was.has(run);
+            return alone ? new Set() : new Set(runs.filter((id) => id !== run));
+          });
+        }}
+        /* Оговорка о том, что это за вид. Живые точки считаются по плану
+           расчёта, а не по приборам инженеров: в выгрузке заказчика
+           отслеживания нет и в контракте движка его тоже нет. Без этой
+           оговорки карта обещает то, чего не делает, — и первый же
+           вопрос «почему инженер на карте там, а по телефону в другом
+           месте» будет задан не ей, а нам. Молчать об этом нельзя,
+           прятать в подсказку — тоже: на карту смотрят, а не читают её. */
+        banner={
+          noteOff ? null : (
+            <span className="geonote">
+              <Icon name="info" size={12} />
+              <span className="geonote__body">
+                <b>Опытный вид мониторинга.</b> Инженеры двигаются по плану расчёта:
+                отслеживания с их приборов пока нет.
+              </span>
               <button
-                key={row.engineer.id}
                 type="button"
-                className="alert alert--danger"
-                onClick={() => row.orderId && onSelectOrder(row.orderId)}
-                onMouseEnter={() => onLive(row.engineer.id)}
-                onMouseLeave={() => onLive(null)}
+                className="geonote__close"
+                onClick={() => setNoteOff(true)}
+                aria-label="Закрыть оговорку"
+                title="Закрыть: вернётся при следующем заходе в мониторинг"
               >
-                <Icon name="alert-triangle" size={16} />
-                <span className="alert__body">
-                  <span className="alert__title">{row.engineer.name}</span>
-                  <span className="alert__note">
-                    Опаздывает на {row.lateMinutes} мин
-                    {row.orderId ? ` · заявка ${row.orderId}` : ''}
+                <Icon name="x" size={11} />
+              </button>
+            </span>
+          )
+        }
+        busy={awaiting.length > 0}
+        busyNote={awaiting
+          .map((id) => dayLabel(id, runDate(id)).split(' · ')[0])
+          .join(', ')}
+        topRight={
+          <section
+            className={'livecard' + (stale ? ' livecard--stale' : '')}
+            aria-label="Смена сейчас"
+          >
+            {/* Пометка о неактуальном времени — первой строкой карточки.
+
+                Мониторинг отвечает на «что происходит сейчас», и всё, что
+                на нём написано, читают как настоящее положение дел. Стоит
+                отвести срез — и каждое число на экране становится прошлым
+                или будущим, оставаясь на вид живым. По таким числам звонят
+                в бригаду и переставляют заявки, поэтому оговорка здесь не
+                тонкая подпись при часах, а первое, что видно, и не гаснет,
+                пока срез отведён.
+
+                Кнопкой, а не надписью: сказав «вы смотрите не тот час»,
+                честно тут же дать выход. */}
+            {stale && (
+              <button
+                type="button"
+                className="livecard__stale-note"
+                onClick={() => setHand(null)}
+                title="Вернуться к настоящему времени"
+              >
+                <Icon name="warning" size={13} />
+                <span className="livecard__stale-body">
+                  <b>Не текущее время</b>
+                  <span>
+                    Срез {hhmm(wall)} · часы {hhmm(sync)}
                   </span>
                 </span>
-                <Icon name="chevron-right" size={14} />
+                <span className="livecard__stale-back">к часам</span>
               </button>
-            ))}
-          </div>
-        </section>
-      )}
+            )}
+            {/* Не сегодняшний день — та же по силе оговорка, что и об
+                отведённом срезе, и стоит она там же: до часов, до чисел,
+                до карты. */}
+            {reviewStamp && (
+              <span className="livecard__stale-note livecard__stale-note--day">
+                <Icon name="warning" size={13} />
+                <span className="livecard__stale-body">
+                  <b>Неактуальный мониторинг</b>
+                  <span>
+                    Запись за {reviewStamp} · план от {planDay}. Наблюдение за сегодняшним днём
+                    приостановлено.
+                  </span>
+                </span>
+              </span>
+            )}
+            <span className="livecard__now">
+              <span className="livecard__dot" aria-hidden="true" />
+              <span className="livecard__time">{hhmm(wall)}</span>
+              {/* День рядом с часами: смотрят на живую смену, и «12:20»
+                  без дня недели одинаково подходит любому вторнику.
+                  Отведённая ручка занимает это же место словом «срез» и
+                  настоящим временем: иначе выбранный час читался бы как
+                  нынешний. */}
+              <span className="livecard__when">
+                {stale ? `/ срез / часы ${hhmm(sync)}` : `/ ${weekdayName(now)} / ${dayDot(now)}`}
+              </span>
+            </span>
+            {handRow}
 
-      <section className="panel">
-        <div className="dash__section-head">
-          <h2 className="dash__section-title">Инженеры на смене</h2>
-        </div>
-        {/* Пустой состав — словами: в расчёте без инженеров пустой список
-            читался бы как несработавший экран. */}
-        {sorted.length === 0 ? (
-          <p className="clients__lede">В этом расчёте на смене никого нет: план посчитан без инженеров.</p>
-        ) : (
-          <div className="roster">
-            {sorted.map((row) => (
-              <RosterRow
-                key={row.engineer.id}
-                row={row}
+            {/* Пробки — сразу под часами: это второе, что рассказывает о
+                минуте за окном, и стоять оно должно рядом с первым, а не
+                за перечнем участков. Нет строки — нет и сведений:
+                источник не ответил, а выдумывать баллы нельзя, по ним
+                судят о причинах опозданий. */}
+            {traffic && (
+              <span className="livecard__jamrow">
+                <span className="livecard__label">
+                  <Icon name="traffic-light" size={13} />
+                  Пробки в Москве
+                </span>
+                <span className="livecard__value">
+                  <span className={'livecard__jam livecard__jam--' + traffic.tone} />
+                  {traffic.level} {pluralWord(traffic.level, 'балл', 'балла', 'баллов')}
+                </span>
+              </span>
+            )}
+
+            {/* Город стоит гуще, чем рассчитывал план.
+
+                Движок о пробках не знает вовсе: время в пути у него одна
+                оценка на весь день, а запас между визитами — те самые
+                минуты из рычага «время и запас». Значит в день, когда
+                город встал, план обещает больше, чем сможет: маршруты
+                посчитаны по спокойной дороге.
+
+                Сказать об этом должен экран — больше некому. Порог
+                договорной: до пяти баллов в Москве идёт обычный день, с
+                шести начинается то, чего в плане нет. */}
+            {traffic && traffic.level >= JAM_ALERT && (
+              <button
+                type="button"
+                className="livecard__alarm"
+                onClick={onRecalc}
+                title="Собрать новый расчёт с большим запасом между визитами"
+              >
+                <Icon name="warning" size={14} />
+                <span className="livecard__alarm-body">
+                  <b>Пробки выше расчётных</b>
+                  <span>
+                    План считался по спокойной дороге. Стоит пересчитать день с бо́льшим
+                    запасом между визитами.
+                  </span>
+                </span>
+                <Icon name="chevron-right" size={13} />
+              </button>
+            )}
+
+            <span className="livecard__rows">
+              {/* Участок за участком: кто ведёт день, сколько людей в
+                  смене и — по нажатию — чьи маршруты сегодня на карте.
+                  Участков бывает три, и общая подпись «расчёт R013» на
+                  три района была бы неправдой: у каждого свой рабочий
+                  расчёт, и меняют их порознь. */}
+              {groups.map((group) => {
+                const off = hidden.has(group.run);
+                const open = openGroup === group.run && !off;
+                const picking = pickGroup === group.run;
+                const day = runsOfDay(group.run);
+                const others = day ? day.runs.filter((id) => id !== group.run) : [];
+                return (
+                  <span
+                    className={'livegroup' + (off ? ' livegroup--off' : '')}
+                    key={group.run}
+                  >
+                    <span
+                      className={'livegroup__head' + (open ? ' livegroup__head--open' : '')}
+                    >
+                      <button
+                        type="button"
+                        className={'livegroup__open' + (open ? ' livegroup__open--on' : '')}
+                        onClick={() => {
+                          setOpenGroup(open ? null : group.run);
+                          setPickGroup(null);
+                        }}
+                        disabled={off}
+                        aria-expanded={open}
+                        title={
+                          open
+                            ? `Свернуть маршруты: ${group.place}`
+                            : `Маршруты на сегодня: ${group.place}`
+                        }
+                      >
+                        <span className="livegroup__place">
+                          <Icon name={open ? 'chevron-down' : 'chevron-right'} size={12} />
+                          {/* Цвет участка — тот же, каким он закрашен на
+                              карте: точка связывает строку в плашке с
+                              пятном на городе. */}
+                          <i
+                            className="livegroup__tone"
+                            style={{ background: zoneTint(group.place) }}
+                          />
+                          {group.place}
+                        </span>
+                        <span className="livegroup__crew">
+                          {off ? 'скрыт' : `${group.crew} инж.`}
+                        </span>
+                      </button>
+
+                      {/* Номер расчёта — кнопка: день ведут одним планом,
+                          а посчитано их несколько, и менять план проще
+                          там же, где написано, каким ведут. */}
+                      <button
+                        type="button"
+                        className={'livegroup__run' + (picking ? ' livegroup__run--on' : '')}
+                        onClick={() => {
+                          setPickGroup(picking ? null : group.run);
+                          setOpenGroup(null);
+                        }}
+                        aria-expanded={picking}
+                        disabled={others.length === 0 && !picking}
+                        title={
+                          others.length === 0
+                            ? `${group.code} — единственный расчёт на этот день`
+                            : `Ведёт ${group.code} · сменить расчёт`
+                        }
+                      >
+                        {group.code}
+                        <Icon name="chevron-down" size={11} />
+                      </button>
+                      {/* Глаз снимает участок с карты и из чисел смены.
+                          Последний показанный снять нельзя: пустая карта
+                          в живом виде — не ответ ни на один вопрос. */}
+                      <button
+                        type="button"
+                        className={'livegroup__eye' + (off ? ' livegroup__eye--off' : '')}
+                        onClick={() =>
+                          setHidden((was) => {
+                            const next = new Set(was);
+                            if (next.has(group.run)) next.delete(group.run);
+                            else next.add(group.run);
+                            return next;
+                          })
+                        }
+                        aria-pressed={!off}
+                        disabled={!off && shownRuns.length <= 1}
+                        title={
+                          off
+                            ? `Вернуть ${group.place} на карту`
+                            : shownRuns.length <= 1
+                              ? 'Это последний участок на карте'
+                              : `Убрать ${group.place} с карты`
+                        }
+                      >
+                        {/* Зачёркнутого глаза в наборе знаков нет, и
+                            выдумывать его здесь незачем: погашенный глаз
+                            рядом со словом «скрыт» говорит то же самое. */}
+                        <Icon name="eye" size={13} />
+                      </button>
+                    </span>
+
+                    {/* Чем ещё можно вести этот день. Выбранный расчёт
+                        встаёт на работу сразу — карта под завесой
+                        перекладывается на его план. */}
+                    {picking && (
+                      <span className="livegroup__runs">
+                        {others.length === 0 ? (
+                          <span className="livegroup__empty">
+                            Других расчётов на этот день нет
+                          </span>
+                        ) : (
+                          others.map((id) => (
+                            <button
+                              key={id}
+                              type="button"
+                              className="livegroup__pick"
+                              onClick={() => {
+                                takeDuty(id, day?.date ?? group.date);
+                                setPickGroup(null);
+                              }}
+                              title={`Вести ${group.place} расчётом ${runCode(id)}`}
+                            >
+                              <span className="livegroup__pick-code">{runCode(id)}</span>
+                              <span className="livegroup__pick-note">взять в работу</span>
+                            </button>
+                          ))
+                        )}
+                      </span>
+                    )}
+
+                    {/* Маршруты участка. Наведение подсвечивает путь на
+                        карте, нажатие оставляет его одного — то же, что
+                        делал общий перечень, только теперь видно, чей
+                        маршрут. */}
+                    {open && (
+                      <span className="livegroup__list">
+                        {group.routes.length === 0 ? (
+                          <span className="livegroup__empty">
+                            Маршрутов нет: план на этот участок пуст.
+                          </span>
+                        ) : (
+                          group.routes.map((route) => (
+                            <button
+                              key={route.id}
+                              type="button"
+                              className={
+                                'livegroup__item' +
+                                (chosen === route.id ? ' livegroup__item--on' : '') +
+                                (live === route.id && chosen !== route.id
+                                  ? ' livegroup__item--live'
+                                  : '')
+                              }
+                              onMouseEnter={() => onLive(route.id)}
+                              onMouseLeave={() => onLive(null)}
+                              onFocus={() => onLive(route.id)}
+                              onBlur={() => onLive(null)}
+                              onClick={() => onPin(pinned === route.id ? null : route.id)}
+                              data-route={route.id}
+                              aria-pressed={pinned === route.id}
+                              title={`${route.number} · ${route.name} · ${route.visits} заявок · загрузка ${Math.round(
+                                route.occupancy * 100
+                              )}%`}
+                            >
+                              <span
+                                className="livegroup__dot"
+                                style={{ background: route.color }}
+                              />
+                              <Icon name={route.ride} size={12} />
+                              <span className="livegroup__num">{route.number}</span>
+                              <span className="livegroup__who">{surnameOf(route.name)}</span>
+                              <span className="livegroup__visits">{route.visits}</span>
+                            </button>
+                          ))
+                        )}
+                      </span>
+                    )}
+                  </span>
+                );
+              })}
+
+            </span>
+
+            {/* Кто чем едет. Ряд стоит под участками: сперва «где чья
+                земля», потом «на чём по ней ездят». Нажатая кнопка
+                оставляет на карте только свой вид, нажатые вместе —
+                несколько; отжать все значит вернуть весь город. */}
+            <span className="liverides">
+              {RIDES.map((ride) => {
+                const on = rides.has(ride.key);
+                const count = tally.get(ride.key) ?? 0;
+                return (
+                  <button
+                    key={ride.key}
+                    type="button"
+                    className={'liveride' + (on ? ' liveride--on' : '')}
+                    onClick={() =>
+                      setRides((was) => {
+                        const next = new Set(was);
+                        if (next.has(ride.key)) next.delete(ride.key);
+                        else next.add(ride.key);
+                        return next;
+                      })
+                    }
+                    aria-pressed={on}
+                    disabled={count === 0 && !on}
+                    title={`${ride.title}: ${count} на смене`}
+                  >
+                    <Icon name={ride.icon} size={13} />
+                    <span className="liveride__count">{count}</span>
+                  </button>
+                );
+              })}
+            </span>
+
+            {(beforeShift || afterShift) && (
+              <span className="livecard__off">
+                {beforeShift
+                  ? `Смена по плану с ${hhmm(dayStart())} — показано её начало.`
+                  : `Смена по плану до ${hhmm(dayEnd())} — показан её конец.`}
+              </span>
+            )}
+
+            {/* Отметка обмена — самым тихим, что есть на плашке: она не
+                сообщает ничего нового, она свидетельствует, что число
+                выше живое. «Синхронизация», а не «обновлено»: обновляется
+                вид, а сверяются с источником — и сказано про второе. */}
+            <span className="livecard__foot">
+              <span className="livecard__stamp">синхронизация: {hhmm(sync)}</span>
+            </span>
+          </section>
+        }
+        /* Числа хода работы — полосой внизу, на том же месте, где в
+           диспетчерской стоят итоги расчёта: там их и ищут глазами. Наверху
+           справа — состояние смены, здесь — её счёт.
+
+           Выбрали маршрут или заявку — на том же месте встаёт сводка о
+           выбранном, ровно как в диспетчерской. Прежде мониторинг на
+           щелчок отвечал одной подсветкой: линия становилась ярче, а что
+           это за маршрут и чья это заявка, экран не говорил. */
+        aside={
+          <div className={'mapdrag' + (picked ? ' mapdrag--pick' : '')}>
+            {picked ? (
+              <MapPick
                 view={shown}
-                active={live === row.engineer.id || pinned === row.engineer.id}
-                onLive={onLive}
-                onPin={onPin}
-                onSelectEngineer={onSelectEngineer}
+                runId={runId}
+                routeKeyOf={routeKeyOf}
+                pinned={pinned}
+                selectedOrder={selectedOrder}
+                nest={null}
+                onPickRoute={(id) => {
+                  onLive(null);
+                  onPin(id);
+                }}
+                onHoverRoute={onLive}
+                onClose={() => {
+                  onSelectOrder(null);
+                  onPin(null);
+                }}
+                /* Разбор записи — поверх карты. Чей это расчёт, знает
+                   общая карта: у заявки спрашиваем её инженера, у
+                   инженера — день его участка. */
+                onOpenOrder={(id) => {
+                  const who = shown.stopByOrder.get(id)?.engineerId;
+                  const owner = who ? merged?.owner.get(who) : undefined;
+                  onOpenOrder(owner?.runId ?? runId, id);
+                }}
+                onOpenEngineer={(id) => {
+                  const owner = merged?.owner.get(id);
+                  onOpenEngineer(runDay(owner?.runId ?? runId), owner?.engineerId ?? id);
+                }}
               />
-            ))}
+            ) : (
+              <MonitorTiles tiles={tiles} />
+            )}
           </div>
-        )}
-      </section>
-
-      {/* Карты здесь нет: город живёт в «Обзоре», во весь экран. Вторая
-          карта под списком повторяла бы ту же работу вполовину меньшего
-          размера, и смотреть на движение людей было бы неудобно в обоих
-          местах сразу. */}
+        }
+      />
     </div>
   );
 }
@@ -1380,51 +1244,5 @@ function MonitorTiles({
         ))}
       </div>
     </section>
-  );
-}
-
-function RosterRow({
-  row,
-  view,
-  active,
-  onLive,
-  onPin,
-  onSelectEngineer
-}: {
-  row: LiveEngineer;
-  view: DayView;
-  active: boolean;
-  onLive: (id: string | null) => void;
-  onPin: (id: string | null) => void;
-  onSelectEngineer: (id: string) => void;
-}) {
-  /* Куда едет и что делает — адресом и видом работ, а не одним номером:
-     «Едет к R0193» ничего не говорит тому, кто не держит номера в голове.
-     Номер остаётся в подсказке. */
-  const target = row.orderId ? view.orderById.get(row.orderId) : undefined;
-  const where = target ? `${placeOf(target)} · ${target.work_title}` : row.orderId ?? '';
-  return (
-    <button
-      type="button"
-      className={'roster__row' + (active ? ' roster__row--active' : '')}
-      onMouseEnter={() => onLive(row.engineer.id)}
-      onMouseLeave={() => onLive(null)}
-      onClick={() => {
-        onPin(row.engineer.id);
-        onSelectEngineer(row.engineer.id);
-      }}
-    >
-      <span className="roster__name">{row.engineer.name}</span>
-      <span className={'pill pill--' + row.tone}>{row.label}</span>
-      <span className="roster__note" title={row.orderId ? `Заявка ${row.orderId}` : undefined}>
-        {row.status === 'overdue' && `Опаздывает на ${row.lateMinutes} мин${where ? ` · ${where}` : ''}`}
-        {row.status === 'working' && row.orderId && `Работает: ${where}`}
-        {row.status === 'enroute' && row.orderId && `Едет: ${where}`}
-        {(row.status === 'done' || row.status === 'before' || row.status === 'no-route') && '—'}
-      </span>
-      <span className="roster__visits">
-        {row.visitsDone} из {row.visitsTotal}
-      </span>
-    </button>
   );
 }
