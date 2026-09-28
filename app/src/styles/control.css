@@ -238,3 +238,33 @@
 .manual__go { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .manual__note { font-size: var(--fs-caption); color: var(--text-secondary); }
 .manual__err { margin: 0; font-size: var(--fs-body-s); color: var(--danger-600, #b3261e); }
+
+/* Шаги ручного воздействия: что случилось → с кем → когда.
+
+   Нумерованный список, а не форма: диспетчеру нужен разговор, а не бланк.
+   Следующий шаг появляется, когда отвечен предыдущий, — иначе экран
+   спрашивает «с кем», не зная ещё «что». */
+.steps { display: flex; flex-direction: column; gap: 16px; margin: 0; padding: 0; list-style: none; }
+.step { display: flex; gap: 12px; align-items: flex-start; }
+.step__n {
+  flex: 0 0 24px; height: 24px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--ink-100); color: var(--text-secondary);
+  font-size: var(--fs-caption); font-weight: var(--fw-semibold);
+}
+.step--done .step__n { background: var(--ink-1000); color: var(--white); }
+.step__body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.step__title { font-size: var(--fs-body-s); font-weight: var(--fw-semibold); color: var(--text-primary); }
+.step__choices { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* Выбор события — крупные кнопки со словами, а не строка выпадающего
+   списка: их восемь, и все восемь должны быть видны сразу. */
+.choice {
+  padding: 8px 14px; border: 1px solid var(--border-subtle); border-radius: var(--r-control);
+  background: var(--white); color: var(--text-primary);
+  font-family: var(--font-sans); font-size: var(--fs-body-s); cursor: pointer;
+  transition: var(--t-control);
+}
+.choice:hover { border-color: var(--ink-300); }
+.choice--on { background: var(--ink-1000); color: var(--white); border-color: var(--ink-1000); }
+.manual__ok { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-caption); color: var(--text-secondary); }

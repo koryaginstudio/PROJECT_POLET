@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '../ds/components/core/Button.jsx';
 import { Icon } from '../ds/components/core/Icon.jsx';
 import { Input } from '../ds/components/forms/Input.jsx';
@@ -61,7 +61,8 @@ export interface ManualProps {
   busy: boolean;
   /** Чем кончилась неудачная запись: фраза движка как есть. */
   failed: { order: string; message: string; detail: string } | null;
-  onEvent: (event: JournalEvent) => void;
+  /** Записать событие на указанную минуту от полуночи. */
+  onEvent: (event: JournalEvent, at: number) => void;
   /** Заявка словами диспетчера — адрес, а не код. */
   orderLabel?: (id: string) => string;
 }
@@ -77,19 +78,34 @@ const чистаяПричина = (detail: string) =>
     .trim();
 
 export function ManualEvent({ engineers, orders, cut, busy, failed, onEvent, orderLabel }: ManualProps) {
-  const [kind, setKind] = useState<Kind>('engineer_delayed');
+  /* Начинаем с невыбранного: первый шаг — это вопрос, а не готовый
+     ответ. Подставленное заранее событие читается как «уже решено», и
+     человек жмёт «Записать», не заметив, что записывает не то. */
+  const [kind, setKind] = useState<Kind | ''>('');
   const [engineer, setEngineer] = useState('');
   const [order, setOrder] = useState('');
   const [minutes, setMinutes] = useState(40);
   const [reason, setReason] = useState<Reason>('no_show');
+  /* Время события своё, а не только момент ползунка: диспетчер узнаёт о
+     случившемся позже, чем оно случилось, и «в 9:40, а не сейчас» — это
+     обычное дело. Ползунок остаётся значением по умолчанию. */
+  const [at, setAt] = useState(cut);
+  const [записано, setЗаписано] = useState<string | null>(null);
 
-  const выбрано = СОБЫТИЯ.find((one) => one.value === kind)!;
-  const проЗаявку = выбрано.про === 'заявку';
+  /* Ползунок подвинули — время события идёт за ним, пока его не трогали
+     руками. Тронутое не перебиваем: иначе введённое пропадало бы. */
+  const [своёВремя, setСвоёВремя] = useState(false);
+  useEffect(() => {
+    if (!своёВремя) setAt(cut);
+  }, [cut, своёВремя]);
+
+  const выбрано = СОБЫТИЯ.find((one) => one.value === kind);
+  const проЗаявку = выбрано?.про === 'заявку';
   /* «Передать другому» — единственное, где нужны оба: и заявка, и кому. */
-  const нуженИнженер = !проЗаявку || kind === 'assigned';
+  const нуженИнженер = Boolean(выбрано) && (!проЗаявку || kind === 'assigned');
 
   const мало =
-    (проЗаявку && !order) || (нуженИнженер && !engineer) ||
+    !выбрано || (проЗаявку && !order) || (нуженИнженер && !engineer) ||
     (kind === 'engineer_delayed' && !(minutes > 0));
 
   const подпись = (one: Order) =>
@@ -97,77 +113,136 @@ export function ManualEvent({ engineers, orders, cut, busy, failed, onEvent, ord
 
   const записать = () => {
     if (мало) return;
-    if (kind === 'assigned') onEvent({ kind, order, engineer });
-    else if (kind === 'failed') onEvent({ kind, order, reason });
-    else if (проЗаявку) onEvent({ kind: kind as 'dispatched' | 'en_route' | 'done', order });
-    else if (kind === 'engineer_delayed') onEvent({ kind, engineer, minutes });
-    else onEvent({ kind: kind as 'engineer_out' | 'engineer_back', engineer });
+    setЗаписано(null);
+    if (kind === 'assigned') onEvent({ kind, order, engineer }, at);
+    else if (kind === 'failed') onEvent({ kind, order, reason }, at);
+    else if (проЗаявку) onEvent({ kind: kind as 'dispatched' | 'en_route' | 'done', order }, at);
+    else if (kind === 'engineer_delayed') onEvent({ kind, engineer, minutes }, at);
+    else onEvent({ kind: kind as 'engineer_out' | 'engineer_back', engineer }, at);
+    setЗаписано(`${выбрано!.label.toLowerCase()} — записано на ${hhmm(at)}`);
   };
+
+  /* Шаги открываются по мере ответов: пока не сказано, что случилось,
+     спрашивать «с кем» не о чем. Сразу все поля на экране — это форма, а
+     диспетчеру нужен разговор: случилось вот это, вот с кем, вот когда. */
+  const шаг2 = Boolean(выбрано);
+  const шаг3 = шаг2 && !мало;
+
+  const Шаг = ({ n, title, done, children }: {
+    n: number; title: string; done?: boolean; children: React.ReactNode;
+  }) => (
+    <li className={'step' + (done ? ' step--done' : '')}>
+      <span className="step__n">{done ? <Icon name="check" size={13} /> : n}</span>
+      <div className="step__body">
+        <span className="step__title">{title}</span>
+        {children}
+      </div>
+    </li>
+  );
 
   return (
     <div className="manual">
-      <div className="manual__row">
-        <Select
-          className="manual__field"
-          id="manual-kind"
-          label="Что случилось"
-          value={kind}
-          onChange={(e: { target: { value: string } }) => setKind(e.target.value as Kind)}
-          options={СОБЫТИЯ.map((one) => ({ value: one.value, label: one.label }))}
-        />
+      <ol className="steps">
+        <Шаг n={1} title="Что случилось" done={шаг2}>
+          <div className="step__choices">
+            {СОБЫТИЯ.map((one) => (
+              <button
+                key={one.value}
+                type="button"
+                className={'choice' + (kind === one.value ? ' choice--on' : '')}
+                onClick={() => {
+                  setKind(one.value);
+                  /* Выбор сбрасывается: заявка, выбранная для «сорвалось»,
+                     к «инженер выбыл» отношения не имеет, и тянуть её
+                     дальше значило бы записать не то. */
+                  setOrder('');
+                  setEngineer('');
+                }}
+              >
+                {one.label}
+              </button>
+            ))}
+          </div>
+        </Шаг>
 
-        {проЗаявку && (
-          <Select
-            className="manual__field"
-            id="manual-order"
-            label="Заявка"
-            value={order}
-            onChange={(e: { target: { value: string } }) => setOrder(e.target.value)}
-            options={[
-              { value: '', label: orders.length ? 'Выберите заявку' : 'Заявок в расчёте нет' },
-              ...orders.map((one) => ({ value: one.id, label: подпись(one) }))
-            ]}
-          />
+        {шаг2 && (
+          <Шаг n={2} title={проЗаявку ? 'По какой заявке' : 'С кем'} done={шаг3}>
+            <div className="manual__row">
+              {проЗаявку && (
+                <Select
+                  className="manual__field"
+                  id="manual-order"
+                  value={order}
+                  onChange={(e: { target: { value: string } }) => setOrder(e.target.value)}
+                  options={[
+                    { value: '', label: orders.length ? 'Выберите заявку' : 'Заявок в расчёте нет' },
+                    ...orders.map((one) => ({ value: one.id, label: подпись(one) }))
+                  ]}
+                />
+              )}
+              {нуженИнженер && (
+                <Select
+                  className="manual__field"
+                  id="manual-engineer"
+                  label={kind === 'assigned' ? 'Кому передать' : undefined}
+                  value={engineer}
+                  onChange={(e: { target: { value: string } }) => setEngineer(e.target.value)}
+                  options={[
+                    { value: '', label: engineers.length ? 'Выберите инженера' : 'Инженеров нет' },
+                    ...engineers.map((one) => ({ value: one.id, label: `${one.id} · ${one.name}` }))
+                  ]}
+                />
+              )}
+              {kind === 'failed' && (
+                <Select
+                  className="manual__field"
+                  id="manual-reason"
+                  label="Почему"
+                  value={reason}
+                  onChange={(e: { target: { value: string } }) => setReason(e.target.value as Reason)}
+                  options={ПРИЧИНЫ.map((one) => ({ value: one.value, label: one.label }))}
+                />
+              )}
+              {kind === 'engineer_delayed' && (
+                <Input
+                  className="manual__field manual__field--narrow"
+                  id="manual-minutes"
+                  label="На сколько, мин"
+                  type="number"
+                  value={String(minutes)}
+                  onChange={(e: { currentTarget: { value: string } }) =>
+                    setMinutes(Number(e.currentTarget.value))
+                  }
+                />
+              )}
+            </div>
+          </Шаг>
         )}
 
-        {нуженИнженер && (
-          <Select
-            className="manual__field"
-            id="manual-engineer"
-            label={kind === 'assigned' ? 'Кому передать' : 'Инженер'}
-            value={engineer}
-            onChange={(e: { target: { value: string } }) => setEngineer(e.target.value)}
-            options={[
-              { value: '', label: engineers.length ? 'Выберите инженера' : 'Инженеров нет' },
-              ...engineers.map((one) => ({ value: one.id, label: `${one.id} · ${one.name}` }))
-            ]}
-          />
+        {шаг3 && (
+          <Шаг n={3} title="Когда">
+            <div className="manual__row">
+              <Input
+                className="manual__field manual__field--narrow"
+                id="manual-at"
+                type="time"
+                value={hhmm(at)}
+                onChange={(e: { currentTarget: { value: string } }) => {
+                  const [h, m] = e.currentTarget.value.split(':').map(Number);
+                  if (Number.isFinite(h) && Number.isFinite(m)) {
+                    setAt(h * 60 + m);
+                    setСвоёВремя(true);
+                  }
+                }}
+              />
+              <span className="manual__note">
+                По умолчанию — момент ползунка. Событие ляжет в тот же журнал, что и
+                кнопки под заявкой.
+              </span>
+            </div>
+          </Шаг>
         )}
-
-        {kind === 'failed' && (
-          <Select
-            className="manual__field"
-            id="manual-reason"
-            label="Почему сорвалось"
-            value={reason}
-            onChange={(e: { target: { value: string } }) => setReason(e.target.value as Reason)}
-            options={ПРИЧИНЫ.map((one) => ({ value: one.value, label: one.label }))}
-          />
-        )}
-
-        {kind === 'engineer_delayed' && (
-          <Input
-            className="manual__field manual__field--narrow"
-            id="manual-minutes"
-            label="На сколько, мин"
-            type="number"
-            value={String(minutes)}
-            onChange={(e: { currentTarget: { value: string } }) =>
-              setMinutes(Number(e.currentTarget.value))
-            }
-          />
-        )}
-      </div>
+      </ol>
 
       <div className="manual__go">
         <Button
@@ -177,11 +252,13 @@ export function ManualEvent({ engineers, orders, cut, busy, failed, onEvent, ord
           disabled={мало || busy}
           iconLeft={<Icon name="check-circle" size={14} />}
         >
-          {busy ? 'Записываю…' : `Записать на ${hhmm(cut)}`}
+          {busy ? 'Записываю…' : 'Записать'}
         </Button>
-        <span className="manual__note">
-          Событие ляжет в журнал на момент ползунка — тот же журнал, что у кнопок под заявкой.
-        </span>
+        {записано && !failed && (
+          <span className="manual__ok">
+            <Icon name="check-circle" size={14} /> {записано}
+          </span>
+        )}
       </div>
 
       {failed && (

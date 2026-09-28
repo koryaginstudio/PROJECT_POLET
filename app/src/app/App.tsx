@@ -787,13 +787,16 @@ export function App() {
   useEffect(() => setDayState(null), [engineDay, engineBase]);
   useEffect(refreshDayState, [engineDay, engineBase, cut]);
 
-  const sendEvent = async (event: JournalEvent) => {
+  /* `at` — на какую минуту записать. Кнопки под заявкой пишут на момент
+     ползунка и времени не спрашивают; ручной блок на «Воздействии»
+     спрашивает: диспетчер узнаёт о случившемся позже, чем оно случилось. */
+  const sendEvent = async (event: JournalEvent, at: number = cut) => {
     if (!engineDay || eventBusy) return;
     const ticket = replanTicket.current;
     setEventBusy(true);
     setEventFailed(null);
     try {
-      await postEvent(engineDay, cut, event, engineBase);
+      await postEvent(engineDay, at, event, engineBase);
       /* Пока событие записывалось, открыли другой расчёт — его экран этим
          ответом не трогаем. */
       if (ticket !== replanTicket.current) return;
