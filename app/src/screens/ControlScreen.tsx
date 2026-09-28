@@ -9,6 +9,8 @@ import { engineSilent, loadStaffing, resetJournal } from '../data/api.ts';
 import { humanAfter } from '../data/errors.ts';
 import { IMPACT } from '../data/impact.ts';
 import { replanBlocked } from '../app/replanBlocked.ts';
+import { ManualEvent } from '../app/ManualEvent.tsx';
+import type { ManualProps } from '../app/ManualEvent.tsx';
 import '../styles/control.css';
 
 interface Props {
@@ -37,6 +39,9 @@ interface Props {
   /** С какой минуты аварию есть кому взять (`urgentFrom`, impact.ts): окно
       правки считает аварию не раньше неё, и кнопка карточки говорит то же. */
   urgentStart?: number | null;
+  /** Ручное воздействие: кем и чем диспетчер распоряжается сам. Без него
+      блок не рисуется — так же, как «События дня» без движка. */
+  manual?: ManualProps;
 }
 
 /* Управление воздействием — третий этап процесса.
@@ -156,7 +161,8 @@ export function ControlScreen({
   base,
   onJournalReset,
   orderLabel = (id) => id,
-  urgentStart = null
+  urgentStart = null,
+  manual
 }: Props) {
   const blocked = replanBlocked(live, savedReplan, canReplan);
   /* «Сколько ещё людей нужно» — вопрос, который постановщик задал дважды и
@@ -397,6 +403,29 @@ export function ControlScreen({
           <span className="setrow__val">подхватили другие · остались за ним · не влезли никуда</span>
         </div>
       </section>
+
+      {manual && live && (
+        <section className="panel">
+          <div className="dash__section-head">
+            <h2 className="dash__section-title">Вручную</h2>
+            <span className="dash__section-note">
+              когда известно, кто и что именно
+            </span>
+          </div>
+          {/* Четыре карточки выше выбирают за человека — движку сказано
+              `auto`. Для показа это верно, для работы нет: у диспетчера
+              звонит конкретный инженер про конкретный адрес. Здесь он
+              называет и то, и другое сам. */}
+          <Lede
+            text={
+              'Что случилось, с кем и во сколько — списками, без сценариев. Отсюда ставятся и ' +
+              'три события про самого инженера: выбыл, вернулся, задержится, — руками их раньше ' +
+              'было негде отметить. Событие ложится в тот же журнал, что и кнопки под заявкой.'
+            }
+          />
+          <ManualEvent {...manual} />
+        </section>
+      )}
 
       {day && live && (
         <section className="panel">

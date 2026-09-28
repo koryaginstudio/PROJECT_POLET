@@ -225,3 +225,16 @@
 .incident__card .incident__names li span {
   color: var(--text-secondary);
 }
+
+/* Ручное воздействие: списки в строку, кнопка под ними.
+
+   Поля кладутся в одну строку и переносятся сами: их от двух до четырёх в
+   зависимости от события, и фиксированная сетка на четыре оставляла бы
+   дыры там, где полей два. */
+.manual { display: flex; flex-direction: column; gap: 14px; }
+.manual__row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+.manual__field { flex: 1 1 210px; min-width: 0; }
+.manual__field--narrow { flex: 0 0 140px; }
+.manual__go { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.manual__note { font-size: var(--fs-caption); color: var(--text-secondary); }
+.manual__err { margin: 0; font-size: var(--fs-body-s); color: var(--danger-600, #b3261e); }

@@ -1593,6 +1593,26 @@ export function App() {
             const order = ready?.view.orderById.get(id);
             return order ? order.address ?? `${order.work_title}, ${order.id}` : id;
           }}
+          /* Ручное воздействие: те же инженеры и заявки, что в открытом
+             расчёте, и тот же путь записи, что у кнопок под заявкой —
+             `dispatcher.onEvent`. Два места, пишущие в один журнал,
+             обязаны писать одинаково. */
+          manual={
+            ready && dispatcher
+              ? {
+                  engineers: [...ready.view.engineerById.values()],
+                  orders: [...ready.view.orderById.values()],
+                  cut,
+                  busy: dispatcher.busy,
+                  failed: dispatcher.failed,
+                  onEvent: dispatcher.onEvent,
+                  orderLabel: (id: string) => {
+                    const order = ready.view.orderById.get(id);
+                    return order ? order.address ?? order.work_title : id;
+                  }
+                }
+              : undefined
+          }
         />
       )}
 
