@@ -18,6 +18,13 @@ import type { Registry, RouteRecord } from '../data/registry.ts';
 import { engineerKey } from '../data/registry.ts';
 import { RunCard } from '../app/RunCard.tsx';
 import { useDuty, workDays } from '../data/duty.ts';
+/* Знак хозяйства без слов. Файлов два, и они разные: `mark.svg` нарисован
+   чёрным — он для светлой темы; белая пчела живёт внутри тёмного логотипа
+   вместе со словом, и на тёмной теме берётся она, обрезанная по слову. Ни
+   тот ни другой не перекрашиваем: оба лежат такими, какими пришли от
+   заказчика (assets/logo/SOURCE.md). */
+import mark from '../ds/assets/logo/mark.svg';
+import markOnDark from '../ds/assets/logo/lockup-h-on-dark.svg';
 import { successOf, todayKey, useShifts, wasWatched, watchTime } from '../data/watch.ts';
 import { monitorCode, useMonitors } from '../data/monitor.ts';
 import type { WatchShift } from '../data/watch.ts';
@@ -126,6 +133,7 @@ export function HomeScreen({
   registry,
   activeRun,
   watched,
+  watching,
   onWatch,
   onEnterWatch,
   onGoSection,
@@ -166,6 +174,38 @@ export function HomeScreen({
   const today = `${weekday[0].toUpperCase()}${weekday.slice(1)}, ${now.getDate()} ${monthName(now)}`;
   const clock = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   const ready = days.filter((one) => one.holder);
+
+  /* Что стоит за отмеченными участками.
+
+     Галочки у дней справа до сих пор ничего не меняли на экране: они копили
+     набор для кнопки «Смотреть», и до самого живого вида диспетчер не знал,
+     много ли отметил. А это первый вопрос перед наблюдением — сколько
+     заявок, маршрутов и людей берётся под присмотр.
+
+     Числа берём из справочника, по рабочим расчётам отмеченных дней: он их
+     уже посчитал для баз и статистики, и второй раз считать те же суммы
+     незачем. Покрытие складываем по заявкам, а не средним из долей: участок
+     на две сотни заявок весит больше участка на пять десятков. */
+  const picked = useMemo(() => {
+    if (!registry) return null;
+    const runsOfDays = days
+      .filter((one) => watched.includes(one.key) && one.holder)
+      .map((one) => one.holder as RunId);
+    if (runsOfDays.length === 0) return null;
+    const rows = registry.stats.byRun.filter((one) => runsOfDays.includes(one.run.id));
+    if (rows.length === 0) return null;
+    const sum = (pick: (one: (typeof rows)[number]) => number) =>
+      rows.reduce((total, one) => total + pick(one), 0);
+    const orders = sum((one) => one.orders);
+    return {
+      places: rows.length,
+      orders,
+      routes: sum((one) => one.routes),
+      engineers: sum((one) => one.engineersTotal),
+      coverage: orders > 0 ? sum((one) => one.coverage * one.orders) / orders : 0
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [registry, days, watched.join('|')]);
   /* Последние расчёты — свода справочника, а не ленты истории: карточке
      базы нужны её числа и набросок карты, и считает их справочник. */
   const recentRuns = useMemo(
@@ -295,12 +335,39 @@ export function HomeScreen({
             {today}
             <span className="homehead__clock">{clock}</span>
           </h2>
-          <span className="homehead__title">Мониторинг</span>
+          {/* Пчела — без слов. Главная открывается первой, и на ней уместен
+              знак хозяйства: имя сервиса и так стоит в шапке страницы, а
+              здесь нужен не он, а лицо.
+
+              Знаков два, и какой показать, решает тема, а не разметка — тот
+              же приём, что у логотипа в шапке страницы: тема бывает
+              системной, и в разметке о ней ничего не известно. */}
+          <span className="homehead__marks" aria-hidden="true">
+            <span
+              className="homehead__mark homehead__mark--light"
+              style={{ ['--mark' as string]: `url(${mark})` }}
+            />
+            <span
+              className="homehead__mark homehead__mark--dark"
+              style={{ ['--mark' as string]: `url(${markOnDark})` }}
+            />
+          </span>
         </div>
 
         <div className="homehero">
           <div className="homehero__live">
-            <div className="homelive">
+            {/* Живые числа стоят, только пока наблюдение идёт.
+
+                Прежде они висели здесь всегда — по тому расчёту, что открыт
+                в диспетчерской, — и Главная в шесть утра бодро сообщала
+                «2 на объекте» о плане, за которым никто не смотрит. Число,
+                снятое неизвестно с чего, хуже отсутствия числа: по нему
+                принимают решения. Наблюдение не запущено — здесь пусто, и
+                на его месте то, ради чего сюда пришли: что взять под
+                присмотр. */}
+            {watching && watched.length > 0 && (
+              <>
+                <div className="homelive">
               <span className="homelive__item">
                 <b className="homelive__value">{live.working.length}</b>
                 <span>На объекте</span>
@@ -350,6 +417,40 @@ export function HomeScreen({
                 )}
               </div>
             )}
+            </>
+            )}
+
+            {/* Свод по отмеченным участкам — под числами и вместо них, когда
+                наблюдение не идёт. Он отвечает галочкам справа: отметили
+                участок — здесь прибавилось его хозяйство. */}
+            {picked ? (
+              <div className="homepick">
+                <span className="homepick__label">
+                  <Icon name="check-circle" size={13} />
+                  Под присмотром: {picked.places} {pluralWord(picked.places, 'участок', 'участка', 'участков')}
+                </span>
+                <span className="homepick__row">
+                  <span className="homepick__item">
+                    <b>{picked.orders}</b> {pluralWord(picked.orders, 'заявка', 'заявки', 'заявок')}
+                  </span>
+                  <span className="homepick__item">
+                    <b>{picked.routes}</b> {pluralWord(picked.routes, 'маршрут', 'маршрута', 'маршрутов')}
+                  </span>
+                  <span className="homepick__item">
+                    <b>{picked.engineers}</b> {pluralWord(picked.engineers, 'инженер', 'инженера', 'инженеров')}
+                  </span>
+                  <span className="homepick__item">
+                    <b>{percent(picked.coverage * 100)}</b> покрытие
+                  </span>
+                </span>
+              </div>
+            ) : (
+              <p className="homehero__note">
+                {ready.length === 0
+                  ? 'Ни у одного дня нет рабочего расчёта: выберите его справа, и день можно будет взять под присмотр.'
+                  : 'Отметьте дни участков справа — здесь встанет то, что за ними стоит: заявки, маршруты и люди.'}
+              </p>
+            )}
 
             <div className="home__actions">
               {/* Первое действие — вернуться к наблюдению: за ним диспетчер
@@ -357,6 +458,11 @@ export function HomeScreen({
                   Остальные два идут в том порядке, в каком к ним обращаются:
                   воздействие — по ходу дня, диспетчерская — когда нужен
                   новый план. */}
+              {/* Подпись одна на все случаи: диспетчер весь день живёт в
+                  наблюдении и возвращается к нему — отмечены участки или
+                  нет, идёт оно сейчас или его ещё не открывали. Три разных
+                  слова на одной кнопке заставляли читать её каждый раз
+                  заново, а ведёт она всегда в одно место. */}
               <Button
                 variant="accent"
                 iconLeft={<Icon name="navigation-arrow" size={14} />}
@@ -472,6 +578,13 @@ export function HomeScreen({
             заявок закрыто
           </p>
 
+          {/* Части внутри карточки разведены подписанными чертами: свод,
+              средние и сами дни отвечают на разные вопросы, а стояли одной
+              стопкой — глаз читал их как один длинный список. */}
+          <div className="homepart">
+            <span>В среднем за всё время</span>
+          </div>
+
           <div className="dbstats">
             <div className="dbstat">
               <span className="dbstat__value">{percent(board.share)}</span>
@@ -496,6 +609,12 @@ export function HomeScreen({
           {/* Ряд дней: у каждого своя полоса выполнения, и слабый день виден
               в ряду сразу — без чтения чисел. Лучший и слабый названы
               вслух: это первое, о чём спрашивают, посмотрев на ряд. */}
+          <div className="homepart">
+            <span>
+              Дни под наблюдением · {board.rows.length}
+            </span>
+          </div>
+
           <div className="homemons">
             {board.rows.map((one) => (
               <button
@@ -573,11 +692,19 @@ export function HomeScreen({
             </button>
           </div>
         ) : (
-          <div className="homeshifts">
-            {shifts.slice(0, SHIFTS_SHOWN).map((shift) => (
-              <ShiftCard key={shift.date} shift={shift} onOpen={() => onOpenShift(shift.date)} />
-            ))}
-          </div>
+          <>
+            <div className="homepart">
+              <span>
+                Смены по дням · {shifts.length}
+              </span>
+            </div>
+
+            <div className="homeshifts">
+              {shifts.slice(0, SHIFTS_SHOWN).map((shift) => (
+                <ShiftCard key={shift.date} shift={shift} onOpen={() => onOpenShift(shift.date)} />
+              ))}
+            </div>
+          </>
         )}
       </section>
 
@@ -717,9 +844,10 @@ export function HomeScreen({
       <section className="panel">
         <div className="dash__section-head">
           <h2 className="dash__section-title">Базы данных</h2>
-          <span className="dash__section-note">
-            {registry ? 'Записи по всем расчётам сразу' : 'Собираем справочники…'}
-          </span>
+          {/* Пока справочники собираются, об этом надо сказать: числа у
+              кнопок в это время пустые. Собрались — говорить нечего, и
+              подписи нет: числа стоят у самих кнопок. */}
+          {!registry && <span className="dash__section-note">Собираем справочники…</span>}
         </div>
         <div className="tiles">
           <DbTile

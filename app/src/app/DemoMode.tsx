@@ -6,6 +6,10 @@ import { Button } from '../ds/components/core/Button.jsx';
 interface Step {
   title: string;
   what: string;
+  /** Рабочая область шага: то, о чём на этом шаге речь. Она остаётся
+      освещённой целиком, а всё вокруг гаснет. Не задана — светится главное
+      поле оболочки: боковое меню при этом тонет, и правильно. */
+  area?: () => HTMLElement | null;
   /** Приводит экран к виду этого шага: срабатывает, как только шаг стал
       текущим. Обычно повторяет то, что уже сделало нажатие подсвеченной
       кнопки, — и потому держит показ в строю, даже если по дороге нажали
@@ -65,6 +69,10 @@ const tab = (label: string) => (): HTMLElement | null => {
 
 const one = (selector: string) => () => document.querySelector<HTMLElement>(selector);
 
+/** Рабочее поле оболочки — всё, кроме бокового меню и шапки. Область по
+    умолчанию: почти на каждом шаге речь именно о нём. */
+const mainArea = one('.shell__main');
+
 /* Демонстрационный маршрут: сервис от входа до пересчёта — главная,
    настройки, расчёт, четыре вида плана, мониторинг и правка по событию.
 
@@ -103,12 +111,16 @@ export function DemoMode({
   const steps: Step[] = [
     {
       title: 'Главная: что где лежит',
-      what: 'Сервис встречает сводкой: сверху открытый расчёт и его числа, ниже «прямо сейчас» — кто на объекте, кто в пути, кто опаздывает, дальше последние расчёты и базы данных. Отсюда день и начинается: нажмите «Открыть диспетчерскую».',
+      what: 'Сервис встречает сводкой: сверху открытый расчёт и его числа, ниже «прямо сейчас» — кто на объекте, кто в пути, кто опаздывает, дальше последние расчёты и базы данных. Отсюда день и начинается: нажмите «Диспетчерская».',
       go: goHome,
-      find: one('.home__actions .runcard__go')
+      /* Кнопка ищется по слову, а не по классу: ряд действий на Главной
+         переписывали, и класс у кнопки сменился, а показ молча остался без
+         цели — светилась область, а нажимать было нечего. Слово в подписи
+         переживает переделку вида. */
+      find: byText('Диспетчерская', '.home__actions')
     },
     {
-      title: 'Диспетчерская: создать или взять готовый',
+      title: 'Диспетчерская: создать или взять готовый расчёт',
       what: 'Диспетчерская встречает одним действием, а посчитанное раньше лежит списком под ним. Посчитаем свой день — нажмите «Создать новый расчёт».',
       go: goDispatch,
       find: one('.gatehero__cta')
@@ -165,11 +177,13 @@ export function DemoMode({
       title: 'Пересчёт остатка дня',
       what: 'Окно правки открыто на «Аварии»: когда случилось, сколько их и на чьём участке. Нажмите «Пересчитать» — программа пересоберёт остаток смены, не трогая уже сделанное.',
       go: openIncident,
+      area: one('.incident__card'),
       find: byText('Пересчитать', '.incident__card')
     },
     {
       title: 'Что дал пересчёт',
       what: 'Сколько заявок выиграли против «поехали как ехали», кого не тронули, как изменились исполнители и пробег. Пересчёт живёт только на экране, пока его не приняли. Оставим день таким, каким посчитали, — нажмите «Отменить правку».',
+      area: one('.incident__card'),
       find: byText('Отменить правку', '.incident__card')
     },
     {
@@ -287,74 +301,167 @@ export function DemoMode({
   useEffect(() => {
     if (!open || confirmClose) { setAway(null); return; }
 
-    /* Затемнение и ореол рисуются мимо React — своими узлами в <body>,
-       которые правит этот же цикл: шестьдесят кадров в секунду не должны
-       дёргать перерисовку всего показа. Тьму рисует сам узел тенью с
-       большим разгоном: дырка тогда выходит ровно по кнопке и с её же
-       скруглением. Ореол — отдельным узлом поверх: в одной тени он лёг бы
-       под тьму и пропал. */
+    /* Светятся двое: рабочая область шага и кнопка, которую просят нажать.
+
+       Прежде светилась одна кнопка, а весь экран вокруг тонул в тьме — и
+       показ превращался в «нажми сюда, теперь сюда»: что это за экран,
+       куда смотреть после нажатия и где вообще происходит дело, оставалось
+       за темнотой. Теперь горит вся рабочая область — то, о чём идёт речь,
+       — и в ней отдельным ореолом кнопка. Боковое меню при этом гаснет,
+       кроме тех шагов, где нажимать надо как раз его пункт: тогда светится
+       и пункт.
+
+       Тьма рисуется не одной тенью с разгоном, а прямоугольниками вокруг
+       светлых мест: тень умеет вырезать одну дырку, а их две. Куски
+       считаются вычитанием — экран минус область минус кнопка, — и потому
+       нигде не накладываются друг на друга: наложение читалось бы как
+       пятно вдвое темнее.
+
+       Узлы рисуются мимо React, своими руками в <body>: шестьдесят кадров
+       в секунду не должны дёргать перерисовку всего показа, а узел,
+       отрисованный React, Chrome в этой сборке для таких теней упорно не
+       показывает. */
     let raf = 0;
-    let dim: HTMLElement | null = null;
+    const shades: HTMLElement[] = [];
+    let ring: HTMLElement | null = null;
     let pulse: HTMLElement | null = null;
     let printed = '';
 
     const hide = () => {
       if (printed === '') return;
       printed = '';
-      dim?.remove();
+      for (const one of shades) one.remove();
+      shades.length = 0;
+      ring?.remove();
       pulse?.remove();
-      dim = null;
+      ring = null;
       pulse = null;
     };
 
-    /* Стиль переписывается, только когда цель и правда поехала: писать те
-       же значения каждый кадр — зря гонять растеризацию большой тени. */
-    const place = (r: DOMRect, radius: number, pad: number) => {
-      const css =
-        `position:fixed;top:${r.top - pad}px;left:${r.left - pad}px;` +
-        `width:${r.width + pad * 2}px;height:${r.height + pad * 2}px;` +
-        `border-radius:${radius + pad}px`;
-      if (css === printed) return;
-      printed = css;
-      if (!dim || !pulse) {
-        dim = document.createElement('div');
-        dim.className = 'demo__dim';
-        pulse = document.createElement('div');
-        pulse.className = 'demo__pulse';
-        dim.style.cssText = css;
-        pulse.style.cssText = css;
-        document.body.append(dim, pulse);
-        return;
+    interface Box { x: number; y: number; w: number; h: number }
+
+    const box = (r: DOMRect, pad: number): Box => ({
+      x: r.left - pad,
+      y: r.top - pad,
+      w: r.width + pad * 2,
+      h: r.height + pad * 2
+    });
+
+    /* Экран минус светлые места. Каждая дырка режет куски тьмы на четыре —
+       сверху, снизу, слева и справа от себя, — и куски остаются
+       непересекающимися. */
+    const carve = (full: Box, holes: Box[]): Box[] => {
+      let parts: Box[] = [full];
+      for (const hole of holes) {
+        const next: Box[] = [];
+        for (const part of parts) {
+          const x1 = Math.max(part.x, hole.x);
+          const y1 = Math.max(part.y, hole.y);
+          const x2 = Math.min(part.x + part.w, hole.x + hole.w);
+          const y2 = Math.min(part.y + part.h, hole.y + hole.h);
+          if (x2 <= x1 || y2 <= y1) { next.push(part); continue; }
+          if (y1 > part.y) next.push({ x: part.x, y: part.y, w: part.w, h: y1 - part.y });
+          if (y2 < part.y + part.h) {
+            next.push({ x: part.x, y: y2, w: part.w, h: part.y + part.h - y2 });
+          }
+          if (x1 > part.x) next.push({ x: part.x, y: y1, w: x1 - part.x, h: y2 - y1 });
+          if (x2 < part.x + part.w) {
+            next.push({ x: x2, y: y1, w: part.x + part.w - x2, h: y2 - y1 });
+          }
+        }
+        parts = next;
       }
-      dim.style.cssText = css;
-      pulse.style.cssText = css;
+      return parts.filter((one) => one.w > 0.5 && one.h > 0.5);
+    };
+
+    const css = (one: Box, radius = 0) =>
+      `position:fixed;top:${Math.round(one.y)}px;left:${Math.round(one.x)}px;` +
+      `width:${Math.round(one.w)}px;height:${Math.round(one.h)}px;` +
+      (radius > 0 ? `border-radius:${radius}px` : '');
+
+    const draw = (dark: Box[], area: Box | null, aim: Box | null, round: number) => {
+      const mark =
+        dark.map((one) => css(one)).join('|') +
+        '#' + (area ? css(area, 12) : '') +
+        '#' + (aim ? css(aim, round + 6) : '');
+      if (mark === printed) return;
+      printed = mark;
+
+      while (shades.length > dark.length) shades.pop()?.remove();
+      while (shades.length < dark.length) {
+        const node = document.createElement('div');
+        node.className = 'demo__shade';
+        document.body.append(node);
+        shades.push(node);
+      }
+      dark.forEach((one, at) => {
+        shades[at].style.cssText = css(one);
+      });
+
+      if (area) {
+        if (!ring) {
+          ring = document.createElement('div');
+          ring.className = 'demo__area';
+          document.body.append(ring);
+        }
+        ring.style.cssText = css(area, 12);
+      } else {
+        ring?.remove();
+        ring = null;
+      }
+
+      if (aim) {
+        if (!pulse) {
+          pulse = document.createElement('div');
+          pulse.className = 'demo__pulse';
+          document.body.append(pulse);
+        }
+        pulse.style.cssText = css(aim, round + 6);
+      } else {
+        pulse?.remove();
+        pulse = null;
+      }
     };
 
     const tick = () => {
-      const el = current.find?.() ?? null;
-      const r = el?.getBoundingClientRect() ?? null;
-      const live = r !== null && (r.width > 0 || r.height > 0);
+      const target = current.find?.() ?? null;
+      const region = (current.area ?? mainArea)() ?? null;
 
-      if (!live || !r || !el) {
+      const tr = target?.getBoundingClientRect() ?? null;
+      const rr = region?.getBoundingClientRect() ?? null;
+      const alive = (r: DOMRect | null) => r !== null && (r.width > 0 || r.height > 0);
+
+      if (!alive(tr) && !alive(rr)) {
         hide();
         setAway(null);
         setSide('right');
       } else {
-        const radius = parseFloat(getComputedStyle(el).borderTopLeftRadius);
+        const aim = alive(tr) && tr ? box(tr, 6) : null;
+        const area = alive(rr) && rr ? box(rr, 4) : null;
+        const radius = target ? parseFloat(getComputedStyle(target).borderTopLeftRadius) : 0;
         const round = Number.isFinite(radius) ? radius : 0;
-        place(r, round, 6);
-        setAway(r.top >= window.innerHeight - 8 ? 'down' : r.bottom <= 8 ? 'up' : null);
+        const holes = [area, aim].filter((one): one is Box => one !== null);
+        draw(
+          carve({ x: 0, y: 0, w: window.innerWidth, h: window.innerHeight }, holes),
+          area,
+          aim,
+          round
+        );
+
+        setAway(
+          !tr ? null : tr.top >= window.innerHeight - 8 ? 'down' : tr.bottom <= 8 ? 'up' : null
+        );
 
         /* Карточка не должна закрывать то, на что показывает: и форма
            расчёта, и окно правки кончаются кнопкой в правом нижнем углу —
            ровно там, где стоит она сама. Примеряем оба угла, а не своё
            нынешнее место: сравнение с собой качало бы её между углами. */
         const mine = cardRef.current?.getBoundingClientRect() ?? null;
-        if (mine) {
+        if (mine && tr) {
           const gap = 20;
           const top = window.innerHeight - gap - mine.height;
           const covers = (left: number) =>
-            r.left - 12 < left + mine.width && r.right + 12 > left && r.bottom + 12 > top;
+            tr.left - 12 < left + mine.width && tr.right + 12 > left && tr.bottom + 12 > top;
           setSide(covers(window.innerWidth - gap - mine.width) && !covers(gap) ? 'left' : 'right');
         }
       }

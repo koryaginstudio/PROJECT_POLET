@@ -281,6 +281,102 @@ body {
   transition: border-color 120ms var(--ease-out-strong), background-color 120ms var(--ease-out-strong);
 }
 
+/* Кружок, который можно раскрыть: под курсором чуть подаётся вперёд и
+   показывает лупу — иначе непонятно, что снимок можно рассмотреть. */
+.avatar--zoom {
+  position: relative;
+  cursor: zoom-in;
+}
+
+.avatar--zoom:hover {
+  transform: scale(1.04);
+}
+
+.avatar--zoom::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(10, 10, 10, 0.32);
+  opacity: 0;
+  transition: opacity 120ms var(--ease-out-strong);
+}
+
+.avatar--zoom:hover::after {
+  opacity: 1;
+}
+
+/* ─── снимок крупно ───────────────────────────────────────────────────
+
+   Окно ровно под снимок: без полей вокруг картинки и без заголовка сверху —
+   смотреть пришли на неё, а не на рамку. Имя и должность стоят внизу
+   полосой поверх снимка, как подпись под портретом. */
+.facewin__card {
+  position: relative;
+  width: min(420px, 86vw);
+  padding: 0;
+  overflow: hidden;
+  border-radius: var(--r-lg, 16px);
+}
+
+.facewin__img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+}
+
+.facewin__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--surface-card);
+  border-top: 1px solid var(--border-hairline);
+}
+
+.facewin__id {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.facewin__name {
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+
+.facewin__role {
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+
+.facewin__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border-hairline);
+  border-radius: 50%;
+  background: var(--white);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background-color 120ms var(--ease-out-strong);
+}
+
+.facewin__close:hover {
+  background: var(--ink-50);
+  color: var(--text-primary);
+}
+
+.facewin__close:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+
 .avatar img {
   width: 100%;
   height: 100%;
@@ -7601,8 +7697,55 @@ b.ccard__bad {
 
 .home__actions {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: var(--sp-2);
   margin-top: var(--sp-4);
+}
+
+/* Свод по отмеченным участкам: ответ галочкам справа. Плиткой, а не строкой
+   чисел, — он стоит на месте живых чисел, когда наблюдение не идёт, и
+   пустоты на этом месте быть не должно. */
+.homepick {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--sp-3);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--r-md);
+  background: var(--surface-tile);
+}
+
+.homepick__label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  color: var(--text-secondary);
+}
+
+.homepick__label svg {
+  color: var(--success-600);
+}
+
+.homepick__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-5);
+}
+
+.homepick__item {
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.homepick__item b {
+  font-size: var(--fs-h4);
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+  margin-right: 4px;
 }
 
 .homelive {
@@ -7719,11 +7862,15 @@ b.ccard__bad {
    и ответ на него читается одним взглядом. Узкому окну колонки не по росту —
    там они встают друг под друга, и первым остаётся то, ради чего сюда и
    пришли, — живые числа. */
+/* Две колонки героя стоят вровень: левая тянется на высоту правой, а её
+   кнопки прижаты к низу. Прежде колонки росли каждая по своему содержимому,
+   и ряд кнопок оказывался то выше последнего участка, то ниже — карточка
+   выглядела собранной наспех. */
 .homehero {
   display: grid;
-  grid-template-columns: minmax(0, 1.45fr) minmax(260px, 1fr);
+  grid-template-columns: minmax(0, 1.45fr) minmax(280px, 1fr);
   gap: var(--sp-5);
-  align-items: start;
+  align-items: stretch;
 }
 
 @media (max-width: 1340px) {
@@ -7737,6 +7884,8 @@ b.ccard__bad {
   flex-direction: column;
   gap: var(--sp-3);
   min-width: 0;
+  /* Кнопки — к нижнему краю: они и в правой колонке последние. */
+  justify-content: space-between;
 }
 
 .homehero__note {
@@ -7972,11 +8121,73 @@ button.homechip--quiet {
    День и часы крупно, название раздела под ними подписью: то же устройство,
    что в воротах мониторинга. Раздел отвечает на «что происходит сейчас», и
    первое, что он говорит, — какое это «сейчас». */
+/* Шапка Главной: день с часами слева, знак хозяйства справа.
+
+   Знак стоит в одну строку с датой, а не над нею и не под: строка эта —
+   единственная во всю ширину карточки, и правый её край до сих пор пустовал.
+   Пчела его и занимает, не отнимая места у чисел. */
 .homehead {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
   margin-bottom: var(--sp-4);
+}
+
+/* Пчела в углу карточки. Знака два, и это разные файлы, а не один
+   перекрашенный: чёрный `mark.svg` для светлой темы и белая пчела из
+   тёмного логотипа — для тёмной. Ни один не трогаем: оба лежат такими,
+   какими пришли от заказчика (assets/logo/SOURCE.md).
+
+   Какой показать, решает тема, а не разметка — тем же приёмом, каким
+   меняется логотип в шапке: тема бывает системной, и разметка о ней не
+   знает. */
+.homehead__marks {
+  flex: 0 0 auto;
+  display: block;
+}
+
+.homehead__mark {
+  display: block;
+  height: 36px;
+  /* Знак — не управление и не подпись: он ничего не объясняет и потому
+     держится чуть тише даты рядом. */
+  opacity: 0.9;
+}
+
+/* Чёрная пчела лежит отдельным файлом и берётся целиком. Её пропорции —
+   368,29 × 429,52. */
+.homehead__mark--light {
+  width: 31px;
+  background: var(--mark) center / contain no-repeat;
+}
+
+/* Белой отдельного файла нет: она нарисована внутри тёмного логотипа, слева
+   от слова. Поэтому показываем его левый край — само слово остаётся за
+   краем окна. Полотно логотипа 1301 × 425,74, пчела кончается около 405-й
+   единицы; при высоте в 36 точек это 34 точки ширины. */
+.homehead__mark--dark {
+  display: none;
+  width: 34px;
+  background: var(--mark) left center / auto 36px no-repeat;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .homehead__mark--light {
+    display: none;
+  }
+
+  :root:not([data-theme='light']) .homehead__mark--dark {
+    display: block;
+  }
+}
+
+:root[data-theme='dark'] .homehead__mark--light {
+  display: none;
+}
+
+:root[data-theme='dark'] .homehead__mark--dark {
+  display: block;
 }
 
 .homehead__day {
@@ -8006,6 +8217,37 @@ button.homechip--quiet {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-muted);
+}
+
+/* Черта с подписью — межа между частями одной карточки.
+
+   В карточке «Как идут мониторинги» под заголовком идут три разные вещи:
+   свод одной строкой, средние за всё время плитками и сами дни рядом. Они
+   отвечают на разные вопросы, а стояли одной стопкой с одинаковыми
+   промежутками — глаз читал их как один длинный список и терял, где
+   кончается одно и начинается другое.
+
+   Межа тихая нарочно: подпись мелким шрифтом и волосяная линия до правого
+   края. Она не спорит с заголовком карточки — она лишь говорит, что дальше
+   пойдёт другое. */
+.homepart {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  margin: var(--sp-5) 0 var(--sp-3);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.homepart::after {
+  content: '';
+  flex: 1 1 auto;
+  height: 1px;
+  background: var(--border-hairline);
 }
 
 /* Свод выборки на Главной — тот же, что над списками в базах, только с
@@ -9829,14 +10071,24 @@ button.homechip--quiet {
   gap: var(--sp-3);
 }
 
+/* Три формата делят строку поровну и занимают её целиком. Прежде кнопки
+   стояли слева по своей ширине, а справа от них оставалась пустая треть
+   строки — ряд читался как незаконченный. */
 .dayimport__row {
   display: flex;
   flex-wrap: wrap;
   gap: var(--sp-2);
 }
 
+.dayimport__slot {
+  flex: 1 1 104px;
+  min-width: 0;
+  display: flex;
+}
+
 .dayimport__btn {
-  min-width: 104px;
+  width: 100%;
+  min-width: 0;
 }
 
 .dayimport__hint {
@@ -21401,17 +21653,33 @@ button.subhdr__close {
    Переходов по координатам нет намеренно: цель ездит со скроллом, и любое
    сглаживание читается как «подсветка отстаёт». Мышь пятно не ловит — под
    ним настоящая кнопка, и нажатие должно доходить до неё. */
-.demo__dim {
+/* Тьма показа: куски вокруг светлых мест, а не одна тень с разгоном.
+
+   Тень умеет вырезать одну дырку, а их две — рабочая область и кнопка.
+   Куски считает вычитанием сам показ и следит, чтобы они не наползали друг
+   на друга: наложение читалось бы как пятно вдвое темнее. */
+.demo__shade {
   position: fixed;
   z-index: 940;
   pointer-events: none;
-  box-shadow: 0 0 0 9999px rgba(10, 10, 10, 0.55);
+  background: rgba(10, 10, 10, 0.62);
+}
+
+/* Рабочая область: освещена не ярче прочего, но обведена — видно, где
+   проходит граница между тем, о чём речь, и тем, что пока молчит. */
+.demo__area {
+  position: fixed;
+  z-index: 941;
+  pointer-events: none;
+  box-shadow:
+    inset 0 0 0 1px rgba(252, 166, 31, 0.5),
+    0 0 24px rgba(252, 166, 31, 0.18);
 }
 
 .demo__pulse {
   position: fixed;
   pointer-events: none;
-  z-index: 941;
+  z-index: 942;
   animation: demo-pulse 1.6s ease-in-out infinite;
 }
 

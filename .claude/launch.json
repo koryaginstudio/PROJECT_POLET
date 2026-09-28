@@ -71,6 +71,21 @@
         "--strictPort"
       ],
       "port": 5195
+    },
+    {
+      "name": "polet-5196",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "app",
+        "run",
+        "dev",
+        "--",
+        "--port",
+        "5196",
+        "--strictPort"
+      ],
+      "port": 5196
     }
   ]
 }
