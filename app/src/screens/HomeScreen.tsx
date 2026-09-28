@@ -18,9 +18,13 @@ import type { Registry, RouteRecord } from '../data/registry.ts';
 import { engineerKey } from '../data/registry.ts';
 import { RunCard } from '../app/RunCard.tsx';
 import { useDuty, workDays } from '../data/duty.ts';
-/* Знак хозяйства без слов — тот же файл, что в шапке страницы; см.
-   assets/logo/SOURCE.md, строка «mark». */
+/* Знак хозяйства без слов. Файлов два, и они разные: `mark.svg` нарисован
+   чёрным — он для светлой темы; белая пчела живёт внутри тёмного логотипа
+   вместе со словом, и на тёмной теме берётся она, обрезанная по слову. Ни
+   тот ни другой не перекрашиваем: оба лежат такими, какими пришли от
+   заказчика (assets/logo/SOURCE.md). */
 import mark from '../ds/assets/logo/mark.svg';
+import markOnDark from '../ds/assets/logo/lockup-h-on-dark.svg';
 import { successOf, todayKey, useShifts, wasWatched, watchTime } from '../data/watch.ts';
 import { monitorCode, useMonitors } from '../data/monitor.ts';
 import type { WatchShift } from '../data/watch.ts';
@@ -333,8 +337,21 @@ export function HomeScreen({
           </h2>
           {/* Пчела — без слов. Главная открывается первой, и на ней уместен
               знак хозяйства: имя сервиса и так стоит в шапке страницы, а
-              здесь нужен не он, а лицо. */}
-          <img className="homehead__mark" src={mark} alt="" aria-hidden="true" />
+              здесь нужен не он, а лицо.
+
+              Знаков два, и какой показать, решает тема, а не разметка — тот
+              же приём, что у логотипа в шапке страницы: тема бывает
+              системной, и в разметке о ней ничего не известно. */}
+          <span className="homehead__marks" aria-hidden="true">
+            <span
+              className="homehead__mark homehead__mark--light"
+              style={{ ['--mark' as string]: `url(${mark})` }}
+            />
+            <span
+              className="homehead__mark homehead__mark--dark"
+              style={{ ['--mark' as string]: `url(${markOnDark})` }}
+            />
+          </span>
         </div>
 
         <div className="homehero">

@@ -8038,14 +8038,60 @@ button.homechip--quiet {
   margin-bottom: var(--sp-4);
 }
 
-.homehead__mark {
+/* Пчела в углу карточки. Знака два, и это разные файлы, а не один
+   перекрашенный: чёрный `mark.svg` для светлой темы и белая пчела из
+   тёмного логотипа — для тёмной. Ни один не трогаем: оба лежат такими,
+   какими пришли от заказчика (assets/logo/SOURCE.md).
+
+   Какой показать, решает тема, а не разметка — тем же приёмом, каким
+   меняется логотип в шапке: тема бывает системной, и разметка о ней не
+   знает. */
+.homehead__marks {
   flex: 0 0 auto;
-  height: 34px;
-  width: auto;
   display: block;
+}
+
+.homehead__mark {
+  display: block;
+  height: 36px;
   /* Знак — не управление и не подпись: он ничего не объясняет и потому
-     держится тише даты рядом. */
-  opacity: 0.85;
+     держится чуть тише даты рядом. */
+  opacity: 0.9;
+}
+
+/* Чёрная пчела лежит отдельным файлом и берётся целиком. Её пропорции —
+   368,29 × 429,52. */
+.homehead__mark--light {
+  width: 31px;
+  background: var(--mark) center / contain no-repeat;
+}
+
+/* Белой отдельного файла нет: она нарисована внутри тёмного логотипа, слева
+   от слова. Поэтому показываем его левый край — само слово остаётся за
+   краем окна. Полотно логотипа 1301 × 425,74, пчела кончается около 405-й
+   единицы; при высоте в 36 точек это 34 точки ширины. */
+.homehead__mark--dark {
+  display: none;
+  width: 34px;
+  background: var(--mark) left center / auto 36px no-repeat;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .homehead__mark--light {
+    display: none;
+  }
+
+  :root:not([data-theme='light']) .homehead__mark--dark {
+    display: block;
+  }
+}
+
+:root[data-theme='dark'] .homehead__mark--light {
+  display: none;
+}
+
+:root[data-theme='dark'] .homehead__mark--dark {
+  display: block;
 }
 
 .homehead__day {
