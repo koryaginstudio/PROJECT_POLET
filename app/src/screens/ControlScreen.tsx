@@ -246,7 +246,10 @@ export function ControlScreen({
       {manual && live && (
         <section className="panel">
           <div className="dash__section-head">
-            <h2 className="dash__section-title">Что случилось у вас</h2>
+            {/* Не «Что случилось»: так называется секция карточек ниже,
+                и два одинаковых заголовка на одном экране читаются как
+                одно и то же место. Здесь отмечают, там — смотрят цену. */}
+            <h2 className="dash__section-title">Отметить событие</h2>
             <span className="dash__section-note">три шага: что, с кем, когда</span>
           </div>
           {/* Четыре карточки выше выбирают за человека — движку сказано

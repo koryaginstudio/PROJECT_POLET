@@ -143,7 +143,7 @@ export function ManualEvent({ engineers, orders, cut, busy, failed, onEvent, ord
   return (
     <div className="manual">
       <ol className="steps">
-        <Шаг n={1} title="Что случилось" done={шаг2}>
+        <Шаг n={1} title="Событие" done={шаг2}>
           <div className="step__choices">
             {СОБЫТИЯ.map((one) => (
               <button
