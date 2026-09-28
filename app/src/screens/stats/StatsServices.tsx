@@ -73,7 +73,7 @@ export function StatsServices({ registry, scope, period, onPeriod, countOf }: Di
       },
       {
         key: 'hours',
-        title: 'Часы по услугам',
+        title: 'Работы по услугам',
         note: 'Сколько времени у клиентов стоит за этими работами',
         shape: 'bars',
         data: {
