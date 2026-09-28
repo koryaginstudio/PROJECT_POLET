@@ -1,25 +1,25 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import type { CSSProperties } from 'react';
 import { Icon } from '../ds/components/core/Icon.jsx';
-import { Badge } from '../ds/components/core/Badge.jsx';
 import { Button } from '../ds/components/core/Button.jsx';
 import type { Day } from '../data/contract.ts';
 import type { DayView } from '../data/derive.ts';
 import {
   buildLiveRoster,
   cutMinutes,
-  dec,
-  hhmm,
   monthName,
   pluralWord,
   shortName,
   weekdayName
 } from '../data/derive.ts';
 import type { RunId, DaySummary } from '../data/load.ts';
-import { engineReady, runCode, runEntry, whenLabel } from '../data/load.ts';
-import type { Registry } from '../data/registry.ts';
+import { runCode, whenLabel } from '../data/load.ts';
+import type { Registry, RouteRecord } from '../data/registry.ts';
 import { engineerKey } from '../data/registry.ts';
-import { dayLabel, useDuty, workDays } from '../data/duty.ts';
+import { RunCard } from '../app/RunCard.tsx';
+import { useDuty, workDays } from '../data/duty.ts';
 import { successOf, todayKey, useShifts, wasWatched, watchTime } from '../data/watch.ts';
+import { monitorCode, useMonitors } from '../data/monitor.ts';
 import type { WatchShift } from '../data/watch.ts';
 import { SortMenu } from '../app/SortMenu.tsx';
 import type { SortRule } from '../app/SortMenu.tsx';
@@ -120,14 +120,12 @@ const fullDate = (iso: string) => {
    место: расчёт и инженер — карточкой поверх экрана, день — мониторингом,
    база — своим разделом. */
 export function HomeScreen({
-  day,
   plan,
   view,
   runs,
   registry,
   activeRun,
   watched,
-  watching,
   onWatch,
   onEnterWatch,
   onGoSection,
@@ -141,6 +139,7 @@ export function HomeScreen({
   useDuty();
   const days = workDays();
   const shifts = useShifts();
+  const monitorRuns = useMonitors();
   const [sort, setSort] = useState<ShiftSort>('date');
   const [desc, setDesc] = useState(true);
 
@@ -155,10 +154,37 @@ export function HomeScreen({
     return { working, enroute, overdue, done, total };
   }, [roster]);
 
-  const now = new Date();
-  const today = `${weekdayName(now)}, ${now.getDate()} ${monthName(now)}`;
+  /* Часы идут сами, шагом в десять секунд: показываем минуты, и минута,
+     сменившаяся с опозданием на полминуты, читается как стоящие часы. */
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(new Date()), 10_000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const weekday = weekdayName(now);
+  const today = `${weekday[0].toUpperCase()}${weekday.slice(1)}, ${now.getDate()} ${monthName(now)}`;
+  const clock = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   const ready = days.filter((one) => one.holder);
-  const recent = useMemo(() => (runs ?? []).slice(-RUNS_SHOWN).reverse(), [runs]);
+  /* Последние расчёты — свода справочника, а не ленты истории: карточке
+     базы нужны её числа и набросок карты, и считает их справочник. */
+  const recentRuns = useMemo(
+    () => (registry ? [...registry.stats.byRun].slice(-RUNS_SHOWN).reverse() : []),
+    [registry]
+  );
+
+  /* Маршруты по расчётам — для списков внутри карточек. Считаем один раз на
+     весь ряд: реестр общий, и шесть карточек просеивали бы его шесть раз. */
+  const routesByRun = useMemo(() => {
+    const map = new Map<string, RouteRecord[]>();
+    for (const route of registry?.routes ?? []) {
+      const list = map.get(route.run.id);
+      if (list) list.push(route);
+      else map.set(route.run.id, [route]);
+    }
+    for (const list of map.values()) list.sort((a, b) => a.number - b.number);
+    return map;
+  }, [registry]);
 
   /* Смены для статистики: журнал уже отсортирован свежими сверху, здесь
      только переупорядочивание по выбранному правилу. Смена без снимка
@@ -205,8 +231,52 @@ export function HomeScreen({
     };
   }, [shifts]);
 
-  const activeDay = runEntry(activeRun);
-  const activePlace = activeDay ? dayLabel(activeRun, activeDay.date) : '';
+  /* Свод по записям мониторинга: средние за все дни и ряд самих дней.
+     Пусто — блока нет: пустые плитки с прочерками рассказывают только о
+     том, что мониторинг ещё не открывали, а это уже сказано выше. */
+  const board = useMemo(() => {
+    const rows = monitorRuns
+      .map((one) => {
+        const result = one.result;
+        return {
+          id: one.id,
+          no: one.no,
+          date: one.date,
+          zones: one.parts.length || one.places.length,
+          crew: result?.onShift ?? 0,
+          share: result && result.orders > 0 ? (result.done / result.orders) * 100 : null,
+          orders: result?.orders ?? 0,
+          done: result?.done ?? 0,
+          late: result?.late ?? 0,
+          routes: one.parts.reduce((sum, part) => sum + part.routes, 0),
+          routesDone: one.parts.reduce((sum, part) => sum + part.routesDone, 0)
+        };
+      })
+      .sort((a, b) => b.date.localeCompare(a.date));
+    if (rows.length === 0) return null;
+
+    const scored = rows.filter((one) => one.share !== null);
+    const sum = (pick: (one: (typeof rows)[number]) => number) =>
+      rows.reduce((total, one) => total + pick(one), 0);
+    const orders = sum((one) => one.orders);
+    const done = sum((one) => one.done);
+    return {
+      count: rows.length,
+      rows: rows.slice(0, SHIFTS_SHOWN),
+      zones: Math.max(...rows.map((one) => one.zones)),
+      orders,
+      done,
+      /* Доля по всем заявкам сразу, а не среднее из долей: день на двести
+         заявок и день на двадцать весят в работе по-разному. */
+      share: orders > 0 ? (done / orders) * 100 : 0,
+      routes: sum((one) => one.routes),
+      routesDone: sum((one) => one.routesDone),
+      crew: rows.length > 0 ? sum((one) => one.crew) / rows.length : 0,
+      late: sum((one) => one.late),
+      best: scored.length > 0 ? scored.reduce((a, b) => ((b.share ?? 0) > (a.share ?? 0) ? b : a)) : null,
+      worst: scored.length > 0 ? scored.reduce((a, b) => ((b.share ?? 0) < (a.share ?? 0) ? b : a)) : null
+    };
+  }, [monitorRuns]);
 
   return (
     <div className="dash enter">
@@ -216,11 +286,16 @@ export function HomeScreen({
           — дни участков с их рабочими расчётами, откуда наблюдение и
           начинается. */}
       <section className="panel">
-        <div className="dash__section-head">
-          <h2 className="dash__section-title">Мониторинг</h2>
-          <span className="dash__section-note">
-            Сегодня {today} · {hhmm(cut)}
-          </span>
+        {/* День и часы — крупно и в левом углу, как в воротах мониторинга:
+            Главная отвечает на «что происходит сейчас», и первое, что она
+            обязана сказать, — какое это «сейчас». Название раздела стоит
+            под ними подписью: его и так знают, а время читают. */}
+        <div className="homehead">
+          <h2 className="homehead__day">
+            {today}
+            <span className="homehead__clock">{clock}</span>
+          </h2>
+          <span className="homehead__title">Мониторинг</span>
         </div>
 
         <div className="homehero">
@@ -248,21 +323,6 @@ export function HomeScreen({
                 <span>Визитов закрыто</span>
               </span>
             </div>
-
-            <p className="homehero__note">
-              Числа по расчёту{' '}
-              <button
-                type="button"
-                className="homelink"
-                onClick={() => onOpenRunCard(activeRun)}
-                title={`Разобрать расчёт ${runCode(activeRun)}`}
-              >
-                {runCode(activeRun)}
-              </button>
-              {activePlace && <> · {activePlace}</>} · прогноз выполнения{' '}
-              {percent(day.simulation.coverage)} · назначено {plan.meta.orders_assigned} из{' '}
-              {plan.meta.orders_total}
-            </p>
 
             {/* Опаздывающие названы поимённо: это то, ради чего в мониторинг
                 и заходят, а фамилия отвечает на «кто» быстрее любого числа.
@@ -292,24 +352,25 @@ export function HomeScreen({
             )}
 
             <div className="home__actions">
+              {/* Первое действие — вернуться к наблюдению: за ним диспетчер
+                  разворачивает мониторинг и работает в нём весь день.
+                  Остальные два идут в том порядке, в каком к ним обращаются:
+                  воздействие — по ходу дня, диспетчерская — когда нужен
+                  новый план. */}
               <Button
-                variant="primary"
+                variant="accent"
                 iconLeft={<Icon name="navigation-arrow" size={14} />}
                 onClick={watched.length > 0 ? onEnterWatch : () => onGoSection('monitor')}
               >
-                {watching
-                  ? 'Вернуться к наблюдению'
-                  : watched.length > 0
-                    ? `Смотреть · ${watched.length} ${pluralWord(watched.length, 'день', 'дня', 'дней')}`
-                    : 'Открыть мониторинг'}
+                Вернуться к наблюдению
               </Button>
-              <button type="button" className="runcard__act" onClick={() => onGoSection('dispatch')}>
-                <Icon name="gauge" size={13} />
-                Диспетчерская
-              </button>
               <button type="button" className="runcard__act" onClick={() => onGoSection('control')}>
                 <Icon name="lightning" size={13} />
                 Воздействие
+              </button>
+              <button type="button" className="runcard__act" onClick={() => onGoSection('dispatch')}>
+                <Icon name="gauge" size={13} />
+                Диспетчерская
               </button>
             </div>
           </div>
@@ -387,18 +448,117 @@ export function HomeScreen({
         </div>
       </section>
 
+      {/* ─── как идут мониторинги ────────────────────────────────────────
+          Один день ничего не говорит: он либо вышел, либо нет. Смысл
+          появляется на ряде — видно, какой день провалился против прочих,
+          сколько людей обычно выходит и насколько день вообще довозят до
+          конца. Считается по записям мониторинга, а не по планам: план
+          обещает, запись говорит, что вышло. */}
+      {board !== null && (
+        <section className="panel">
+          <div className="dash__section-head">
+            <h2 className="dash__section-title">Как идут мониторинги</h2>
+          </div>
+
+          <p className="dbbar__summary home__summary">
+            <b>
+              {board.count} {pluralWord(board.count, 'мониторинг', 'мониторинга', 'мониторингов')}
+            </b>{' '}
+            в журнале · <b>{board.zones}</b>{' '}
+            {pluralWord(board.zones, 'район', 'района', 'районов')} под наблюдением ·{' '}
+            <b>
+              {board.done} из {board.orders}
+            </b>{' '}
+            заявок закрыто
+          </p>
+
+          <div className="dbstats">
+            <div className="dbstat">
+              <span className="dbstat__value">{percent(board.share)}</span>
+              <span className="dbstat__label">Выполнение в среднем за день</span>
+            </div>
+            <div className="dbstat">
+              <span className="dbstat__value">
+                {board.routesDone} из {board.routes}
+              </span>
+              <span className="dbstat__label">Маршрутов закрыто</span>
+            </div>
+            <div className="dbstat">
+              <span className="dbstat__value">{Math.round(board.crew)}</span>
+              <span className="dbstat__label">Инженеров на смене в среднем</span>
+            </div>
+            <div className={'dbstat' + (board.late > 0 ? ' dbstat--bad' : '')}>
+              <span className="dbstat__value">{board.late}</span>
+              <span className="dbstat__label">Срывов сроков за всё время</span>
+            </div>
+          </div>
+
+          {/* Ряд дней: у каждого своя полоса выполнения, и слабый день виден
+              в ряду сразу — без чтения чисел. Лучший и слабый названы
+              вслух: это первое, о чём спрашивают, посмотрев на ряд. */}
+          <div className="homemons">
+            {board.rows.map((one) => (
+              <button
+                key={one.id}
+                type="button"
+                className={'homemon' + (one.share !== null && one.share < 80 ? ' homemon--low' : '')}
+                onClick={() => onOpenShift(one.date)}
+                title={`Разобрать смену ${fullDate(one.date)}`}
+              >
+                <span className="homemon__top">
+                  <span className="homemon__code">{monitorCode(one.no)}</span>
+                  <span className="homemon__when">{shortDate(one.date)}</span>
+                </span>
+                <span className="homemon__value">
+                  {one.share === null ? '—' : percent(one.share)}
+                </span>
+                <span className="homemon__bar" aria-hidden="true">
+                  <span
+                    className="homemon__fill"
+                    style={{ width: `${Math.min(100, one.share ?? 0)}%` }}
+                  />
+                </span>
+                <span className="homemon__facts">
+                  {one.zones} {pluralWord(one.zones, 'район', 'района', 'районов')} ·{' '}
+                  {one.crew} {pluralWord(one.crew, 'инженер', 'инженера', 'инженеров')}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {board.best && board.worst && board.best.id !== board.worst.id && (
+            <p className="homefoot">
+              <Icon name="check-circle" size={13} />
+              Лучший день — {fullDate(board.best.date)}, {percent(board.best.share ?? 0)}; слабее
+              всех {fullDate(board.worst.date)}, {percent(board.worst.share ?? 0)}.
+            </p>
+          )}
+        </section>
+      )}
+
       {/* ─── прошедшие смены ──────────────────────────────────────────────
           Быстрый ход назад: вчерашний день открывается одним щелчком, и в
           нём виден журнал — что за день произошло и чем он кончился. */}
       <section className="panel">
         <div className="dash__section-head">
           <h2 className="dash__section-title">Прошедшие смены</h2>
-          <span className="dash__section-note">
-            {total.shifts === 0
-              ? 'Журнал пуст'
-              : `${total.shifts} ${pluralWord(total.shifts, 'смена', 'смены', 'смен')} в журнале`}
-          </span>
         </div>
+
+        {/* Свод выборки — строкой под заголовком, как над списками в базах:
+            сколько записей, за сколько дней смотрели и что из этого вышло. */}
+        {total.shifts > 0 && (
+          <p className="dbbar__summary home__summary">
+            <b>
+              {total.shifts} {pluralWord(total.shifts, 'смена', 'смены', 'смен')}
+            </b>{' '}
+            в журнале · <b>{total.watched}</b>{' '}
+            {pluralWord(total.watched, 'день', 'дня', 'дней')} под наблюдением ·{' '}
+            <b>
+              {total.done} из {total.orders}
+            </b>{' '}
+            заявок закрыто · <b>{watchTime(total.minutes)}</b> наблюдения
+          </p>
+        )}
 
         {shifts.length === 0 ? (
           <div className="emptynote">
@@ -433,9 +593,9 @@ export function HomeScreen({
           </button>
         </div>
 
-        {!runs ? (
+        {!runs || !registry ? (
           <p className="stub__body">Собираем расчёты…</p>
-        ) : recent.length === 0 ? (
+        ) : recentRuns.length === 0 ? (
           /* Пустая история — словами и кнопкой, а не пустым местом: пустой
              ряд плиток читается как «не загрузилось». */
           <div className="emptynote">
@@ -447,40 +607,28 @@ export function HomeScreen({
             </button>
           </div>
         ) : (
-          <div className="homeruns">
-            {recent.map((run) => {
-              const isActive = run.id === activeRun;
-              return (
-                <button
-                  key={run.id}
-                  type="button"
-                  className={'homerun' + (isActive ? ' homerun--active' : '')}
-                  title={`Разобрать расчёт ${run.code}`}
-                  onClick={() => onOpenRunCard(run.id)}
-                >
-                  <span className="homerun__top">
-                    <span className="homerun__code">{run.code}</span>
-                    {isActive ? (
-                      <Badge tone="accent" dot>
-                        открыт
-                      </Badge>
-                    ) : (
-                      <span className="homerun__when">{whenLabel(run.created)}</span>
-                    )}
-                  </span>
-                  <span className="homerun__value">
-                    {dec(run.coverage)}
-                    <span className="runcard__unit">%</span>
-                  </span>
-                  <span className="homerun__label">Прогноз выполнения</span>
-                  <span className="homerun__fact">{dayLabel(run.id, run.date)}</span>
-                  <span className="homerun__fact">
-                    Назначено {run.ordersAssigned} из {run.ordersTotal} · без инженера{' '}
-                    {run.unassigned}
-                  </span>
-                </button>
-              );
-            })}
+          /* Карточки те же, что в базе расчётов: расчёт — одна вещь, и
+             узнавать его на Главной диспетчер должен по тому же виду, по
+             какому он листает архив. Отбора к сравнению и кнопки «Открыть»
+             здесь нет: Главная показывает последнее, а работают с расчётом
+             там, где он живёт. */
+          <div className="runs__grid" style={{ '--per-row': 4 } as CSSProperties}>
+            {recentRuns.map((row) => (
+              <RunCard
+                key={row.run.id}
+                row={row}
+                bounds={registry.bounds}
+                routes={routesByRun.get(row.run.id) ?? []}
+                isActive={row.run.id === activeRun}
+                picked={false}
+                showCompare={false}
+                showOpen={false}
+                onOpen={onOpenRunCard}
+                onOpenMap={onOpenRunCard}
+                onGo={() => onGoSection('dispatch')}
+                onCompare={() => undefined}
+              />
+            ))}
           </div>
         )}
       </section>
@@ -613,51 +761,6 @@ export function HomeScreen({
         </div>
       </section>
 
-      {/* ─── что ещё можно сделать ────────────────────────────────────────
-          Действия, а не разделы: то, ради чего в сервис заходят помимо
-          наблюдения. Строкой внизу — откуда сейчас берутся расчёты: это
-          первое, что спрашивают, когда числа выглядят неожиданно. */}
-      <section className="panel">
-        <div className="dash__section-head">
-          <h2 className="dash__section-title">Дальше</h2>
-        </div>
-        <div className="tiles">
-          <button type="button" className="ctile" onClick={onCreate}>
-            <span className="ctile__head">
-              <span className="ctile__icon">
-                <Icon name="plus" size={15} />
-              </span>
-              <span className="ctile__label">Создать расчёт</span>
-            </span>
-          </button>
-          <button type="button" className="ctile" onClick={() => onGoSection('stats', 'compare')}>
-            <span className="ctile__head">
-              <span className="ctile__icon">
-                <Icon name="shuffle" size={15} />
-              </span>
-              <span className="ctile__label">Сравнить расчёты</span>
-            </span>
-          </button>
-          <button type="button" className="ctile" onClick={() => onGoSection('control')}>
-            <span className="ctile__head">
-              <span className="ctile__icon">
-                <Icon name="lightning" size={15} />
-              </span>
-              <span className="ctile__label">Объявить событие</span>
-            </span>
-          </button>
-        </div>
-
-        {/* Настройки плиткой не стоят: они живут внизу меню и под шестерёнкой
-            в шапке, а третьей дорогой туда же ряд действий стал бы длиннее
-            ровно на то, что и так под рукой. */}
-        <p className="homefoot">
-          <Icon name={engineReady() ? 'check-circle' : 'info'} size={13} />
-          {engineReady()
-            ? 'Расчёты считает программа расчёта: она запущена и отвечает.'
-            : 'Программа расчёта не отвечает — планы считаются в браузере, базовым вариантом.'}
-        </p>
-      </section>
     </div>
   );
 }
