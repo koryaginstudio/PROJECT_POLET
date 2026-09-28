@@ -18,6 +18,9 @@ import type { Registry, RouteRecord } from '../data/registry.ts';
 import { engineerKey } from '../data/registry.ts';
 import { RunCard } from '../app/RunCard.tsx';
 import { useDuty, workDays } from '../data/duty.ts';
+/* Знак хозяйства без слов — тот же файл, что в шапке страницы; см.
+   assets/logo/SOURCE.md, строка «mark». */
+import mark from '../ds/assets/logo/mark.svg';
 import { successOf, todayKey, useShifts, wasWatched, watchTime } from '../data/watch.ts';
 import { monitorCode, useMonitors } from '../data/monitor.ts';
 import type { WatchShift } from '../data/watch.ts';
@@ -126,6 +129,7 @@ export function HomeScreen({
   registry,
   activeRun,
   watched,
+  watching,
   onWatch,
   onEnterWatch,
   onGoSection,
@@ -166,6 +170,38 @@ export function HomeScreen({
   const today = `${weekday[0].toUpperCase()}${weekday.slice(1)}, ${now.getDate()} ${monthName(now)}`;
   const clock = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   const ready = days.filter((one) => one.holder);
+
+  /* Что стоит за отмеченными участками.
+
+     Галочки у дней справа до сих пор ничего не меняли на экране: они копили
+     набор для кнопки «Смотреть», и до самого живого вида диспетчер не знал,
+     много ли отметил. А это первый вопрос перед наблюдением — сколько
+     заявок, маршрутов и людей берётся под присмотр.
+
+     Числа берём из справочника, по рабочим расчётам отмеченных дней: он их
+     уже посчитал для баз и статистики, и второй раз считать те же суммы
+     незачем. Покрытие складываем по заявкам, а не средним из долей: участок
+     на две сотни заявок весит больше участка на пять десятков. */
+  const picked = useMemo(() => {
+    if (!registry) return null;
+    const runsOfDays = days
+      .filter((one) => watched.includes(one.key) && one.holder)
+      .map((one) => one.holder as RunId);
+    if (runsOfDays.length === 0) return null;
+    const rows = registry.stats.byRun.filter((one) => runsOfDays.includes(one.run.id));
+    if (rows.length === 0) return null;
+    const sum = (pick: (one: (typeof rows)[number]) => number) =>
+      rows.reduce((total, one) => total + pick(one), 0);
+    const orders = sum((one) => one.orders);
+    return {
+      places: rows.length,
+      orders,
+      routes: sum((one) => one.routes),
+      engineers: sum((one) => one.engineersTotal),
+      coverage: orders > 0 ? sum((one) => one.coverage * one.orders) / orders : 0
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [registry, days, watched.join('|')]);
   /* Последние расчёты — свода справочника, а не ленты истории: карточке
      базы нужны её числа и набросок карты, и считает их справочник. */
   const recentRuns = useMemo(
@@ -295,12 +331,26 @@ export function HomeScreen({
             {today}
             <span className="homehead__clock">{clock}</span>
           </h2>
-          <span className="homehead__title">Мониторинг</span>
+          {/* Пчела — без слов. Главная открывается первой, и на ней уместен
+              знак хозяйства: имя сервиса и так стоит в шапке страницы, а
+              здесь нужен не он, а лицо. */}
+          <img className="homehead__mark" src={mark} alt="" aria-hidden="true" />
         </div>
 
         <div className="homehero">
           <div className="homehero__live">
-            <div className="homelive">
+            {/* Живые числа стоят, только пока наблюдение идёт.
+
+                Прежде они висели здесь всегда — по тому расчёту, что открыт
+                в диспетчерской, — и Главная в шесть утра бодро сообщала
+                «2 на объекте» о плане, за которым никто не смотрит. Число,
+                снятое неизвестно с чего, хуже отсутствия числа: по нему
+                принимают решения. Наблюдение не запущено — здесь пусто, и
+                на его месте то, ради чего сюда пришли: что взять под
+                присмотр. */}
+            {watching && watched.length > 0 && (
+              <>
+                <div className="homelive">
               <span className="homelive__item">
                 <b className="homelive__value">{live.working.length}</b>
                 <span>На объекте</span>
@@ -350,6 +400,40 @@ export function HomeScreen({
                 )}
               </div>
             )}
+            </>
+            )}
+
+            {/* Свод по отмеченным участкам — под числами и вместо них, когда
+                наблюдение не идёт. Он отвечает галочкам справа: отметили
+                участок — здесь прибавилось его хозяйство. */}
+            {picked ? (
+              <div className="homepick">
+                <span className="homepick__label">
+                  <Icon name="check-circle" size={13} />
+                  Под присмотром: {picked.places} {pluralWord(picked.places, 'участок', 'участка', 'участков')}
+                </span>
+                <span className="homepick__row">
+                  <span className="homepick__item">
+                    <b>{picked.orders}</b> {pluralWord(picked.orders, 'заявка', 'заявки', 'заявок')}
+                  </span>
+                  <span className="homepick__item">
+                    <b>{picked.routes}</b> {pluralWord(picked.routes, 'маршрут', 'маршрута', 'маршрутов')}
+                  </span>
+                  <span className="homepick__item">
+                    <b>{picked.engineers}</b> {pluralWord(picked.engineers, 'инженер', 'инженера', 'инженеров')}
+                  </span>
+                  <span className="homepick__item">
+                    <b>{percent(picked.coverage * 100)}</b> покрытие
+                  </span>
+                </span>
+              </div>
+            ) : (
+              <p className="homehero__note">
+                {ready.length === 0
+                  ? 'Ни у одного дня нет рабочего расчёта: выберите его справа, и день можно будет взять под присмотр.'
+                  : 'Отметьте дни участков справа — здесь встанет то, что за ними стоит: заявки, маршруты и люди.'}
+              </p>
+            )}
 
             <div className="home__actions">
               {/* Первое действие — вернуться к наблюдению: за ним диспетчер
@@ -357,12 +441,20 @@ export function HomeScreen({
                   Остальные два идут в том порядке, в каком к ним обращаются:
                   воздействие — по ходу дня, диспетчерская — когда нужен
                   новый план. */}
+              {/* Подпись у первой кнопки одна на три случая, и каждый из них
+                  свой: наблюдение идёт — к нему возвращаются; участки
+                  отмечены, но не запущены — их берут под присмотр; не
+                  отмечено ничего — идут в мониторинг выбирать. */}
               <Button
                 variant="accent"
-                iconLeft={<Icon name="navigation-arrow" size={14} />}
+                iconLeft={<Icon name={watching ? 'navigation-arrow' : 'play'} size={14} />}
                 onClick={watched.length > 0 ? onEnterWatch : () => onGoSection('monitor')}
               >
-                Вернуться к наблюдению
+                {watching && watched.length > 0
+                  ? 'Вернуться к наблюдению'
+                  : watched.length > 0
+                    ? `Смотреть отмеченные · ${watched.length}`
+                    : 'Открыть мониторинг'}
               </Button>
               <button type="button" className="runcard__act" onClick={() => onGoSection('control')}>
                 <Icon name="lightning" size={13} />

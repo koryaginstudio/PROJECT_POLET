@@ -7601,8 +7601,55 @@ b.ccard__bad {
 
 .home__actions {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: var(--sp-2);
   margin-top: var(--sp-4);
+}
+
+/* Свод по отмеченным участкам: ответ галочкам справа. Плиткой, а не строкой
+   чисел, — он стоит на месте живых чисел, когда наблюдение не идёт, и
+   пустоты на этом месте быть не должно. */
+.homepick {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--sp-3);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--r-md);
+  background: var(--surface-tile);
+}
+
+.homepick__label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  color: var(--text-secondary);
+}
+
+.homepick__label svg {
+  color: var(--success-600);
+}
+
+.homepick__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-5);
+}
+
+.homepick__item {
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.homepick__item b {
+  font-size: var(--fs-h4);
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+  margin-right: 4px;
 }
 
 .homelive {
@@ -7719,11 +7766,15 @@ b.ccard__bad {
    и ответ на него читается одним взглядом. Узкому окну колонки не по росту —
    там они встают друг под друга, и первым остаётся то, ради чего сюда и
    пришли, — живые числа. */
+/* Две колонки героя стоят вровень: левая тянется на высоту правой, а её
+   кнопки прижаты к низу. Прежде колонки росли каждая по своему содержимому,
+   и ряд кнопок оказывался то выше последнего участка, то ниже — карточка
+   выглядела собранной наспех. */
 .homehero {
   display: grid;
-  grid-template-columns: minmax(0, 1.45fr) minmax(260px, 1fr);
+  grid-template-columns: minmax(0, 1.45fr) minmax(280px, 1fr);
   gap: var(--sp-5);
-  align-items: start;
+  align-items: stretch;
 }
 
 @media (max-width: 1340px) {
@@ -7737,6 +7788,8 @@ b.ccard__bad {
   flex-direction: column;
   gap: var(--sp-3);
   min-width: 0;
+  /* Кнопки — к нижнему краю: они и в правой колонке последние. */
+  justify-content: space-between;
 }
 
 .homehero__note {
@@ -7972,11 +8025,27 @@ button.homechip--quiet {
    День и часы крупно, название раздела под ними подписью: то же устройство,
    что в воротах мониторинга. Раздел отвечает на «что происходит сейчас», и
    первое, что он говорит, — какое это «сейчас». */
+/* Шапка Главной: день с часами слева, знак хозяйства справа.
+
+   Знак стоит в одну строку с датой, а не над нею и не под: строка эта —
+   единственная во всю ширину карточки, и правый её край до сих пор пустовал.
+   Пчела его и занимает, не отнимая места у чисел. */
 .homehead {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
   margin-bottom: var(--sp-4);
+}
+
+.homehead__mark {
+  flex: 0 0 auto;
+  height: 34px;
+  width: auto;
+  display: block;
+  /* Знак — не управление и не подпись: он ничего не объясняет и потому
+     держится тише даты рядом. */
+  opacity: 0.85;
 }
 
 .homehead__day {
