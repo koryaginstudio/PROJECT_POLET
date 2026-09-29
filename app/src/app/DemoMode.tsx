@@ -169,9 +169,14 @@ export function DemoMode({
     },
     {
       title: 'Воздействие: день пошёл не так',
-      what: 'Четыре события, каждое со своей ценой дню и своей выгодой от пересчёта: авария, инженер выбыл, инженер задержится, абонент отказался. Возьмём первое — нажмите «Пересчитать от…» в карточке «Авария».',
+      what: 'Здесь день правят: отмечают, что случилось — передали другому, выехал, выполнена, сорвалась, инженер задержится или выбыл, — и отсюда же пересобирают остаток смены. Раздел ведёт рабочий день: пока мониторинг сегодня не открывали, отмечать нечего, и он так и говорит. Само окно правки посмотрим следующим шагом.',
       go: goControl,
-      find: one('.actgrid .actcard .actcard__go')
+      /* Кнопка ищется по слову, и её может не быть вовсе: раздел ведёт
+         рабочий день, а в показе его не заводят — тогда экран пуст, и
+         показ идёт дальше сам. Искать по разметке тут нельзя: раздел
+         переделывали, и прежние карточки событий с кнопкой «Пересчитать
+         от…» сменились списком причин внутри самого окна правки. */
+      find: byText('Пересчитать остаток дня')
     },
     {
       title: 'Пересчёт остатка дня',
@@ -322,7 +327,8 @@ export function DemoMode({
        отрисованный React, Chrome в этой сборке для таких теней упорно не
        показывает. */
     let raf = 0;
-    const shades: HTMLElement[] = [];
+    let shade: SVGSVGElement | null = null;
+    let hole: SVGPathElement | null = null;
     let ring: HTMLElement | null = null;
     let pulse: HTMLElement | null = null;
     let printed = '';
@@ -330,8 +336,9 @@ export function DemoMode({
     const hide = () => {
       if (printed === '') return;
       printed = '';
-      for (const one of shades) one.remove();
-      shades.length = 0;
+      shade?.remove();
+      shade = null;
+      hole = null;
       ring?.remove();
       pulse?.remove();
       ring = null;
@@ -347,31 +354,27 @@ export function DemoMode({
       h: r.height + pad * 2
     });
 
-    /* Экран минус светлые места. Каждая дырка режет куски тьмы на четыре —
-       сверху, снизу, слева и справа от себя, — и куски остаются
-       непересекающимися. */
-    const carve = (full: Box, holes: Box[]): Box[] => {
-      let parts: Box[] = [full];
-      for (const hole of holes) {
-        const next: Box[] = [];
-        for (const part of parts) {
-          const x1 = Math.max(part.x, hole.x);
-          const y1 = Math.max(part.y, hole.y);
-          const x2 = Math.min(part.x + part.w, hole.x + hole.w);
-          const y2 = Math.min(part.y + part.h, hole.y + hole.h);
-          if (x2 <= x1 || y2 <= y1) { next.push(part); continue; }
-          if (y1 > part.y) next.push({ x: part.x, y: part.y, w: part.w, h: y1 - part.y });
-          if (y2 < part.y + part.h) {
-            next.push({ x: part.x, y: y2, w: part.w, h: part.y + part.h - y2 });
-          }
-          if (x1 > part.x) next.push({ x: part.x, y: y1, w: x1 - part.x, h: y2 - y1 });
-          if (x2 < part.x + part.w) {
-            next.push({ x: x2, y: y1, w: part.x + part.w - x2, h: y2 - y1 });
-          }
-        }
-        parts = next;
-      }
-      return parts.filter((one) => one.w > 0.5 && one.h > 0.5);
+    /* Экран минус светлые места — одним путём с дырками.
+
+       Прежде тьма складывалась из четырёх прямоугольников вокруг каждой
+       дырки, и дырки выходили прямоугольными: вокруг кнопки-пилюли в
+       темноте светился прямоугольник с прямыми углами, а у скруглённого
+       окна в углах оставались светлые уголки. Путь с правилом evenodd
+       вырезает ровно ту форму, какая у цели: со скруглением её же радиуса. */
+    const roundRect = (one: Box, r: number): string => {
+      const radius = Math.max(0, Math.min(r, one.w / 2, one.h / 2));
+      const x = one.x;
+      const y = one.y;
+      const w = one.w;
+      const h = one.h;
+      if (radius <= 0) return `M${x} ${y}h${w}v${h}h${-w}Z`;
+      return (
+        `M${x + radius} ${y}h${w - radius * 2}` +
+        `a${radius} ${radius} 0 0 1 ${radius} ${radius}v${h - radius * 2}` +
+        `a${radius} ${radius} 0 0 1 ${-radius} ${radius}h${-(w - radius * 2)}` +
+        `a${radius} ${radius} 0 0 1 ${-radius} ${-radius}v${-(h - radius * 2)}` +
+        `a${radius} ${radius} 0 0 1 ${radius} ${-radius}Z`
+      );
     };
 
     const css = (one: Box, radius = 0) =>
@@ -379,24 +382,26 @@ export function DemoMode({
       `width:${Math.round(one.w)}px;height:${Math.round(one.h)}px;` +
       (radius > 0 ? `border-radius:${radius}px` : '');
 
-    const draw = (dark: Box[], area: Box | null, aim: Box | null, round: number) => {
+    const draw = (holes: { box: Box; radius: number }[], area: Box | null, aim: Box | null, round: number) => {
+      const full: Box = { x: 0, y: 0, w: window.innerWidth, h: window.innerHeight };
+      const path =
+        roundRect(full, 0) + holes.map((one) => roundRect(one.box, one.radius)).join('');
       const mark =
-        dark.map((one) => css(one)).join('|') +
-        '#' + (area ? css(area, 12) : '') +
-        '#' + (aim ? css(aim, round + 6) : '');
+        path + '#' + (area ? css(area, 12) : '') + '#' + (aim ? css(aim, round + 6) : '');
       if (mark === printed) return;
       printed = mark;
 
-      while (shades.length > dark.length) shades.pop()?.remove();
-      while (shades.length < dark.length) {
-        const node = document.createElement('div');
-        node.className = 'demo__shade';
-        document.body.append(node);
-        shades.push(node);
+      if (!shade) {
+        shade = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        shade.setAttribute('class', 'demo__shade');
+        hole = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        hole.setAttribute('fill-rule', 'evenodd');
+        shade.append(hole);
+        document.body.append(shade);
       }
-      dark.forEach((one, at) => {
-        shades[at].style.cssText = css(one);
-      });
+      shade.setAttribute('viewBox', `0 0 ${full.w} ${full.h}`);
+      shade.style.cssText = `position:fixed;top:0;left:0;width:${full.w}px;height:${full.h}px`;
+      hole?.setAttribute('d', path);
 
       if (area) {
         if (!ring) {
@@ -440,13 +445,13 @@ export function DemoMode({
         const area = alive(rr) && rr ? box(rr, 4) : null;
         const radius = target ? parseFloat(getComputedStyle(target).borderTopLeftRadius) : 0;
         const round = Number.isFinite(radius) ? radius : 0;
-        const holes = [area, aim].filter((one): one is Box => one !== null);
-        draw(
-          carve({ x: 0, y: 0, w: window.innerWidth, h: window.innerHeight }, holes),
-          area,
-          aim,
-          round
-        );
+        /* Каждая дырка со своим скруглением: область — как панель под ней,
+           цель — как сама кнопка. */
+        const holes = [
+          area ? { box: area, radius: 12 } : null,
+          aim ? { box: aim, radius: round + 6 } : null
+        ].filter((one): one is { box: Box; radius: number } => one !== null);
+        draw(holes, area, aim, round);
 
         setAway(
           !tr ? null : tr.top >= window.innerHeight - 8 ? 'down' : tr.bottom <= 8 ? 'up' : null
