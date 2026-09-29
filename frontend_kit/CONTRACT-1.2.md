@@ -147,7 +147,7 @@
 |---|---|---|
 | `transport` | string \| null | тип транспортного средства, один |
 | `status` | string \| null | `on_shift` \| `off_shift` \| `unavailable` |
-| `team` | string \| null | бригада, как она названа в выгрузке: «Бригада Соколов» |
+| `team` | string \| null | бригада, как она названа в выгрузке: «Бригада Белов» |
 | `zone` | string \| null | участок приписки: «Восток», «Юго-Восток», «Центр» |
 | `phone` | string \| null | рабочий телефон |
 | `photo` | string \| null | путь к снимку |

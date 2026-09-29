@@ -336,7 +336,7 @@ function ZoneCard({
               {Math.round(stat.coverage * 100)}
               <span className="engquick__unit">%</span>
             </span>
-            <span className="engquick__label">Покрытие</span>
+            <span className="engquick__label">Прогноз выполнения</span>
           </div>
         </div>
       )}
@@ -375,7 +375,7 @@ type Sort = 'fresh' | 'coverage' | 'orders';
 
 const SORTS: { value: Sort; label: string }[] = [
   { value: 'fresh', label: 'Свежие' },
-  { value: 'coverage', label: 'Покрытие' },
+  { value: 'coverage', label: 'Прогноз' },
   { value: 'orders', label: 'Заявки' }
 ];
 
