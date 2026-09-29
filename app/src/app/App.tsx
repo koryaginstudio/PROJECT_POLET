@@ -42,6 +42,8 @@ import { Header } from './Header.tsx';
 import { DemoMode } from './DemoMode.tsx';
 import { WelcomeGate } from './WelcomeGate.tsx';
 import { SubHeader } from './SubHeader.tsx';
+import { AskDialog } from './AskDialog.tsx';
+import type { Ask } from './AskDialog.tsx';
 import { Sidebar } from './Sidebar.tsx';
 import { DetailPanel } from './DetailPanel.tsx';
 import { HomeScreen } from '../screens/HomeScreen.tsx';
@@ -93,7 +95,7 @@ import '../styles/screens.css';
 /* Вопрос, который задаётся перед любым уходом с несохранённого пересчёта.
    Один на все дороги — ленту, базу, карту, кнопку «назад», — чтобы человек
    узнавал его, а не читал каждый раз заново. */
-const LEAVE_QUESTION = 'Пересчёт не сохранён — уйти и потерять его?';
+const LEAVE_QUESTION = 'Пересчёт не сохранён';
 
 /** Объявленное событие словами — для журнала смены.
 
@@ -241,6 +243,15 @@ export function App() {
   const [watchDay, setWatchDay] = useState<string | null>(null);
   const liveDay = todayKey();
 
+  /* Вопрос перед необратимым — один на всю оболочку.
+
+     Спрашивать приходится в четырёх местах, и все четыре прежде звали
+     `window.confirm`: поверх экрана, собранного по своей сетке, вырастало
+     окно операционной системы с чужими кнопками, где «уйти» и «остаться»
+     различались только порядком. Здесь вопрос — карточка сервиса
+     (`AskDialog`), а согласие приходит в `onOk`. */
+  const [ask, setAsk] = useState<Ask | null>(null);
+
   /* Сегодняшний мониторинг — рабочий процесс дня.
 
      Воздействие вмешивается в работу, которая идёт прямо сейчас, и работа
@@ -288,39 +299,54 @@ export function App() {
     }
     const picked = [...byDay.values()];
     if (picked.length === 0) {
-      window.alert(
-        `Мониторинг ${monitorCode(row.no)} вести нечем: расчётов, по которым он шёл, в истории больше нет.`
-      );
+      /* Вопроса здесь нет — есть отказ: вести мониторинг нечем. Окно с
+         одной кнопкой, которой его закрывают. */
+      setAsk({
+        title: `Мониторинг ${monitorCode(row.no)} вести нечем`,
+        body:
+          'Расчётов, по которым он шёл, в истории больше нет: их стёрли или программа ' +
+          'расчёта пересобрала архив. Откройте другую запись или заведите расчёт заново.',
+        okLabel: 'Понятно'
+      });
       return;
     }
 
+    /* Что делать после согласия: взять дни участков на их расчёты и
+       развернуть мониторинг. Записи ведёт только сегодняшний день —
+       вернулись к нему, наблюдение продолжается с той же записи; ушли в
+       прошлый — отметки замолкают. */
+    const open = () => {
+      for (const one of picked) takeDuty(one.run, one.date);
+      setWatched(picked.map((one) => one.key));
+      setWatching(true);
+      setWatchDay(id);
+      if (id === liveDay) {
+        const places = picked.map((one) => dayLabel(one.run, one.date));
+        startWatch(places, picked.map((one) => one.run));
+        startMonitor(places, picked.map((one) => one.run));
+      } else {
+        stopWatch();
+        endMonitor();
+      }
+    };
+
     if (id !== liveDay) {
       const when = id.split('-').reverse().join('.');
-      const ok = window.confirm(
-        `Мониторинг ${monitorCode(row.no)} за ${when} — не сегодняшний.\n\n` +
-          'Вы будете смотреть неактуальный мониторинг: люди и числа на экране ' +
-          'расставлены по плану того дня на нынешний час, а не по тому, что ' +
-          'происходит сейчас. Наблюдение за сегодняшним днём на это время ' +
-          'приостановится.\n\nОткрыть?'
-      );
-      if (!ok) return;
+      setAsk({
+        title: `Открыть мониторинг ${monitorCode(row.no)} за ${when}?`,
+        body:
+          'Это не сегодняшний день. Люди и числа на экране будут расставлены по плану ' +
+          'того дня на нынешний час, а не по тому, что происходит сейчас. Наблюдение за ' +
+          'сегодняшним днём на это время приостановится.',
+        okLabel: 'Открыть',
+        noLabel: 'Не открывать',
+        danger: true,
+        onOk: open
+      });
+      return;
     }
 
-    for (const one of picked) takeDuty(one.run, one.date);
-    setWatched(picked.map((one) => one.key));
-    setWatching(true);
-    setWatchDay(id);
-
-    /* Записи ведёт только сегодняшний день. Вернулись к нему — наблюдение
-       продолжается с той же записи, ушли в прошлый — отметки замолкают. */
-    if (id === liveDay) {
-      const places = picked.map((one) => dayLabel(one.run, one.date));
-      startWatch(places, picked.map((one) => one.run));
-      startMonitor(places, picked.map((one) => one.run));
-    } else {
-      stopWatch();
-      endMonitor();
-    }
+    open();
   };
 
   /* Уход из открытого мониторинга спрашивает.
@@ -330,14 +356,21 @@ export function App() {
      наблюдения и пишет запись дня. Щелчок по соседнему пункту меню
      обрывает и то и другое, и обрывает молча — прежде о выходе узнавали
      по исчезнувшей карте. Вопрос стоит ровно там, где решение принимают. */
-  const leaveWatch = (): boolean => {
-    if (!watchingLive) return true;
-    return window.confirm(
-      'Вы уходите с мониторинга.\n\n' +
-        'Живой вид закроется, наблюдение за сменой остановится, а время в ' +
-        'записи дня перестанет копиться. Вернуться можно в любую минуту — ' +
-        'запись дня продолжится с того же места.\n\nУйти?'
-    );
+  const leaveWatch = (after: () => void): void => {
+    if (!watchingLive) {
+      after();
+      return;
+    }
+    setAsk({
+      title: 'Уйти с мониторинга?',
+      body:
+        'Живой вид закроется, наблюдение за сменой остановится, а время в записи дня ' +
+        'перестанет копиться. Вернуться можно в любую минуту — запись дня продолжится ' +
+        'с того же места.',
+      okLabel: 'Уйти',
+      noLabel: 'Остаться',
+      onOk: after
+    });
   };
   /* Журнал смен: Главная читает его сама, оболочке он нужен для окна
      разбора — смена меняется на ходу, пока мониторинг открыт, и окно
@@ -454,13 +487,26 @@ export function App() {
   const routeRef = useRef(route);
   routeRef.current = route;
   const draftRef = useRef<boolean>(false);
+  /* Охранник пересчёта, каким его видит слушатель адреса: сам слушатель
+     заводится один раз и до объявления `leaveDraft` не дотягивается. */
+  const askLeaveDraft = useRef<(after: () => void) => void>((after) => after());
   useEffect(() => {
     const sync = () => {
       const prev = routeRef.current;
       const next = readRoute(window.location.hash);
       if (sameRoute(prev, next)) return;
-      if (draftRef.current && next.runId !== prev.runId && !window.confirm(LEAVE_QUESTION)) {
+      /* «Назад» в браузере при несохранённом пересчёте.
+
+         Спросить на месте нельзя: вопрос наш, а не системный, и ответа он
+         ждёт не в этой строке. Поэтому адрес сразу возвращается на прежний
+         — экран не дёргается, — а вопрос задаётся следом; согласились —
+         уходим туда, куда вели, и дописываем адрес. */
+      if (draftRef.current && next.runId !== prev.runId) {
         window.history.replaceState(null, '', writeRoute(prev));
+        askLeaveDraft.current(() => {
+          setRoute(next);
+          window.history.replaceState(null, '', writeRoute(next));
+        });
         return;
       }
       setRoute(next);
@@ -934,14 +980,32 @@ export function App() {
      секундами работы движка и решением диспетчера. Теперь любая дорога к
      другому расчёту проходит здесь: нечего терять — пропускает молча,
      есть — спрашивает, и при отказе ничего не происходит. */
-  const leaveDraft = (): boolean => {
-    if (!draft) return true;
-    if (!window.confirm(LEAVE_QUESTION)) return false;
-    setDraft(null);
-    setReplan(null);
-    setSaveFailed(null);
-    return true;
+  const leaveDraft = (after: () => void): void => {
+    if (!draft) {
+      after();
+      return;
+    }
+    setAsk({
+      title: LEAVE_QUESTION,
+      body:
+        'Пересчёт держится на экране и нигде не сохранён: уйдёте — останется тот план, ' +
+        'что был до него, а полторы секунды работы программы расчёта и ваше решение ' +
+        'пропадут.',
+      okLabel: 'Уйти и потерять',
+      noLabel: 'Остаться',
+      danger: true,
+      onOk: () => {
+        setDraft(null);
+        setReplan(null);
+        setSaveFailed(null);
+        after();
+      }
+    });
   };
+  /* Слушатель адреса заводится один раз и держит охранника ссылкой:
+     переход «назад» при несохранённом пересчёте спрашивает тем же окном,
+     что и всё остальное. */
+  askLeaveDraft.current = leaveDraft;
 
   /* Сохранить: пересчёт ложится в архив отдельной записью, помеченной как
      правка, со ссылкой на расчёт, от которого он отпочковался. Открывается
@@ -1093,13 +1157,15 @@ export function App() {
       if (id === 'monitor') {
         /* Возврат к выбору районов — тот же уход из живого вида, и
            спрашивает он о том же. */
-        if (!leaveWatch()) return;
-        setWatching(false);
+        leaveWatch(() => setWatching(false));
         return;
       }
     }
     /* Уход из открытого мониторинга в соседний раздел. */
-    if (id !== section && !leaveWatch()) return;
+    if (id !== section) {
+      leaveWatch(() => nav({ section: id, view: slot ?? firstView(id) }));
+      return;
+    }
     nav({ section: id, view: slot ?? firstView(id) });
   };
 
@@ -1119,8 +1185,11 @@ export function App() {
   };
 
   const openRun = (id: RunId) => {
-    if (id !== runId && !leaveDraft()) return;
-    showRun(id);
+    if (id === runId) {
+      showRun(id);
+      return;
+    }
+    leaveDraft(() => showRun(id));
   };
 
   /* Воздействие работает по тому расчёту, которым день ведут.
@@ -1152,10 +1221,16 @@ export function App() {
      карточки заявки карта встречает этой заявкой, а не днём целиком: точку
      среди двухсот иначе искать глазами. */
   const openRunMap = (id: RunId, orderId?: string) => {
-    if (id !== runId && !leaveDraft()) return;
-    setCut(dayStart());
-    if (orderId) selectOnOpen(id, { kind: 'order', id: orderId });
-    nav({ runId: id, stage: 'plan', section: 'dispatch', view: 'map' });
+    const open = () => {
+      setCut(dayStart());
+      if (orderId) selectOnOpen(id, { kind: 'order', id: orderId });
+      nav({ runId: id, stage: 'plan', section: 'dispatch', view: 'map' });
+    };
+    if (id === runId) {
+      open();
+      return;
+    }
+    leaveDraft(open);
   };
 
   /* Щелчок по карточке маршрута в базе: открыть карту его расчёта и
@@ -1164,16 +1239,22 @@ export function App() {
      целиком, в котором свою линию потом ищи глазами. Своего экрана у
      маршрута нет, и это единственное место, где его смотрят как есть. */
   const openRouteMap = (id: RunId, engineerId: string) => {
-    if (id !== runId && !leaveDraft()) return;
-    /* Из поиска можно уехать и с открытого мониторинга — спрашиваем о том
-       же, о чём спрашивает переход по меню. */
-    if (!leaveWatch()) return;
-    setCut(dayStart());
-    keepRoute.current = true;
-    setPinnedRoute(engineerId);
-    setRouteFocus((n) => n + 1);
-    selectOnOpen(id, { kind: 'engineer', id: engineerId });
-    nav({ runId: id, stage: 'plan', section: 'dispatch', view: 'map' });
+    const open = () => {
+      setCut(dayStart());
+      keepRoute.current = true;
+      setPinnedRoute(engineerId);
+      setRouteFocus((n) => n + 1);
+      selectOnOpen(id, { kind: 'engineer', id: engineerId });
+      nav({ runId: id, stage: 'plan', section: 'dispatch', view: 'map' });
+    };
+    /* Два вопроса подряд задавать нельзя — их и не бывает двух сразу:
+       несохранённый пересчёт живёт в диспетчерской, живой вид в
+       мониторинге. Спрашиваем то, что уместно, и уходим. */
+    if (id !== runId) {
+      leaveDraft(() => leaveWatch(open));
+      return;
+    }
+    leaveWatch(open);
   };
 
   /* «Отследить» инженера с другого участка. У программы расчёта номера
@@ -1199,22 +1280,32 @@ export function App() {
         '. Откройте или заведите расчёт его участка.'
       );
     }
+    const open = () => {
+      setCut(dayStart());
+      keepRoute.current = true;
+      setPinnedRoute(code);
+      setRouteFocus((n) => n + 1);
+      selectOnOpen(latest.id, { kind: 'engineer', id: code });
+      nav({ runId: latest.id, stage: 'plan', section: 'monitor', view: firstView('monitor') });
+    };
     /* Отказался уходить с несохранённого пересчёта — остаёмся в карточке. */
-    if (latest.id !== runId && !leaveDraft()) return '';
-    setCut(dayStart());
-    keepRoute.current = true;
-    setPinnedRoute(code);
-    setRouteFocus((n) => n + 1);
-    selectOnOpen(latest.id, { kind: 'engineer', id: code });
-    nav({ runId: latest.id, stage: 'plan', section: 'monitor', view: firstView('monitor') });
+    if (latest.id !== runId) {
+      leaveDraft(open);
+      return '';
+    }
+    open();
   };
 
   /* «Перейти» у открытого расчёта: ведёт к нему в диспетчерскую, ничего в
      нём не переоткрывая — момент и выбранный объект остаются как были. */
   const goToRun = (id: RunId) => {
-    if (id !== runId && !leaveDraft()) return;
-    if (!leaveWatch()) return;
-    nav({ runId: id, stage: 'plan', section: 'dispatch', view: firstView('dispatch') });
+    const open = () =>
+      nav({ runId: id, stage: 'plan', section: 'dispatch', view: firstView('dispatch') });
+    if (id !== runId) {
+      leaveDraft(() => leaveWatch(open));
+      return;
+    }
+    leaveWatch(open);
   };
 
   /* ─── карточка найденной записи ───────────────────────────────────────
@@ -1298,9 +1389,15 @@ export function App() {
      встречала вопросом «создать или выбрать»: расчёт числился открытым и
      открытым не был. */
   const openRunFromDb = (id: RunId) => {
-    if (id !== runId && !leaveDraft()) return;
-    setCut(dayStart());
-    nav({ runId: id, stage: 'plan', section: 'dispatch', view: firstView('dispatch') });
+    const open = () => {
+      setCut(dayStart());
+      nav({ runId: id, stage: 'plan', section: 'dispatch', view: firstView('dispatch') });
+    };
+    if (id === runId) {
+      open();
+      return;
+    }
+    leaveDraft(open);
   };
 
   /* Закрыть открытый расчёт и вернуться к выбору действия. Открыть план было
@@ -1310,8 +1407,7 @@ export function App() {
      готовый». Несохранённый пересчёт при этом спрашивает: он живёт только на
      экране, и закрытие плана его теряет. */
   const closeRun = () => {
-    if (!leaveDraft()) return;
-    nav({ section: 'dispatch', view: firstView('dispatch'), stage: 'gate' });
+    leaveDraft(() => nav({ section: 'dispatch', view: firstView('dispatch'), stage: 'gate' }));
   };
 
   /* Две дороги с экрана ошибки: к выбору другого расчёта и на дашборд. */
@@ -2205,8 +2301,17 @@ export function App() {
           setIncidentKind('urgent');
           setIncidentOpen(true);
         }}
+        /* Показ закрывает окно правки сам, уходя с шагов про пересчёт:
+           иначе оно едет за ним по всем следующим экранам. */
+        closeIncident={() => {
+          setIncidentOpen(false);
+          setReplan(null);
+        }}
       />
 
+      {/* Вопрос перед необратимым — поверх всего и один на оболочку.
+          Стоит последним: он закрывает собой и окна, из которых уходят. */}
+      <AskDialog ask={ask} onClose={() => setAsk(null)} />
     </div>
   );
 }
