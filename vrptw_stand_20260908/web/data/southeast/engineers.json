@@ -1,0 +1,300 @@
+{
+ "schema": "1.2",
+ "kind": "engineers",
+ "meta": {
+  "date": "2026-08-17",
+  "zone": "Юго-Восток",
+  "time_format": "minutes_from_midnight",
+  "distance_units": "km",
+  "source": "допущение проекта: бригад в выгрузке нет. Четырнадцать исполнителей на участок — в границах 10–15, которые называет ТЗ; навыки, смены и транспорт заявлены. Тот же штат, которым считает движок."
+ },
+ "engineers": [
+  {
+   "id": "E00",
+   "name": "Артур Валеев",
+   "skills": [
+    "connect"
+   ],
+   "grade": 2,
+   "shift_start": 480,
+   "shift_end": 1020,
+   "home_address": "г. Москва, ул Бирюлёвская, д 1с1",
+   "home_lat": 55.588927,
+   "home_lon": 37.664614,
+   "transport": "car",
+   "status": "on_shift",
+   "team": null,
+   "zone": "Юго-Восток",
+   "phone": null,
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E01",
+   "name": "Семён Кудрин",
+   "skills": [
+    "connect"
+   ],
+   "grade": 2,
+   "shift_start": 540,
+   "shift_end": 1080,
+   "home_address": "г. Москва, ул Бирюлёвская, д 1с1",
+   "home_lat": 55.588927,
+   "home_lon": 37.664614,
+   "transport": "car",
+   "status": "on_shift",
+   "team": null,
+   "zone": "Юго-Восток",
+   "phone": null,
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E02",
+   "name": "Леонид Мартынов",
+   "skills": [
+    "connect",
+    "local"
+   ],
+   "grade": 2,
+   "shift_start": 540,
+   "shift_end": 1080,
+   "home_address": "г. Москва, ул Бирюлёвская, д 1с1",
+   "home_lat": 55.588927,
+   "home_lon": 37.664614,
+   "transport": "car",
+   "status": "on_shift",
+   "team": null,
+   "zone": "Юго-Восток",
+   "phone": null,
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E03",
+   "name": "Тарас Бондарь",
+   "skills": [
+    "local"
+   ],
+   "grade": 2,
+   "shift_start": 600,
+   "shift_end": 1140,
+   "home_address": "г. Москва, ул Бирюлёвская, д 1с1",
+   "home_lat": 55.588927,
+   "home_lon": 37.664614,
+   "transport": "walk",
+   "status": "on_shift",
+   "team": null,
+   "zone": "Юго-Восток",
+   "phone": null,
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E04",
+   "name": "Игорь Сомов",
+   "skills": [
+    "local"
+   ],
+   "grade": 2,
+   "shift_start": 600,
+   "shift_end": 1140,
+   "home_address": "г. Москва, ул Бирюлёвская, д 1с1",
+   "home_lat": 55.588927,
+   "home_lon": 37.664614,
+   "transport": "bike",
+   "status": "on_shift",
+   "team": null,
+   "zone": "Юго-Восток",
+   "phone": null,
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E05",
+   "name": "Вадим Прохоров",
+   "skills": [
+    "emergency",
+    "local"
+   ],
+   "grade": 2,
+   "shift_start": 600,
+   "shift_end": 1140,
+   "home_address": "г. Москва, ул Бирюлёвская, д 1с1",
+   "home_lat": 55.588927,
+   "home_lon": 37.664614,
+   "transport": "car",
+   "status": "on_shift",
+   "team": null,
+   "zone": "Юго-Восток",
+   "phone": null,
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E06",
+   "name": "Ринат Шаймиев",
+   "skills": [
+    "connect",
+    "local"
+   ],
+   "grade": 2,
+   "shift_start": 660,
+   "shift_end": 1200,
+   "home_address": "г. Москва, ул Бирюлёвская, д 1с1",
+   "home_lat": 55.588927,
+   "home_lon": 37.664614,
+   "transport": "transit",
+   "status": "on_shift",
+   "team": null,
+   "zone": "Юго-Восток",
+   "phone": null,
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E07",
+   "name": "Юрий Копылов",
+   "skills": [
+    "emergency"
+   ],
+   "grade": 2,
+   "shift_start": 660,
+   "shift_end": 1200,
+   "home_address": "г. Москва, ул Бирюлёвская, д 1с1",
+   "home_lat": 55.588927,
+   "home_lon": 37.664614,
+   "transport": "car",
+   "status": "on_shift",
+   "team": null,
+   "zone": "Юго-Восток",
+   "phone": null,
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E08",
+   "name": "Аркадий Нестеров",
+   "skills": [
+    "connect"
+   ],
+   "grade": 2,
+   "shift_start": 720,
+   "shift_end": 1260,
+   "home_address": "г. Москва, ул Бирюлёвская, д 1с1",
+   "home_lat": 55.588927,
+   "home_lon": 37.664614,
+   "transport": "car",
+   "status": "on_shift",
+   "team": null,
+   "zone": "Юго-Восток",
+   "phone": null,
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E09",
+   "name": "Пётр Худяков",
+   "skills": [
+    "local"
+   ],
+   "grade": 2,
+   "shift_start": 720,
+   "shift_end": 1260,
+   "home_address": "г. Москва, ул Бирюлёвская, д 1с1",
+   "home_lat": 55.588927,
+   "home_lon": 37.664614,
+   "transport": "transit",
+   "status": "on_shift",
+   "team": null,
+   "zone": "Юго-Восток",
+   "phone": null,
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E10",
+   "name": "Эдуард Малинин",
+   "skills": [
+    "connect",
+    "emergency",
+    "local"
+   ],
+   "grade": 2,
+   "shift_start": 780,
+   "shift_end": 1320,
+   "home_address": "г. Москва, ул Бирюлёвская, д 1с1",
+   "home_lat": 55.588927,
+   "home_lon": 37.664614,
+   "transport": "car",
+   "status": "on_shift",
+   "team": null,
+   "zone": "Юго-Восток",
+   "phone": null,
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E11",
+   "name": "Борис Цветков",
+   "skills": [
+    "connect",
+    "local"
+   ],
+   "grade": 2,
+   "shift_start": 780,
+   "shift_end": 1320,
+   "home_address": "г. Москва, ул Бирюлёвская, д 1с1",
+   "home_lat": 55.588927,
+   "home_lon": 37.664614,
+   "transport": "car",
+   "status": "on_shift",
+   "team": null,
+   "zone": "Юго-Восток",
+   "phone": null,
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E12",
+   "name": "Савелий Гордеев",
+   "skills": [
+    "local"
+   ],
+   "grade": 2,
+   "shift_start": 840,
+   "shift_end": 1320,
+   "home_address": "г. Москва, ул Бирюлёвская, д 1с1",
+   "home_lat": 55.588927,
+   "home_lon": 37.664614,
+   "transport": "bike",
+   "status": "on_shift",
+   "team": null,
+   "zone": "Юго-Восток",
+   "phone": null,
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E13",
+   "name": "Матвей Ершов",
+   "skills": [
+    "connect",
+    "emergency"
+   ],
+   "grade": 2,
+   "shift_start": 840,
+   "shift_end": 1320,
+   "home_address": "г. Москва, ул Бирюлёвская, д 1с1",
+   "home_lat": 55.588927,
+   "home_lon": 37.664614,
+   "transport": "car",
+   "status": "on_shift",
+   "team": null,
+   "zone": "Юго-Восток",
+   "phone": null,
+   "photo": null,
+   "position": null
+  }
+ ]
+}

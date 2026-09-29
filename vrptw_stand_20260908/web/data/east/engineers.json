@@ -1,0 +1,300 @@
+{
+ "schema": "1.2",
+ "kind": "engineers",
+ "meta": {
+  "date": "2026-08-17",
+  "zone": "Восток",
+  "time_format": "minutes_from_midnight",
+  "distance_units": "km",
+  "source": "допущение проекта: бригад в выгрузке нет. Четырнадцать исполнителей на участок — в границах 10–15, которые называет ТЗ; навыки, смены и транспорт заявлены. Тот же штат, которым считает движок."
+ },
+ "engineers": [
+  {
+   "id": "E00",
+   "name": "Артём Белов",
+   "skills": [
+    "connect"
+   ],
+   "grade": 2,
+   "shift_start": 480,
+   "shift_end": 1020,
+   "home_address": "г. Москва, ул Юных Ленинцев, д 83с 4",
+   "home_lat": 55.700561,
+   "home_lon": 37.750658,
+   "transport": "car",
+   "status": "on_shift",
+   "team": null,
+   "zone": "Восток",
+   "phone": null,
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E01",
+   "name": "Сергей Гущин",
+   "skills": [
+    "connect"
+   ],
+   "grade": 2,
+   "shift_start": 540,
+   "shift_end": 1080,
+   "home_address": "г. Москва, ул Юных Ленинцев, д 83с 4",
+   "home_lat": 55.700561,
+   "home_lon": 37.750658,
+   "transport": "car",
+   "status": "on_shift",
+   "team": null,
+   "zone": "Восток",
+   "phone": null,
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E02",
+   "name": "Ильдар Мухин",
+   "skills": [
+    "connect",
+    "local"
+   ],
+   "grade": 2,
+   "shift_start": 540,
+   "shift_end": 1080,
+   "home_address": "г. Москва, ул Юных Ленинцев, д 83с 4",
+   "home_lat": 55.700561,
+   "home_lon": 37.750658,
+   "transport": "car",
+   "status": "on_shift",
+   "team": null,
+   "zone": "Восток",
+   "phone": null,
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E03",
+   "name": "Павел Рожков",
+   "skills": [
+    "local"
+   ],
+   "grade": 2,
+   "shift_start": 600,
+   "shift_end": 1140,
+   "home_address": "г. Москва, ул Юных Ленинцев, д 83с 4",
+   "home_lat": 55.700561,
+   "home_lon": 37.750658,
+   "transport": "walk",
+   "status": "on_shift",
+   "team": null,
+   "zone": "Восток",
+   "phone": null,
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E04",
+   "name": "Никита Саврасов",
+   "skills": [
+    "local"
+   ],
+   "grade": 2,
+   "shift_start": 600,
+   "shift_end": 1140,
+   "home_address": "г. Москва, ул Юных Ленинцев, д 83с 4",
+   "home_lat": 55.700561,
+   "home_lon": 37.750658,
+   "transport": "bike",
+   "status": "on_shift",
+   "team": null,
+   "zone": "Восток",
+   "phone": null,
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E05",
+   "name": "Данил Ерохин",
+   "skills": [
+    "emergency",
+    "local"
+   ],
+   "grade": 2,
+   "shift_start": 600,
+   "shift_end": 1140,
+   "home_address": "г. Москва, ул Юных Ленинцев, д 83с 4",
+   "home_lat": 55.700561,
+   "home_lon": 37.750658,
+   "transport": "car",
+   "status": "on_shift",
+   "team": null,
+   "zone": "Восток",
+   "phone": null,
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E06",
+   "name": "Олег Пятков",
+   "skills": [
+    "connect",
+    "local"
+   ],
+   "grade": 2,
+   "shift_start": 660,
+   "shift_end": 1200,
+   "home_address": "г. Москва, ул Юных Ленинцев, д 83с 4",
+   "home_lat": 55.700561,
+   "home_lon": 37.750658,
+   "transport": "transit",
+   "status": "on_shift",
+   "team": null,
+   "zone": "Восток",
+   "phone": null,
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E07",
+   "name": "Роман Шитов",
+   "skills": [
+    "emergency"
+   ],
+   "grade": 2,
+   "shift_start": 660,
+   "shift_end": 1200,
+   "home_address": "г. Москва, ул Юных Ленинцев, д 83с 4",
+   "home_lat": 55.700561,
+   "home_lon": 37.750658,
+   "transport": "car",
+   "status": "on_shift",
+   "team": null,
+   "zone": "Восток",
+   "phone": null,
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E08",
+   "name": "Марат Юсупов",
+   "skills": [
+    "connect"
+   ],
+   "grade": 2,
+   "shift_start": 720,
+   "shift_end": 1260,
+   "home_address": "г. Москва, ул Юных Ленинцев, д 83с 4",
+   "home_lat": 55.700561,
+   "home_lon": 37.750658,
+   "transport": "car",
+   "status": "on_shift",
+   "team": null,
+   "zone": "Восток",
+   "phone": null,
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E09",
+   "name": "Кирилл Лапин",
+   "skills": [
+    "local"
+   ],
+   "grade": 2,
+   "shift_start": 720,
+   "shift_end": 1260,
+   "home_address": "г. Москва, ул Юных Ленинцев, д 83с 4",
+   "home_lat": 55.700561,
+   "home_lon": 37.750658,
+   "transport": "transit",
+   "status": "on_shift",
+   "team": null,
+   "zone": "Восток",
+   "phone": null,
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E10",
+   "name": "Егор Тимофеев",
+   "skills": [
+    "connect",
+    "emergency",
+    "local"
+   ],
+   "grade": 2,
+   "shift_start": 780,
+   "shift_end": 1320,
+   "home_address": "г. Москва, ул Юных Ленинцев, д 83с 4",
+   "home_lat": 55.700561,
+   "home_lon": 37.750658,
+   "transport": "car",
+   "status": "on_shift",
+   "team": null,
+   "zone": "Восток",
+   "phone": null,
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E11",
+   "name": "Антон Дуров",
+   "skills": [
+    "connect",
+    "local"
+   ],
+   "grade": 2,
+   "shift_start": 780,
+   "shift_end": 1320,
+   "home_address": "г. Москва, ул Юных Ленинцев, д 83с 4",
+   "home_lat": 55.700561,
+   "home_lon": 37.750658,
+   "transport": "car",
+   "status": "on_shift",
+   "team": null,
+   "zone": "Восток",
+   "phone": null,
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E12",
+   "name": "Виктор Ильин",
+   "skills": [
+    "local"
+   ],
+   "grade": 2,
+   "shift_start": 840,
+   "shift_end": 1320,
+   "home_address": "г. Москва, ул Юных Ленинцев, д 83с 4",
+   "home_lat": 55.700561,
+   "home_lon": 37.750658,
+   "transport": "bike",
+   "status": "on_shift",
+   "team": null,
+   "zone": "Восток",
+   "phone": null,
+   "photo": null,
+   "position": null
+  },
+  {
+   "id": "E13",
+   "name": "Глеб Назаров",
+   "skills": [
+    "connect",
+    "emergency"
+   ],
+   "grade": 2,
+   "shift_start": 840,
+   "shift_end": 1320,
+   "home_address": "г. Москва, ул Юных Ленинцев, д 83с 4",
+   "home_lat": 55.700561,
+   "home_lon": 37.750658,
+   "transport": "car",
+   "status": "on_shift",
+   "team": null,
+   "zone": "Восток",
+   "phone": null,
+   "photo": null,
+   "position": null
+  }
+ ]
+}
