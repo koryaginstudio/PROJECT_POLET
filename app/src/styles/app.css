@@ -9813,7 +9813,9 @@ button.homechip--quiet {
 
 .gaterow {
   display: grid;
-  grid-template-columns: 68px 96px minmax(0, 1fr) auto;
+  /* Номер, состояние дня, время, числа, стрелка. Состояние стоит сразу за
+     номером — там же, где в базе расчётов. */
+  grid-template-columns: 68px auto 96px minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--sp-3);
   padding: 10px var(--sp-3);
@@ -9851,6 +9853,24 @@ button.homechip--quiet {
 
 .gaterow__facts {
   font-size: var(--fs-small);
+  color: var(--text-muted);
+}
+
+/* Призыв взять день — над списком расчётов. Тихий: это не ошибка и не
+   предупреждение, а объяснение, почему мониторинг пока пуст. */
+.gatecall {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  margin: 0 0 var(--sp-2);
+  font-size: var(--fs-small);
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.gatecall svg {
+  flex: none;
+  transform: translateY(2px);
   color: var(--text-muted);
 }
 

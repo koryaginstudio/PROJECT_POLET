@@ -31,7 +31,7 @@ import type {
   RunStat,
   ServiceRecord
 } from '../../data/registry.ts';
-import { uniqueOrders } from '../../data/registry.ts';
+import { mergeEngineers, uniqueOrders } from '../../data/registry.ts';
 import { isUrgent } from '../../data/dictionary.ts';
 
 export interface StatsScope {
@@ -222,10 +222,21 @@ export interface CrewTally {
   distanceKm: number | null;
 }
 
+/** Штат людьми, а не записями справочника.
+
+    У движка записи заведены по участкам: один и тот же E00 стоит в плане
+    Востока, Юго-востока и Югоцентра, и записей в справочнике выходит втрое
+    больше, чем людей. База инженеров, услуги и карточки расчётов давно
+    считают людьми — статистика считала записями, и на одном экране рядом
+    стояли «42 из 42 в базе» и «13 из 14 инженеров с маршрутом». Число штата
+    на сервисе одно, и собирается оно здесь. */
+export const crewOf = (registry: Registry): EngineerRecord[] =>
+  mergeEngineers(registry.engineers);
+
 export function crewTally(registry: Registry, scope: StatsScope): CrewTally[] {
   const ids = new Set(scope.runs.map((row) => row.run.id));
 
-  return registry.engineers
+  return crewOf(registry)
     .map((record) => {
       const shifts = record.byRun.filter((shift) => ids.has(shift.runId));
       const routed = shifts.filter((shift) => shift.routed);

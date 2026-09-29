@@ -6,7 +6,7 @@ import type { WidgetDef } from '../../app/DbWidgets.tsx';
 import { topWithRest, useWidgetBoard, WidgetPeriod } from '../../app/DbWidgets.tsx';
 import { BarChart } from '../../app/BarChart.tsx';
 import { percent, StatRank, StatsHead, tallyToDistribution } from './parts.tsx';
-import { crewTally } from './scope.ts';
+import { crewOf, crewTally } from './scope.ts';
 import type { DimProps } from './dims.ts';
 
 /* Статистика по инженерам.
@@ -29,6 +29,8 @@ import type { DimProps } from './dims.ts';
 
 export function StatsEngineers({ registry, scope, period, onPeriod, countOf }: DimProps) {
   const tally = useMemo(() => crewTally(registry, scope), [registry, scope]);
+  /* Штат — людьми: тем же счётом, каким его называет база инженеров. */
+  const staff = useMemo(() => crewOf(registry).length, [registry]);
   const bar = service().thresholds.occupancy / 100;
 
   const widgets = useMemo<WidgetDef[]>(() => {
@@ -64,7 +66,7 @@ export function StatsEngineers({ registry, scope, period, onPeriod, countOf }: D
         shape: 'number',
         data: {
           value: String(tally.length),
-          caption: `из ${registry.engineers.length} в базе`,
+          caption: `из ${staff} в базе`,
           whole: true,
           parts: [
             { key: 'routed', label: 'С маршрутом', value: working.length, tone: 'ok' },
@@ -228,7 +230,7 @@ export function StatsEngineers({ registry, scope, period, onPeriod, countOf }: D
         }
       }
     ];
-  }, [bar, registry.engineers.length, tally]);
+  }, [bar, staff, tally]);
 
   const board = useWidgetBoard({
     storeKey: 'stats-engineers',

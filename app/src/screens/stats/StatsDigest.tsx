@@ -6,7 +6,7 @@ import { service } from '../../data/service.ts';
 import type { WidgetDef } from '../../app/DbWidgets.tsx';
 import { useWidgetBoard, WidgetPeriod } from '../../app/DbWidgets.tsx';
 import { percent, StatGauge, StatRank, StatsHead } from './parts.tsx';
-import { clientTally, crewTally, runSeries, serviceTally } from './scope.ts';
+import { clientTally, crewOf, crewTally, runSeries, serviceTally } from './scope.ts';
 import type { DimProps } from './dims.ts';
 
 /* Сводка раздела.
@@ -48,6 +48,8 @@ export function StatsDigest({ registry, scope, period, onPeriod, countOf, onOpen
   }, [orders, runs, scope.routes.length]);
 
   const crew = useMemo(() => crewTally(registry, scope), [registry, scope]);
+  /* Штат — людьми: тем же счётом, каким его называет база инженеров. */
+  const staff = useMemo(() => crewOf(registry).length, [registry]);
   const clients = useMemo(() => clientTally(registry, scope), [registry, scope]);
   const services = useMemo(() => serviceTally(registry, scope), [registry, scope]);
 
@@ -119,7 +121,7 @@ export function StatsDigest({ registry, scope, period, onPeriod, countOf, onOpen
         shape: 'number',
         data: {
           value: String(crew.length),
-          caption: `из ${registry.engineers.length} в базе`,
+          caption: `из ${staff} в базе`,
           whole: true,
           parts: [
             {
@@ -222,7 +224,7 @@ export function StatsDigest({ registry, scope, period, onPeriod, countOf, onOpen
       crew,
       orders.length,
       registry.clients.length,
-      registry.engineers.length,
+      staff,
       registry.services.length,
       runs.length,
       scope,

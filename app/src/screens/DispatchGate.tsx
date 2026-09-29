@@ -6,6 +6,8 @@ import { Badge } from '../ds/components/core/Badge.jsx';
 import type { RunId, DaySummary } from '../data/load.ts';
 import { whenLabel } from '../data/load.ts';
 import { dec } from '../data/derive.ts';
+import { RunStateTag } from '../app/RunStateTag.tsx';
+import { useRunStates } from '../data/runState.ts';
 
 interface Props {
   runs: DaySummary[] | null;
@@ -26,6 +28,8 @@ interface Props {
 const SHORT = 5;
 
 export function DispatchGate({ runs, activeRun, onCreate, onOpen }: Props) {
+  /* Состояния строк: их же читает база расчётов. */
+  const stateOf = useRunStates();
   const [expanded, setExpanded] = useState(false);
   const [searching, setSearching] = useState(false);
   const [query, setQuery] = useState('');
@@ -43,6 +47,16 @@ export function DispatchGate({ runs, activeRun, onCreate, onOpen }: Props) {
   /* В поиске лимит не нужен: найденных и так единицы, а прятать их за
      кнопкой «раскрыть» после того, как человек уже сузил список, — значит
      заставить его нажимать дважды за один и тот же ответ. */
+  /* Сколько расчётов лежит без дня и ведёт ли день хоть один.
+
+     Взятие на день — решение диспетчера, и делать его за него сервис не
+     станет. Но молчать о нём нельзя: расчёт, не взятый ни на какой день,
+     в мониторинг не попадает, и день участка остаётся без плана. Прежде
+     об этом не говорилось нигде, и посчитанный день просто ложился в
+     архив, а мониторинг встречал пустым списком районов. */
+  const idle = runs ? runs.filter((run) => stateOf(run.id, run.date) === 'idle').length : 0;
+  const working = runs ? runs.some((run) => stateOf(run.id, run.date) === 'working') : false;
+
   const searchOn = searching && query.trim() !== '';
   const shown = searchOn || expanded ? found : found.slice(0, SHORT);
   const hidden = found.length - shown.length;
@@ -124,6 +138,20 @@ export function DispatchGate({ runs, activeRun, onCreate, onOpen }: Props) {
             </span>
           </div>
 
+          {/* Призыв взять день — над списком, а не у каждой строки: дело
+              одно на весь список, и повторять его девять раз незачем.
+              Пропадает сам, как только хоть один расчёт повёл свой день. */}
+          {runs && idle > 0 && !working && (
+            <p className="gatecall">
+              <Icon name="calendar" size={13} />
+              {idle === runs.length
+                ? 'Ни один расчёт не взят на свой день'
+                : `${idle} из ${runs.length} расчётов не взяты на свой день`}
+              : мониторинг по такому дню не открыть. Откройте расчёт и нажмите «В работу»
+              над планом.
+            </p>
+          )}
+
           {!runs ? (
             <p className="stub__body">Собираем расчёты…</p>
           ) : (
@@ -154,6 +182,9 @@ export function DispatchGate({ runs, activeRun, onCreate, onOpen }: Props) {
                   onClick={() => onOpen(run.id)}
                 >
                   <span className="gaterow__code">{run.code}</span>
+                  {/* Взят ли расчёт на день — теми же словами и тем же
+                      цветом, что в базе расчётов. */}
+                  <RunStateTag run={run.id} date={run.date} />
                   <span className="gaterow__when">{whenLabel(run.created)}</span>
                   <span className="gaterow__facts">
                     прогноз {dec(run.coverage)} % · назначено {run.ordersAssigned} из{' '}
