@@ -93,6 +93,9 @@ export interface ManualProps {
   onEvent: (event: JournalEvent, at: number) => void;
   /** Заявка словами диспетчера — адрес, а не код. */
   orderLabel?: (id: string) => string;
+  /** Заявки этого инженера по плану — по порядку объезда, с временем
+      начала работы. Пусто — маршрута у него в этом расчёте нет. */
+  stopsOf?: (engineer: string) => { order: string; at: number }[];
   /** Открыть окно правки на подходящем событии: отметить — одно дело,
       пересобрать остаток дня — другое, и второе делает движок. */
   onRecalc?: (kind: 'urgent' | 'cancel' | 'disabled' | 'delayed') => void;
@@ -109,13 +112,17 @@ const чистаяПричина = (detail: string) =>
     .trim();
 
 export function ManualEvent({
-  engineers, orders, cut, busy, failed, onEvent, orderLabel, onRecalc
+  engineers, orders, cut, busy, failed, onEvent, orderLabel, onRecalc, stopsOf
 }: ManualProps) {
   /* Начинаем с невыбранного: первый шаг — это вопрос, а не готовый
      ответ. Подставленное заранее событие читается как «уже решено», и
      человек жмёт «Записать», не заметив, что записывает не то. */
   const [kind, setKind] = useState<Kind | ''>('');
   const [engineer, setEngineer] = useState('');
+  /* Кому передают заявку. Отдельно от «кто»: у передачи две стороны, и
+     прежде обе жили в одном поле — диспетчер называл только принимающего,
+     а чья это заявка, оставалось на совести списка из всех заявок дня. */
+  const [to, setTo] = useState('');
   const [order, setOrder] = useState('');
   const [minutes, setMinutes] = useState(40);
   const [reason, setReason] = useState<Reason>('no_show');
@@ -134,20 +141,41 @@ export function ManualEvent({
 
   const выбрано = СОБЫТИЯ.find((one) => one.value === kind);
   const проЗаявку = выбрано?.про === 'заявку';
-  /* «Передать другому» — единственное, где нужны оба: и заявка, и кому. */
-  const нуженИнженер = Boolean(выбрано) && (!проЗаявку || kind === 'assigned');
+
+  /* Разговор идёт от человека к заявке, а не наоборот.
+
+     Прежде событие по заявке спрашивало «какая заявка» списком из всех
+     заявок расчёта — двести с лишним строк, подписанных кодом. Диспетчер
+     знает не код, а кто ему позвонил: «Ерохин стоит на Мантулинской».
+     Поэтому сперва инженер, а заявки — только его, по порядку объезда и со
+     временем работы, как в окне «Внести правку». */
+  const мойМаршрут = engineer && stopsOf ? stopsOf(engineer) : [];
+  const подпись = (id: string) =>
+    (orderLabel ? orderLabel(id) : orders.find((one) => one.id === id)?.address ?? id) || id;
+
+  /* Маршрута у инженера может и не быть: его заявки тогда ищутся по
+     закреплению в выгрузке, а если нет и его — берётся весь список.
+     Молча показать пустой выбор нельзя: заявка у человека есть, а
+     сказать о ней нечем. */
+  const заявкиИнженера: { value: string; label: string }[] = мойМаршрут.length
+    ? мойМаршрут.map((stop) => ({ value: stop.order, label: `${hhmm(stop.at)} · ${подпись(stop.order)}` }))
+    : orders
+        .filter((one) => !engineer || one.assigned_to === engineer)
+        .map((one) => ({ value: one.id, label: подпись(one.id) }));
+
+  const нуженИнженер = Boolean(выбрано);
+  const нужнаЗаявка = Boolean(выбрано) && проЗаявку;
+  const нуженПринимающий = kind === 'assigned';
 
   const мало =
-    !выбрано || (проЗаявку && !order) || (нуженИнженер && !engineer) ||
+    !выбрано || (нуженИнженер && !engineer) || (нужнаЗаявка && !order) ||
+    (нуженПринимающий && !to) ||
     (kind === 'engineer_delayed' && !(minutes > 0));
-
-  const подпись = (one: Order) =>
-    `${one.id} · ${orderLabel ? orderLabel(one.id) : (one.address ?? '')}`.trim();
 
   const записать = () => {
     if (мало) return;
     setЗаписано(null);
-    if (kind === 'assigned') onEvent({ kind, order, engineer }, at);
+    if (kind === 'assigned') onEvent({ kind, order, engineer: to }, at);
     else if (kind === 'failed') onEvent({ kind, order, reason }, at);
     else if (проЗаявку) onEvent({ kind: kind as 'dispatched' | 'en_route' | 'done', order }, at);
     else if (kind === 'engineer_delayed') onEvent({ kind, engineer, minutes }, at);
@@ -176,11 +204,16 @@ export function ManualEvent({
                 className={'incident__kind' + (kind === one.value ? ' incident__kind--on' : '')}
                 aria-pressed={kind === one.value}
                 onClick={() => {
-                  setKind(one.value);
+                  /* Повторный щелчок по выбранному снимает выбор: строка
+                     работает переключателем, как всякая кнопка с
+                     `aria-pressed`. Прежде снять выбранное было нечем —
+                     оставалось выбрать другое событие или уйти с экрана. */
+                  setKind((было) => (было === one.value ? '' : one.value));
                   /* Выбор сбрасывается: заявка, выбранная для «сорвалось»,
                      к «инженер выбыл» отношения не имеет. */
                   setOrder('');
                   setEngineer('');
+                  setTo('');
                   setЗаписано(null);
                 }}
               >
@@ -197,35 +230,83 @@ export function ManualEvent({
 
       {выбрано && (
         <div className="incident__params">
-          {проЗаявку && (
+          {/* Время — первым полем, как в окне «Внести правку»: о случившемся
+              узнают позже, чем оно случилось, и «во сколько» — первое, что
+              диспетчер уточняет по телефону. */}
+          <label className="incident__field">
+            <span className="incident__field-label">Когда случилось</span>
+            <input
+              className="rule__input"
+              id="manual-at"
+              type="time"
+              value={hhmm(at)}
+              onChange={(e) => {
+                const [h, m] = e.currentTarget.value.split(':').map(Number);
+                if (Number.isFinite(h) && Number.isFinite(m)) {
+                  setAt(h * 60 + m);
+                  setСвоёВремя(true);
+                }
+              }}
+            />
+          </label>
+
+          <label className="incident__field">
+            <span className="incident__field-label">
+              {проЗаявку ? 'У кого' : 'Кто'}
+            </span>
+            <Select
+              size="sm"
+              id="manual-engineer"
+              value={engineer}
+              onChange={(e: { target: { value: string } }) => {
+                setEngineer(e.target.value);
+                /* Сменили человека — его заявка больше не при чём. */
+                setOrder('');
+              }}
+              options={[
+                { value: '', label: engineers.length ? 'Выберите инженера' : 'Инженеров в расчёте нет' },
+                ...engineers.map((one) => ({ value: one.id, label: one.name || one.id }))
+              ]}
+            />
+          </label>
+
+          {нужнаЗаявка && (
             <label className="incident__field">
               <span className="incident__field-label">Какая заявка</span>
               <Select
                 size="sm"
                 id="manual-order"
                 value={order}
+                disabled={!engineer}
                 onChange={(e: { target: { value: string } }) => setOrder(e.target.value)}
                 options={[
-                  { value: '', label: orders.length ? 'Выберите заявку' : 'Заявок в расчёте нет' },
-                  ...orders.map((one) => ({ value: one.id, label: подпись(one) }))
+                  {
+                    value: '',
+                    label: !engineer
+                      ? 'Сначала выберите инженера'
+                      : заявкиИнженера.length
+                        ? 'Выберите заявку'
+                        : 'Заявок у него в этом расчёте нет'
+                  },
+                  ...заявкиИнженера
                 ]}
               />
             </label>
           )}
 
-          {нуженИнженер && (
+          {нуженПринимающий && (
             <label className="incident__field">
-              <span className="incident__field-label">
-                {kind === 'assigned' ? 'Кому передать' : 'Кто'}
-              </span>
+              <span className="incident__field-label">Кому передать</span>
               <Select
                 size="sm"
-                id="manual-engineer"
-                value={engineer}
-                onChange={(e: { target: { value: string } }) => setEngineer(e.target.value)}
+                id="manual-to"
+                value={to}
+                onChange={(e: { target: { value: string } }) => setTo(e.target.value)}
                 options={[
-                  { value: '', label: engineers.length ? 'Выберите инженера' : 'Инженеров нет' },
-                  ...engineers.map((one) => ({ value: one.id, label: `${one.id} · ${one.name}` }))
+                  { value: '', label: 'Выберите инженера' },
+                  ...engineers
+                    .filter((one) => one.id !== engineer)
+                    .map((one) => ({ value: one.id, label: one.name || one.id }))
                 ]}
               />
             </label>
@@ -256,23 +337,6 @@ export function ManualEvent({
               />
             </label>
           )}
-
-          <label className="incident__field">
-            <span className="incident__field-label">Когда случилось</span>
-            <input
-              className="rule__input"
-              id="manual-at"
-              type="time"
-              value={hhmm(at)}
-              onChange={(e) => {
-                const [h, m] = e.currentTarget.value.split(':').map(Number);
-                if (Number.isFinite(h) && Number.isFinite(m)) {
-                  setAt(h * 60 + m);
-                  setСвоёВремя(true);
-                }
-              }}
-            />
-          </label>
         </div>
       )}
 

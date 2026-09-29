@@ -80,7 +80,7 @@ import type { Route } from './route.ts';
 import { COMPARE_MAX } from './compare.ts';
 import { dayLabel, dropDuty, takeDuty, useDuty, workDays } from '../data/duty.ts';
 import { logWatch, startWatch, stopWatch, todayKey, useShifts } from '../data/watch.ts';
-import { endMonitor, monitorCode, monitors, startMonitor } from '../data/monitor.ts';
+import { endMonitor, monitorCode, monitors, startMonitor, useMonitors } from '../data/monitor.ts';
 import { OVERVIEW } from './selection.ts';
 import type { Selection } from './selection.ts';
 import { DayFail } from './DayFail.tsx';
@@ -240,6 +240,20 @@ export function App() {
      мониторинг». */
   const [watchDay, setWatchDay] = useState<string | null>(null);
   const liveDay = todayKey();
+
+  /* Сегодняшний мониторинг — рабочий процесс дня.
+
+     Воздействие вмешивается в работу, которая идёт прямо сейчас, и работа
+     эта — мониторинг сегодняшнего дня: он заводится, когда районы берут в
+     работу, и копит всё, что за день случилось. Не открыт — вмешиваться не
+     во что, и экран воздействия говорит об этом прямо, вместо того чтобы
+     предлагать пересчитать какой-то расчёт из архива.
+
+     Запись, а не признак «раздел открыт сейчас»: уходя в воздействие,
+     диспетчер выходит из живого вида, и наблюдение останавливается — но
+     день от этого не кончается. */
+  const monitorRows = useMonitors();
+  const todayMonitor = monitorRows.find((row) => row.id === liveDay) ?? null;
   /* Прошлый день смотрят, а не ведут: журнал смены и запись мониторинга
      копят сегодняшнюю работу, и вчерашние числа в них — ложь. Отметки на
      это время останавливаются и возобновляются при возврате к сегодняшнему
@@ -1109,6 +1123,23 @@ export function App() {
     showRun(id);
   };
 
+  /* Воздействие работает по тому расчёту, которым день ведут.
+
+     Экран вмешивается в сегодняшний мониторинг, а открытый расчёт — дело
+     диспетчерской: там мог остаться вчерашний прогон или черновик того же
+     дня. Пока эти два не сходились, отметка диспетчера ложилась в журнал
+     не того участка, за которым он смотрит. Входя в раздел, открываем
+     расчёт, который район сегодня и ведёт.
+
+     Расчёт мог быть стёрт между заходами — тогда вести нечем, и открытый
+     остаётся как был: молча открыть чужой хуже, чем не открыть ничего. */
+  useEffect(() => {
+    if (section !== 'control' || !todayMonitor || !runs) return;
+    const led = [...todayMonitor.runs].reverse().find((id) => runs.some((one) => one.id === id));
+    if (!led || led === runId) return;
+    nav({ runId: led, stage: 'plan' });
+  }, [section, todayMonitor, runs, runId]);
+
   /* Выбор в правой колонке к моменту, когда расчёт откроется. Тот же расчёт
      уже загружен — выбор ложится сразу; другой — ждёт загрузки. */
   const selectOnOpen = (id: RunId, choice: Selection) => {
@@ -1577,7 +1608,13 @@ export function App() {
           применяют к конкретному плану, а не вообще. */}
       {section === 'control' && (
         <ControlScreen
-          runCode={runCode(runId)}
+          /* Рабочий процесс дня: им экран и живёт. */
+          monitor={
+            todayMonitor
+              ? { code: monitorCode(todayMonitor.no), places: todayMonitor.places }
+              : null
+          }
+          onGoMonitor={() => nav({ section: 'monitor', view: firstView('monitor') })}
           cut={cut}
           live={engineReady()}
           canReplan={Boolean(engineDay)}
@@ -1613,6 +1650,14 @@ export function App() {
                     const order = ready.view.orderById.get(id);
                     return order ? order.address ?? order.work_title : id;
                   },
+                  /* Заявки инженера — его маршрутом по плану, по порядку
+                     объезда: диспетчер спрашивает про человека, а не про
+                     номер заявки. */
+                  stopsOf: (id: string) =>
+                    (ready.view.routeByEngineer.get(id)?.stops ?? []).map((stop) => ({
+                      order: stop.order_id,
+                      at: stop.start
+                    })),
                   /* Пересчёт открывается тем же окном правки, что и
                      прежде с карточек: отметить — одно дело, пересобрать
                      остаток дня — другое, и делает его движок. */

@@ -79,17 +79,70 @@
   margin: 0;
 }
 
-/* «Сколько ещё людей нужно»: плитка с главным числом, под ней — какие.
-   Столбиком, а не двумя колонками: сначала ответ, потом расшифровка. */
+/* «Сколько ещё людей нужно»: плитка с главным числом, рядом — разбор.
+
+   Два столбца там, где они помещаются: число — ответ, разбор — «кого и
+   почему», и читают их вместе. На узком экране разбор уходит под плитку:
+   ответ важнее, он и остаётся сверху. */
 .ctl .ctl__staff {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--sp-3);
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  align-items: start;
+  gap: var(--sp-4);
   margin-top: var(--sp-3);
+}
+
+@media (max-width: 900px) {
+  .ctl .ctl__staff {
+    grid-template-columns: 1fr;
+    gap: var(--sp-3);
+  }
 }
 
 .ctl .ctl__staff-tile {
   max-width: 300px;
+}
+
+/* Разбор: фраза движка, затем именованные части. */
+.ctl .ctl__staff-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.ctl .ctl__staff-part {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+/* Имя части — тем же голосом, каким подписаны своды в базах: тихо, мелко
+   и вразрядку, чтобы не спорить с самими строками. */
+.ctl .ctl__staff-head {
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.ctl .ctl__slots {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Оговорка о надёжности — подписью под строками слотов, а не отдельным
+   абзацем в общий столбец: она про них и читается вместе с ними. */
+.ctl .ctl__staff-note {
+  margin: var(--sp-1) 0 0;
+  font-size: var(--fs-caption);
+  line-height: var(--lh-body-s);
+  color: var(--text-secondary);
+}
+
+/* Кнопка сброса — своей строкой, с воздухом от абзаца над ней. */
+.ctl .ctl__reset {
+  margin-top: var(--sp-3);
 }
 
 .ctl .ctl__list {
@@ -120,7 +173,7 @@
 }
 
 .ctl .ctl__staff-phrase {
-  margin: 0 0 var(--sp-2);
+  margin: 0;
   font-size: var(--fs-body-s);
   line-height: var(--lh-body-s);
   color: var(--text-primary);

@@ -12,8 +12,11 @@ import type { ManualProps } from '../app/ManualEvent.tsx';
 import '../styles/control.css';
 
 interface Props {
-  /** Расчёт, к плану которого применяют воздействие. */
-  runCode: string;
+  /** Сегодняшний мониторинг: номер записи и районы под наблюдением.
+      `null` — рабочего процесса на сегодня нет, и вмешиваться не во что. */
+  monitor: { code: string; places: string[] } | null;
+  /** Уйти в мониторинг: единственная дорога отсюда, когда дня ещё нет. */
+  onGoMonitor: () => void;
   /** Момент, от которого движок пересобирает остаток дня. */
   cut: number;
   /** Запущен ли движок: без него ни одно воздействие посчитать нельзя. */
@@ -96,7 +99,8 @@ function Failure({ what, failed }: { what: string; failed: Failed }) {
 }
 
 export function ControlScreen({
-  runCode,
+  monitor,
+  onGoMonitor,
   cut,
   live,
   canReplan,
@@ -107,6 +111,9 @@ export function ControlScreen({
   orderLabel = (id) => id,
   manual
 }: Props) {
+  /* Почему пересчёт сейчас недоступен — одной причиной, общей с окном
+     правки. Стоит в шапке, рядом с готовностью программы: это одно и то
+     же сообщение — сработает ли то, что диспетчер сейчас нажмёт. */
   const blocked = replanBlocked(live, savedReplan, canReplan);
   /* «Сколько ещё людей нужно» — вопрос, который постановщик задал дважды и
      продиктовал формат ответа: «для того чтобы выполнить оставшиеся заявки,
@@ -168,6 +175,39 @@ export function ControlScreen({
     }
   };
 
+  /* Рабочего процесса на сегодня нет — и это весь экран.
+
+     Воздействие вмешивается в день, который идёт: диспетчер смотрит за
+     районами, ему звонят, он отмечает. Без открытого мониторинга
+     вмешиваться не во что, и показывать выбор событий — обещать работу,
+     которой нет: отметка легла бы в журнал участка, за которым сегодня
+     никто не смотрит. Прежде экран этого не различал и звал пересчитать
+     последний расчёт из архива, подписываясь «план расчёта R009, от 07:00
+     до конца смены» — числами, которые к сегодняшнему дню отношения не
+     имеют. */
+  if (!monitor) {
+    return (
+      <div className="dash enter ctl">
+        <section className="panel">
+          <div className="dash__section-head">
+            <h2 className="dash__section-title">Управление воздействием</h2>
+          </div>
+          <div className="emptynote">
+            <p className="emptynote__title">Нет рабочего процесса на сегодня</p>
+            <span>
+              Отмечать нечего: мониторинг сегодня не открывали. Отметьте районы, возьмите их
+              в работу — и всё, что за день случится, отмечается здесь.
+            </span>
+            <button type="button" className="runcard__go" onClick={onGoMonitor}>
+              <Icon name="navigation-arrow" size={13} />
+              Открыть мониторинг
+            </button>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className="dash enter ctl">
       {/* Одна панель, а не две. Прежде «Управление воздействием» было
@@ -178,20 +218,44 @@ export function ControlScreen({
       <section className="panel">
         <div className="dash__section-head">
           <h2 className="dash__section-title">Управление воздействием</h2>
+          {/* Подпись называет рабочий процесс дня, а не открытый расчёт:
+              отметка ложится в сегодняшний мониторинг и в его журнал. */}
           <span className="dash__section-note">
-            план расчёта {runCode}, от {hhmm(cut)} до конца смены
+            мониторинг {monitor.code}
+            {monitor.places.length > 0 && ` · ${monitor.places.join(', ')}`}
           </span>
         </div>
-        <p className="ctl__lede-first">
-          День пошёл не так, как посчитали: отметьте, что случилось, и
-          остаток смены пересобирается за полторы секунды.
-        </p>
-        {manual && live && <ManualEvent {...manual} />}
-        {!live && (
-          <p className="ctl__lede-first">
-            Программа расчёта не запущена — отмечать и пересчитывать нечем.
-          </p>
+
+        {/* Готовность программы расчёта — сразу под заголовком, до выбора
+            события: она говорит, сработает ли вообще то, что диспетчер
+            сейчас нажмёт. Внизу экрана, где строка стояла прежде, её не
+            читали — до неё доходили уже после того, как нажали. */}
+        {engineSilent() ? (
+          <div className="ctrlnote">
+            <Icon name="alert-triangle" size={16} />
+            <span>
+              <b>Программа расчёта не ответила на последний запрос.</b> Проверьте, что она
+              запущена, и отметьте событие ещё раз.
+            </span>
+          </div>
+        ) : blocked ? (
+          <div className="ctrlnote">
+            <Icon name="alert-triangle" size={16} />
+            <span>
+              <b>{blocked.what}</b> {blocked.todo}
+            </span>
+          </div>
+        ) : (
+          <div className="ctrlnote">
+            <Icon name="lightning" size={16} />
+            <span>
+              <b>Программа расчёта запущена.</b> Отметьте, что случилось, — остаток дня
+              пересобирается от {hhmm(cut)} за полторы секунды.
+            </span>
+          </div>
         )}
+
+        {manual && live && <ManualEvent {...manual} />}
       </section>
 
       {day && live && (
@@ -224,29 +288,46 @@ export function ControlScreen({
                     : undefined
                 }
               />
-              <div>
+              {/* Ответ разложен на части с именами, а не высыпан подряд.
+                  Прежде в одну колонку шли фраза движка, строки слотов,
+                  оговорка о надёжности и список незакрываемых заявок — всё
+                  одинаковым текстом, и понять, где кончается «кого взять» и
+                  начинается «чего всё равно не закрыть», можно было только
+                  вчитавшись. Вопросов здесь три, и у каждого свой заголовок. */}
+              <div className="ctl__staff-body">
                 <p className="ctl__staff-phrase">{staffing.phrase}</p>
-                {staffing.slots.map((slot, index) => (
-                  <div className="setrow" key={index}>
-                    <span className="setrow__key">+{slot.count}</span>
-                    <span className="setrow__val">
-                      {slot.skills_title}
-                      <span className="setrow__note">
-                        {` · ${slot.transport_title.toLowerCase()} · ${hhmm(slot.shift_start)}–${hhmm(slot.shift_end)}`}
-                      </span>
-                    </span>
+
+                {staffing.slots.length > 0 && (
+                  <div className="ctl__staff-part">
+                    <span className="ctl__staff-head">Кого добавить</span>
+                    <div className="ctl__slots">
+                      {staffing.slots.map((slot, index) => (
+                        <div className="setrow" key={index}>
+                          <span className="setrow__key">+{slot.count}</span>
+                          <span className="setrow__val">
+                            {slot.skills_title}
+                            <span className="setrow__note">
+                              {` · ${slot.transport_title.toLowerCase()} · ${hhmm(slot.shift_start)}–${hhmm(slot.shift_end)}`}
+                            </span>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    {staffing.reliability && (
+                      <p className="ctl__staff-note">{staffing.reliability}</p>
+                    )}
                   </div>
-                ))}
-                {staffing.reliability && <p className="ctl__text">{staffing.reliability}</p>}
+                )}
+
                 {staffing.still_unassigned.length > 0 && (
-                  <>
-                    <p className="ctl__text">Добавлением людей не закрыть:</p>
+                  <div className="ctl__staff-part">
+                    <span className="ctl__staff-head">Людьми не закрыть</span>
                     <ul className="ctl__list">
                       {staffing.still_unassigned.map((id) => (
                         <li key={id}>{orderLabel(id)}</li>
                       ))}
                     </ul>
-                  </>
+                  </div>
                 )}
               </div>
             </div>
@@ -297,18 +378,22 @@ export function ControlScreen({
               </Button>
             </div>
           ) : (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => {
-                setResetFailed(null);
-                setResetDone(false);
-                setConfirmReset(true);
-              }}
-              iconLeft={<Icon name="trash" size={14} />}
-            >
-              Сбросить события дня
-            </Button>
+            /* Кнопка в своей строке, а не вплотную к абзацу: она стояла
+               прижатой к тексту и налезала на него верхним краем. */
+            <div className="ctl__reset">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setResetFailed(null);
+                  setResetDone(false);
+                  setConfirmReset(true);
+                }}
+                iconLeft={<Icon name="trash" size={14} />}
+              >
+                Сбросить события дня
+              </Button>
+            </div>
           )}
           {resetDone && !confirmReset && (
             <div className="ctrlnote">
@@ -322,33 +407,6 @@ export function ControlScreen({
         </section>
       )}
 
-      {/* Готовность — внизу, одной строкой. Причины недоступности стоят
-          над карточками, рядом с серыми кнопками, и здесь не повторяются.
-          «Запущена» — только если движок ответил на последний запрос: флаг
-          `live` помнит запуск, и после неудачного сброса или пересчёта
-          строка спорила с ошибкой над ней. */}
-      {!blocked && (
-        <section className="panel">
-          {engineSilent() ? (
-            <div className="ctrlnote">
-              <Icon name="alert-triangle" size={16} />
-              <span>
-                <b>Программа расчёта не ответила на последний запрос.</b> Проверьте, что она
-                запущена, и выберите событие ещё раз.
-              </span>
-            </div>
-          ) : (
-            <div className="ctrlnote">
-              <Icon name="lightning" size={16} />
-              <span>
-                <b>Программа расчёта запущена.</b> Выберите, что случилось: откроется окно правки,
-                остаток дня пересоберётся от {hhmm(cut)}, и вы увидите цену. Принятый пересчёт
-                откроется в диспетчерской — посмотреть до того, как сохранять.
-              </span>
-            </div>
-          )}
-        </section>
-      )}
     </div>
   );
 }
