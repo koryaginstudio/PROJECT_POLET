@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import type { MouseEvent as ReactMouseEvent } from 'react';
 import { Icon } from '../ds/components/core/Icon.jsx';
 import { Button } from '../ds/components/core/Button.jsx';
 import type { RunId } from '../data/load.ts';
@@ -267,8 +268,29 @@ function ZoneCard({
   const holder = day.holder;
   const shown = holder ?? offer;
 
+  /* Отметить район щелчком по любому месту карточки.
+
+     Прежде отметка ловилась только шапкой с галочкой да картой: номер
+     расчёта, числа плана и поля между ними на щелчок не отвечали, и попасть
+     надо было в верхнюю полосу карточки. Карточка — одно целое и одно
+     решение: «за этим районом смотрим».
+
+     Два места остаются при своём. Выбор расчёта открывает список поверх
+     карточки — это другое дело, и отмечать район заодно с ним нельзя.
+     Шапка и карта переключают сами, и помогать им отсюда значило бы
+     переключить дважды, то есть не переключить вовсе. */
+  const pickCard = (event: ReactMouseEvent<HTMLElement>) => {
+    if (!shown) return;
+    const spot = event.target as HTMLElement;
+    if (spot.closest('.zcard__pick') || spot.closest('.zcard__head') || spot.closest('.zmap')) return;
+    onToggle();
+  };
+
   return (
-    <article className={'zcard' + (watched ? ' zcard--on' : '')}>
+    <article
+      className={'zcard' + (watched ? ' zcard--on' : '') + (shown ? ' zcard--live' : '')}
+      onClick={pickCard}
+    >
       <label className="zcard__head">
         <input
           type="checkbox"

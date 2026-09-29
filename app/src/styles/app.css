@@ -19850,6 +19850,13 @@ button.subhdr__close {
   box-shadow: 0 0 0 1px var(--accent-500) inset, var(--shadow-md);
 }
 
+/* Карточка района, которой есть что показать, отмечается целиком — и
+   курсор обязан говорить об этом на всей её площади, а не только над
+   галочкой и картой. */
+.zcard--live {
+  cursor: pointer;
+}
+
 .zcard__head {
   display: flex;
   align-items: baseline;
