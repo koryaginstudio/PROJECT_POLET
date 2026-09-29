@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Icon } from '../../ds/components/core/Icon.jsx';
 import { SegmentedControl } from '../../ds/components/forms/SegmentedControl.jsx';
 import type { EngineerRecord, OrderRecord, Registry, RouteRecord } from '../../data/registry.ts';
+import { crewSize } from '../../data/registry.ts';
 import type { RunId } from '../../data/load.ts';
 import { dec, hhmm, hoursText, plural, visits as pluralVisits } from '../../data/derive.ts';
 import { RouteCard } from '../../app/RouteCard.tsx';
@@ -408,7 +409,10 @@ export function DbRoutesScreen({
     const risky = routes.reduce((sum, route) => sum + route.risky, 0);
     const occupancy =
       routes.reduce((sum, route) => sum + route.occupancy, 0) / Math.max(routes.length, 1);
-    const crewed = new Set(routes.map((route) => route.engineerKey)).size;
+    /* Людей, а не записей справочника: один человек, выехавший на двух
+       участках, — один выехавший. Ключ тот же, каким штат сводит
+       `personOf`. */
+    const crewed = new Set(routes.map((route) => `${route.engineerId} · ${route.engineerName}`)).size;
     /* Время в маршруте — одно целое на всю доску: работа на объектах, дорога
        между ними и ожидание открытия окна. Две плитки говорят «от времени в
        маршруте», и считать это от разных целых нельзя — доли перестали бы
@@ -669,7 +673,7 @@ export function DbRoutesScreen({
         note: 'Кому расчёт дал работу, а кто ни разу не выехал',
         shape: 'donut',
         data: {
-          value: String(registry.engineers.length),
+          value: String(crewSize(registry.engineers)),
           caption: 'инженеров',
           whole: true,
           parts: [
@@ -677,7 +681,7 @@ export function DbRoutesScreen({
             {
               key: 'idle',
               label: 'Ни разу',
-              value: Math.max(0, registry.engineers.length - crewed),
+              value: Math.max(0, crewSize(registry.engineers) - crewed),
               tone: 'warn'
             }
           ],

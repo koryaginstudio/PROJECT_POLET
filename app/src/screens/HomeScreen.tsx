@@ -15,7 +15,7 @@ import {
 import type { RunId, DaySummary } from '../data/load.ts';
 import { runCode, whenLabel } from '../data/load.ts';
 import type { Registry, RouteRecord } from '../data/registry.ts';
-import { engineerKey } from '../data/registry.ts';
+import { engineerKey, crewSize, mergeOrders} from '../data/registry.ts';
 import { RunCard } from '../app/RunCard.tsx';
 import { useDuty, workDays } from '../data/duty.ts';
 /* Знак хозяйства без слов. Файлов два, и они разные: `mark.svg` нарисован
@@ -878,36 +878,47 @@ export function HomeScreen({
         <div className="tiles">
           <DbTile
             label="Расчёты"
+            unit={['расчёт', 'расчёта', 'расчётов']}
             icon="stack"
             count={runs?.length ?? null}
             onOpen={() => onGoSection('db-runs')}
           />
           <DbTile
             label="Заявки"
+            unit={['заявка', 'заявки', 'заявок']}
             icon="clipboard-list"
-            count={registry?.orders.length ?? null}
+            /* Заявок столько, сколько их есть, а не сколько раз они прошли
+               через расчёты: один и тот же день, пересчитанный трижды, даёт
+               три записи на каждую заявку. В меню и в самой базе стоит
+               уникальное число — здесь стояло число записей, и Главная
+               обещала семьсот заявок там, где их двести пять. */
+            count={registry ? mergeOrders(registry.orders).length : null}
             onOpen={() => onGoSection('db-orders')}
           />
           <DbTile
             label="Услуги"
+            unit={['услуга', 'услуги', 'услуг']}
             icon="wrench"
             count={registry?.services.length ?? null}
             onOpen={() => onGoSection('db-services')}
           />
           <DbTile
             label="Инженеры"
+            unit={['человек', 'человека', 'человек']}
             icon="users"
-            count={registry?.engineers.length ?? null}
+            count={registry ? crewSize(registry.engineers) : null}
             onOpen={() => onGoSection('db-engineers')}
           />
           <DbTile
             label="Клиенты"
+            unit={['адрес', 'адреса', 'адресов']}
             icon="user"
             count={registry?.clients.length ?? null}
             onOpen={() => onGoSection('db-clients')}
           />
           <DbTile
             label="Маршруты"
+            unit={['маршрут', 'маршрута', 'маршрутов']}
             icon="path"
             count={registry?.routes.length ?? null}
             onOpen={() => onGoSection('db-routes')}
@@ -1026,11 +1037,17 @@ function DbTile({
   label,
   icon,
   count,
+  unit,
   onOpen
 }: {
   label: string;
   icon: string;
   count: number | null;
+  /** Чем считаем: «расчётов», «заявок», «человек». Слово «записей» годилось,
+      пока плитки считали строки справочника; теперь заявки и люди считаются
+      поштучно — заявка, посчитанная трижды, остаётся одной заявкой, — и
+      называть их записями значило бы обещать другое число. */
+  unit: [string, string, string];
   onOpen: () => void;
 }) {
   return (
@@ -1044,7 +1061,7 @@ function DbTile({
       {count !== null && count > 0 && (
         <span className="ctile__value">
           {count}{' '}
-          <span className="ctile__unit">{pluralWord(count, 'запись', 'записи', 'записей')}</span>
+          <span className="ctile__unit">{pluralWord(count, unit[0], unit[1], unit[2])}</span>
         </span>
       )}
     </button>

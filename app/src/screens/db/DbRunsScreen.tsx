@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Icon } from '../../ds/components/core/Icon.jsx';
 import { SegmentedControl } from '../../ds/components/forms/SegmentedControl.jsx';
 import type { Registry, RouteRecord, RunRef } from '../../data/registry.ts';
+import { crewSize } from '../../data/registry.ts';
 import type { RunId } from '../../data/load.ts';
 import { localRun, stampOf } from '../../data/load.ts';
 import { dec, hoursText, plural } from '../../data/derive.ts';
@@ -303,7 +304,10 @@ export function DbRunsScreen({
     const types = [...typeCount.entries()].sort((a, b) => b[1] - a[1]);
 
     const skills = top([...registry.stats.bySkill].sort((a, b) => b.count - a.count), 6);
-    const crewed = new Set(routes.map((route) => route.engineerKey)).size;
+    /* Людей, а не записей справочника: один человек, выехавший на двух
+       участках, — один выехавший. Ключ тот же, каким штат сводит
+       `personOf`. */
+    const crewed = new Set(routes.map((route) => `${route.engineerId} · ${route.engineerName}`)).size;
 
     /* Занятость раскладываем на три ступени: «сколько в среднем» отвечает на
        вопрос наполовину — маршрут под завязку и маршрут вполпустого дают ту
@@ -503,7 +507,7 @@ export function DbRunsScreen({
         note: 'Кем мы располагаем: сколько людей владеет каждым навыком. Считается по штату, срок на него не влияет. Кольца нет: инженер с тремя навыками попадает в три строки, и в целое они не складываются',
         shape: 'bars',
         data: {
-          value: String(registry.engineers.length),
+          value: String(crewSize(registry.engineers)),
           caption: 'инженеров в штате',
           parts: skills.map((item) => ({
             key: item.key,
@@ -519,7 +523,7 @@ export function DbRunsScreen({
         note: 'Кому расчёт дал работу, а кто ни разу не выехал',
         shape: 'donut',
         data: {
-          value: String(registry.engineers.length),
+          value: String(crewSize(registry.engineers)),
           caption: 'инженеров',
           whole: true,
           parts: [
@@ -527,7 +531,7 @@ export function DbRunsScreen({
             {
               key: 'idle',
               label: 'Ни разу',
-              value: Math.max(0, registry.engineers.length - crewed),
+              value: Math.max(0, crewSize(registry.engineers) - crewed),
               tone: 'warn'
             }
           ],

@@ -557,10 +557,25 @@ export function uniqueOrders(rows: OrderRecord[]): OrderRecord[] {
 
     Ключом остаётся ключ главной записи: по нему из карточки заявки и из
     маршрута открывают инженера, и подменять его нельзя. */
+/** Человек за записью справочника.
+
+    Записи заведены по участкам: один и тот же E05 стоит в плане Востока,
+    Юго-востока и Югоцентра, и записей у него три. Человек же один, и
+    узнаётся он по табельному номеру с именем. Ключ живёт здесь, чтобы все,
+    кто считает штат, считали его одинаково: разойдись эти места — и на
+    соседних экранах встанут «42 инженера» и «14 инженеров» про одних и тех
+    же людей. */
+export const personOf = (record: { code: string; name: string }) =>
+  `${record.code} · ${record.name}`;
+
+/** Сколько людей в штате — не записей справочника. */
+export const crewSize = (engineers: EngineerRecord[]): number =>
+  new Set(engineers.map(personOf)).size;
+
 export function mergeEngineers(engineers: EngineerRecord[]): EngineerRecord[] {
   const людьми = new Map<string, EngineerRecord[]>();
   for (const one of engineers) {
-    const кто = `${one.code} · ${one.name}`;
+    const кто = personOf(one);
     const список = людьми.get(кто);
     if (список) список.push(one);
     else людьми.set(кто, [one]);
@@ -1407,8 +1422,11 @@ function buildStats(
     };
   });
 
+  /* Навыки считаются людьми, а не записями. Записей у человека столько,
+     на скольких участках он числится, и «линейные работы умеют 24» при
+     четырнадцати людях в штате — число, которого не с чем сопоставить. */
   const skills = new Map<string, number>();
-  for (const engineer of engineers) {
+  for (const engineer of mergeEngineers(engineers)) {
     for (const key of engineer.skills) skills.set(key, (skills.get(key) ?? 0) + 1);
   }
 
