@@ -323,10 +323,42 @@
 
    Группа нужна потому, что событий восемь, а не четыре: без неё «Выехал»
    и «Выбыл» стоят вперемешку и разбирать их приходится глазами. */
-.manual { display: flex; flex-direction: column; gap: 12px; }
-.manual__group { display: flex; flex-direction: column; gap: 6px; }
-.manual__group + .manual__group { margin-top: 2px; }
-.manual__group-title { font-size: var(--fs-caption); color: var(--text-secondary); }
+.manual { display: flex; flex-direction: column; gap: var(--sp-4); }
+.manual__group { display: flex; flex-direction: column; gap: var(--sp-2); }
+
+/* Имя группы — тем же голосом, что имена частей в «Сколько людей нужно»:
+   мелкие прописные вразрядку и черта под ними во всю ширину. Прежде это
+   была обычная строчка того же кегля, что и пояснения под событиями, и
+   «По заявке» терялось между восемью карточками — глаз не находил, где
+   кончается одна группа и начинается другая. */
+.manual__group-title {
+  padding-bottom: var(--sp-1);
+  border-bottom: 1px solid var(--border-hairline);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* События — плитками в ряд, а не строками во всю ширину. В окне правки
+   их четыре и окно узкое, там строка уместна; здесь событий восемь, а
+   ширина — весь экран, и строка растягивала карточку метровой полосой с
+   тремя словами посередине. */
+.manual .incident__kinds {
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+
+/* Заголовок события не должен переноситься на вторую строку в узкой
+   плитке, а пояснение под ним — прижато к низу: у плиток в ряду низ
+   общий, и рваный край читается как небрежность. */
+.manual .incident__kind {
+  min-height: 92px;
+}
+
+.manual .incident__kind-what {
+  margin-top: auto;
+}
 .manual__go { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 2px; }
 .manual__ok { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-caption); color: var(--text-secondary); }
 .manual__err { margin: 0; font-size: var(--fs-body-s); color: var(--danger-600, #b3261e); }

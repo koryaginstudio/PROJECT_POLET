@@ -7706,14 +7706,28 @@ b.ccard__bad {
 /* Свод по отмеченным участкам: ответ галочкам справа. Плиткой, а не строкой
    чисел, — он стоит на месте живых чисел, когда наблюдение не идёт, и
    пустоты на этом месте быть не должно. */
+/* Свод по отмеченным участкам.
+
+   Плитка сидит между заголовком дня и кнопками, и прежде была тесной:
+   мелкие числа в три строки, а под ней — воздух до кнопок шириной в саму
+   плитку. Читалось это как пустое место, забытое вёрсткой. Плитка выросла
+   вниз — воздухом внутри себя, а не под собой, — и числа в ней встали
+   такими же, как в живой полосе наблюдения: это тот же разговор про
+   хозяйство дня, и голос у него один. */
 .homepick {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: var(--sp-3);
+  gap: var(--sp-2);
+  padding: var(--sp-4);
   border: 1px solid var(--border-hairline);
   border-radius: var(--r-md);
   background: var(--surface-tile);
+}
+
+/* Кнопки идут сразу за плиткой: общий отступ колонки между ними читался
+   как забытое место — плитка кончилась, а до действий ещё полполосы. */
+.homepick + .home__actions {
+  margin-top: 0;
 }
 
 .homepick__label {
@@ -7732,7 +7746,8 @@ b.ccard__bad {
 .homepick__row {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--sp-2) var(--sp-5);
+  align-items: baseline;
+  gap: var(--sp-3) var(--sp-6);
 }
 
 .homepick__item {
@@ -7741,11 +7756,16 @@ b.ccard__bad {
   font-variant-numeric: tabular-nums;
 }
 
+/* Число — тем же голосом, что в полосе наблюдения: 24 точки, шрифт
+   заголовков. Одно и то же хозяйство дня не должно быть написано в двух
+   соседних блоках разным кеглем. */
 .homepick__item b {
-  font-size: var(--fs-h4);
-  font-weight: var(--fw-bold);
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: var(--fw-extrabold);
+  line-height: 1.1;
   color: var(--text-primary);
-  margin-right: 4px;
+  margin-right: 6px;
 }
 
 .homelive {
@@ -15195,6 +15215,53 @@ button.homechip--quiet {
   }
 }
 
+/* Снимок со своими кнопками: они стоят под ним, а не поверх — поверх они
+   закрывали бы лицо, ради которого профиль и открывают. */
+.crewpro__facebox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.crewpro__file {
+  display: none;
+}
+
+.crewpro__facebtns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+}
+
+/* Тихая служебная кнопка: завести снимок — дело редкое и не главное на
+   экране, кричать о нём заливкой незачем. */
+.crewpro__facebtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--r-sm);
+  background: var(--white);
+  font-family: var(--font-sans);
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background-color 120ms var(--ease-out-strong), color 120ms var(--ease-out-strong);
+}
+
+.crewpro__facebtn:hover {
+  background: var(--ink-50);
+  color: var(--text-primary);
+}
+
+.crewpro__facefail {
+  margin: 0;
+  font-size: var(--fs-caption);
+  color: var(--danger-600, #b3261e);
+}
+
 /* Портрет, а не квадрат для узнавания в ряду: здесь на него смотрят, а не
    ищут им глазами. 3:4 — пропорция обычного портретного кадра; кадрируем по
    верхней трети, где у сфотографированных стоя лицо. */
@@ -21685,11 +21752,21 @@ button.subhdr__close {
    Тень умеет вырезать одну дырку, а их две — рабочая область и кнопка.
    Куски считает вычитанием сам показ и следит, чтобы они не наползали друг
    на друга: наложение читалось бы как пятно вдвое темнее. */
+/* Тьма показа — один слой с вырезами по форме светлых мест.
+
+   Прежде она складывалась из прямоугольников вокруг каждого выреза, и
+   вырезы выходили прямоугольными: вокруг кнопки-пилюли светился
+   прямоугольник с прямыми углами, а у скруглённого окна в углах оставались
+   светлые уголки. Теперь это `<svg>` с одним путём и правилом evenodd —
+   вырез повторяет скругление того, что светится. */
 .demo__shade {
   position: fixed;
   z-index: 940;
   pointer-events: none;
-  background: rgba(10, 10, 10, 0.62);
+}
+
+.demo__shade path {
+  fill: rgba(10, 10, 10, 0.62);
 }
 
 /* Рабочая область: освещена не ярче прочего, но обведена — видно, где

@@ -262,7 +262,6 @@ export function ControlScreen({
         <section className="panel">
           <div className="dash__section-head">
             <h2 className="dash__section-title">Сколько ещё людей нужно</h2>
-            <span className="dash__section-note">по плану участка, считает программа расчёта</span>
           </div>
           {staffing ? (
             <div className="ctl__staff">

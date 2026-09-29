@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { Button } from '../ds/components/core/Button.jsx';
 import { Icon } from '../ds/components/core/Icon.jsx';
@@ -10,7 +10,8 @@ import type { CrewPatch } from '../data/crew.ts';
 import { dec, hhmm, hoursText } from '../data/derive.ts';
 import { skillIcon, skillName, teamName, transportIcon, transportName } from '../data/dictionary.ts';
 import { transportWhy } from '../data/rationale.ts';
-import { faceOf } from '../data/photos.ts';
+import { faceOf, tabOf } from '../data/photos.ts';
+import { dropOwnFace, facesVersion, ownFace, setOwnFace, subscribeFaces } from '../data/faces.ts';
 import { PersonName } from './PersonName.tsx';
 import { OrderProfile } from './OrderProfile.tsx';
 import { NoteField } from './NoteField.tsx';
@@ -107,6 +108,28 @@ export function CrewProfile({
 
   /* Правится ли карточка прямо сейчас. */
   const [editing, setEditing] = useState(false);
+
+  /* Снимок человека: заведённый диспетчером важнее любого другого.
+
+     Подписка нужна ради перерисовки: снимок живёт вне дерева компонентов,
+     в хранилище браузера, и без неё выбранный файл появился бы только
+     после закрытия и повторного открытия профиля. */
+  useSyncExternalStore(subscribeFaces, facesVersion, () => '');
+  const табельный = crew ? tabOf(crew.id) : '';
+  const свой = Boolean(ownFace(табельный));
+  const файл = useRef<HTMLInputElement>(null);
+  const [снимокНеПошёл, setСнимокНеПошёл] = useState(false);
+
+  const взятьСнимок = async (chosen: File | undefined) => {
+    if (!chosen || !табельный) return;
+    setСнимокНеПошёл(false);
+    try {
+      await setOwnFace(табельный, chosen);
+    } catch {
+      /* Файл не открылся как картинка — сказать и оставить как было. */
+      setСнимокНеПошёл(true);
+    }
+  };
   const [id, setId] = useState('');
   const [posts, setPosts] = useState<PostDraft[]>([]);
   const [name, setName] = useState('');
@@ -286,7 +309,51 @@ export function CrewProfile({
             фото правке не подлежит — лицо не текстовое поле, — поэтому
             остаётся на месте и в режиме формы. */}
         <div className="crewpro__hero">
-          <img className="crewpro__face" src={faceOf(crew)} alt="" />
+          {/* Снимок и кнопка при нём. Фотографии в выгрузке нет: у
+              четырнадцати человек штата лицо закреплено таблицей, всем
+              остальным его заводит диспетчер — отсюда и кнопка. Свой
+              снимок можно заменить и снять: он хранится в браузере и
+              выгрузку не трогает. */}
+          <div className="crewpro__facebox">
+            <img className="crewpro__face" src={faceOf(crew)} alt="" />
+            <input
+              ref={файл}
+              className="crewpro__file"
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                void взятьСнимок(e.currentTarget.files?.[0]);
+                /* Тот же файл, выбранный дважды подряд, иначе не приходит:
+                   значение поля не изменилось — события нет. */
+                e.currentTarget.value = '';
+              }}
+            />
+            <div className="crewpro__facebtns">
+              <button
+                type="button"
+                className="crewpro__facebtn"
+                onClick={() => файл.current?.click()}
+                title={свой ? 'Заменить снимок' : 'Добавить снимок'}
+              >
+                <Icon name={свой ? 'pencil' : 'plus'} size={14} />
+                {свой ? 'Заменить' : 'Добавить снимок'}
+              </button>
+              {свой && (
+                <button
+                  type="button"
+                  className="crewpro__facebtn"
+                  onClick={() => dropOwnFace(табельный)}
+                  title="Снять снимок: останется знак с инициалами"
+                >
+                  <Icon name="trash" size={14} />
+                  Убрать
+                </button>
+              )}
+            </div>
+            {снимокНеПошёл && (
+              <p className="crewpro__facefail">Файл не открылся как изображение.</p>
+            )}
+          </div>
 
           <div className="crewpro__hero-body">
             {editing && (

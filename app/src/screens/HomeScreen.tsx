@@ -69,7 +69,13 @@ const percent = (share: number) => `${Math.round(share)}%`;
    разделы: Главная отвечает на «что было за последние дни», а не заменяет
    собой архив. */
 const SHIFTS_SHOWN = 7;
-const RUNS_SHOWN = 6;
+/* Расчётов в ряду четыре — ровно столько, сколько их помещается в строку
+   сетки. Шесть ломались на вторую строку из двух карточек, и ряд читался
+   как незаконченный. Остальные — по кнопке под рядом. */
+const RUNS_SHOWN = 4;
+/* Сколько добавляет «Показать ещё». Тот же шаг, что и первый ряд: кнопка
+   дописывает строку, а не вываливает архив. */
+const RUNS_MORE = 4;
 
 /* По чему упорядочены смены в статистике. Первым — время: смену ищут «за
    вчера» и «за прошлую неделю», а не «где вышло лучше». Остальные два
@@ -208,10 +214,10 @@ export function HomeScreen({
   }, [registry, days, watched.join('|')]);
   /* Последние расчёты — свода справочника, а не ленты истории: карточке
      базы нужны её числа и набросок карты, и считает их справочник. */
-  const recentRuns = useMemo(
-    () => (registry ? [...registry.stats.byRun].slice(-RUNS_SHOWN).reverse() : []),
-    [registry]
-  );
+  /* Сколько расчётов показано сейчас. Растёт кнопкой под рядом. */
+  const [runsShown, setRunsShown] = useState(RUNS_SHOWN);
+  const allRuns = useMemo(() => (registry ? [...registry.stats.byRun].reverse() : []), [registry]);
+  const recentRuns = useMemo(() => allRuns.slice(0, runsShown), [allRuns, runsShown]);
 
   /* Маршруты по расчётам — для списков внутри карточек. Считаем один раз на
      весь ряд: реестр общий, и шесть карточек просеивали бы его шесть раз. */
@@ -757,6 +763,26 @@ export function HomeScreen({
               />
             ))}
           </div>
+        )}
+
+        {/* Ряд дописывается на месте, как история в воротах диспетчерской:
+            уходить в архив ради ещё четырёх карточек незачем. Кнопка
+            пропадает, когда показаны все. */}
+        {allRuns.length > recentRuns.length && (
+          <button
+            type="button"
+            className="tblmore"
+            onClick={() => setRunsShown((было) => было + RUNS_MORE)}
+          >
+            Показать ещё {Math.min(RUNS_MORE, allRuns.length - recentRuns.length)} из{' '}
+            {allRuns.length - recentRuns.length}
+          </button>
+        )}
+
+        {recentRuns.length > RUNS_SHOWN && (
+          <button type="button" className="tblmore" onClick={() => setRunsShown(RUNS_SHOWN)}>
+            Свернуть до {RUNS_SHOWN}
+          </button>
         )}
       </section>
 
